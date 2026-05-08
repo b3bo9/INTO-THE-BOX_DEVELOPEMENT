@@ -7,6 +7,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Librerie Post-Processing per Effetti di Luce Avanzati (Bloom) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 
     <style>
         * { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
@@ -20,38 +28,29 @@
         .stack-dot { width: 14px; height: 14px; border-radius: 50%; background: #1a1a1a; border: 1px solid #555; transition: all 0.3s; box-shadow: inset 0 0 5px #000; }
         @media (min-width: 640px) { .stack-dot { width: 22px; height: 22px; border-width: 2px; } }
         
-        /* PALETTE COLORI AD ALTA LEGGIBILITA' */
-        .stack-dot.active.red { background: #FF0000; border-color: #ffaaaa; box-shadow: 0 0 20px #FF0000; }
-        .stack-dot.active.blue { background: #0044FF; border-color: #aaccff; box-shadow: 0 0 20px #0044FF; }
-        .stack-dot.active.green { background: #00FF00; border-color: #aaffaa; box-shadow: 0 0 20px #00FF00; }
+        /* PALETTE COLORI AD ALTA LEGGIBILITA' E BLOOM */
+        .stack-dot.active.red { background: #FF1133; border-color: #ffaaaa; box-shadow: 0 0 20px #FF1133; }
+        .stack-dot.active.blue { background: #00AAFF; border-color: #aaccff; box-shadow: 0 0 20px #00AAFF; }
+        .stack-dot.active.green { background: #33FF00; border-color: #aaffaa; box-shadow: 0 0 20px #33FF00; }
         
         #combo-text { text-shadow: 0 0 15px #ffaa00, 0 0 5px #ff0000, 2px 2px 0 #000; }
         @media (min-width: 640px) { #combo-text { text-shadow: 0 0 30px #ffaa00, 0 0 10px #ff0000, 4px 4px 0 #000; } }
 
-        @keyframes menuPulse {
-            0% { box-shadow: 0 0 30px rgba(220, 38, 38, 0.2), inset 0 0 20px rgba(220, 38, 38, 0.1); }
-            50% { box-shadow: 0 0 60px rgba(220, 38, 38, 0.5), inset 0 0 40px rgba(220, 38, 38, 0.2); }
-            100% { box-shadow: 0 0 30px rgba(220, 38, 38, 0.2), inset 0 0 20px rgba(220, 38, 38, 0.1); }
-        }
+        @keyframes menuPulse { 0%, 100% { box-shadow: 0 0 30px rgba(220, 38, 38, 0.2), inset 0 0 20px rgba(220, 38, 38, 0.1); } 50% { box-shadow: 0 0 60px rgba(220, 38, 38, 0.5), inset 0 0 40px rgba(220, 38, 38, 0.2); } }
         .menu-glow { animation: menuPulse 4s infinite ease-in-out; }
         
-        @keyframes pulse-glow-red { 0%, 100% { box-shadow: 0 0 5px #FF0000; transform: scale(1); } 50% { box-shadow: 0 0 15px #FF0000, 0 0 6px #ffaaaa inset; transform: scale(1.15); } }
-        @keyframes pulse-glow-blue { 0%, 100% { box-shadow: 0 0 5px #0044FF; transform: scale(1); } 50% { box-shadow: 0 0 15px #0044FF, 0 0 6px #aaaaff inset; transform: scale(1.15); } }
-        @keyframes pulse-glow-green { 0%, 100% { box-shadow: 0 0 5px #00FF00; transform: scale(1); } 50% { box-shadow: 0 0 15px #00FF00, 0 0 6px #aaffaa inset; transform: scale(1.15); } }
+        @keyframes pulse-glow-red { 0%, 100% { box-shadow: 0 0 5px #FF1133; transform: scale(1); } 50% { box-shadow: 0 0 15px #FF1133, 0 0 6px #ffaaaa inset; transform: scale(1.15); } }
+        @keyframes pulse-glow-blue { 0%, 100% { box-shadow: 0 0 5px #00AAFF; transform: scale(1); } 50% { box-shadow: 0 0 15px #00AAFF, 0 0 6px #aaaaff inset; transform: scale(1.15); } }
+        @keyframes pulse-glow-green { 0%, 100% { box-shadow: 0 0 5px #33FF00; transform: scale(1); } 50% { box-shadow: 0 0 15px #33FF00, 0 0 6px #aaffaa inset; transform: scale(1.15); } }
         
         .dot-glow-red { animation: pulse-glow-red 2s infinite ease-in-out; }
         .dot-glow-blue { animation: pulse-glow-blue 2s infinite ease-in-out 0.6s; }
         .dot-glow-green { animation: pulse-glow-green 2s infinite ease-in-out 1.2s; }
         
         #vignette { position: absolute; inset: 0; background: radial-gradient(circle, transparent 40%, rgba(2,2,5,0.95) 120%); z-index: 1; pointer-events: none; mix-blend-mode: multiply; transition: opacity 0.5s; }
-
-        .relic-card { transition: all 0.2s; cursor: pointer; }
-        .relic-card:hover { transform: scale(1.05) translateY(-5px); }
-        .relic-card:active { transform: scale(0.95); }
-        .rarity-common { border-color: #9ca3af; box-shadow: 0 0 15px rgba(156, 163, 175, 0.2); }
-        .rarity-rare { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
-        .rarity-epic { border-color: #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.6); }
-        .rarity-legendary { border-color: #fbbf24; box-shadow: 0 0 30px rgba(251, 191, 36, 0.8); }
+        .relic-card { transition: all 0.2s; cursor: pointer; } .relic-card:hover { transform: scale(1.05) translateY(-5px); } .relic-card:active { transform: scale(0.95); }
+        .rarity-common { border-color: #9ca3af; box-shadow: 0 0 15px rgba(156, 163, 175, 0.2); } .rarity-rare { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+        .rarity-epic { border-color: #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.6); } .rarity-legendary { border-color: #fbbf24; box-shadow: 0 0 30px rgba(251, 191, 36, 0.8); }
     </style>
 </head>
 <body class="text-white selection:bg-red-900">
@@ -63,28 +62,25 @@
     <div id="mainMenu" class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-red-950/60 via-black/90 to-black z-[200] flex items-center justify-center backdrop-blur-lg pointer-events-auto hidden overflow-y-auto">
         <div class="bg-black/70 backdrop-blur-2xl border border-red-900/40 p-5 sm:p-8 w-[92%] max-w-[420px] landscape:max-w-[750px] flex flex-col landscape:flex-row gap-5 relative menu-glow rounded-3xl shadow-2xl overflow-hidden my-auto">
             <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-red-600/10 blur-[50px] pointer-events-none"></div>
-
             <div class="flex flex-col gap-3 landscape:w-1/2 justify-center z-10">
                 <div class="text-center mt-2">
                     <h1 class="text-5xl sm:text-6xl landscape:text-5xl font-black italic text-transparent bg-clip-text bg-gradient-to-br from-white via-red-500 to-red-900 mb-1 drop-shadow-[0_2px_10px_rgba(255,0,0,0.8)] tracking-tighter transform -skew-x-3">INTO THE BOX</h1>
                     <h2 class="text-[10px] sm:text-xs text-red-500 uppercase tracking-[0.4em] font-bold">Definitive Edition</h2>
                 </div>
-                
                 <div class="grid grid-cols-1 gap-2.5 relative">
                     <div class="bg-gradient-to-r from-red-950/30 via-black/50 to-red-950/30 border border-red-900/30 py-2.5 px-4 rounded-xl text-center shadow-inner flex flex-col items-center justify-center gap-1.5 transition-colors hover:border-red-900/50">
                         <div class="flex items-center justify-center gap-2">
                             <span class="text-[10px] sm:text-[11px] text-gray-400 font-bold uppercase tracking-wider">I nemici rilasciano</span>
                             <span class="flex gap-1.5">
-                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#FF0000] dot-glow-red"></span>
-                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#0044FF] dot-glow-blue"></span>
-                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#00FF00] dot-glow-green"></span>
+                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#FF1133] dot-glow-red"></span>
+                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#00AAFF] dot-glow-blue"></span>
+                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#33FF00] dot-glow-green"></span>
                             </span>
                         </div>
                         <p class="text-[10px] sm:text-[11px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
                             Accumulane 3 uguali o <span class="text-fuchsia-400 font-black drop-shadow-[0_0_5px_rgba(255,0,255,0.6)]">mischia</span> i colori!
                         </p>
                     </div>
-
                     <div class="bg-black/50 border border-gray-800 rounded-xl py-2 px-4 text-center flex items-center justify-center transition-colors hover:border-gray-600">
                         <div id="pc-controls" class="hidden w-full">
                             <div class="text-[10px] sm:text-[11px] text-gray-400 font-bold uppercase tracking-wider flex flex-col gap-1">
@@ -101,7 +97,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="flex flex-col gap-2.5 z-10 mt-1 landscape:mt-0 landscape:w-1/2 justify-center">
                 <div class="relative group">
                     <select id="gameDifficulty" onmouseenter="AudioEngine.playHover()" class="w-full bg-black/80 text-white border border-red-900/50 hover:border-red-500 py-3 rounded-xl focus:outline-none focus:border-red-500 transition-colors appearance-none cursor-pointer text-xs sm:text-sm font-bold text-center tracking-widest uppercase shadow-inner">
@@ -111,12 +106,10 @@
                     </select>
                     <i class="fa-solid fa-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-red-500 pointer-events-none text-sm transition-transform group-hover:scale-110"></i>
                 </div>
-
                 <div class="flex gap-2 w-full">
                     <button id="btn-toggle-audio" onclick="AudioEngine.toggleMute()" onmouseenter="AudioEngine.playHover()" class="flex-1 bg-gray-900/50 border border-gray-800 text-gray-400 py-2 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all hover:bg-gray-800 hover:text-white uppercase tracking-widest flex items-center justify-center gap-1.5"><i class="fa-solid fa-volume-high"></i> Audio: ON</button>
                     <button id="btn-toggle-gfx" onclick="AppSettings.toggleGraphics()" onmouseenter="AudioEngine.playHover()" class="flex-1 bg-gray-900/50 border border-gray-800 text-gray-400 py-2 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all hover:bg-gray-800 hover:text-white uppercase tracking-widest flex items-center justify-center gap-1.5"><i class="fa-solid fa-wand-magic-sparkles"></i> QUALITÀ</button>
                 </div>
-
                 <div class="flex flex-col gap-2 mt-1 mb-4 sm:mb-2 landscape:mb-0">
                     <button onmouseenter="AudioEngine.playHover()" onclick="AudioEngine.playClick(); startGameFromMenu()" class="w-full bg-gradient-to-b from-red-700 to-red-900 hover:from-red-600 hover:to-red-800 text-white font-black py-4 landscape:py-3 rounded-xl text-xl sm:text-2xl landscape:text-xl shadow-[0_0_20px_rgba(220,38,38,0.4)] hover:shadow-[0_0_35px_rgba(220,38,38,0.7)] border border-red-500/30 hover:border-red-400/60 transition-all transform hover:-translate-y-0.5 active:scale-95 active:translate-y-0 uppercase tracking-[0.2em] flex justify-center items-center gap-3">
                         <i class="fa-solid fa-play text-lg"></i> Gioca
@@ -154,12 +147,8 @@
         <div id="joy-right-zone" class="absolute bottom-8 right-8 sm:bottom-12 sm:right-12 landscape:bottom-6 landscape:right-12 w-32 h-32 bg-red-500/10 rounded-full border border-red-500/20 pointer-events-auto touch-none">
             <div id="joy-right-stick" class="absolute top-1/2 left-1/2 w-14 h-14 bg-red-500/50 rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-[0_0_15px_rgba(255,0,0,0.5)] backdrop-blur-sm pointer-events-none transition-transform duration-75"></div>
         </div>
-        <button id="btn-dash" class="absolute bottom-32 right-[8.5rem] landscape:bottom-6 landscape:right-48 w-14 h-14 bg-blue-500/40 backdrop-blur-md rounded-full border border-blue-400 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(0,100,255,0.6)] active:scale-90 active:bg-blue-500/70 transition-all flex items-center justify-center touch-none">
-            <i class="fa-solid fa-bolt text-xl"></i>
-        </button>
-        <button id="btn-ult" class="absolute bottom-[11rem] right-12 landscape:bottom-24 landscape:right-40 w-14 h-14 bg-fuchsia-500/40 backdrop-blur-md rounded-full border border-fuchsia-400 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(255,0,255,0.6)] opacity-50 scale-75 transition-all flex items-center justify-center touch-none">
-            <i class="fa-solid fa-angles-up text-2xl"></i>
-        </button>
+        <button id="btn-dash" class="absolute bottom-32 right-[8.5rem] landscape:bottom-6 landscape:right-48 w-14 h-14 bg-blue-500/40 backdrop-blur-md rounded-full border border-blue-400 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(0,100,255,0.6)] active:scale-90 active:bg-blue-500/70 transition-all flex items-center justify-center touch-none"><i class="fa-solid fa-bolt text-xl"></i></button>
+        <button id="btn-ult" class="absolute bottom-[11rem] right-12 landscape:bottom-24 landscape:right-40 w-14 h-14 bg-fuchsia-500/40 backdrop-blur-md rounded-full border border-fuchsia-400 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(255,0,255,0.6)] opacity-50 scale-75 transition-all flex items-center justify-center touch-none"><i class="fa-solid fa-angles-up text-2xl"></i></button>
     </div>
 
     <div id="hud" class="absolute inset-0 pointer-events-none hidden z-10">
@@ -169,53 +158,32 @@
                     <span class="font-black text-sm sm:text-lg text-white drop-shadow-md tracking-wider">LIV. <span id="ui-level" class="text-amber-400">1</span></span>
                     <span class="text-[9px] sm:text-xs text-gray-400 font-bold bg-gray-800 px-2 py-0.5 rounded whitespace-nowrap border border-gray-600">Piano <span id="ui-floor" class="text-white">1</span></span>
                 </div>
-                <div class="w-full h-1 sm:h-1.5 bg-gray-900 border border-gray-800 rounded-full overflow-hidden shadow-inner">
-                    <div id="ui-xp-fill" class="h-full w-0 bg-gradient-to-r from-amber-600 to-yellow-400 transition-all duration-200"></div>
-                </div>
+                <div class="w-full h-1 sm:h-1.5 bg-gray-900 border border-gray-800 rounded-full overflow-hidden shadow-inner"><div id="ui-xp-fill" class="h-full w-0 bg-gradient-to-r from-amber-600 to-yellow-400 transition-all duration-200"></div></div>
             </div>
             <div class="flex flex-col gap-1.5 sm:gap-3 mt-0.5">
                 <div>
-                    <div class="flex justify-between items-center text-[10px] sm:text-sm font-bold text-gray-300 uppercase mb-0.5">
-                        <span id="ui-lives" class="text-pink-500 tracking-widest drop-shadow-md text-[10px] sm:text-sm">❤️❤️❤️</span>
-                        <span id="ui-hp-text" class="text-white font-bold ml-2 drop-shadow-md">100/100</span>
-                    </div>
-                    <div class="health-bar-container h-2.5 sm:h-5 w-full">
-                        <div id="ui-hp-fill" class="health-bar-fill"></div>
-                    </div>
+                    <div class="flex justify-between items-center text-[10px] sm:text-sm font-bold text-gray-300 uppercase mb-0.5"><span id="ui-lives" class="text-pink-500 tracking-widest drop-shadow-md text-[10px] sm:text-sm">❤️❤️❤️</span><span id="ui-hp-text" class="text-white font-bold ml-2 drop-shadow-md">100/100</span></div>
+                    <div class="health-bar-container h-2.5 sm:h-5 w-full"><div id="ui-hp-fill" class="health-bar-fill"></div></div>
                 </div>
                 <div>
-                    <div class="flex justify-between items-end text-[9px] sm:text-xs font-bold text-cyan-300 uppercase mb-0.5">
-                        <span class="tracking-widest">Ascensione</span>
-                        <span id="ultimate-ready-text" class="text-white font-black animate-pulse hidden drop-shadow-[0_0_5px_rgba(0,255,255,0.8)]">PRONTA!</span>
-                    </div>
-                    <div class="w-full h-1.5 sm:h-3 bg-black border border-gray-600 rounded-full overflow-hidden shadow-[0_0_8px_rgba(0,255,255,0.2)]">
-                        <div id="ultimate-bar-fill" class="h-full w-0 bg-gradient-to-r from-fuchsia-600 to-cyan-400 transition-all duration-200"></div>
-                    </div>
+                    <div class="flex justify-between items-end text-[9px] sm:text-xs font-bold text-cyan-300 uppercase mb-0.5"><span class="tracking-widest">Ascensione</span><span id="ultimate-ready-text" class="text-white font-black animate-pulse hidden drop-shadow-[0_0_5px_rgba(0,255,255,0.8)]">PRONTA!</span></div>
+                    <div class="w-full h-1.5 sm:h-3 bg-black border border-gray-600 rounded-full overflow-hidden shadow-[0_0_8px_rgba(0,255,255,0.2)]"><div id="ultimate-bar-fill" class="h-full w-0 bg-gradient-to-r from-fuchsia-600 to-cyan-400 transition-all duration-200"></div></div>
                 </div>
             </div>
             <div class="mt-1 bg-red-950/50 border border-red-900 rounded p-1 sm:p-2 text-center flex justify-center items-center shadow-inner">
-                <i class="fa-solid fa-skull mr-2 text-red-500 text-[10px] sm:text-base"></i>
-                <span id="ui-enemy-label" class="text-[10px] sm:text-sm text-red-300 font-black uppercase tracking-wider">Demoni: </span><span id="ui-enemies-left" class="text-white text-sm sm:text-lg ml-1 font-bold">0</span>
+                <i class="fa-solid fa-skull mr-2 text-red-500 text-[10px] sm:text-base"></i><span id="ui-enemy-label" class="text-[10px] sm:text-sm text-red-300 font-black uppercase tracking-wider">Demoni: </span><span id="ui-enemies-left" class="text-white text-sm sm:text-lg ml-1 font-bold">0</span>
             </div>
         </div>
 
         <div id="combo-container" class="absolute top-3 right-3 sm:top-8 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 text-right sm:text-center transition-opacity duration-100 opacity-0 flex flex-col items-end sm:items-center w-auto pointer-events-none z-20">
             <h2 id="combo-text" class="font-black text-white m-0 leading-none origin-right sm:origin-center text-2xl sm:text-6xl lg:text-7xl drop-shadow-xl">COMBO x2!</h2>
-            <div class="w-20 sm:w-48 h-1.5 sm:h-3 bg-black/80 border border-amber-500 rounded-full overflow-hidden mt-1 sm:mt-1.5 shadow-[0_0_10px_rgba(255,170,0,0.8)]">
-                <div id="combo-bar" class="h-full bg-amber-500 w-full transition-all duration-100 ease-linear"></div>
-            </div>
+            <div class="w-20 sm:w-48 h-1.5 sm:h-3 bg-black/80 border border-amber-500 rounded-full overflow-hidden mt-1 sm:mt-1.5 shadow-[0_0_10px_rgba(255,170,0,0.8)]"><div id="combo-bar" class="h-full bg-amber-500 w-full transition-all duration-100 ease-linear"></div></div>
         </div>
 
         <div id="essence-hud" class="absolute bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center justify-center gap-1.5 sm:gap-2 bg-black/80 border border-gray-700 rounded-xl p-3 sm:p-4 shadow-[0_5px_20px_rgba(0,0,0,0.9)] backdrop-blur-sm transition-opacity duration-300 opacity-0">
-            <div class="flex gap-2 sm:gap-3 mb-0.5">
-                <div class="stack-dot" id="stack-1"></div>
-                <div class="stack-dot" id="stack-2"></div>
-                <div class="stack-dot" id="stack-3"></div>
-            </div>
+            <div class="flex gap-2 sm:gap-3 mb-0.5"><div class="stack-dot" id="stack-1"></div><div class="stack-dot" id="stack-2"></div><div class="stack-dot" id="stack-3"></div></div>
             <div id="overdrive-text" class="font-black text-sm sm:text-xl text-white hidden tracking-widest uppercase drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]">INFERNO!</div>
-            <div class="w-full h-1.5 sm:h-2 bg-gray-800 rounded-full overflow-hidden mt-0.5">
-                <div id="essence-timer" class="h-full w-0 bg-white transition-all duration-100 linear"></div>
-            </div>
+            <div class="w-full h-1.5 sm:h-2 bg-gray-800 rounded-full overflow-hidden mt-0.5"><div id="essence-timer" class="h-full w-0 bg-white transition-all duration-100 linear"></div></div>
         </div>
     </div> 
 
@@ -256,13 +224,11 @@ const AppSettings = {
         const vignette = document.getElementById('vignette');
         if (this.lowGraphics) {
             btn.innerHTML = '<i class="fa-solid fa-mobile-screen-button mr-1"></i> PERFORMANCE';
-            btn.classList.replace('text-gray-300', 'text-yellow-500');
-            vignette.style.opacity = '0';
+            btn.classList.replace('text-gray-300', 'text-yellow-500'); vignette.style.opacity = '0';
             if(Game.renderer) Game.renderer.shadowMap.enabled = false;
         } else {
             btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-1"></i> QUALITÀ';
-            btn.classList.replace('text-yellow-500', 'text-gray-300');
-            vignette.style.opacity = '1';
+            btn.classList.replace('text-yellow-500', 'text-gray-300'); vignette.style.opacity = '1';
             if(Game.renderer) Game.renderer.shadowMap.enabled = true;
         }
         if(Game.scene) Game.scene.traverse(child => { if (child.material) child.material.needsUpdate = true; });
@@ -272,109 +238,74 @@ const AppSettings = {
 const AudioEngine = {
     ctx: null, musicNode: null, initialized: false, muted: false,
     init() {
-        if (this.initialized) return;
-        window.AudioContext = window.AudioContext || window.webkitAudioContext;
-        this.ctx = new AudioContext();
-        this.initialized = true;
-        this.playMenuMusic();
+        if (this.initialized) return; window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioContext(); this.initialized = true; this.playMenuMusic();
     },
     toggleMute() {
-        this.muted = !this.muted;
-        const btn = document.getElementById('btn-toggle-audio');
+        this.muted = !this.muted; const btn = document.getElementById('btn-toggle-audio');
         if (this.muted) {
-            btn.innerHTML = '<i class="fa-solid fa-volume-xmark mr-1"></i> Audio: OFF';
-            btn.classList.replace('text-gray-300', 'text-red-500');
+            btn.innerHTML = '<i class="fa-solid fa-volume-xmark mr-1"></i> Audio: OFF'; btn.classList.replace('text-gray-300', 'text-red-500');
             if(this.ctx && this.ctx.state === 'running') this.ctx.suspend();
         } else {
-            btn.innerHTML = '<i class="fa-solid fa-volume-high mr-1"></i> Audio: ON';
-            btn.classList.replace('text-red-500', 'text-gray-300');
+            btn.innerHTML = '<i class="fa-solid fa-volume-high mr-1"></i> Audio: ON'; btn.classList.replace('text-red-500', 'text-gray-300');
             if(this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
         }
     },
     playHover() {
         if (!this.ctx || this.ctx.state === 'suspended' || this.muted) return;
         let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
-        osc.type = 'sine'; osc.frequency.setValueAtTime(150, this.ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
-        osc.connect(gain); gain.connect(this.ctx.destination);
-        osc.start(); osc.stop(this.ctx.currentTime + 0.1);
+        osc.type = 'sine'; osc.frequency.setValueAtTime(150, this.ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.05, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(this.ctx.currentTime + 0.1);
     },
     playClick() {
         if (!this.ctx || this.ctx.state === 'suspended' || this.muted) return;
         let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
-        osc.type = 'square'; osc.frequency.setValueAtTime(100, this.ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(20, this.ctx.currentTime + 0.2);
-        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
-        osc.connect(gain); gain.connect(this.ctx.destination);
-        osc.start(); osc.stop(this.ctx.currentTime + 0.2);
+        osc.type = 'square'; osc.frequency.setValueAtTime(100, this.ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(20, this.ctx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(this.ctx.currentTime + 0.2);
     },
     playMenuMusic() {
         if (!this.ctx || this.musicNode || this.muted) return;
-        let osc1 = this.ctx.createOscillator(); let osc2 = this.ctx.createOscillator();
-        let lfo = this.ctx.createOscillator(); let filter = this.ctx.createBiquadFilter();
-        let gain = this.ctx.createGain();
-        osc1.type = 'sawtooth'; osc1.frequency.value = 55;
-        osc2.type = 'sawtooth'; osc2.frequency.value = 55.5; 
-        lfo.type = 'sine'; lfo.frequency.value = 0.2; 
-        let lfoGain = this.ctx.createGain(); lfoGain.gain.value = 400;
-        lfo.connect(lfoGain);
-        filter.type = 'lowpass'; filter.frequency.value = 300;
-        lfoGain.connect(filter.frequency);
+        let osc1 = this.ctx.createOscillator(); let osc2 = this.ctx.createOscillator(); let lfo = this.ctx.createOscillator(); let filter = this.ctx.createBiquadFilter(); let gain = this.ctx.createGain();
+        osc1.type = 'sawtooth'; osc1.frequency.value = 55; osc2.type = 'sawtooth'; osc2.frequency.value = 55.5; 
+        lfo.type = 'sine'; lfo.frequency.value = 0.2; let lfoGain = this.ctx.createGain(); lfoGain.gain.value = 400; lfo.connect(lfoGain);
+        filter.type = 'lowpass'; filter.frequency.value = 300; lfoGain.connect(filter.frequency);
         gain.gain.value = 0; gain.gain.linearRampToValueAtTime(0.2, this.ctx.currentTime + 2);
-        osc1.connect(filter); osc2.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
-        osc1.start(); osc2.start(); lfo.start();
+        osc1.connect(filter); osc2.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination); osc1.start(); osc2.start(); lfo.start();
         this.musicNode = { osc1, osc2, lfo, gain };
     },
     stopMenuMusic() {
-        if (!this.musicNode) return;
-        this.musicNode.gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 1);
-        setTimeout(() => {
-            if(this.musicNode) {
-                this.musicNode.osc1.stop(); this.musicNode.osc2.stop(); this.musicNode.lfo.stop();
-                this.musicNode = null;
-            }
-        }, 1000);
+        if (!this.musicNode) return; this.musicNode.gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 1);
+        setTimeout(() => { if(this.musicNode) { this.musicNode.osc1.stop(); this.musicNode.osc2.stop(); this.musicNode.lfo.stop(); this.musicNode = null; } }, 1000);
     },
     playShoot(type) {
-        if (!this.ctx || this.muted) return;
-        if (this.ctx.state === 'suspended') this.ctx.resume();
+        if (!this.ctx || this.muted) return; if (this.ctx.state === 'suspended') this.ctx.resume();
         let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain(); let t = this.ctx.currentTime;
         if (type === 'explosive_arrow') {
             osc.type = 'square'; osc.frequency.setValueAtTime(150, t); osc.frequency.exponentialRampToValueAtTime(40, t + 0.3);
-            gain.gain.setValueAtTime(0.3, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
-            osc.start(t); osc.stop(t + 0.3);
+            gain.gain.setValueAtTime(0.3, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3); osc.start(t); osc.stop(t + 0.3);
         } else if (type === 'chain_lightning') {
             osc.type = 'sawtooth'; osc.frequency.setValueAtTime(600, t); osc.frequency.linearRampToValueAtTime(1200, t + 0.05); osc.frequency.linearRampToValueAtTime(200, t + 0.15);
-            gain.gain.setValueAtTime(0.15, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
-            osc.start(t); osc.stop(t + 0.15);
+            gain.gain.setValueAtTime(0.15, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15); osc.start(t); osc.stop(t + 0.15);
         } else if (type === 'homing_arrow') {
             osc.type = 'sine'; osc.frequency.setValueAtTime(300, t); osc.frequency.exponentialRampToValueAtTime(800, t + 0.2);
-            gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
-            osc.start(t); osc.stop(t + 0.2);
+            gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2); osc.start(t); osc.stop(t + 0.2);
         } else if (type === 'flame') {
             osc.type = 'sawtooth'; osc.frequency.setValueAtTime(80, t); osc.frequency.exponentialRampToValueAtTime(30, t + 0.1);
-            gain.gain.setValueAtTime(0.15, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-            osc.start(t); osc.stop(t + 0.1);
-            let osc2 = this.ctx.createOscillator(); osc2.type = 'square'; osc2.frequency.setValueAtTime(40, t);
-            osc2.connect(gain); osc2.start(t); osc2.stop(t + 0.1);
+            gain.gain.setValueAtTime(0.15, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1); osc.start(t); osc.stop(t + 0.1);
+            let osc2 = this.ctx.createOscillator(); osc2.type = 'square'; osc2.frequency.setValueAtTime(40, t); osc2.connect(gain); osc2.start(t); osc2.stop(t + 0.1);
         } else { 
             osc.type = 'triangle'; osc.frequency.setValueAtTime(800, t); osc.frequency.exponentialRampToValueAtTime(100, t + 0.1);
-            gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-            osc.start(t); osc.stop(t + 0.1);
+            gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1); osc.start(t); osc.stop(t + 0.1);
         }
         osc.connect(gain); gain.connect(this.ctx.destination);
     },
     playDeathMusic() {
-        if (!this.ctx || this.muted) return;
-        if (this.ctx.state === 'suspended') this.ctx.resume();
-        const notes = [311.13, 233.08, 155.56, 116.54]; 
-        let t = this.ctx.currentTime;
+        if (!this.ctx || this.muted) return; if (this.ctx.state === 'suspended') this.ctx.resume();
+        const notes = [311.13, 233.08, 155.56, 116.54]; let t = this.ctx.currentTime;
         notes.forEach((freq, i) => {
-            let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
-            osc.type = 'sawtooth'; osc.frequency.value = freq;
+            let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain(); osc.type = 'sawtooth'; osc.frequency.value = freq;
             gain.gain.setValueAtTime(0, t + i * 0.5); gain.gain.linearRampToValueAtTime(0.3, t + i * 0.5 + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.5 + 1.0);
             osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t + i * 0.5); osc.stop(t + i * 0.5 + 1.0);
         });
@@ -383,21 +314,15 @@ const AudioEngine = {
         if (!this.ctx || this.ctx.state === 'suspended' || this.muted) return;
         const now = this.ctx.currentTime; const notes = [220.00, 261.63, 329.63, 440.00];
         notes.forEach((freq, i) => {
-            let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
-            osc.type = 'sawtooth'; osc.frequency.value = freq;
-            let time = now + (i * 0.15);
+            let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain(); osc.type = 'sawtooth'; osc.frequency.value = freq; let time = now + (i * 0.15);
             gain.gain.setValueAtTime(0, time); gain.gain.linearRampToValueAtTime(0.2, time + 0.05); gain.gain.exponentialRampToValueAtTime(0.01, time + 0.8);
             let filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.setValueAtTime(600 + (i * 200), time); filter.frequency.exponentialRampToValueAtTime(100, time + 0.8);
-            osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
-            osc.start(time); osc.stop(time + 1.0);
+            osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination); osc.start(time); osc.stop(time + 1.0);
         });
         setTimeout(() => {
-            if(!this.ctx || this.muted) return;
-            let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
-            osc.type = 'sine'; osc.frequency.value = 440.0;
+            if(!this.ctx || this.muted) return; let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain(); osc.type = 'sine'; osc.frequency.value = 440.0;
             gain.gain.setValueAtTime(0, this.ctx.currentTime); gain.gain.linearRampToValueAtTime(0.15, this.ctx.currentTime + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 2.5);
-            osc.connect(gain); gain.connect(this.ctx.destination);
-            osc.start(this.ctx.currentTime); osc.stop(this.ctx.currentTime + 2.5);
+            osc.connect(gain); gain.connect(this.ctx.destination); osc.start(this.ctx.currentTime); osc.stop(this.ctx.currentTime + 2.5);
         }, notes.length * 150);
     },
     playDescendSound() {
@@ -410,22 +335,18 @@ const AudioEngine = {
     },
     playBossMusic() {
         if (!this.ctx || this.ctx.state === 'suspended' || this.muted) return;
-        const now = this.ctx.currentTime;
-        let osc1 = this.ctx.createOscillator(); let osc2 = this.ctx.createOscillator(); let gain = this.ctx.createGain();
-        osc1.type = 'sawtooth'; osc1.frequency.setValueAtTime(30, now);
-        osc2.type = 'square'; osc2.frequency.setValueAtTime(31, now);
+        const now = this.ctx.currentTime; let osc1 = this.ctx.createOscillator(); let osc2 = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+        osc1.type = 'sawtooth'; osc1.frequency.setValueAtTime(30, now); osc2.type = 'square'; osc2.frequency.setValueAtTime(31, now);
         gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.6, now + 1.5); gain.gain.exponentialRampToValueAtTime(0.01, now + 6.0);
         let filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.setValueAtTime(100, now); filter.frequency.linearRampToValueAtTime(600, now + 2.5); filter.frequency.exponentialRampToValueAtTime(50, now + 6.0);
-        osc1.connect(filter); osc2.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
-        osc1.start(now); osc2.start(now); osc1.stop(now + 6.0); osc2.stop(now + 6.0);
+        osc1.connect(filter); osc2.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination); osc1.start(now); osc2.start(now); osc1.stop(now + 6.0); osc2.stop(now + 6.0);
     },
     playDash() {
         if (!this.ctx || this.ctx.state === 'suspended' || this.muted) return;
         let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
         osc.type = 'sine'; osc.frequency.setValueAtTime(500, this.ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 0.15);
         gain.gain.setValueAtTime(0.3, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
-        osc.connect(gain); gain.connect(this.ctx.destination);
-        osc.start(); osc.stop(this.ctx.currentTime + 0.15);
+        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(this.ctx.currentTime + 0.15);
     },
     playUltimate() {
         if (!this.ctx || this.ctx.state === 'suspended' || this.muted) return;
@@ -433,27 +354,18 @@ const AudioEngine = {
         osc1.type = 'sawtooth'; osc1.frequency.setValueAtTime(100, this.ctx.currentTime); osc1.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 1.0);
         osc2.type = 'square'; osc2.frequency.setValueAtTime(200, this.ctx.currentTime); osc2.frequency.exponentialRampToValueAtTime(20, this.ctx.currentTime + 0.5);
         gain.gain.setValueAtTime(0, this.ctx.currentTime); gain.gain.linearRampToValueAtTime(0.4, this.ctx.currentTime + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 1.5);
-        osc1.connect(gain); osc2.connect(gain); gain.connect(this.ctx.destination);
-        osc1.start(); osc2.start(); osc1.stop(this.ctx.currentTime + 1.5); osc2.stop(this.ctx.currentTime + 1.5);
+        osc1.connect(gain); osc2.connect(gain); gain.connect(this.ctx.destination); osc1.start(); osc2.start(); osc1.stop(this.ctx.currentTime + 1.5); osc2.stop(this.ctx.currentTime + 1.5);
     }
 };
 
 const MathUtils = {
-    distanceSq: (p1, p2) => (p2.x - p1.x)**2 + (p2.y - p1.y)**2,
-    distance: (p1, p2) => Math.sqrt((p2.x - p1.x)**2 + (p2.y - p1.y)**2),
-    angle: (p1, p2) => Math.atan2(p2.y - p1.y, p2.x - p1.x),
-    randomRange: (min, max) => Math.random() * (max - min) + min,
-    randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
-    lerp: (start, end, amt) => (1 - amt) * start + amt * end
+    distanceSq: (p1, p2) => (p2.x - p1.x)**2 + (p2.y - p1.y)**2, distance: (p1, p2) => Math.sqrt((p2.x - p1.x)**2 + (p2.y - p1.y)**2),
+    angle: (p1, p2) => Math.atan2(p2.y - p1.y, p2.x - p1.x), randomRange: (min, max) => Math.random() * (max - min) + min,
+    randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min, lerp: (start, end, amt) => (1 - amt) * start + amt * end
 };
 
-const TILE_SIZE = 64; 
-const CHUNK_SIZE = 30; 
-const FIXED_TIME_STEP = 1 / 60;
-const MAX_TIME_STEP = 0.1;
-
-const ESSENCE_COLORS = { 'red': 0xFF0000, 'blue': 0x0044FF, 'green': 0x00FF00 };
-const ESSENCE_NAMES = { 'red': 'INFERNO', 'blue': 'TEMPESTA', 'green': 'PANDEMIA' };
+const TILE_SIZE = 64; const CHUNK_SIZE = 30; const FIXED_TIME_STEP = 1 / 60; const MAX_TIME_STEP = 0.1;
+const ESSENCE_COLORS = { 'red': 0xFF1133, 'blue': 0x00AAFF, 'green': 0x33FF00 }; const ESSENCE_NAMES = { 'red': 'INFERNO', 'blue': 'TEMPESTA', 'green': 'PANDEMIA' };
 const DEATH_QUOTES = [
     "L'oscurità reclama un'altra anima.", "Non sei il primo a cadere, e non sarai l'ultimo.", "La scatola si chiude su di te.", "Cenere alla cenere.",
     "I demoni banchettano con i tuoi resti.", "Un flebile respiro, poi il buio assoluto.", "Hai combattuto valorosamente, ma la scatola vince sempre.",
@@ -462,25 +374,14 @@ const DEATH_QUOTES = [
 
 const ScoreManager = {
     scores: [],
-    init() {
-        let saved = localStorage.getItem('intoTheBoxScores');
-        if (saved) { try { this.scores = JSON.parse(saved); } catch(e) { this.scores = []; } }
-    },
+    init() { let saved = localStorage.getItem('intoTheBoxScores'); if (saved) { try { this.scores = JSON.parse(saved); } catch(e) { this.scores = []; } } },
     save(name, floor, kills, time, diff) {
         let finalName = name.trim().toUpperCase() || 'IGNOTO';
         this.scores.push({ name: finalName, floor: floor, kills: kills, time: time, diff: diff || 0.6, date: Date.now() });
-        this.scores.sort((a, b) => {
-            if (b.floor !== a.floor) return b.floor - a.floor;
-            if (b.kills !== a.kills) return b.kills - a.kills;
-            return a.time - b.time;
-        });
-        this.scores = this.scores.slice(0, 5); 
-        localStorage.setItem('intoTheBoxScores', JSON.stringify(this.scores));
+        this.scores.sort((a, b) => { if (b.floor !== a.floor) return b.floor - a.floor; if (b.kills !== a.kills) return b.kills - a.kills; return a.time - b.time; });
+        this.scores = this.scores.slice(0, 5); localStorage.setItem('intoTheBoxScores', JSON.stringify(this.scores));
     },
-    formatTime(seconds) {
-        let m = Math.floor(seconds / 60); let s = Math.floor(seconds % 60);
-        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    }
+    formatTime(seconds) { let m = Math.floor(seconds / 60); let s = Math.floor(seconds % 60); return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`; }
 };
 
 const RelicSystem = {
@@ -505,15 +406,11 @@ const RelicSystem = {
     getChoices() {
         let choices = []; let availablePool = [...this.allRelics];
         for(let i=0; i<3; i++) {
-            let targetRarity = this.getRandomRarity();
-            let poolForRarity = availablePool.filter(r => r.rarity === targetRarity);
+            let targetRarity = this.getRandomRarity(); let poolForRarity = availablePool.filter(r => r.rarity === targetRarity);
             if (poolForRarity.length === 0) poolForRarity = availablePool;
-            let randomIndex = Math.floor(Math.random() * poolForRarity.length);
-            let selectedRelic = poolForRarity[randomIndex];
-            choices.push(selectedRelic);
-            availablePool = availablePool.filter(r => r.id !== selectedRelic.id); 
-        }
-        return choices;
+            let randomIndex = Math.floor(Math.random() * poolForRarity.length); let selectedRelic = poolForRarity[randomIndex];
+            choices.push(selectedRelic); availablePool = availablePool.filter(r => r.id !== selectedRelic.id); 
+        } return choices;
     },
     showChoices() {
         const container = document.getElementById('relicCardsContainer'); container.innerHTML = ''; let choices = this.getChoices();
@@ -523,86 +420,45 @@ const RelicSystem = {
             if (relic.rarity === 'rare') { colorClass = "rarity-rare bg-blue-900/60 text-blue-300"; icon = "fa-shield-halved"; rarityLabel = "RARA"; }
             if (relic.rarity === 'epic') { colorClass = "rarity-epic bg-purple-900/60 text-purple-300"; icon = "fa-eye"; rarityLabel = "EPICA"; }
             if (relic.rarity === 'legendary') { colorClass = "rarity-legendary bg-amber-900/60 text-amber-400"; icon = "fa-crown"; rarityLabel = "LEGGENDA"; }
-
-            let card = document.createElement('div');
-            card.className = `relic-card flex flex-col items-center justify-between p-4 sm:p-6 rounded-2xl border-2 w-full sm:w-1/3 backdrop-blur-md ${colorClass}`;
+            let card = document.createElement('div'); card.className = `relic-card flex flex-col items-center justify-between p-4 sm:p-6 rounded-2xl border-2 w-full sm:w-1/3 backdrop-blur-md ${colorClass}`;
             card.innerHTML = `
-                <div class="text-center w-full">
-                    <span class="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-80">${rarityLabel}</span>
-                    <h3 class="text-lg sm:text-xl font-black mt-1 mb-2 tracking-wide leading-tight">${relic.name}</h3>
-                </div>
+                <div class="text-center w-full"><span class="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-80">${rarityLabel}</span><h3 class="text-lg sm:text-xl font-black mt-1 mb-2 tracking-wide leading-tight">${relic.name}</h3></div>
                 <i class="fa-solid ${icon} text-3xl sm:text-4xl my-3 sm:my-4 opacity-90 drop-shadow-md"></i>
                 <p class="text-[11px] sm:text-xs font-bold text-center leading-snug text-white/80">${relic.desc}</p>
                 <button class="mt-4 w-full bg-white/10 hover:bg-white/20 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors">Scegli</button>
             `;
-            card.onclick = () => {
-                AudioEngine.playClick(); relic.apply(Game.player);
-                Game.getFloatingText().spawn(Game.player.x, Game.player.y, "POTERE ACQUISITO", '#ffff00', 40, true);
-                document.getElementById('relicScreen').classList.add('hidden');
-                Game.state = 'FLOOR_TRANSITION'; document.getElementById('floorScreen').classList.remove('hidden');
-            };
+            card.onclick = () => { AudioEngine.playClick(); relic.apply(Game.player); Game.getFloatingText().spawn(Game.player.x, Game.player.y, "POTERE ACQUISITO", '#ffff00', 40, true); document.getElementById('relicScreen').classList.add('hidden'); Game.state = 'FLOOR_TRANSITION'; document.getElementById('floorScreen').classList.remove('hidden'); };
             container.appendChild(card);
         }
         document.getElementById('relicScreen').classList.remove('hidden');
     }
 };
 
-// ==========================================
-// GRAFICA LOW-POLY & EFFETTI LEGGIBILI
-// ==========================================
 const SharedGeo = {
-    box: new THREE.BoxGeometry(1, 1, 1), 
-    sphere: new THREE.SphereGeometry(1, 8, 8),
-    cylinder: new THREE.CylinderGeometry(1, 1, 1, 8), 
-    cone: new THREE.ConeGeometry(1, 2, 8),
-    icosahedron: new THREE.IcosahedronGeometry(1, 0),
-    torus: new THREE.TorusGeometry(1, 0.1, 8, 24),
-    bloodPlane: new THREE.PlaneGeometry(40, 40)
+    box: new THREE.BoxGeometry(1, 1, 1), sphere: new THREE.SphereGeometry(1, 8, 8), cylinder: new THREE.CylinderGeometry(1, 1, 1, 8), 
+    cone: new THREE.ConeGeometry(1, 2, 8), icosahedron: new THREE.IcosahedronGeometry(1, 0), torus: new THREE.TorusGeometry(1, 0.1, 8, 24),
+    tetrahedron: new THREE.TetrahedronGeometry(1, 0), bloodPlane: new THREE.PlaneGeometry(40, 40)
 };
 
-// Generazione Texture Procedurali Pulite (Senza "noise" per alta leggibilità)
 function createPatternTexture(type) {
     const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256; const ctx = canvas.getContext('2d');
     if (type === 'floor') {
-        ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, 256, 256);
-        for(let i=0; i<150; i++) {
-            ctx.fillStyle = Math.random() > 0.5 ? '#111' : '#080808';
-            ctx.fillRect(Math.random()*256, Math.random()*256, Math.random()*15+5, Math.random()*15+5);
-        }
-        ctx.strokeStyle = '#000'; ctx.lineWidth = 4;
-        ctx.strokeRect(0, 0, 128, 128); ctx.strokeRect(128, 0, 128, 128); 
-        ctx.strokeRect(0, 128, 128, 128); ctx.strokeRect(128, 128, 128, 128);
+        ctx.fillStyle = '#08080C'; ctx.fillRect(0, 0, 256, 256);
+        ctx.strokeStyle = '#151520'; ctx.lineWidth = 2; ctx.strokeRect(0, 0, 128, 128); ctx.strokeRect(128, 0, 128, 128); ctx.strokeRect(0, 128, 128, 128); ctx.strokeRect(128, 128, 128, 128);
     } else if (type === 'wall') {
-        ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, 256, 256); 
-        ctx.fillStyle = '#111111';
-        for(let i=0; i<8; i++) {
-            let y = i*32; let offset = (i%2)*32;
-            ctx.fillRect(offset+2, y+2, 60, 28); ctx.fillRect(offset+66, y+2, 60, 28);
-            ctx.fillRect(offset+130, y+2, 60, 28); ctx.fillRect(offset+194, y+2, 60, 28);
-            if(offset > 0) ctx.fillRect(-30, y+2, 60, 28);
-        }
+        ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, 256, 256); ctx.fillStyle = '#111111';
+        for(let i=0; i<8; i++) { let y = i*32; let offset = (i%2)*32; ctx.fillRect(offset+2, y+2, 60, 28); ctx.fillRect(offset+66, y+2, 60, 28); ctx.fillRect(offset+130, y+2, 60, 28); ctx.fillRect(offset+194, y+2, 60, 28); if(offset > 0) ctx.fillRect(-30, y+2, 60, 28); }
     } else if (type === 'blood') {
-        let grad = ctx.createRadialGradient(128,128,0,128,128,128);
-        grad.addColorStop(0, 'rgba(200,0,0,0.8)'); grad.addColorStop(0.5, 'rgba(100,0,0,0.5)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = grad; ctx.fillRect(0,0,256,256);
+        let grad = ctx.createRadialGradient(128,128,0,128,128,128); grad.addColorStop(0, 'rgba(200,0,0,0.8)'); grad.addColorStop(0.5, 'rgba(100,0,0,0.5)'); grad.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = grad; ctx.fillRect(0,0,256,256);
     }
-    const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
-    return tex;
+    const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
 }
-
-// Glow Esponenziale morbido (Migliora il "Neon Feeling")
 function createGlowTexture() {
     const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64; const ctx = canvas.getContext('2d');
-    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-    grad.addColorStop(0, 'rgba(255,255,255,1)'); 
-    grad.addColorStop(0.1, 'rgba(255,255,255,0.8)'); 
-    grad.addColorStop(0.4, 'rgba(255,255,255,0.2)'); 
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = grad; ctx.fillRect(0,0,64,64); return new THREE.CanvasTexture(canvas);
+    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32); grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.1, 'rgba(255,255,255,0.8)'); grad.addColorStop(0.4, 'rgba(255,255,255,0.2)'); grad.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = grad; ctx.fillRect(0,0,64,64); return new THREE.CanvasTexture(canvas);
 }
 
 const BLOOD_TEX = createPatternTexture('blood'); const GLOW_TEX = createGlowTexture();
-
 const SharedMat = {
     blood: new THREE.MeshStandardMaterial({map: BLOOD_TEX, transparent: true, opacity: 0.85, depthWrite: false, roughness: 0.8}),
     spriteLevel: new THREE.SpriteMaterial({color: 0xffffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
@@ -613,16 +469,14 @@ const SharedMat = {
     spritePink: new THREE.SpriteMaterial({color: 0xff66bb, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
     spriteBlood: new THREE.SpriteMaterial({color: 0xaa0000, map: GLOW_TEX, transparent: true, depthWrite: false}),
     
-    // Proiettili con Emissive Intensity per contrasto elevato (Nucleo scuro, Aura colorata)
     arrow: new THREE.MeshPhongMaterial({color: 0x888888, emissive: 0x444444}),
-    homingArrow: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.green}),
-    explosiveArrow: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.red}),
-    chainLightning: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.blue}),
-    enemyFireball: new THREE.MeshPhongMaterial({color: 0x220000, emissive: 0xff3300}), // Arancione scuro
-    enemyBolt: new THREE.MeshPhongMaterial({color: 0x220022, emissive: 0xaa00ff}), // Viola intenso
-    fireShape: new THREE.MeshPhongMaterial({color: 0x220000, emissive: 0xff3300}),
+    homingArrow: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.green, emissiveIntensity: 2.0}),
+    explosiveArrow: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.red, emissiveIntensity: 2.0}),
+    chainLightning: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.blue, emissiveIntensity: 2.0}),
+    enemyFireball: new THREE.MeshPhongMaterial({color: 0x220000, emissive: 0xff3300, emissiveIntensity: 2.0}), 
+    enemyBolt: new THREE.MeshPhongMaterial({color: 0x220022, emissive: 0xaa00ff, emissiveIntensity: 2.0}), 
+    fireShape: new THREE.MeshPhongMaterial({color: 0x220000, emissive: 0xff3300, emissiveIntensity: 2.0}),
     
-    // Hazards chiari e leggibili
     hazardFirePlane: new THREE.MeshBasicMaterial({color: 0xff3300, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}),
     hazardFireRing: new THREE.MeshBasicMaterial({color: 0xffaa00, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}),
     hazardPoisonPlane: new THREE.MeshBasicMaterial({color: ESSENCE_COLORS.green, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}),
@@ -631,34 +485,95 @@ const SharedMat = {
     hazardEnemyRing: new THREE.MeshBasicMaterial({color: 0xff5555, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending})
 };
 
+const ModelFactory = {
+    setupShadows(mesh) { if(!isTouchDevice && !AppSettings.lowGraphics) { mesh.traverse(c => { if(c.isMesh) { c.castShadow = true; c.receiveShadow = true; } }); } },
+    buildPlayer(mat, gemMat) {
+        let group = new THREE.Group();
+        let body = new THREE.Mesh(SharedGeo.cone, mat); body.scale.set(16, 24, 16); body.position.y = 12;
+        let head = new THREE.Mesh(SharedGeo.sphere, new THREE.MeshStandardMaterial({color: 0xdddddd, emissive: 0x222222})); head.scale.set(6, 6, 6); head.position.y = 28;
+        let scarf = new THREE.Mesh(SharedGeo.torus, new THREE.MeshStandardMaterial({color: 0x880000})); scarf.scale.set(6, 6, 2); scarf.position.y = 24; scarf.rotation.x = Math.PI/2;
+        let weaponGroup = new THREE.Group(); weaponGroup.position.set(12, 16, 8);
+        let staff = new THREE.Mesh(SharedGeo.cylinder, new THREE.MeshStandardMaterial({color: 0x444444, metalness: 0.8})); staff.scale.set(2, 35, 2); staff.position.y = 10;
+        let staffGem = new THREE.Mesh(SharedGeo.icosahedron, gemMat); staffGem.scale.set(4, 4, 4); staffGem.position.y = 28;
+        let halo = new THREE.Mesh(SharedGeo.torus, gemMat); halo.scale.set(5, 5, 5); halo.position.y = 28; halo.rotation.x = Math.PI/2;
+        weaponGroup.add(staff); weaponGroup.add(staffGem); weaponGroup.add(halo);
+        group.add(body); group.add(head); group.add(scarf); group.add(weaponGroup);
+        this.setupShadows(group);
+        return { group, staffGem, halo, weaponGroup, body };
+    },
+    buildEnemy(type, size, mat) {
+        let group = new THREE.Group(); let parts = {}; let darkMat = new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9});
+        if (type === 'goblin') {
+            let body = new THREE.Mesh(SharedGeo.tetrahedron, mat); body.scale.set(size*1.5, size*1.5, size*1.5); body.position.y = size; body.rotation.x = -Math.PI/4;
+            let eye = new THREE.Mesh(SharedGeo.box, new THREE.MeshBasicMaterial({color: 0xff0000})); eye.scale.set(size*0.8, size*0.2, size*0.2); eye.position.set(0, size*1.2, size*0.8);
+            group.add(body); group.add(eye);
+        } else if (type === 'orc') {
+            let torso = new THREE.Mesh(SharedGeo.box, mat); torso.scale.set(size*1.8, size*1.4, size); torso.position.y = size*1.4;
+            let head = new THREE.Mesh(SharedGeo.box, darkMat); head.scale.set(size*0.8, size*0.8, size*0.8); head.position.set(0, size*2.5, size*0.2);
+            let jaw = new THREE.Mesh(SharedGeo.box, mat); jaw.scale.set(size*0.9, size*0.3, size*0.9); jaw.position.set(0, size*2.1, size*0.3);
+            let armL = new THREE.Mesh(SharedGeo.box, mat); armL.scale.set(size*0.6, size*1.6, size*0.6); armL.position.set(-size*1.2, size*1.4, 0);
+            let armR = new THREE.Mesh(SharedGeo.box, mat); armR.scale.set(size*0.6, size*1.6, size*0.6); armR.position.set(size*1.2, size*1.4, 0);
+            let club = new THREE.Mesh(SharedGeo.cylinder, darkMat); club.scale.set(size*0.3, size*2.5, size*0.3); club.position.set(0, -size, size); club.rotation.x = Math.PI/2;
+            let clubHead = new THREE.Mesh(SharedGeo.box, mat); clubHead.scale.set(size, size, size); clubHead.position.set(0, size, 0); club.add(clubHead);
+            armR.add(club); group.add(torso); group.add(head); group.add(jaw); group.add(armL); group.add(armR); parts.armL = armL; parts.armR = armR;
+        } else if (type === 'skeleton_archer') {
+            let spine = new THREE.Mesh(SharedGeo.cylinder, mat); spine.scale.set(size*0.3, size*2, size*0.3); spine.position.y = size*1.5;
+            let ribs = new THREE.Mesh(SharedGeo.box, mat); ribs.scale.set(size*1.2, size*0.8, size*0.5); ribs.position.y = size*1.8;
+            let skull = new THREE.Mesh(SharedGeo.sphere, mat); skull.scale.set(size*0.7, size*0.7, size*0.7); skull.position.y = size*2.8;
+            let bow = new THREE.Mesh(SharedGeo.torus, darkMat); bow.scale.set(size*1.2, size*1.2, size*0.2); bow.position.set(size, size*1.5, size); bow.rotation.y = Math.PI/2;
+            group.add(spine); group.add(ribs); group.add(skull); group.add(bow);
+        } else if (type === 'mage' || type === 'pyromancer') {
+            let robe = new THREE.Mesh(SharedGeo.cone, darkMat); robe.scale.set(size*1.2, size*2.5, size*1.2); robe.position.y = size*1.2;
+            let hood = new THREE.Mesh(SharedGeo.sphere, mat); hood.scale.set(size*0.8, size*0.8, size*0.8); hood.position.y = size*2.8;
+            let crystals = new THREE.Group(); crystals.position.y = size*1.5;
+            for(let i=0; i<3; i++) { let c = new THREE.Mesh(SharedGeo.icosahedron, mat); c.scale.set(size*0.4, size*0.6, size*0.4); c.position.set(Math.cos(i*Math.PI*2/3)*size*1.5, 0, Math.sin(i*Math.PI*2/3)*size*1.5); crystals.add(c); }
+            group.add(robe); group.add(hood); group.add(crystals); parts.crystals = crystals;
+        } else if (type === 'leaper') {
+            let body = new THREE.Mesh(SharedGeo.sphere, mat); body.scale.set(size*1.2, size*1.2, size*1.2); body.position.y = size*1.2;
+            let teeth = new THREE.Mesh(SharedGeo.cone, new THREE.MeshBasicMaterial({color: 0xffffff})); teeth.scale.set(size*0.8, size*1.5, size*0.8); teeth.position.set(0, size*1.2, size); teeth.rotation.x = Math.PI/2;
+            group.add(body); group.add(teeth);
+        } else if (type === 'fire_demon') {
+            let torso = new THREE.Mesh(SharedGeo.box, darkMat); torso.scale.set(size*1.5, size*1.5, size*1.5); torso.position.y = size*1.5;
+            let core = new THREE.Mesh(SharedGeo.icosahedron, mat); core.scale.set(size, size, size); core.position.set(0, size*1.5, size*0.2);
+            let head = new THREE.Mesh(SharedGeo.box, darkMat); head.scale.set(size*0.6, size*0.6, size*0.6); head.position.set(0, size*2.8, 0);
+            let hornL = new THREE.Mesh(SharedGeo.cone, mat); hornL.scale.set(size*0.3, size, size*0.3); hornL.position.set(-size*0.4, size*3.2, 0); hornL.rotation.z = Math.PI/4;
+            let hornR = new THREE.Mesh(SharedGeo.cone, mat); hornR.scale.set(size*0.3, size, size*0.3); hornR.position.set(size*0.4, size*3.2, 0); hornR.rotation.z = -Math.PI/4;
+            group.add(torso); group.add(core); group.add(head); group.add(hornL); group.add(hornR);
+        } else if (type === 'crystal') {
+            let base = new THREE.Mesh(SharedGeo.cylinder, darkMat); base.scale.set(size, size*0.5, size); base.position.y = size*0.25;
+            let gem = new THREE.Mesh(SharedGeo.icosahedron, mat); gem.scale.set(size*0.8, size*2.5, size*0.8); gem.position.y = size*1.8;
+            let ring = new THREE.Mesh(SharedGeo.torus, mat); ring.scale.set(size*1.5, size*1.5, size*0.2); ring.position.y = size*1.8; ring.rotation.x = Math.PI/2;
+            group.add(base); group.add(gem); group.add(ring); parts.ring = ring; parts.gem = gem;
+        } else if (type === 'boss') {
+            let torso = new THREE.Mesh(SharedGeo.box, darkMat); torso.scale.set(size*1.5, size*1.5, size); torso.position.y = size*1.5;
+            let core = new THREE.Mesh(SharedGeo.icosahedron, mat); core.scale.set(size, size, size); core.position.set(0, size*1.5, size*0.5);
+            let head = new THREE.Mesh(SharedGeo.box, darkMat); head.scale.set(size*0.5, size*0.5, size*0.5); head.position.set(0, size*2.8, size*0.2);
+            let crown = new THREE.Mesh(SharedGeo.torus, mat); crown.scale.set(size*0.8, size*0.8, size*0.2); crown.position.set(0, size*3.2, size*0.2); crown.rotation.x = Math.PI/2;
+            let armL = new THREE.Mesh(SharedGeo.cylinder, darkMat); armL.scale.set(size*0.4, size*1.8, size*0.4); armL.position.set(-size*1.2, size*1.5, 0);
+            let armR = new THREE.Mesh(SharedGeo.cylinder, darkMat); armR.scale.set(size*0.4, size*1.8, size*0.4); armR.position.set(size*1.2, size*1.5, 0);
+            let sword = new THREE.Mesh(SharedGeo.box, mat); sword.scale.set(size*0.2, size*3, size*0.6); sword.position.set(0, -size*1.5, size); sword.rotation.x = Math.PI/2;
+            armR.add(sword); group.add(torso); group.add(core); group.add(head); group.add(crown); group.add(armL); group.add(armR);
+            parts.armL = armL; parts.armR = armR; parts.crown = crown;
+        }
+        this.setupShadows(group);
+        return { group, parts };
+    }
+};
+
 class Essence {
     constructor() {
         this.active = false; this.type = 'red'; this.group = new THREE.Group();
-        
-        // Uso MeshBasicMaterial al posto di MeshStandardMaterial: ignora l'illuminazione
-        // ed evita lo slittamento verso il bianco (effetto pastello) del ToneMapping.
         this.coreMat = new THREE.MeshBasicMaterial({color: 0x000000});
         let core = new THREE.Mesh(SharedGeo.icosahedron, this.coreMat); core.scale.setScalar(5);
-        
-        // Rimosso l'AdditiveBlending: ora il colore è puro e non si fonde col pavimento
         this.haloMat = new THREE.MeshBasicMaterial({wireframe: true, transparent: true, opacity: 0.9});
         let halo = new THREE.Mesh(SharedGeo.icosahedron, this.haloMat); halo.scale.setScalar(8);
-        
         this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(30, 30, 1);
         this.group.add(core); this.group.add(halo); this.group.add(this.glow); this.group.visible = false; Game.scene.add(this.group);
     }
     spawn(x, y, type) {
-        this.active = true; this.x = x; this.y = y; this.type = type; 
-        let color = ESSENCE_COLORS[type]; 
-        
-        // Colore solido e puro senza emittenza
-        this.coreMat.color.setHex(color); 
-        this.haloMat.color.setHex(color);
-        
-        if(type === 'red') this.glow.material = SharedMat.spriteRed; 
-        else if(type === 'blue') this.glow.material = SharedMat.spriteBlue; 
-        else this.glow.material = SharedMat.spriteGreen;
-        
+        this.active = true; this.x = x; this.y = y; this.type = type; let color = ESSENCE_COLORS[type]; 
+        this.coreMat.color.setHex(color); this.haloMat.color.setHex(color);
+        if(type === 'red') this.glow.material = SharedMat.spriteRed; else if(type === 'blue') this.glow.material = SharedMat.spriteBlue; else this.glow.material = SharedMat.spriteGreen;
         this.group.position.set(x, 10, y); this.group.visible = true;
     }
     destroy() { this.active = false; this.group.visible = false; }
@@ -667,7 +582,7 @@ class Essence {
 class ExtraLife {
     constructor() {
         this.active = false; this.group = new THREE.Group();
-        this.mat = new THREE.MeshStandardMaterial({color: 0x000000, emissive: 0xff66bb, roughness: 0});
+        this.mat = new THREE.MeshStandardMaterial({color: 0x000000, emissive: 0xff66bb, roughness: 0, emissiveIntensity: 2.0});
         let core = new THREE.Mesh(SharedGeo.icosahedron, this.mat); core.scale.setScalar(8);
         this.glow = new THREE.Sprite(SharedMat.spritePink); this.glow.scale.set(35, 35, 1);
         this.group.add(core); this.group.add(this.glow); this.group.visible = false; Game.scene.add(this.group);
@@ -901,6 +816,9 @@ const Game = {
     hitStop: 0, trauma: 0, combo: 0, comboTimer: 0, comboMaxTime: 5.0, difficultyMult: 1.0, ultimateCharge: 0, ultimateActive: false, ultimateTimer: 0, lives: 3, playTime: 0, bossDefeatedTimer: 0,
     player: null, map: null, enemyGrid: null, enemies: [], projectiles: [], particles: [], essences: [], extraLivesDrops: [], floatingTexts: [], hazards: [], decoys: [], bloodDecals: [], bloodDecalIndex: 0,
     
+    // Nuove variabili per il Post-Processing
+    composer: null, bloomPass: null,
+
     init() {
         UI.init(); TouchControls.init(); const container = document.getElementById('game-container');
         this.scene = new THREE.Scene(); this.scene.fog = new THREE.Fog(0x050508, 400, 1800); 
@@ -912,19 +830,28 @@ const Game = {
         this.renderer.shadowMap.enabled = !isTouchDevice && !AppSettings.lowGraphics; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(this.renderer.domElement);
         
-        const ambientLight = new THREE.AmbientLight(0x222233, 1.0); this.scene.add(ambientLight);
+        // LUCI AVANZATE: L'HemisphereLight simula la luce del cielo e il rimbalzo dal terreno, donando tridimensionalità ai modelli
+        const hemiLight = new THREE.HemisphereLight(0x223355, 0x050510, 1.2); 
+        this.scene.add(hemiLight);
         
-        // CORREZIONE: La luce direzionale serve a tutti per vedere la mappa. Solo le ombre sono disabilitate su mobile!
-        const dirLight = new THREE.DirectionalLight(0x445588, 1.5); 
-        dirLight.position.set(-500, 1000, -500); 
+        const dirLight = new THREE.DirectionalLight(0x6677aa, 1.5); dirLight.position.set(-500, 1000, -500); 
         if(!isTouchDevice) {
-            dirLight.castShadow = true;
-            dirLight.shadow.camera.top = 1500; dirLight.shadow.camera.bottom = -1500;
+            dirLight.castShadow = true; dirLight.shadow.camera.top = 1500; dirLight.shadow.camera.bottom = -1500;
             dirLight.shadow.camera.left = -1500; dirLight.shadow.camera.right = 1500;
-            dirLight.shadow.camera.near = 100; dirLight.shadow.camera.far = 3000;
-            dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.camera.near = 100; dirLight.shadow.camera.far = 3000; dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
         }
         this.scene.add(dirLight);
+
+        // CONFIGURAZIONE BLOOM BILANCIATA
+        const renderScene = new THREE.RenderPass(this.scene, this.camera);
+        this.bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(this.width, this.height), 1.3, 0.6, 0.35);
+        this.bloomPass.threshold = 0.35; 
+        this.bloomPass.strength = 1.3; 
+        this.bloomPass.radius = 0.6;
+        
+        this.composer = new THREE.EffectComposer(this.renderer);
+        this.composer.addPass(renderScene);
+        this.composer.addPass(this.bloomPass);
 
         this.uiCtx = this.uiCanvas.getContext('2d'); this.resize(); window.addEventListener('resize', () => this.resize());
         this.setupInputs(); this.initPools(); requestAnimationFrame(this.loop.bind(this));
@@ -975,6 +902,7 @@ const Game = {
     resize() {
         this.width = window.innerWidth; this.height = window.innerHeight; this.renderer.setSize(this.width, this.height);
         this.camera.aspect = this.width / this.height; this.camera.updateProjectionMatrix(); this.uiCanvas.width = this.width; this.uiCanvas.height = this.height;
+        if(this.composer) this.composer.setSize(this.width, this.height);
     },
     setupInputs() {
         window.addEventListener('keydown', e => { this.keys[e.key.toLowerCase()] = true; if(e.code === 'Space' && this.state === 'PLAYING') this.player.dash(); });
@@ -1030,10 +958,7 @@ const Game = {
         this.enemyGrid = new SpatialHashGrid([[-1000, -1000], [CHUNK_SIZE*TILE_SIZE+1000, CHUNK_SIZE*TILE_SIZE+1000]], [200, 200]);
         this.map = new GameMap(CHUNK_SIZE, CHUNK_SIZE); this.map.generate(this.isBossFloor);
         
-        let floorColor = 0xffffff; let mutatorText = "";
-        
-        // CORREZIONE NEBBIA: Calcoliamo dinamicamente la distanza della camera per non coprire mai la scena su smartphone
-        let camDist = isTouchDevice ? 1000 : 750;
+        let floorColor = 0xffffff; let mutatorText = ""; let camDist = isTouchDevice ? 1000 : 750;
         
         if (!this.isBossFloor && Math.random() < 0.2) { 
             let r = Math.random();
@@ -1129,7 +1054,14 @@ const Game = {
     
     draw() {
         if(!this.scene || !this.uiCtx) return;
-        this.renderer.render(this.scene, this.camera); this.uiCtx.clearRect(0, 0, this.width, this.height);
+        
+        if (!AppSettings.lowGraphics && this.composer) {
+            this.composer.render();
+        } else {
+            this.renderer.render(this.scene, this.camera); 
+        }
+        
+        this.uiCtx.clearRect(0, 0, this.width, this.height);
         const toScreenPosition = (x, y, z) => {
             Game._vec3Screen.set(x, y, z); Game._vec3Screen.project(this.camera);
             Game._vec3Screen.x = (Game._vec3Screen.x * 0.5 + 0.5) * this.width; Game._vec3Screen.y = -(Game._vec3Screen.y * 0.5 - 0.5) * this.height;
@@ -1187,10 +1119,12 @@ class GameMap {
 
         const isHighQ = !AppSettings.lowGraphics; const floorTex = createPatternTexture('floor'); const wallTex = createPatternTexture('wall');
         const floorGeo = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE); floorGeo.rotateX(-Math.PI/2);
-        const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.8, metalness: 0.1, bumpMap: isHighQ ? floorTex : null, bumpScale: 1.5 });
+        
+        // MIGLIORAMENTO: Pavimento più scuro e meno riflettente
+        const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.9, metalness: 0.1, bumpMap: isHighQ ? floorTex : null, bumpScale: 1.5 });
         const floorMesh = new THREE.InstancedMesh(floorGeo, floorMat, floorCount); 
         const wallGeo = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
-        const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.9, metalness: 0.2, bumpMap: isHighQ ? wallTex : null, bumpScale: 2.0 });
+        const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.8, metalness: 0.3, bumpMap: isHighQ ? wallTex : null, bumpScale: 2.0 });
         const wallMesh = new THREE.InstancedMesh(wallGeo, wallMat, wallCount);
         const pillarGeo = new THREE.CylinderGeometry(15, 15, TILE_SIZE*1.5, 8);
         const pillarMesh = new THREE.InstancedMesh(pillarGeo, wallMat, pillarCount);
@@ -1207,9 +1141,6 @@ class GameMap {
                         dummy.position.y = TILE_SIZE*0.75; dummy.updateMatrix(); pillarMesh.setMatrixAt(pIdx++, dummy.matrix);
                     } else if (!isBossFloor && Math.random() < 0.015) { 
                         let crystal = new Enemy(x * TILE_SIZE, y * TILE_SIZE, 'crystal', 1);
-                        crystal.stats.hp = 1; crystal.stats.maxHp = 1; crystal.aggroRange = 0; crystal.speed = 0; crystal.baseSpeed = 0;
-                        crystal.mat = new THREE.MeshPhongMaterial({color: 0x000000, emissive: 0xff00ff}); crystal.mesh.material = crystal.mat;
-                        crystal.mesh.scale.set(12, 35, 12); crystal.mesh.position.y = 17.5; 
                         crystal.onDeath = function() {
                             Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff00ff, 'fire');
                             Game.addTrauma(1.5); let pCount = AppSettings.lowGraphics ? 5 : 20;
@@ -1280,21 +1211,14 @@ class Player extends Entity {
         this.dashTimer = 0; this.isDashing = false; this.dashCooldown = 0; this.stats = { hp: 100, maxHp: 100, minDmg: 8, maxDmg: 15 };
         this.essence = null; this.essenceStacks = 0; this.essenceTimer = 0; this.overdrive = false; this.invincibilityTimer = 0;
         this.modifiers = { critChance: 0.05, dmgMult: 1.0, speedMult: 1.0, atkSpeedMult: 1.0, dashCooldownMult: 1.0, vampirism: 0, fireTrail: false, ascensionDurationAdd: 0, dmgTakenMult: 1.0, xpMult: 1.0, healDropMult: 1.0, executioner: false, shieldActive: false, shieldConsumed: false, essenceDurationMult: 1.0, critDmgMult: 1.0 };
-        this.initMesh(); this.mesh.traverse(c => { if(c.material && c.material.emissive && c !== this.staffGem) this.flashMats.push(c.material); });
-    }
-    initMesh() {
-        const isHighQ = !AppSettings.lowGraphics;
-        this.bodyMesh = new THREE.Mesh(SharedGeo.cone, new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}));
-        this.bodyMesh.scale.set(16, 24, 16); this.bodyMesh.position.y = 12; 
-        let head = new THREE.Mesh(SharedGeo.sphere, new THREE.MeshStandardMaterial({color: 0xdddddd, emissive: 0x222222})); head.scale.set(6, 6, 6); head.position.y = 28; 
-        this.weaponGroup = new THREE.Group(); this.weaponGroup.position.set(12, 16, 0);
-        let staff = new THREE.Mesh(SharedGeo.cylinder, new THREE.MeshStandardMaterial({color: 0x444444})); staff.scale.set(2, 30, 2); staff.position.y = 10;
-        let staffGem = new THREE.Mesh(SharedGeo.icosahedron, new THREE.MeshPhongMaterial({color: 0x00ffff, emissive: 0x00ffff})); staffGem.scale.set(4, 4, 4); staffGem.position.y = 25;
-        this.weaponGroup.add(staff); this.weaponGroup.add(staffGem); this.staffGem = staffGem;
-        this.light = new THREE.PointLight(0xffffff, 2.5, 800); this.light.position.y = 120; 
-        if(!isTouchDevice && isHighQ) { this.bodyMesh.castShadow = true; head.castShadow = true; staff.castShadow = true; this.light.castShadow = true; this.light.shadow.mapSize.width = 1024; this.light.shadow.mapSize.height = 1024; this.light.shadow.bias = -0.001; }
-        this.mesh.add(this.bodyMesh); this.mesh.add(head); this.mesh.add(this.weaponGroup); this.mesh.add(this.light); this.mesh.position.set(this.x, 0, this.y); Game.scene.add(this.mesh);
-        this.staffGemMat = staffGem.material;
+        this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}), new THREE.MeshPhongMaterial({color: 0x00ffff, emissive: 0x00ffff}));
+        this.mesh = this.modelParts.group; this.staffGemMat = this.modelParts.staffGem.material;
+        
+        // LUCE DEL GIOCATORE PIÙ TENUE E PICCOLA
+        this.light = new THREE.PointLight(0xffffff, 1.2, 800); this.light.position.y = 120; 
+        
+        this.mesh.add(this.light); this.mesh.position.set(this.x, 0, this.y); Game.scene.add(this.mesh);
+        this.mesh.traverse(c => { if(c.material && c.material.emissive && c !== this.modelParts.staffGem) this.flashMats.push(c.material); });
     }
     collectEssence(type) {
         if (this.essence === type) { if (this.essenceStacks < 3) this.essenceStacks++; } 
@@ -1325,20 +1249,21 @@ class Player extends Entity {
     updateAppearance() {
         let colorHex = 0x222222; let lColor = 0xffffff; let gemColor = 0x00ffff;
         if (this.essence) { colorHex = ESSENCE_COLORS[this.essence]; lColor = ESSENCE_COLORS[this.essence]; gemColor = ESSENCE_COLORS[this.essence]; }
-        this.bodyMesh.material.color.setHex(colorHex); this.light.color.setHex(lColor);
+        this.modelParts.body.material.color.setHex(colorHex); this.light.color.setHex(lColor);
         this.staffGemMat.color.setHex(gemColor); this.staffGemMat.emissive.setHex(gemColor);
-        if (this.overdrive) { this.light.intensity = 5.0; this.bodyMesh.material.emissive.setHex(colorHex); this.bodyMesh.material.emissiveIntensity = 1.0; } 
-        else { this.light.intensity = this.essence ? 3.0 : 2.0; this.bodyMesh.material.emissive.setHex(0x000000); }
-        if (Game.ultimateActive) { this.bodyMesh.material.emissive.setHex(0x00DDFF); this.bodyMesh.material.emissiveIntensity = 2.0; this.light.color.setHex(0x00DDFF); this.light.intensity = 6.0; this.staffGemMat.emissive.setHex(0xffffff); }
+        if (this.overdrive) { this.light.intensity = 2.5; this.modelParts.body.material.emissive.setHex(colorHex); this.modelParts.body.material.emissiveIntensity = 1.0; } 
+        else { this.light.intensity = this.essence ? 1.8 : 1.2; this.modelParts.body.material.emissive.setHex(0x000000); }
+        if (Game.ultimateActive) { this.modelParts.body.material.emissive.setHex(0x00DDFF); this.modelParts.body.material.emissiveIntensity = 2.0; this.light.color.setHex(0x00DDFF); this.light.intensity = 3.5; this.staffGemMat.emissive.setHex(0xffffff); }
     }
     update(dt) {
         if (this.dead) return; this.updateFlash(dt);
+        this.modelParts.halo.rotation.z += dt; this.modelParts.staffGem.rotation.y += dt;
         if (this.invincibilityTimer > 0) {
             this.invincibilityTimer -= dt; let isVisible = (Math.floor(this.invincibilityTimer * 15) % 2 === 0);
             this.mesh.children.forEach(child => { if (child !== this.light) child.visible = isVisible; });
             if (this.invincibilityTimer <= 0) { this.mesh.children.forEach(child => child.visible = true); }
         }
-        if (!Game.ultimateActive && this.bodyMesh.material.emissive.getHex() === 0x00DDFF) this.updateAppearance();
+        if (!Game.ultimateActive && this.modelParts.body.material.emissive.getHex() === 0x00DDFF) this.updateAppearance();
         if (this.essence) { this.essenceTimer -= dt; if (this.essenceTimer <= 0) { this.essence = null; this.essenceStacks = 0; this.overdrive = false; this.updateAppearance(); } }
         if (this.dashCooldown > 0) this.dashCooldown -= dt;
         if (Game.inputs.right.active) { this.angle = Math.atan2(Game.inputs.right.y, Game.inputs.right.x); } else if (!isTouchDevice || Game.mouse.leftDown) { this.angle = Math.atan2(Game.mouse.worldY - this.y, Game.mouse.worldX - this.x); }
@@ -1362,7 +1287,7 @@ class Player extends Entity {
         }
         this.attackTimer -= dt;
         if (isShooting && this.attackTimer <= 0 && !this.isDashing && !(this.overdrive && this.essence === 'red')) this.attack();
-        if (this.isAttacking) { this.attackSwing += dt * 30; this.weaponGroup.rotation.x = -Math.PI/2 + this.attackSwing; if (this.attackSwing > Math.PI) { this.isAttacking = false; this.weaponGroup.rotation.x = 0; } }
+        if (this.isAttacking) { this.attackSwing += dt * 30; this.modelParts.weaponGroup.rotation.x = -Math.PI/2 + this.attackSwing; if (this.attackSwing > Math.PI) { this.isAttacking = false; this.modelParts.weaponGroup.rotation.x = 0; } }
     }
     flamethrower(dt) {
         if (Game.frameCount % (isTouchDevice ? 3 : 1) === 0) { let pCount = AppSettings.lowGraphics ? 1 : (isTouchDevice ? 2 : 4); for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x + Math.cos(this.angle)*20, 15 + MathUtils.randomRange(-5, 5), this.y + Math.sin(this.angle)*20, SharedMat.spriteRed, 'flame', this.angle); }
@@ -1441,33 +1366,45 @@ class Player extends Entity {
 class Enemy extends Entity {
     constructor(x, y, type, level) {
         super(x, y, 14, 100); this.type = type; this.level = level; this.attackCooldown = 0;
-        let hpMod = 1, dmgMod = 1, spdMod = 1, color = 0x666666, size = 12; let geo = SharedGeo.cylinder; 
+        let hpMod = 1, dmgMod = 1, spdMod = 1, color = 0x666666, size = 12;
         
-        if (type === 'goblin') { geo = SharedGeo.cone; color = 0x2ca02c; size = 10; spdMod = 1.8; hpMod = 0.5; dmgMod = 1.2; this.aggroRange = 500; this.attackRange = 40; } 
-        else if (type === 'orc') { geo = SharedGeo.box; color = 0x8c564b; size = 18; spdMod = 0.8; hpMod = 1.6; dmgMod = 2.5; this.aggroRange = 450; this.attackRange = 55; } 
-        else if (type === 'skeleton_archer') { geo = SharedGeo.cylinder; color = 0xaaaaaa; size = 14; spdMod = 1.1; hpMod = 0.4; dmgMod = 1.5; this.aggroRange = 700; this.attackRange = 400; } 
-        else if (type === 'leaper') { geo = SharedGeo.sphere; color = 0xaa00aa; size = 12; spdMod = 0.7; hpMod = 1.0; dmgMod = 2.2; this.aggroRange = 600; this.attackRange = 250; this.leapCooldown = 0; this.state = 'walk'; } 
-        else if (type === 'pyromancer') { geo = SharedGeo.icosahedron; color = 0xff3300; size = 12; spdMod = 0.6; hpMod = 0.8; dmgMod = 2.2; this.aggroRange = 650; this.attackRange = 450; }
-        else if (type === 'fire_demon') { geo = SharedGeo.box; color = 0xff5500; size = 14; spdMod = 1.0; hpMod = 1.1; dmgMod = 3.0; this.aggroRange = 800; this.attackRange = 600; } 
-        else if (type === 'mage') { geo = SharedGeo.icosahedron; color = 0x0055ff; size = 12; spdMod = 0.6; hpMod = 0.7; dmgMod = 2.8; this.aggroRange = 700; this.attackRange = 450; }
-        else if (type === 'crystal') { geo = SharedGeo.icosahedron; }
+        if (type === 'goblin') { color = 0x33FF00; size = 10; spdMod = 1.8; hpMod = 0.5; dmgMod = 1.2; this.aggroRange = 500; this.attackRange = 40; } 
+        else if (type === 'orc') { color = 0x8c564b; size = 18; spdMod = 0.8; hpMod = 1.6; dmgMod = 2.5; this.aggroRange = 450; this.attackRange = 55; } 
+        else if (type === 'skeleton_archer') { color = 0xaaaaaa; size = 14; spdMod = 1.1; hpMod = 0.4; dmgMod = 1.5; this.aggroRange = 700; this.attackRange = 400; } 
+        else if (type === 'leaper') { color = 0xaa00aa; size = 12; spdMod = 0.7; hpMod = 1.0; dmgMod = 2.2; this.aggroRange = 600; this.attackRange = 250; this.leapCooldown = 0; this.state = 'walk'; } 
+        else if (type === 'pyromancer') { color = 0xff3300; size = 12; spdMod = 0.6; hpMod = 0.8; dmgMod = 2.2; this.aggroRange = 650; this.attackRange = 450; }
+        else if (type === 'fire_demon') { color = 0xff5500; size = 14; spdMod = 1.0; hpMod = 1.1; dmgMod = 3.0; this.aggroRange = 800; this.attackRange = 600; } 
+        else if (type === 'mage') { color = 0x0055ff; size = 12; spdMod = 0.6; hpMod = 0.7; dmgMod = 2.8; this.aggroRange = 700; this.attackRange = 450; }
+        else if (type === 'crystal') { color = 0xff00ff; size = 12; this.aggroRange = 0; this.speed = 0; hpMod = 0.001; }
+        else if (type === 'boss') { color = 0x550000; size = 35; }
         
-        this.radius = size; this.stats.maxHp = Math.floor(32 * hpMod * (1 + level * 0.3) * Game.difficultyMult); this.stats.hp = this.stats.maxHp;
+        this.radius = size; this.stats.maxHp = type === 'crystal' ? 1 : Math.floor(32 * hpMod * (1 + level * 0.3) * Game.difficultyMult); this.stats.hp = this.stats.maxHp;
         this.stats.minDmg = Math.floor(12 * dmgMod * (1 + level * 0.15) * Game.difficultyMult); this.stats.maxDmg = Math.floor(22 * dmgMod * (1 + level * 0.15) * Game.difficultyMult);
         let diffSpeedMod = Game.difficultyMult < 1.0 ? 0.8 : (Game.difficultyMult > 1.0 ? 1.15 : 1.0); this.baseSpeed = 100 * spdMod * Math.min(3.2, 1 + (level * 0.05)) * diffSpeedMod; this.speed = this.baseSpeed;
         this.xpValue = Math.floor(20 * hpMod * level); this.infected = false; this.slowedTimer = 0;
-        this.mat = new THREE.MeshStandardMaterial({color: color, roughness: 0.7, metalness: !AppSettings.lowGraphics ? 0.2 : 0.0}); this.mesh = new THREE.Mesh(geo, this.mat); 
-        if (type === 'goblin') { this.mesh.scale.set(size, size*3, size); this.mesh.rotation.x = Math.PI/2; } else { this.mesh.scale.set(size, size*2, size); }
-        this.mesh.position.set(x, size, y); if(!isTouchDevice && !AppSettings.lowGraphics) this.mesh.castShadow = true;
-        Game.scene.add(this.mesh); this.mesh.traverse(c => { if(c.material && c.material.emissive) this.flashMats.push(c.material); });
+        
+        this.mat = type === 'crystal' ? new THREE.MeshPhongMaterial({color: 0x000000, emissive: color}) : new THREE.MeshStandardMaterial({color: color, roughness: 0.7, metalness: !AppSettings.lowGraphics ? 0.2 : 0.0}); 
+        let modelData = ModelFactory.buildEnemy(type, size, this.mat);
+        this.mesh = modelData.group; this.modelParts = modelData.parts;
+        this.mesh.position.set(x, 0, y); Game.scene.add(this.mesh); 
+        if (type !== 'crystal') { this.mesh.traverse(c => { if(c.isMesh && c.material === this.mat) this.flashMats.push(c.material); }); }
     }
     update(dt) {
         if(this.dead) return; this.updateFlash(dt);
-        if (this.type === 'mage' || this.type === 'pyromancer') { this.mesh.rotation.y += dt; this.mesh.position.y = this.radius + 5 + Math.sin(Game.frameCount * 0.1) * 5; }
+        if (this.type === 'mage' || this.type === 'pyromancer') { this.mesh.rotation.y += dt; this.mesh.position.y = Math.sin(Game.frameCount * 0.1) * 5; if(this.modelParts.crystals) this.modelParts.crystals.rotation.y += dt*2; }
+        if (this.type === 'goblin') { this.mesh.rotation.x += dt * 15; this.mesh.rotation.y += dt * 10; }
+        if (this.type === 'crystal') { this.modelParts.ring.rotation.x += dt; this.modelParts.gem.rotation.y -= dt; }
+        
         if (this.slowedTimer > 0) { this.slowedTimer -= dt; this.speed = this.baseSpeed * 0.5; for (let i=0; i<this.flashMats.length; i++) this.flashMats[i].emissive.setHex(0x004400); } 
         else { this.speed = this.baseSpeed; }
         if (this.infected && Game.frameCount % 10 === 0 && !isTouchDevice) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'trail');
         if (this.type === 'crystal') return; 
+
+        if (this.modelParts.armL && this.speed > 0 && this.state !== 'leaping') {
+            this.modelParts.armL.rotation.x = Math.sin(Game.frameCount * 0.3) * 0.5;
+            this.modelParts.armR.rotation.x = -Math.sin(Game.frameCount * 0.3) * 0.5;
+        }
+
         let target = Game.player; let closestDecoy = null; let minDist = Infinity;
         for(let i=0, len=Game.decoys.length; i<len; i++) { let d = Game.decoys[i]; if(!d.active) continue; let dist = MathUtils.distanceSq(this, d); if(dist < minDist) { minDist = dist; closestDecoy = d; } }
         if (closestDecoy && Math.sqrt(minDist) < this.aggroRange) target = closestDecoy;
@@ -1476,14 +1413,14 @@ class Enemy extends Entity {
         if (this.state === 'leaping') {
             this.leapTimer += dt; let progress = this.leapTimer / this.leapDuration;
             if (progress >= 1) {
-                this.state = 'walk'; this.mesh.position.y = this.radius; if (MathUtils.distanceSq(this, Game.player) < 70*70) Game.player.takeDamage(this.stats.maxDmg * 1.5, this); Game.addTrauma(0.3); 
-            } else { let currentHeight = this.radius + Math.sin(progress * Math.PI) * 120; this.x += Math.cos(this.leapAngle) * (300 * dt); this.y += Math.sin(this.leapAngle) * (300 * dt); this.mesh.position.set(this.x, currentHeight, this.y); }
+                this.state = 'walk'; this.mesh.position.y = 0; if (MathUtils.distanceSq(this, Game.player) < 70*70) Game.player.takeDamage(this.stats.maxDmg * 1.5, this); Game.addTrauma(0.3); 
+            } else { let currentHeight = Math.sin(progress * Math.PI) * 120; this.x += Math.cos(this.leapAngle) * (300 * dt); this.y += Math.sin(this.leapAngle) * (300 * dt); this.mesh.position.set(this.x, currentHeight, this.y); }
             return;
         }
         if (distToTarget < this.aggroRange) {
             if (distToTarget > this.attackRange) { 
                 this.move(Math.cos(this.angle), Math.sin(this.angle), dt); 
-                if (this.type !== 'mage' && this.type !== 'pyromancer') { this.mesh.position.y = this.radius + Math.sin(Game.frameCount * 0.4) * 4; if (this.type === 'goblin') this.mesh.rotation.z = this.angle; }
+                if (this.type !== 'mage' && this.type !== 'pyromancer' && this.type !== 'goblin') { this.mesh.position.y = Math.sin(Game.frameCount * 0.4) * 4; }
             } else {
                 if (this.type === 'leaper' && this.leapCooldown <= 0) { this.state = 'leaping'; this.leapTimer = 0; this.leapDuration = 0.5; this.leapAngle = this.angle; this.leapCooldown = 2.0; } 
                 else if (this.attackCooldown <= 0 && target === Game.player) { this.attack(); }
@@ -1496,14 +1433,20 @@ class Enemy extends Entity {
         else if (this.type === 'mage') { Game.getProjectile().spawn(this.x, this.y, this.angle, 180, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * 1.5, 'enemy', 'enemy_bolt'); this.attackCooldown = 1.2; } 
         else if (this.type === 'fire_demon') { Game.getProjectile().spawn(this.x, this.y, this.angle, 100, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * 3.0, 'enemy', 'enemy_fireball'); this.attackCooldown = 2.5; } 
         else if (this.type === 'pyromancer') { Game.getProjectile().spawn(this.x, this.y, this.angle, 130, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * 1.5, 'enemy', 'fire_shape'); this.attackCooldown = 2.0; } 
-        else if (this.type !== 'leaper') { Game.player.takeDamage(MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg), this); this.x += Math.cos(this.angle) * 18; this.y += Math.sin(this.angle) * 18; this.mesh.position.set(this.x, this.radius, this.y); }
+        else if (this.type !== 'leaper') { Game.player.takeDamage(MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg), this); this.x += Math.cos(this.angle) * 18; this.y += Math.sin(this.angle) * 18; this.mesh.position.set(this.x, this.mesh.position.y, this.y); }
     }
     takeDamage(amount, source, isCrit = false, canInfect = true) {
         if (source === Game.player && Game.player.modifiers.executioner && (this.stats.hp / this.stats.maxHp) < 0.4) amount *= 1.5;
         super.takeDamage(amount, source, isCrit); if (Game.player.overdrive && Game.player.essence === 'green' && canInfect) this.infected = true;
     }
     onDeath() {
-        if (this.type === 'crystal') return; 
+        if (this.type === 'crystal') {
+            Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff00ff, 'fire');
+            Game.addTrauma(1.5); let pCount = AppSettings.lowGraphics ? 5 : 20;
+            for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
+            AudioEngine.playShoot('explosive_arrow'); this.mat.dispose(); Game.scene.remove(this.mesh);
+            return;
+        }
         Game.player.gainXp(this.xpValue);
         let pCount = AppSettings.lowGraphics ? 2 : (isTouchDevice ? 3 : 15); for(let i=0; i< pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
         if (Game.player.modifiers.vampirism > 0 && Math.random() < Game.player.modifiers.vampirism) { Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + 1); Game.getFloatingText().spawn(this.x, this.y, "+1 HP", '#ff0000', 16); }
@@ -1511,7 +1454,7 @@ class Enemy extends Entity {
             let decal = Game.bloodDecals[Game.bloodDecalIndex]; decal.position.set(this.x, 1, this.y); decal.rotation.z = Math.random() * Math.PI; decal.scale.setScalar(1.0); decal.userData.life = MathUtils.randomRange(3.0, 5.0); 
             decal.userData.active = true; decal.visible = true; Game.bloodDecalIndex = (Game.bloodDecalIndex + 1) % Game.bloodDecals.length;
         }
-        this.mat.dispose(); Game.scene.remove(this.mesh);
+        if(this.mat) this.mat.dispose(); Game.scene.remove(this.mesh);
         if (this.infected) {
             Game.addTrauma(0.3);
             for(let i=0; i<3; i++) { let p = Game.getProjectile(); p.spawn(this.x, this.y, (Math.PI*2/3)*i, 600, Game.player.stats.maxDmg * 2.5 * Game.player.modifiers.dmgMult, 'player', 'homing_arrow'); p.canInfect = false; }
@@ -1530,12 +1473,10 @@ class BossEnemy extends Enemy {
         this.stats.maxHp = Math.floor(2500 * (1 + (level/5) * 0.6) * Game.difficultyMult); this.stats.hp = this.stats.maxHp;
         this.stats.minDmg = Math.floor(30 * (1 + (level/5) * 0.3) * Game.difficultyMult); this.stats.maxDmg = Math.floor(50 * (1 + (level/5) * 0.3) * Game.difficultyMult);
         this.baseSpeed = 160; this.speed = this.baseSpeed; this.xpValue = 600 * (level/5);
-        this.mesh.geometry = SharedGeo.box; this.mesh.scale.set(this.radius, this.radius * 2, this.radius); this.mesh.position.y = this.radius; this.mat.color.setHex(0x550000); 
-        let horns = new THREE.Mesh(SharedGeo.torus, new THREE.MeshStandardMaterial({color: 0xff0000, emissive: 0x550000}));
-        horns.scale.set(this.radius*1.5, this.radius*1.5, 2); horns.rotation.x = Math.PI/2; horns.position.y = this.radius; this.mesh.add(horns); this.horns = horns;
+        this.mat.color.setHex(0x550000); 
     }
     update(dt) {
-        super.update(dt); if (this.dead) return; this.horns.rotation.z += dt;
+        super.update(dt); if (this.dead) return; if(this.modelParts.crown) this.modelParts.crown.rotation.z += dt * 2;
         this.spawnMinionTimer -= dt; if (this.spawnMinionTimer <= 0) { this.spawnMinions(); this.spawnMinionTimer = 5.0 + Math.random() * 3.0; }
         this.hazardTimer -= dt; if (this.hazardTimer <= 0) { Game.getHazard().spawn(Game.player.x, Game.player.y, 45, 3.5, this.stats.maxDmg * 0.5, 0xff3300, 'enemy_fire'); this.hazardTimer = 4.0; }
     }
@@ -1698,7 +1639,7 @@ class FloatingText {
 
 function clearScene() {
     if (Game.map) Game.scene.remove(Game.map.mapGroup);
-    for(let i=0, len=Game.enemies.length; i<len; i++) { Game.enemies[i].mat.dispose(); Game.scene.remove(Game.enemies[i].mesh); }
+    for(let i=0, len=Game.enemies.length; i<len; i++) { if(Game.enemies[i].mat) Game.enemies[i].mat.dispose(); Game.scene.remove(Game.enemies[i].mesh); }
     for(let i=0, len=Game.projectiles.length; i<len; i++) { Game.projectiles[i].active = false; Game.projectiles[i].group.visible = false; }
     for(let i=0, len=Game.hazards.length; i<len; i++) { Game.hazards[i].active = false; Game.hazards[i].group.visible = false; }
     for(let i=0, len=Game.particles.length; i<len; i++) { Game.particles[i].active = false; Game.particles[i].mesh.visible = false; }
@@ -1748,7 +1689,7 @@ function restartGame() {
 function nextFloor() {
     AudioEngine.playDescendSound(); document.getElementById('floorScreen').classList.add('hidden');
     clearScene(); Game.state = 'PLAYING'; Game.floor++; Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + 20); 
-    Game.setupFloor(); if (!Game.isBossFloor) { Game.getFloatingText().spawn(Game.player.x, Game.player.y, `DISCESA AL PIANO ${Game.floor}`, '#ff0000', 40, true); }
+    Game.setupFloor(); if (!Game.isBossFloor) { Game.getFloatingText().spawn(Game.player.x, Game.player.y, `DISCESA AL PIANO ${Game.floor}`, '#FF0000', 40, true); }
 }
 
 function submitScore() {

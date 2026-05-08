@@ -10,6 +10,7 @@
 
     <style>
         * { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+        input { -webkit-user-select: auto; user-select: auto; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #050508; font-family: 'Impact', 'Georgia', serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         #uiCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
@@ -912,12 +913,18 @@ const Game = {
         container.appendChild(this.renderer.domElement);
         
         const ambientLight = new THREE.AmbientLight(0x222233, 1.0); this.scene.add(ambientLight);
+        
+        // CORREZIONE: La luce direzionale serve a tutti per vedere la mappa. Solo le ombre sono disabilitate su mobile!
+        const dirLight = new THREE.DirectionalLight(0x445588, 1.5); 
+        dirLight.position.set(-500, 1000, -500); 
         if(!isTouchDevice) {
-            const dirLight = new THREE.DirectionalLight(0x445588, 1.5); dirLight.position.set(-500, 1000, -500); dirLight.castShadow = true;
-            dirLight.shadow.camera.top = 1500; dirLight.shadow.camera.bottom = -1500; dirLight.shadow.camera.left = -1500; dirLight.shadow.camera.right = 1500;
-            dirLight.shadow.camera.near = 100; dirLight.shadow.camera.far = 3000; dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
-            this.scene.add(dirLight);
+            dirLight.castShadow = true;
+            dirLight.shadow.camera.top = 1500; dirLight.shadow.camera.bottom = -1500;
+            dirLight.shadow.camera.left = -1500; dirLight.shadow.camera.right = 1500;
+            dirLight.shadow.camera.near = 100; dirLight.shadow.camera.far = 3000;
+            dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
         }
+        this.scene.add(dirLight);
 
         this.uiCtx = this.uiCanvas.getContext('2d'); this.resize(); window.addEventListener('resize', () => this.resize());
         this.setupInputs(); this.initPools(); requestAnimationFrame(this.loop.bind(this));
@@ -1024,12 +1031,16 @@ const Game = {
         this.map = new GameMap(CHUNK_SIZE, CHUNK_SIZE); this.map.generate(this.isBossFloor);
         
         let floorColor = 0xffffff; let mutatorText = "";
+        
+        // CORREZIONE NEBBIA: Calcoliamo dinamicamente la distanza della camera per non coprire mai la scena su smartphone
+        let camDist = isTouchDevice ? 1000 : 750;
+        
         if (!this.isBossFloor && Math.random() < 0.2) { 
             let r = Math.random();
-            if (r < 0.33) { this.scene.fog.near = 100; this.scene.fog.far = 400; mutatorText = "OSCURITÀ PROFONDA"; floorColor = "#444444"; } 
+            if (r < 0.33) { this.scene.fog.near = camDist - 200; this.scene.fog.far = camDist + 300; mutatorText = "OSCURITÀ PROFONDA"; floorColor = "#444444"; } 
             else if (r < 0.66) { this.difficultyMult *= 1.3; mutatorText = "FRENESIA DEI DEMONI"; floorColor = "#FF2244"; } 
             else { this.player ? this.player.modifiers.healDropMult = 0 : null; mutatorText = "MALEDIZIONE DELLA FAME"; floorColor = "#aa00ff"; }
-        } else { this.scene.fog.near = 400; this.scene.fog.far = 1800; }
+        } else { this.scene.fog.near = camDist + 100; this.scene.fog.far = camDist + 1200; }
 
         if (this.player && this.player.modifiers.shieldActive) this.player.modifiers.shieldConsumed = false;
 

@@ -47,7 +47,7 @@
         .dot-glow-blue { animation: pulse-glow-blue 2s infinite ease-in-out 0.6s; }
         .dot-glow-green { animation: pulse-glow-green 2s infinite ease-in-out 1.2s; }
         
-        #vignette { position: absolute; inset: 0; background: radial-gradient(circle, transparent 40%, rgba(2,2,5,0.95) 120%); z-index: 1; pointer-events: none; mix-blend-mode: multiply; transition: opacity 0.5s; }
+        #vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.8) 110%); box-shadow: inset 0 0 150px rgba(0,0,0,0.9); z-index: 5; pointer-events: none; mix-blend-mode: multiply; transition: opacity 0.5s; }
         .relic-card { transition: all 0.2s; cursor: pointer; } .relic-card:hover { transform: scale(1.05) translateY(-5px); } .relic-card:active { transform: scale(0.95); }
         .rarity-common { border-color: #9ca3af; box-shadow: 0 0 15px rgba(156, 163, 175, 0.2); } .rarity-rare { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
         .rarity-epic { border-color: #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.6); } .rarity-legendary { border-color: #fbbf24; box-shadow: 0 0 30px rgba(251, 191, 36, 0.8); }
@@ -236,10 +236,12 @@ const AppSettings = {
 };
 
 const AudioEngine = {
-    ctx: null, musicNode: null, initialized: false, muted: false,
+    ctx: null, musicNode: null, noiseBuffer: null, initialized: false, muted: false,
     init() {
         if (this.initialized) return; window.AudioContext = window.AudioContext || window.webkitAudioContext;
-        this.ctx = new AudioContext(); this.initialized = true; this.playMenuMusic();
+        this.ctx = new AudioContext(); this.initialized = true; 
+        this.createNoiseBuffer();
+        this.playMenuMusic();
     },
     toggleMute() {
         this.muted = !this.muted; const btn = document.getElementById('btn-toggle-audio');
@@ -250,6 +252,94 @@ const AudioEngine = {
             btn.innerHTML = '<i class="fa-solid fa-volume-high mr-1"></i> Audio: ON'; btn.classList.replace('text-red-500', 'text-gray-300');
             if(this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
         }
+    },
+    // Crea un buffer di rumore bianco da riusare per impatti ed esplosioni
+    createNoiseBuffer() {
+        let bufferSize = this.ctx.sampleRate * 2; 
+        this.noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        let output = this.noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+    },
+    playNoise(duration, type = 'low') {
+        if (!this.ctx || this.muted || !this.noiseBuffer) return;
+        let noiseSource = this.ctx.createBufferSource();
+        noiseSource.buffer = this.noiseBuffer;
+        
+        let filter = this.ctx.createBiquadFilter();
+        if (type === 'low') { filter.type = 'lowpass'; filter.frequency.value = 1000; }
+        else if (type === 'high') { filter.type = 'highpass'; filter.frequency.value = 2000; }
+        else { filter.type = 'lowpass'; filter.frequency.value = 8000; } // full
+
+        let gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+
+        noiseSource.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+        noiseSource.start(); noiseSource.stop(this.ctx.currentTime + duration);
+    },
+    playHit(type) {
+        if (!this.ctx || this.muted) return; if (this.ctx.state === 'suspended') this.ctx.resume();
+        let t = this.ctx.currentTime;
+        if (type === 'enemy') {
+            // Squish/Click sound
+            let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+            osc.type = 'triangle'; osc.frequency.setValueAtTime(800, t); osc.frequency.exponentialRampToValueAtTime(200, t + 0.1);
+            gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+            osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 0.1);
+            this.playNoise(0.05, 'high');
+        } else if (type === 'crit') {
+            // Sharp metallic snap
+            let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+            osc.type = 'square'; osc.frequency.setValueAtTime(1200, t); osc.frequency.exponentialRampToValueAtTime(100, t + 0.15);
+            gain.gain.setValueAtTime(0.3, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+            osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 0.15);
+            this.playNoise(0.1, 'high');
+        } else if (type === 'player') {
+            // Deep thud
+            let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(150, t); osc.frequency.exponentialRampToValueAtTime(40, t + 0.2);
+            gain.gain.setValueAtTime(0.6, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+            osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 0.2);
+            this.playNoise(0.2, 'low');
+        }
+    },
+    playEnemyDeath() {
+        if (!this.ctx || this.muted) return;
+        let t = this.ctx.currentTime;
+        let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, t); osc.frequency.exponentialRampToValueAtTime(30, t + 0.3);
+        gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 0.3);
+        this.playNoise(0.2, 'low');
+    },
+    playCollect() {
+        if (!this.ctx || this.muted) return;
+        let t = this.ctx.currentTime;
+        let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(600, t); osc.frequency.linearRampToValueAtTime(1200, t + 0.1);
+        gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 0.3);
+    },
+    playLevelUp() {
+        if (!this.ctx || this.muted) return;
+        const notes = [440, 554.37, 659.25, 880]; // A major arpeggio
+        let t = this.ctx.currentTime;
+        notes.forEach((freq, i) => {
+            let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+            osc.type = 'square'; osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0, t + i * 0.1); gain.gain.linearRampToValueAtTime(0.1, t + i * 0.1 + 0.05); gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 0.5);
+            let filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 2000;
+            osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination); osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.5);
+        });
+    },
+    playPerfectDodge() {
+        if (!this.ctx || this.muted) return;
+        let t = this.ctx.currentTime;
+        let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(800, t); osc.frequency.exponentialRampToValueAtTime(2000, t + 0.2);
+        gain.gain.setValueAtTime(0.3, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 0.4);
+        this.playNoise(0.3, 'high');
     },
     playHover() {
         if (!this.ctx || this.ctx.state === 'suspended' || this.muted) return;
@@ -285,9 +375,11 @@ const AudioEngine = {
         if (type === 'explosive_arrow') {
             osc.type = 'square'; osc.frequency.setValueAtTime(150, t); osc.frequency.exponentialRampToValueAtTime(40, t + 0.3);
             gain.gain.setValueAtTime(0.3, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3); osc.start(t); osc.stop(t + 0.3);
+            this.playNoise(0.4, 'low');
         } else if (type === 'chain_lightning') {
             osc.type = 'sawtooth'; osc.frequency.setValueAtTime(600, t); osc.frequency.linearRampToValueAtTime(1200, t + 0.05); osc.frequency.linearRampToValueAtTime(200, t + 0.15);
             gain.gain.setValueAtTime(0.15, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15); osc.start(t); osc.stop(t + 0.15);
+            this.playNoise(0.1, 'high');
         } else if (type === 'homing_arrow') {
             osc.type = 'sine'; osc.frequency.setValueAtTime(300, t); osc.frequency.exponentialRampToValueAtTime(800, t + 0.2);
             gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2); osc.start(t); osc.stop(t + 0.2);
@@ -295,9 +387,12 @@ const AudioEngine = {
             osc.type = 'sawtooth'; osc.frequency.setValueAtTime(80, t); osc.frequency.exponentialRampToValueAtTime(30, t + 0.1);
             gain.gain.setValueAtTime(0.15, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1); osc.start(t); osc.stop(t + 0.1);
             let osc2 = this.ctx.createOscillator(); osc2.type = 'square'; osc2.frequency.setValueAtTime(40, t); osc2.connect(gain); osc2.start(t); osc2.stop(t + 0.1);
+            this.playNoise(0.15, 'full');
         } else { 
-            osc.type = 'triangle'; osc.frequency.setValueAtTime(800, t); osc.frequency.exponentialRampToValueAtTime(100, t + 0.1);
-            gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1); osc.start(t); osc.stop(t + 0.1);
+            // Migliorato: "Thwip" più netto per la freccia base
+            osc.type = 'triangle'; osc.frequency.setValueAtTime(1200, t); osc.frequency.exponentialRampToValueAtTime(100, t + 0.08);
+            gain.gain.setValueAtTime(0.3, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.08); osc.start(t); osc.stop(t + 0.08);
+            this.playNoise(0.05, 'high');
         }
         osc.connect(gain); gain.connect(this.ctx.destination);
     },
@@ -347,6 +442,7 @@ const AudioEngine = {
         osc.type = 'sine'; osc.frequency.setValueAtTime(500, this.ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 0.15);
         gain.gain.setValueAtTime(0.3, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
         osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(this.ctx.currentTime + 0.15);
+        this.playNoise(0.15, 'high');
     },
     playUltimate() {
         if (!this.ctx || this.ctx.state === 'suspended' || this.muted) return;
@@ -355,6 +451,7 @@ const AudioEngine = {
         osc2.type = 'square'; osc2.frequency.setValueAtTime(200, this.ctx.currentTime); osc2.frequency.exponentialRampToValueAtTime(20, this.ctx.currentTime + 0.5);
         gain.gain.setValueAtTime(0, this.ctx.currentTime); gain.gain.linearRampToValueAtTime(0.4, this.ctx.currentTime + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 1.5);
         osc1.connect(gain); osc2.connect(gain); gain.connect(this.ctx.destination); osc1.start(); osc2.start(); osc1.stop(this.ctx.currentTime + 1.5); osc2.stop(this.ctx.currentTime + 1.5);
+        this.playNoise(1.0, 'low');
     }
 };
 
@@ -437,7 +534,16 @@ const RelicSystem = {
 const SharedGeo = {
     box: new THREE.BoxGeometry(1, 1, 1), sphere: new THREE.SphereGeometry(1, 8, 8), cylinder: new THREE.CylinderGeometry(1, 1, 1, 8), 
     cone: new THREE.ConeGeometry(1, 2, 8), icosahedron: new THREE.IcosahedronGeometry(1, 0), torus: new THREE.TorusGeometry(1, 0.1, 8, 24),
-    tetrahedron: new THREE.TetrahedronGeometry(1, 0), bloodPlane: new THREE.PlaneGeometry(40, 40)
+    tetrahedron: new THREE.TetrahedronGeometry(1, 0), bloodPlane: new THREE.PlaneGeometry(40, 40),
+    heart: (function(){
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 1.5);
+        shape.bezierCurveTo(2, 3.5, 4, 1.5, 0, -2.5);
+        shape.bezierCurveTo(-4, 1.5, -2, 3.5, 0, 1.5);
+        const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.5, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.2, bevelThickness: 0.2 });
+        geo.center();
+        return geo;
+    })()
 };
 
 function createPatternTexture(type) {
@@ -488,7 +594,9 @@ const SharedMat = {
     hazardPoisonPlane: new THREE.MeshBasicMaterial({color: ESSENCE_COLORS.green, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}),
     hazardPoisonRing: new THREE.MeshBasicMaterial({color: 0xaaffaa, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}),
     hazardEnemyPlane: new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}),
-    hazardEnemyRing: new THREE.MeshBasicMaterial({color: 0xff5555, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending})
+    hazardEnemyRing: new THREE.MeshBasicMaterial({color: 0xff5555, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}),
+    hazardCrystalPlane: new THREE.MeshBasicMaterial({color: 0xff00ff, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}),
+    hazardCrystalRing: new THREE.MeshBasicMaterial({color: 0xffaaff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending})
 };
 
 const ModelFactory = {
@@ -588,9 +696,9 @@ class Essence {
 class ExtraLife {
     constructor() {
         this.active = false; this.group = new THREE.Group();
-        this.mat = new THREE.MeshStandardMaterial({color: 0x000000, emissive: 0xff66bb, roughness: 0, emissiveIntensity: 2.0});
-        let core = new THREE.Mesh(SharedGeo.icosahedron, this.mat); core.scale.setScalar(8);
-        this.glow = new THREE.Sprite(SharedMat.spritePink); this.glow.scale.set(35, 35, 1);
+        this.mat = new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0xffffff, roughness: 0.1, metalness: 0.5, emissiveIntensity: 2.0});
+        let core = new THREE.Mesh(SharedGeo.heart, this.mat); core.scale.setScalar(3);
+        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(30, 30, 1);
         this.group.add(core); this.group.add(this.glow); this.group.visible = false; Game.scene.add(this.group);
     }
     spawn(x, y) { this.active = true; this.x = x; this.y = y; this.group.position.set(x, 10, y); this.group.visible = true; }
@@ -612,6 +720,7 @@ class Hazard {
         this.plane.scale.set(this.radius, 0.1, this.radius); this.ring.scale.set(this.radius, this.radius, 1);
         if (type === 'poison') { this.plane.material = SharedMat.hazardPoisonPlane; this.ring.material = SharedMat.hazardPoisonRing; }
         else if (type === 'enemy_fire') { this.plane.material = SharedMat.hazardEnemyPlane; this.ring.material = SharedMat.hazardEnemyRing; }
+        else if (type === 'crystal_fire') { this.plane.material = SharedMat.hazardCrystalPlane; this.ring.material = SharedMat.hazardCrystalRing; }
         else { this.plane.material = SharedMat.hazardFirePlane; this.ring.material = SharedMat.hazardFireRing; }
         this.group.visible = true;
     }
@@ -626,13 +735,13 @@ class Hazard {
             this.ring.material.opacity = 0.8 + Math.sin(this.life * 15) * 0.2; 
         }
         if ((Game.frameCount + this.updateOffset) % 5 === 0 && !isTouchDevice && this.activationTimer <= 0) { 
-            let mat = this.type === 'poison' ? SharedMat.spriteGreen : SharedMat.spriteRed;
+            let mat = this.type === 'poison' ? SharedMat.spriteGreen : (this.type === 'crystal_fire' ? SharedMat.spritePink : SharedMat.spriteRed);
             Game.getParticle().spawn(this.x + MathUtils.randomRange(-this.radius, this.radius), 2, this.y + MathUtils.randomRange(-this.radius, this.radius), mat, 'trail');
         }
         for (let key in this.hitCooldown) this.hitCooldown[key] -= dt;
         if (this.activationTimer <= 0) {
             if ((Game.frameCount + this.updateOffset) % 6 === 0) {
-                if (this.type === 'fire' || this.type === 'poison') {
+                if (this.type === 'fire' || this.type === 'poison' || this.type === 'crystal_fire') {
                     let nearby = Game.enemyGrid.findNearby(this, this.radius);
                     for (let i=0, len=nearby.length; i<len; i++) {
                         let e = nearby[i];
@@ -643,9 +752,13 @@ class Hazard {
                     }
                 }
             }
-            if (this.type === 'enemy_fire' && (Game.frameCount + this.updateOffset) % 6 === 0) {
+            if ((this.type === 'enemy_fire' || this.type === 'crystal_fire') && (Game.frameCount + this.updateOffset) % 6 === 0) {
                 if (this.hitCooldown['player'] === undefined) this.hitCooldown['player'] = 0;
-                if (this.hitCooldown['player'] <= 0 && MathUtils.distanceSq(this, Game.player) < (this.radius + Game.player.radius)**2) { Game.player.takeDamage(this.damage, null); this.hitCooldown['player'] = 1.0; }
+                if (this.hitCooldown['player'] <= 0 && MathUtils.distanceSq(this, Game.player) < (this.radius + Game.player.radius)**2) { 
+                    let playerDmg = this.type === 'crystal_fire' ? 35 * Game.difficultyMult : this.damage;
+                    Game.player.takeDamage(playerDmg, null); 
+                    this.hitCooldown['player'] = 1.0; 
+                }
             }
         }
         if (this.life <= 0) { this.active = false; this.group.visible = false; }
@@ -822,7 +935,6 @@ const Game = {
     hitStop: 0, trauma: 0, combo: 0, comboTimer: 0, comboMaxTime: 5.0, difficultyMult: 1.0, ultimateCharge: 0, ultimateActive: false, ultimateTimer: 0, lives: 3, playTime: 0, bossDefeatedTimer: 0,
     player: null, map: null, enemyGrid: null, enemies: [], projectiles: [], particles: [], essences: [], extraLivesDrops: [], floatingTexts: [], hazards: [], decoys: [], bloodDecals: [], bloodDecalIndex: 0,
     
-    // Nuove variabili per il Post-Processing
     composer: null, bloomPass: null,
 
     init() {
@@ -836,10 +948,7 @@ const Game = {
         this.renderer.shadowMap.enabled = !isTouchDevice && !AppSettings.lowGraphics; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(this.renderer.domElement);
         
-        // LUCI AVANZATE: L'HemisphereLight simula la luce del cielo e il rimbalzo dal terreno, donando tridimensionalità ai modelli
-        const hemiLight = new THREE.HemisphereLight(0x223355, 0x050510, 1.2); 
-        this.scene.add(hemiLight);
-        
+        const ambientLight = new THREE.AmbientLight(0x222233, 1.0); this.scene.add(ambientLight);
         const dirLight = new THREE.DirectionalLight(0x6677aa, 1.5); dirLight.position.set(-500, 1000, -500); 
         if(!isTouchDevice) {
             dirLight.castShadow = true; dirLight.shadow.camera.top = 1500; dirLight.shadow.camera.bottom = -1500;
@@ -848,16 +957,11 @@ const Game = {
         }
         this.scene.add(dirLight);
 
-        // CONFIGURAZIONE BLOOM BILANCIATA
         const renderScene = new THREE.RenderPass(this.scene, this.camera);
         this.bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(this.width, this.height), 1.3, 0.6, 0.35);
-        this.bloomPass.threshold = 0.35; 
-        this.bloomPass.strength = 1.3; 
-        this.bloomPass.radius = 0.6;
-        
+        this.bloomPass.threshold = 0.35; this.bloomPass.strength = 1.3; this.bloomPass.radius = 0.6;
         this.composer = new THREE.EffectComposer(this.renderer);
-        this.composer.addPass(renderScene);
-        this.composer.addPass(this.bloomPass);
+        this.composer.addPass(renderScene); this.composer.addPass(this.bloomPass);
 
         this.uiCtx = this.uiCanvas.getContext('2d'); this.resize(); window.addEventListener('resize', () => this.resize());
         this.setupInputs(); this.initPools(); requestAnimationFrame(this.loop.bind(this));
@@ -1037,7 +1141,7 @@ const Game = {
             let el = this.extraLivesDrops[i];
             if(el.active) {
                 el.group.rotation.y += dt * 2; el.group.position.y = 10 + Math.sin(this.frameCount * 0.1) * 5;
-                if (MathUtils.distanceSq(this.player, el) < (this.player.radius + 20)**2) { this.lives++; el.destroy(); this.getFloatingText().spawn(this.player.x, this.player.y, "VITA EXTRA!", '#ff66bb', 30, true); }
+                if (MathUtils.distanceSq(this.player, el) < (this.player.radius + 20)**2) { this.lives++; el.destroy(); AudioEngine.playCollect(); this.getFloatingText().spawn(this.player.x, this.player.y, "VITA EXTRA!", '#ffffff', 30, true); }
             }
         }
 
@@ -1126,7 +1230,6 @@ class GameMap {
         const isHighQ = !AppSettings.lowGraphics; const floorTex = createPatternTexture('floor'); const wallTex = createPatternTexture('wall');
         const floorGeo = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE); floorGeo.rotateX(-Math.PI/2);
         
-        // MIGLIORAMENTO: Pavimento più scuro e meno riflettente
         const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.9, metalness: 0.1, bumpMap: isHighQ ? floorTex : null, bumpScale: 1.5 });
         const floorMesh = new THREE.InstancedMesh(floorGeo, floorMat, floorCount); 
         const wallGeo = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
@@ -1148,7 +1251,7 @@ class GameMap {
                     } else if (!isBossFloor && Math.random() < 0.015) { 
                         let crystal = new Enemy(x * TILE_SIZE, y * TILE_SIZE, 'crystal', 1);
                         crystal.onDeath = function() {
-                            Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff00ff, 'fire');
+                            Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff00ff, 'crystal_fire');
                             Game.addTrauma(1.5); let pCount = AppSettings.lowGraphics ? 5 : 20;
                             for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
                             AudioEngine.playShoot('explosive_arrow'); this.mat.dispose(); Game.scene.remove(this.mesh);
@@ -1198,6 +1301,12 @@ class Entity {
     }
     takeDamage(amount, source, isCrit = false) {
         if (this.dead) return; this.stats.hp -= amount;
+        
+        // SUONI DI IMPATTO
+        if (source === Game.player) {
+            AudioEngine.playHit(isCrit ? 'crit' : 'enemy');
+        }
+
         if (isCrit && source === Game.player) { Game.hitStop = 0.05; Game.addTrauma(0.5); Game.addCombo(); } else if (source === Game.player) { Game.addCombo(); }
         Game.getFloatingText().spawn(this.x, this.y, Math.floor(amount), isCrit ? '#ffff00' : '#ffffff', isCrit ? 28 : 20, isCrit);
         let pCount = AppSettings.lowGraphics ? (isCrit ? 2 : 1) : (isCrit ? (isTouchDevice?4:8) : (isTouchDevice?2:4));
@@ -1220,7 +1329,6 @@ class Player extends Entity {
         this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}), new THREE.MeshPhongMaterial({color: 0x00ffff, emissive: 0x00ffff}));
         this.mesh = this.modelParts.group; this.staffGemMat = this.modelParts.staffGem.material;
         
-        // LUCE DEL GIOCATORE PIÙ TENUE E PICCOLA
         this.light = new THREE.PointLight(0xffffff, 1.2, 800); this.light.position.y = 120; 
         
         this.mesh.add(this.light); this.mesh.position.set(this.x, 0, this.y); Game.scene.add(this.mesh);
@@ -1232,6 +1340,7 @@ class Player extends Entity {
         else { this.essence = type; this.essenceStacks = 1; this.overdrive = false; }
         Game.addUltimateCharge(10); if (this.essenceStacks === 3 && !this.overdrive) this.triggerOverdrive();
         this.essenceTimer = (this.overdrive ? 5.0 : 8.0) * this.modifiers.essenceDurationMult; this.updateAppearance();
+        AudioEngine.playCollect();
     }
     triggerElementalReaction(color1, color2) {
         Game.addTrauma(1.5); Game.hitStop = 0.2; let comboName = ""; let color = '#ffffff';
@@ -1239,7 +1348,21 @@ class Player extends Entity {
             comboName = "SHOCK TERMICO!"; color = "#ddaaff"; Game.enemies.forEach(e => e.slowedTimer = 4.0);
             for(let i=0; i<40; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'spark'); AudioEngine.playShoot('chain_lightning');
         } else if ((color1 === 'red' && color2 === 'green') || (color1 === 'green' && color2 === 'red')) {
-            comboName = "NUBE TOSSICA!"; color = "#ffaa00"; Game.getHazard().spawn(this.x, this.y, 120, 4.0, this.stats.maxDmg * 2, ESSENCE_COLORS.green, 'poison'); AudioEngine.playShoot('explosive_arrow');
+            comboName = "ESPLOSIONE TOSSICA!"; color = "#33FF00"; 
+            let poisonRange = 350;
+            let nearby = Game.enemyGrid.findNearby(this, poisonRange);
+            nearby.forEach(e => {
+                if (MathUtils.distanceSq(this, e) < poisonRange*poisonRange) {
+                    e.takeDamage(this.stats.maxDmg * 3 * this.modifiers.dmgMult, this, true, true);
+                    e.infected = true; e.slowedTimer = 3.0;
+                }
+            });
+            let pCount = AppSettings.lowGraphics ? 15 : 40;
+            for(let i=0; i<pCount; i++) {
+                let a = (Math.PI * 2 / pCount) * i;
+                Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'trail', a); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'flame', a);
+            }
+            AudioEngine.playShoot('explosive_arrow');
         } else if ((color1 === 'blue' && color2 === 'green') || (color1 === 'green' && color2 === 'blue')) {
             comboName = "VORTICE!"; color = "#00ffaa"; let nearby = Game.enemyGrid.findNearby(this, 400);
             nearby.forEach(e => { let ang = Math.atan2(this.y - e.y, this.x - e.x); e.x += Math.cos(ang) * 150; e.y += Math.sin(ang) * 150; e.takeDamage(this.stats.maxDmg * 3, this, true, false); }); AudioEngine.playShoot('chain_lightning');
@@ -1327,9 +1450,17 @@ class Player extends Entity {
         }
     }
     dash() {
-        if (this.dashCooldown > 0 && !(this.overdrive && this.essence === 'blue')) return; AudioEngine.playDash();
+        if (this.dashCooldown > 0 && !(this.overdrive && this.essence === 'blue')) return; 
+        
         let perfectDodge = false; let grazeRange = this.radius + 30; let nearby = Game.enemyGrid.findNearby(this, grazeRange);
-        if (nearby.length > 0) { perfectDodge = true; Game.getFloatingText().spawn(this.x, this.y, "PERFECT!", '#ffffff', 40, true); Game.hitStop = 0.1; Game.addCombo(3); Game.addUltimateCharge(15); AudioEngine.playHover(); }
+        if (nearby.length > 0) { 
+            perfectDodge = true; Game.getFloatingText().spawn(this.x, this.y, "PERFECT!", '#ffffff', 40, true); 
+            Game.hitStop = 0.1; Game.addCombo(3); Game.addUltimateCharge(15); 
+            AudioEngine.playPerfectDodge(); 
+        } else {
+            AudioEngine.playDash();
+        }
+        
         this.isDashing = true; this.dashTimer = 0.25; this.dashAngle = Game.inputs.left.active ? Math.atan2(Game.inputs.left.y, Game.inputs.left.x) : this.angle;
         this.dashCooldown = perfectDodge ? 0 : 1.0 * this.modifiers.dashCooldownMult;
         if (this.essence === 'blue') {
@@ -1347,6 +1478,9 @@ class Player extends Entity {
         if (this.invincibilityTimer > 0) return; 
         if (this.modifiers.shieldActive && !this.modifiers.shieldConsumed) { this.modifiers.shieldConsumed = true; Game.getFloatingText().spawn(this.x, this.y, "SCUDO!", '#00DDFF', 30, true); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'spark'); this.invincibilityTimer = 0.5; return; }
         let wasDead = this.dead; amount *= this.modifiers.dmgTakenMult; if (Game.ultimateActive) amount *= 0.5; super.takeDamage(amount, source);
+        
+        AudioEngine.playHit('player');
+
         if (!wasDead) {
             Game.addTrauma(0.8); Game.resetCombo(); 
             if (this.stats.hp <= 0) { 
@@ -1365,6 +1499,7 @@ class Player extends Entity {
         if (this.xp >= this.xpNeeded) {
             this.level++; this.xp -= this.xpNeeded; this.xpNeeded = Math.floor(this.xpNeeded * 1.3); this.stats.maxHp += 15; this.stats.hp = this.stats.maxHp; this.stats.minDmg += 3; this.stats.maxDmg += 5;
             for(let i=0; i< (isTouchDevice?10:30); i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteLevel, 'level'); Game.getFloatingText().spawn(this.x, this.y, "LEVEL UP!", '#ffffff', 28, true);
+            AudioEngine.playLevelUp();
         }
     }
 }
@@ -1446,7 +1581,16 @@ class Enemy extends Entity {
         super.takeDamage(amount, source, isCrit); if (Game.player.overdrive && Game.player.essence === 'green' && canInfect) this.infected = true;
     }
     onDeath() {
-        if (this.type === 'crystal') return; 
+        if (this.type === 'crystal') {
+            Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff00ff, 'crystal_fire');
+            Game.addTrauma(1.5); let pCount = AppSettings.lowGraphics ? 5 : 20;
+            for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
+            AudioEngine.playShoot('explosive_arrow'); this.mat.dispose(); Game.scene.remove(this.mesh);
+            return;
+        }
+        
+        AudioEngine.playEnemyDeath();
+
         Game.player.gainXp(this.xpValue);
         let pCount = AppSettings.lowGraphics ? 2 : (isTouchDevice ? 3 : 15); for(let i=0; i< pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
         if (Game.player.modifiers.vampirism > 0 && Math.random() < Game.player.modifiers.vampirism) { Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + 1); Game.getFloatingText().spawn(this.x, this.y, "+1 HP", '#ff0000', 16); }
@@ -1493,6 +1637,7 @@ class BossEnemy extends Enemy {
         for(let i=0; i<12; i++) { let a = this.angle + (Math.PI*2/12) * i; Game.getProjectile().spawn(this.x, this.y, a, 200, this.stats.maxDmg, 'enemy', 'enemy_fireball'); }
     }
     onDeath() {
+        AudioEngine.playEnemyDeath();
         Game.player.gainXp(this.xpValue);
         let pCount = AppSettings.lowGraphics ? 10 : 50; for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 30, this.y, SharedMat.spriteBlood, 'blood');
         if (!AppSettings.lowGraphics) {

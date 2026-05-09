@@ -300,10 +300,26 @@ const AudioEngine = {
             this.playNoise(0.1, 'high');
         } else if (type === 'player') {
             let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
-            osc.type = 'sine'; osc.frequency.setValueAtTime(150, t); osc.frequency.exponentialRampToValueAtTime(40, t + 0.2);
-            gain.gain.setValueAtTime(0.6, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
-            osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 0.2);
-            this.playNoise(0.2, 'low');
+            // Onda quadra per un timbro più tagliente e vagamente vocale
+            osc.type = 'square'; 
+            // Pitch bend rapido verso il basso (ricrea l'intonazione di una voce che si lamenta)
+            osc.frequency.setValueAtTime(450, t); 
+            osc.frequency.exponentialRampToValueAtTime(120, t + 0.15);
+            
+            // Filtro passa-basso che si chiude simulando il movimento della bocca ("O-u")
+            let filter = this.ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(2000, t);
+            filter.frequency.exponentialRampToValueAtTime(300, t + 0.15);
+            
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.6, t + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+            
+            osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination); 
+            osc.start(t); osc.stop(t + 0.2);
+            
+            this.playNoise(0.05, 'high'); // Piccolo fruscio che aggiunge "sporcizia" al lamento
         }
     },
     playEnemyDeath() {
@@ -1381,18 +1397,31 @@ class Player extends Entity {
                 comboName = "SHOCK TERMICO!"; color = "#ddaaff"; 
                 let shockRange = 250; let nearby = Game.enemyGrid.findNearby(this, shockRange);
                 nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < shockRange * shockRange) { e.slowedTimer = 4.0; e.takeDamage(this.stats.maxDmg * 2 * this.modifiers.dmgMult, this, true, false); } });
-                for(let i=0; i<40; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'spark'); AudioEngine.playShoot('chain_lightning');
+                for(let i=0; i<40; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'spark'); 
+                if (!AppSettings.lowGraphics) {
+                    let flash = Game.getParticle(); flash.spawn(this.x, 20, this.y, SharedMat.spritePink, 'flame'); flash.baseSize = 80;
+                    for(let i=0; i<20; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'trail');
+                }
+                AudioEngine.playShoot('chain_lightning');
             } else if (counts.red > 0 && counts.green > 0 && counts.blue === 0) {
                 comboName = "ESPLOSIONE TOSSICA!"; color = "#33FF00"; 
                 let poisonRange = 180; let nearby = Game.enemyGrid.findNearby(this, poisonRange);
                 nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < poisonRange*poisonRange) { e.takeDamage(this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, this, true, true); e.infected = true; e.slowedTimer = 3.0; } });
                 let pCount = AppSettings.lowGraphics ? 15 : 40;
                 for(let i=0; i<pCount; i++) { let a = (Math.PI * 2 / pCount) * i; Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'trail', a); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'flame', a); }
+                if (!AppSettings.lowGraphics) {
+                    for(let i=0; i<8; i++) { let p = Game.getParticle(); p.spawn(this.x + MathUtils.randomRange(-40,40), 20, this.y + MathUtils.randomRange(-40,40), SharedMat.spriteGreen, 'flame'); p.baseSize = 50; p.life = 1.0; p.maxLife = 1.0; }
+                }
                 AudioEngine.playShoot('explosive_arrow');
             } else if (counts.blue > 0 && counts.green > 0 && counts.red === 0) {
                 comboName = "VORTICE!"; color = "#00ffaa"; 
                 let vortexRange = 220; let nearby = Game.enemyGrid.findNearby(this, vortexRange);
                 nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < vortexRange*vortexRange) { let ang = Math.atan2(this.y - e.y, this.x - e.x); e.x += Math.cos(ang) * 120; e.y += Math.sin(ang) * 120; e.takeDamage(this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, this, true, false); } }); 
+                let pCount = AppSettings.lowGraphics ? 15 : 40;
+                for(let i=0; i<pCount; i++) { let a = (Math.PI * 2 / pCount) * i; Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'trail', a + 0.5); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark', a - 0.5); }
+                if (!AppSettings.lowGraphics) {
+                    let flash = Game.getParticle(); flash.spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'flame'); flash.baseSize = 90;
+                }
                 AudioEngine.playShoot('chain_lightning');
             } else if (counts.red === 1 && counts.blue === 1 && counts.green === 1) {
                 comboName = "CAOS ELEMENTALE!"; color = "#ffffff"; Game.addTrauma(2.0);
@@ -1400,6 +1429,10 @@ class Player extends Entity {
                 nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < range * range) { e.slowedTimer = 4.0; e.infected = true; e.takeDamage(this.stats.maxDmg * 3.5 * this.modifiers.dmgMult, this, true, true); } });
                 let pCount = AppSettings.lowGraphics ? 20 : 60;
                 for(let i=0; i<pCount; i++) { let mat = [SharedMat.spriteRed, SharedMat.spriteBlue, SharedMat.spriteGreen][i % 3]; Game.getParticle().spawn(this.x, 20, this.y, mat, 'trail'); }
+                if (!AppSettings.lowGraphics) {
+                    let core = Game.getParticle(); core.spawn(this.x, 30, this.y, SharedMat.spriteWhite, 'flame'); core.baseSize = 150; core.life = 0.5; core.maxLife = 0.5;
+                    for(let i=0; i<25; i++) { Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'flame'); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'spark'); }
+                }
                 AudioEngine.playShoot('explosive_arrow'); AudioEngine.playShoot('chain_lightning');
                 this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + 10); Game.getFloatingText().spawn(this.x, this.y + 20, "+10 HP", '#ff0000', 25);
             }
@@ -1628,8 +1661,7 @@ class Enemy extends Entity {
             return;
         }
         
-        AudioEngine.playEnemyDeath(this.type);
-
+        AudioEngine.playEnemyDeath();
         Game.player.gainXp(this.xpValue);
         let pCount = AppSettings.lowGraphics ? 2 : (isTouchDevice ? 3 : 15); for(let i=0; i< pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
         if (Game.player.modifiers.vampirism > 0 && Math.random() < Game.player.modifiers.vampirism) { Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + 1); Game.getFloatingText().spawn(this.x, this.y, "+1 HP", '#ff0000', 16); }

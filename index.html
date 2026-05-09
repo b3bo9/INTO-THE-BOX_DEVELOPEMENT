@@ -55,7 +55,7 @@
 
         #vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.8) 110%); box-shadow: inset 0 0 150px rgba(0,0,0,0.9); z-index: 5; pointer-events: none; mix-blend-mode: multiply; transition: opacity 0.5s; }
         .relic-card { transition: all 0.2s; cursor: pointer; } .relic-card:hover { transform: scale(1.05) translateY(-5px); } .relic-card:active { transform: scale(0.95); }
-        .rarity-common { border-color: #9ca3af; box-shadow: 0 0 15px rgba(156, 163, 175, 0.2); } .rarity-rare { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+        .rarity-common { border-color: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); } .rarity-rare { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
         .rarity-epic { border-color: #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.6); } .rarity-legendary { border-color: #fbbf24; box-shadow: 0 0 30px rgba(251, 191, 36, 0.8); }
     </style>
 </head>
@@ -537,7 +537,7 @@ const RelicSystem = {
         const container = document.getElementById('relicCardsContainer'); container.innerHTML = ''; let choices = this.getChoices();
         for(let i=0; i<choices.length; i++) {
             let relic = choices[i];
-            let colorClass = "rarity-common bg-gray-900/80 text-gray-300"; let icon = "fa-gem"; let rarityLabel = "COMUNE";
+            let colorClass = "rarity-common bg-green-900/60 text-green-300"; let icon = "fa-gem"; let rarityLabel = "COMUNE";
             if (relic.rarity === 'rare') { colorClass = "rarity-rare bg-blue-900/60 text-blue-300"; icon = "fa-shield-halved"; rarityLabel = "RARA"; }
             if (relic.rarity === 'epic') { colorClass = "rarity-epic bg-purple-900/60 text-purple-300"; icon = "fa-eye"; rarityLabel = "EPICA"; }
             if (relic.rarity === 'legendary') { colorClass = "rarity-legendary bg-amber-900/60 text-amber-400"; icon = "fa-crown"; rarityLabel = "LEGGENDA"; }
@@ -1342,6 +1342,15 @@ class Entity {
         }
         this.mesh.position.set(this.x, this.mesh.position.y, this.y);
     }
+    push(nx, ny, dist) {
+        let steps = Math.max(1, Math.ceil(dist / 15)); let stepDist = dist / steps; const r = this.radius * 0.8;
+        for (let i = 0; i < steps; i++) {
+            let newX = this.x + nx * stepDist; let newY = this.y + ny * stepDist;
+            if (nx !== 0) { let testX = nx > 0 ? newX + r : newX - r; if (!Game.map.isSolid(testX, this.y - r) && !Game.map.isSolid(testX, this.y + r)) this.x = newX; }
+            if (ny !== 0) { let testY = ny > 0 ? newY + r : newY - r; if (!Game.map.isSolid(this.x - r, testY) && !Game.map.isSolid(this.x + r, testY)) this.y = newY; }
+        }
+        this.mesh.position.set(this.x, this.mesh.position.y, this.y);
+    }
     takeDamage(amount, source, isCrit = false) {
         if (this.dead) return; this.stats.hp -= amount;
         
@@ -1416,7 +1425,7 @@ class Player extends Entity {
             } else if (counts.blue > 0 && counts.green > 0 && counts.red === 0) {
                 comboName = "VORTICE!"; color = "#00ffaa"; 
                 let vortexRange = 220; let nearby = Game.enemyGrid.findNearby(this, vortexRange);
-                nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < vortexRange*vortexRange) { let ang = Math.atan2(this.y - e.y, this.x - e.x); e.x += Math.cos(ang) * 120; e.y += Math.sin(ang) * 120; e.takeDamage(this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, this, true, false); } }); 
+                nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < vortexRange*vortexRange) { let ang = Math.atan2(this.y - e.y, this.x - e.x); e.push(Math.cos(ang), Math.sin(ang), 120); e.takeDamage(this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, this, true, false); } }); 
                 let pCount = AppSettings.lowGraphics ? 15 : 40;
                 for(let i=0; i<pCount; i++) { let a = (Math.PI * 2 / pCount) * i; Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'trail', a + 0.5); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark', a - 0.5); }
                 if (!AppSettings.lowGraphics) {
@@ -1498,7 +1507,7 @@ class Player extends Entity {
             let e = nearby[i]; let ang = Math.atan2(e.y - this.y, e.x - this.x); let diff = Math.atan2(Math.sin(ang - this.angle), Math.cos(ang - this.angle)); let dist = MathUtils.distance(this, e);
             if (Math.abs(diff) < Math.PI/4 && dist < flameRange) {
                 if (!e.flameHitTimer) e.flameHitTimer = 0; e.flameHitTimer -= dt;
-                if (e.flameHitTimer <= 0) { e.takeDamage(this.stats.maxDmg * 1.5 * this.modifiers.dmgMult, this, false, true); e.flameHitTimer = 0.15; e.x += Math.cos(this.angle) * 8; e.y += Math.sin(this.angle) * 8; }
+                if (e.flameHitTimer <= 0) { e.takeDamage(this.stats.maxDmg * 1.5 * this.modifiers.dmgMult, this, false, true); e.flameHitTimer = 0.15; e.push(Math.cos(this.angle), Math.sin(this.angle), 8); }
             }
         }
         if (!this.flamePoolTimer) this.flamePoolTimer = 0; this.flamePoolTimer -= dt;
@@ -1627,7 +1636,7 @@ class Enemy extends Entity {
             this.leapTimer += dt; let progress = this.leapTimer / this.leapDuration;
             if (progress >= 1) {
                 this.state = 'walk'; this.mesh.position.y = 0; if (MathUtils.distanceSq(this, Game.player) < 70*70) Game.player.takeDamage(this.stats.maxDmg * 1.5, this); Game.addTrauma(0.3); 
-            } else { let currentHeight = Math.sin(progress * Math.PI) * 120; this.x += Math.cos(this.leapAngle) * (300 * dt); this.y += Math.sin(this.leapAngle) * (300 * dt); this.mesh.position.set(this.x, currentHeight, this.y); }
+            } else { let currentHeight = Math.sin(progress * Math.PI) * 120; this.push(Math.cos(this.leapAngle), Math.sin(this.leapAngle), 300 * dt); this.mesh.position.set(this.x, currentHeight, this.y); }
             return;
         }
         if (distToTarget < this.aggroRange) {
@@ -1646,7 +1655,7 @@ class Enemy extends Entity {
         else if (this.type === 'mage') { Game.getProjectile().spawn(this.x, this.y, this.angle, 180, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * 1.5, 'enemy', 'enemy_bolt'); this.attackCooldown = 1.2; } 
         else if (this.type === 'fire_demon') { Game.getProjectile().spawn(this.x, this.y, this.angle, 100, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * 3.0, 'enemy', 'enemy_fireball'); this.attackCooldown = 2.5; } 
         else if (this.type === 'pyromancer') { Game.getProjectile().spawn(this.x, this.y, this.angle, 130, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * 1.5, 'enemy', 'fire_shape'); this.attackCooldown = 2.0; } 
-        else if (this.type !== 'leaper') { Game.player.takeDamage(MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg), this); this.x += Math.cos(this.angle) * 18; this.y += Math.sin(this.angle) * 18; this.mesh.position.set(this.x, this.mesh.position.y, this.y); }
+        else if (this.type !== 'leaper') { Game.player.takeDamage(MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg), this); this.push(Math.cos(this.angle), Math.sin(this.angle), 18); }
     }
     takeDamage(amount, source, isCrit = false, canInfect = true) {
         if (source === Game.player && Game.player.modifiers.executioner && (this.stats.hp / this.stats.maxHp) < 0.4) amount *= 1.5;

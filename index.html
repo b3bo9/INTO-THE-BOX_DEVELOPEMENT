@@ -126,6 +126,7 @@
                 </div>
             </div>
         </div>
+        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-gray-600/50 text-[10px] sm:text-xs tracking-widest font-bold uppercase pointer-events-none">b3bo 2026</div>
     </div>
 
     <div id="highScoreScreen" class="absolute inset-0 bg-black/95 z-[250] flex items-center justify-center backdrop-blur-xl pointer-events-auto hidden">
@@ -196,7 +197,7 @@
     <div id="deathScreen" class="absolute inset-0 bg-red-950/90 flex flex-col items-center justify-center z-[100] hidden backdrop-blur-md pointer-events-auto overflow-y-auto">
         <div class="flex flex-col landscape:flex-row landscape:w-[90%] landscape:max-w-[800px] items-center landscape:justify-around gap-4 landscape:gap-8 my-auto p-4">
             <div class="flex flex-col items-center landscape:items-start text-center landscape:text-left">
-                <h1 id="deathTitle" class="text-6xl sm:text-8xl font-black text-red-600 mb-2 drop-shadow-[0_0_30px_rgba(220,38,38,1)] tracking-tighter uppercase">R I P</h1>
+                <h1 id="deathTitle" class="text-5xl sm:text-8xl font-black text-red-600 mb-2 drop-shadow-[0_0_30px_rgba(220,38,38,1)] tracking-tighter uppercase whitespace-nowrap">R I P</h1>
                 <p id="deathSubtitle" class="text-sm sm:text-xl text-red-300 mb-2 font-bold px-2 landscape:px-0"></p>
                 <p id="deathQuote" class="text-xs sm:text-sm text-gray-400 italic mb-4 max-w-md hidden"></p>
             </div>
@@ -497,7 +498,7 @@ const RelicSystem = {
         { id: 'c5', name: "Runica", desc: "+8% Danni base", rarity: "common", apply: (p) => p.modifiers.dmgMult += 0.08 },
         { id: 'r1', name: "Bussola", desc: "Le essenze durano 40% in più", rarity: "rare", apply: (p) => p.modifiers.essenceDurationMult += 0.40 },
         { id: 'r2', name: "Mercurio", desc: "Cooldown Scatto ridotto del 20%", rarity: "rare", apply: (p) => p.modifiers.dashCooldownMult -= 0.20 },
-        { id: 'r3', name: "Scudo", desc: "Immune al primo colpo di ogni piano", rarity: "rare", apply: (p) => p.modifiers.shieldActive = true },
+        { id: 'r3', name: "Scudo", desc: "Immune al primo colpo del piano o respawn", rarity: "rare", apply: (p) => p.modifiers.shieldActive = true },
         { id: 'r4', name: "Avaro", desc: "+30% XP, ma -40% probabilità cure", rarity: "rare", apply: (p) => { p.modifiers.xpMult += 0.30; p.modifiers.healDropMult -= 0.40; } },
         { id: 'e1', name: "Vampiro", desc: "Ogni uccisione ha 4% di curare 1 HP", rarity: "epic", apply: (p) => p.modifiers.vampirism += 0.04 },
         { id: 'e2', name: "Infernale", desc: "Lo scatto lascia fiamme", rarity: "epic", apply: (p) => p.modifiers.fireTrail = true },
@@ -775,12 +776,11 @@ class Hazard {
 
 class Decoy {
     constructor() {
-        this.active = false; this.mat = new THREE.MeshPhongMaterial({color: 0x000000, emissive: 0x00ff00, transparent: true, opacity: 0.6});
-        this.mesh = new THREE.Mesh(SharedGeo.cylinder, this.mat); this.mesh.scale.set(10, 24, 10); this.mesh.visible = false; Game.scene.add(this.mesh);
+        this.active = false;
     }
-    spawn(x, y) { this.active = true; this.x = x; this.y = y; this.life = 3.0; this.radius = 16; this.mesh.position.set(x, 12, y); this.mesh.visible = true; }
-    update(dt) { if (!this.active) return; this.life -= dt; this.mesh.material.opacity = (this.life / 3.0) * 0.6; if(this.life <= 0) this.destroy(); }
-    destroy() { this.active = false; this.mesh.visible = false; }
+    spawn(x, y) { this.active = true; this.x = x; this.y = y; this.life = 3.0; this.radius = 16; }
+    update(dt) { if (!this.active) return; this.life -= dt; if(this.life <= 0) this.destroy(); }
+    destroy() { this.active = false; }
 }
 
 class SpatialHashGrid {
@@ -883,16 +883,18 @@ const UI = {
         if (this.cache.floor !== Game.floor) { this.els.floor.innerText = Game.floor; this.cache.floor = Game.floor; }
         let eLeft = Math.max(0, Game.floorMaxKills - Game.floorKills); if (this.cache.enemiesLeft !== eLeft) { this.els.enemiesLeft.innerText = eLeft; this.cache.enemiesLeft = eLeft; }
         
-        let hasEssence = Game.player.essence !== null;
+        let hasEssence = Game.player.essenceList.length > 0 || Game.player.overdrive;
         if (hasEssence) {
             this.els.essenceHud.classList.remove('opacity-0'); this.els.essenceHud.classList.add('opacity-100');
-            for(let i=1; i<=3; i++) this.els.stacks[i-1].className = `stack-dot ${i <= Game.player.essenceStacks ? 'active ' + Game.player.essence : ''}`;
-            let baseDuration = (Game.player.overdrive ? 5.0 : 8.0) * Game.player.modifiers.essenceDurationMult;
-            this.els.essenceTimer.style.width = `${(Game.player.essenceTimer / baseDuration) * 100}%`;
             if (Game.player.overdrive) {
-                this.els.overdriveText.classList.remove('hidden'); this.els.overdriveText.innerText = ESSENCE_NAMES[Game.player.essence];
-                this.els.overdriveText.style.color = '#' + ESSENCE_COLORS[Game.player.essence].toString(16).padStart(6,'0');
-            } else { this.els.overdriveText.classList.add('hidden'); }
+                for(let i=0; i<3; i++) this.els.stacks[i].className = `stack-dot active ${Game.player.essence}`;
+                this.els.overdriveText.classList.remove('hidden'); this.els.overdriveText.innerText = ESSENCE_NAMES[Game.player.essence]; this.els.overdriveText.style.color = '#' + ESSENCE_COLORS[Game.player.essence].toString(16).padStart(6,'0');
+            } else {
+                for(let i=0; i<3; i++) { if (i < Game.player.essenceList.length) this.els.stacks[i].className = `stack-dot active ${Game.player.essenceList[i]}`; else this.els.stacks[i].className = `stack-dot`; }
+                this.els.overdriveText.classList.add('hidden');
+            }
+            let maxTimer = Game.player.overdrive ? (5.0 * Game.player.modifiers.essenceDurationMult) : (8.0 * Game.player.modifiers.essenceDurationMult);
+            this.els.essenceTimer.style.width = `${(Game.player.essenceTimer / maxTimer) * 100}%`;
         } else { this.els.essenceHud.classList.remove('opacity-100'); this.els.essenceHud.classList.add('opacity-0'); }
 
         if (Game.ultimateActive) {
@@ -1100,7 +1102,9 @@ const Game = {
             let boss = new BossEnemy(cx, cy, this.floor); this.enemies.push(boss); this.enemyGrid.insert(boss);
             AudioEngine.playBossMusic(); setTimeout(() => Game.getFloatingText().spawn(this.player.x, this.player.y, "ATTENZIONE: BOSS!", '#FF2244', 50, true), 100);
         } else {
-            this.floorMaxKills = 20 + (this.floor * 10); this.floorKills = 0;
+            this.floorMaxKills = 20 + (this.floor * 10); 
+            for(let i=0; i<this.enemies.length; i++) { if(this.enemies[i].type === 'crystal') this.floorMaxKills++; }
+            this.floorKills = 0;
             let pos = this.map.getRandomFloorTile();
             if(!this.player) { this.player = new Player(pos.x * TILE_SIZE + TILE_SIZE/2, pos.y * TILE_SIZE + TILE_SIZE/2); } 
             else { this.player.x = pos.x * TILE_SIZE + TILE_SIZE/2; this.player.y = pos.y * TILE_SIZE + TILE_SIZE/2; this.player.mesh.position.set(this.player.x, 0, this.player.y); Game.scene.add(this.player.mesh); }
@@ -1346,7 +1350,7 @@ class Player extends Entity {
         super(x, y, 16, 200); this.baseSpeed = 200; this.level = 1; this.xp = 0; this.xpNeeded = 100;
         this.attackTimer = 0; this.baseAttackSpeed = 3.5; this.isAttacking = false; this.attackSwing = 0;
         this.dashTimer = 0; this.isDashing = false; this.dashCooldown = 0; this.stats = { hp: 100, maxHp: 100, minDmg: 8, maxDmg: 15 };
-        this.essence = null; this.essenceStacks = 0; this.essenceTimer = 0; this.overdrive = false; this.invincibilityTimer = 0;
+        this.essenceList = []; this.essence = null; this.essenceTimer = 0; this.overdrive = false; this.invincibilityTimer = 0;
         this.modifiers = { critChance: 0.05, dmgMult: 1.0, speedMult: 1.0, atkSpeedMult: 1.0, dashCooldownMult: 1.0, vampirism: 0, fireTrail: false, ascensionDurationAdd: 0, dmgTakenMult: 1.0, xpMult: 1.0, healDropMult: 1.0, executioner: false, shieldActive: false, shieldConsumed: false, essenceDurationMult: 1.0, critDmgMult: 1.0 };
         this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}), new THREE.MeshPhongMaterial({color: 0x00ffff, emissive: 0x00ffff}));
         this.mesh = this.modelParts.group; this.staffGemMat = this.modelParts.staffGem.material;
@@ -1357,58 +1361,55 @@ class Player extends Entity {
         this.mesh.traverse(c => { if(c.material && c.material.emissive && c !== this.modelParts.staffGem) this.flashMats.push(c.material); });
     }
     collectEssence(type) {
-        if (this.essence === type) { if (this.essenceStacks < 3) this.essenceStacks++; } 
-        else if (this.essence && this.essenceStacks > 0 && !this.overdrive) { this.triggerElementalReaction(this.essence, type); this.essence = null; this.essenceStacks = 0; this.updateAppearance(); return; } 
-        else { this.essence = type; this.essenceStacks = 1; this.overdrive = false; }
-        Game.addUltimateCharge(10); if (this.essenceStacks === 3 && !this.overdrive) this.triggerOverdrive();
-        this.essenceTimer = (this.overdrive ? 5.0 : 8.0) * this.modifiers.essenceDurationMult; this.updateAppearance();
-        AudioEngine.playCollect();
+        if (this.overdrive) { this.overdrive = false; this.essenceList = []; }
+        this.essenceList.push(type); this.essence = type;
+        Game.addUltimateCharge(10);
+        this.essenceTimer = 8.0 * this.modifiers.essenceDurationMult;
+        this.updateAppearance(); AudioEngine.playCollect();
+        if (this.essenceList.length === 3) this.evaluateCombinations();
     }
-    triggerElementalReaction(color1, color2) {
-        Game.addTrauma(1.5); let comboName = ""; let color = '#ffffff';
-        if ((color1 === 'red' && color2 === 'blue') || (color1 === 'blue' && color2 === 'red')) {
-            comboName = "SHOCK TERMICO!"; color = "#ddaaff"; 
-            let shockRange = 250;
-            let nearby = Game.enemyGrid.findNearby(this, shockRange);
-            nearby.forEach(e => {
-                if (MathUtils.distanceSq(this, e) < shockRange * shockRange) {
-                    e.slowedTimer = 4.0; e.takeDamage(this.stats.maxDmg * 2 * this.modifiers.dmgMult, this, true, false);
-                }
-            });
-            for(let i=0; i<40; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'spark'); AudioEngine.playShoot('chain_lightning');
-        } else if ((color1 === 'red' && color2 === 'green') || (color1 === 'green' && color2 === 'red')) {
-            comboName = "ESPLOSIONE TOSSICA!"; color = "#33FF00"; 
-            let poisonRange = 180;
-            let nearby = Game.enemyGrid.findNearby(this, poisonRange);
-            nearby.forEach(e => {
-                if (MathUtils.distanceSq(this, e) < poisonRange*poisonRange) {
-                    e.takeDamage(this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, this, true, true);
-                    e.infected = true; e.slowedTimer = 3.0;
-                }
-            });
-            let pCount = AppSettings.lowGraphics ? 15 : 40;
-            for(let i=0; i<pCount; i++) {
-                let a = (Math.PI * 2 / pCount) * i;
-                Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'trail', a); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'flame', a);
+    evaluateCombinations() {
+        let counts = { red: 0, blue: 0, green: 0 };
+        this.essenceList.forEach(e => counts[e]++);
+        
+        if (counts.red === 3) { this.essence = 'red'; this.triggerOverdrive(); } 
+        else if (counts.blue === 3) { this.essence = 'blue'; this.triggerOverdrive(); } 
+        else if (counts.green === 3) { this.essence = 'green'; this.triggerOverdrive(); } 
+        else {
+            Game.addTrauma(1.5); let comboName = ""; let color = '#ffffff';
+            if (counts.red > 0 && counts.blue > 0 && counts.green === 0) {
+                comboName = "SHOCK TERMICO!"; color = "#ddaaff"; 
+                let shockRange = 250; let nearby = Game.enemyGrid.findNearby(this, shockRange);
+                nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < shockRange * shockRange) { e.slowedTimer = 4.0; e.takeDamage(this.stats.maxDmg * 2 * this.modifiers.dmgMult, this, true, false); } });
+                for(let i=0; i<40; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'spark'); AudioEngine.playShoot('chain_lightning');
+            } else if (counts.red > 0 && counts.green > 0 && counts.blue === 0) {
+                comboName = "ESPLOSIONE TOSSICA!"; color = "#33FF00"; 
+                let poisonRange = 180; let nearby = Game.enemyGrid.findNearby(this, poisonRange);
+                nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < poisonRange*poisonRange) { e.takeDamage(this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, this, true, true); e.infected = true; e.slowedTimer = 3.0; } });
+                let pCount = AppSettings.lowGraphics ? 15 : 40;
+                for(let i=0; i<pCount; i++) { let a = (Math.PI * 2 / pCount) * i; Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'trail', a); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'flame', a); }
+                AudioEngine.playShoot('explosive_arrow');
+            } else if (counts.blue > 0 && counts.green > 0 && counts.red === 0) {
+                comboName = "VORTICE!"; color = "#00ffaa"; 
+                let vortexRange = 220; let nearby = Game.enemyGrid.findNearby(this, vortexRange);
+                nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < vortexRange*vortexRange) { let ang = Math.atan2(this.y - e.y, this.x - e.x); e.x += Math.cos(ang) * 120; e.y += Math.sin(ang) * 120; e.takeDamage(this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, this, true, false); } }); 
+                AudioEngine.playShoot('chain_lightning');
+            } else if (counts.red === 1 && counts.blue === 1 && counts.green === 1) {
+                comboName = "CAOS ELEMENTALE!"; color = "#ffffff"; Game.addTrauma(2.0);
+                let range = 300; let nearby = Game.enemyGrid.findNearby(this, range);
+                nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < range * range) { e.slowedTimer = 4.0; e.infected = true; e.takeDamage(this.stats.maxDmg * 3.5 * this.modifiers.dmgMult, this, true, true); } });
+                let pCount = AppSettings.lowGraphics ? 20 : 60;
+                for(let i=0; i<pCount; i++) { let mat = [SharedMat.spriteRed, SharedMat.spriteBlue, SharedMat.spriteGreen][i % 3]; Game.getParticle().spawn(this.x, 20, this.y, mat, 'trail'); }
+                AudioEngine.playShoot('explosive_arrow'); AudioEngine.playShoot('chain_lightning');
+                this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + 10); Game.getFloatingText().spawn(this.x, this.y + 20, "+10 HP", '#ff0000', 25);
             }
-            AudioEngine.playShoot('explosive_arrow');
-        } else if ((color1 === 'blue' && color2 === 'green') || (color1 === 'green' && color2 === 'blue')) {
-            comboName = "VORTICE!"; color = "#00ffaa"; 
-            let vortexRange = 220;
-            let nearby = Game.enemyGrid.findNearby(this, vortexRange);
-            nearby.forEach(e => { 
-                if (MathUtils.distanceSq(this, e) < vortexRange*vortexRange) {
-                    let ang = Math.atan2(this.y - e.y, this.x - e.x); 
-                    e.x += Math.cos(ang) * 120; e.y += Math.sin(ang) * 120; 
-                    e.takeDamage(this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, this, true, false); 
-                }
-            }); 
-            AudioEngine.playShoot('chain_lightning');
+            Game.getFloatingText().spawn(this.x, this.y, comboName, color, 60, true);
+            this.essenceList = []; this.essence = null; this.updateAppearance();
         }
-        Game.getFloatingText().spawn(this.x, this.y, comboName, color, 60, true);
     }
     triggerOverdrive() {
         this.overdrive = true; Game.hitStop = 0.2; Game.addTrauma(1.0); 
+        this.essenceTimer = 5.0 * this.modifiers.essenceDurationMult;
         Game.getFloatingText().spawn(this.x, this.y, ESSENCE_NAMES[this.essence] + "!", '#' + ESSENCE_COLORS[this.essence].toString(16).padStart(6, '0'), 40, true);
         let mat = this.essence === 'red' ? SharedMat.spriteRed : (this.essence === 'blue' ? SharedMat.spriteBlue : SharedMat.spriteGreen);
         let pCount = AppSettings.lowGraphics ? 4 : (isTouchDevice ? 10 : 30); for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, mat, 'trail');
@@ -1431,7 +1432,7 @@ class Player extends Entity {
             if (this.invincibilityTimer <= 0) { this.mesh.children.forEach(child => child.visible = true); }
         }
         if (!Game.ultimateActive && this.modelParts.body.material.emissive.getHex() === 0x00DDFF) this.updateAppearance();
-        if (this.essence) { this.essenceTimer -= dt; if (this.essenceTimer <= 0) { this.essence = null; this.essenceStacks = 0; this.overdrive = false; this.updateAppearance(); } }
+        if (this.essenceList.length > 0 || this.overdrive) { this.essenceTimer -= dt; if (this.essenceTimer <= 0) { this.essenceList = []; this.essence = null; this.overdrive = false; this.updateAppearance(); } }
         if (this.dashCooldown > 0) this.dashCooldown -= dt;
         if (Game.inputs.right.active) { this.angle = Math.atan2(Game.inputs.right.y, Game.inputs.right.x); } else if (!isTouchDevice || Game.mouse.leftDown) { this.angle = Math.atan2(Game.mouse.worldY - this.y, Game.mouse.worldX - this.x); }
         this.mesh.rotation.y = -this.angle + Math.PI/2;
@@ -1627,7 +1628,7 @@ class Enemy extends Entity {
             return;
         }
         
-        AudioEngine.playEnemyDeath();
+        AudioEngine.playEnemyDeath(this.type);
 
         Game.player.gainXp(this.xpValue);
         let pCount = AppSettings.lowGraphics ? 2 : (isTouchDevice ? 3 : 15); for(let i=0; i< pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
@@ -1642,7 +1643,13 @@ class Enemy extends Entity {
             for(let i=0; i<3; i++) { let p = Game.getProjectile(); p.spawn(this.x, this.y, (Math.PI*2/3)*i, 600, Game.player.stats.maxDmg * 2.5 * Game.player.modifiers.dmgMult, 'player', 'homing_arrow'); p.canInfect = false; }
             Game.getHazard().spawn(this.x, this.y, 40, 3.0, Game.player.stats.maxDmg * Game.player.modifiers.dmgMult, ESSENCE_COLORS.green, 'poison');
         }
-        let lifeChance = 0.02 * Game.player.modifiers.healDropMult;
+        
+        let baseLifeChance = 0.015; // Normale (1.5%)
+        if (Game.difficultyMult >= 1.6) baseLifeChance = 0.005; // Inferno (0.5%)
+        else if (Game.difficultyMult >= 1.0) baseLifeChance = 0.01; // Difficile (1.0%)
+        
+        let lifeChance = baseLifeChance * Game.player.modifiers.healDropMult;
+        
         if (Math.random() < lifeChance) { Game.getExtraLife().spawn(this.x, this.y); } 
         else if (Math.random() < 0.25 + (Game.combo * 0.005)) { let types = ['red', 'blue', 'green']; Game.getEssence().spawn(this.x, this.y, types[Math.floor(Math.random() * types.length)]); }
     }
@@ -1847,6 +1854,7 @@ function respawnPlayer() {
     }
     Game.player.x = pos.x * TILE_SIZE + TILE_SIZE/2; Game.player.y = pos.y * TILE_SIZE + TILE_SIZE/2;
     Game.player.mesh.position.set(Game.player.x, 0, Game.player.y); Game.player.stats.hp = Game.player.stats.maxHp; Game.player.dead = false; Game.player.invincibilityTimer = 3.0; 
+    if (Game.player.modifiers.shieldActive) Game.player.modifiers.shieldConsumed = false;
     Game.player.mesh.children.forEach(child => child.visible = true); Game.snapCamera(); Game.state = 'PLAYING';
     Game.getFloatingText().spawn(Game.player.x, Game.player.y, "RESPAWN!", '#ff66bb', 40, true);
 }

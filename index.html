@@ -47,6 +47,12 @@
         .dot-glow-blue { animation: pulse-glow-blue 2s infinite ease-in-out 0.6s; }
         .dot-glow-green { animation: pulse-glow-green 2s infinite ease-in-out 1.2s; }
         
+        @keyframes ult-glow-anim {
+            0%, 100% { box-shadow: 0 0 8px rgba(0, 221, 255, 0.3); border-color: #4b5563; }
+            50% { box-shadow: 0 0 20px rgba(0, 221, 255, 1); border-color: #00DDFF; }
+        }
+        .ult-ready { animation: ult-glow-anim 1.5s infinite ease-in-out !important; }
+
         #vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.8) 110%); box-shadow: inset 0 0 150px rgba(0,0,0,0.9); z-index: 5; pointer-events: none; mix-blend-mode: multiply; transition: opacity 0.5s; }
         .relic-card { transition: all 0.2s; cursor: pointer; } .relic-card:hover { transform: scale(1.05) translateY(-5px); } .relic-card:active { transform: scale(0.95); }
         .rarity-common { border-color: #9ca3af; box-shadow: 0 0 15px rgba(156, 163, 175, 0.2); } .rarity-rare { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
@@ -167,7 +173,7 @@
                 </div>
                 <div>
                     <div class="flex justify-between items-end text-[9px] sm:text-xs font-bold text-cyan-300 uppercase mb-0.5"><span class="tracking-widest">Ascensione</span><span id="ultimate-ready-text" class="text-white font-black animate-pulse hidden drop-shadow-[0_0_5px_rgba(0,255,255,0.8)]">PRONTA!</span></div>
-                    <div class="w-full h-1.5 sm:h-3 bg-black border border-gray-600 rounded-full overflow-hidden shadow-[0_0_8px_rgba(0,255,255,0.2)]"><div id="ultimate-bar-fill" class="h-full w-0 bg-gradient-to-r from-fuchsia-600 to-cyan-400 transition-all duration-200"></div></div>
+                    <div id="ultimate-bar-container" class="w-full h-1.5 sm:h-3 bg-black border border-gray-600 rounded-full overflow-hidden shadow-[0_0_8px_rgba(0,255,255,0.2)] transition-all duration-300"><div id="ultimate-bar-fill" class="h-full w-0 bg-gradient-to-r from-fuchsia-600 to-cyan-400 transition-all duration-200"></div></div>
                 </div>
             </div>
             <div class="mt-1 bg-red-950/50 border border-red-900 rounded p-1 sm:p-2 text-center flex justify-center items-center shadow-inner">
@@ -253,7 +259,6 @@ const AudioEngine = {
             if(this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
         }
     },
-    // Crea un buffer di rumore bianco da riusare per impatti ed esplosioni
     createNoiseBuffer() {
         let bufferSize = this.ctx.sampleRate * 2; 
         this.noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
@@ -268,7 +273,7 @@ const AudioEngine = {
         let filter = this.ctx.createBiquadFilter();
         if (type === 'low') { filter.type = 'lowpass'; filter.frequency.value = 1000; }
         else if (type === 'high') { filter.type = 'highpass'; filter.frequency.value = 2000; }
-        else { filter.type = 'lowpass'; filter.frequency.value = 8000; } // full
+        else { filter.type = 'lowpass'; filter.frequency.value = 8000; }
 
         let gain = this.ctx.createGain();
         gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
@@ -281,21 +286,18 @@ const AudioEngine = {
         if (!this.ctx || this.muted) return; if (this.ctx.state === 'suspended') this.ctx.resume();
         let t = this.ctx.currentTime;
         if (type === 'enemy') {
-            // Squish/Click sound
             let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
             osc.type = 'triangle'; osc.frequency.setValueAtTime(800, t); osc.frequency.exponentialRampToValueAtTime(200, t + 0.1);
             gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
             osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 0.1);
             this.playNoise(0.05, 'high');
         } else if (type === 'crit') {
-            // Sharp metallic snap
             let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
             osc.type = 'square'; osc.frequency.setValueAtTime(1200, t); osc.frequency.exponentialRampToValueAtTime(100, t + 0.15);
             gain.gain.setValueAtTime(0.3, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
             osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 0.15);
             this.playNoise(0.1, 'high');
         } else if (type === 'player') {
-            // Deep thud
             let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
             osc.type = 'sine'; osc.frequency.setValueAtTime(150, t); osc.frequency.exponentialRampToValueAtTime(40, t + 0.2);
             gain.gain.setValueAtTime(0.6, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
@@ -322,7 +324,7 @@ const AudioEngine = {
     },
     playLevelUp() {
         if (!this.ctx || this.muted) return;
-        const notes = [440, 554.37, 659.25, 880]; // A major arpeggio
+        const notes = [440, 554.37, 659.25, 880];
         let t = this.ctx.currentTime;
         notes.forEach((freq, i) => {
             let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
@@ -334,12 +336,18 @@ const AudioEngine = {
     },
     playPerfectDodge() {
         if (!this.ctx || this.muted) return;
-        let t = this.ctx.currentTime;
+        let t = this.ctx.currentTime; let dur = 0.35;
+        if (this.noiseBuffer) {
+            let noise = this.ctx.createBufferSource(); noise.buffer = this.noiseBuffer;
+            let filter = this.ctx.createBiquadFilter(); filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(400, t); filter.frequency.exponentialRampToValueAtTime(1500, t + dur*0.3); filter.frequency.exponentialRampToValueAtTime(400, t + dur);
+            let nGain = this.ctx.createGain(); nGain.gain.setValueAtTime(0, t); nGain.gain.linearRampToValueAtTime(0.5, t + dur*0.2); nGain.gain.exponentialRampToValueAtTime(0.01, t + dur);
+            noise.connect(filter); filter.connect(nGain); nGain.connect(this.ctx.destination); noise.start(t); noise.stop(t + dur);
+        }
         let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
-        osc.type = 'sine'; osc.frequency.setValueAtTime(800, t); osc.frequency.exponentialRampToValueAtTime(2000, t + 0.2);
-        gain.gain.setValueAtTime(0.3, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
-        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 0.4);
-        this.playNoise(0.3, 'high');
+        osc.type = 'sine'; osc.frequency.setValueAtTime(250, t); osc.frequency.exponentialRampToValueAtTime(50, t + dur);
+        gain.gain.setValueAtTime(0, t); gain.gain.linearRampToValueAtTime(0.4, t + dur*0.2); gain.gain.exponentialRampToValueAtTime(0.01, t + dur);
+        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + dur);
     },
     playHover() {
         if (!this.ctx || this.ctx.state === 'suspended' || this.muted) return;
@@ -389,7 +397,6 @@ const AudioEngine = {
             let osc2 = this.ctx.createOscillator(); osc2.type = 'square'; osc2.frequency.setValueAtTime(40, t); osc2.connect(gain); osc2.start(t); osc2.stop(t + 0.1);
             this.playNoise(0.15, 'full');
         } else { 
-            // Migliorato: "Thwip" più netto per la freccia base
             osc.type = 'triangle'; osc.frequency.setValueAtTime(1200, t); osc.frequency.exponentialRampToValueAtTime(100, t + 0.08);
             gain.gain.setValueAtTime(0.3, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.08); osc.start(t); osc.stop(t + 0.08);
             this.playNoise(0.05, 'high');
@@ -686,6 +693,7 @@ class Essence {
     }
     spawn(x, y, type) {
         this.active = true; this.x = x; this.y = y; this.type = type; let color = ESSENCE_COLORS[type]; 
+        this.life = 15.0;
         this.coreMat.color.setHex(color); this.haloMat.color.setHex(color);
         if(type === 'red') this.glow.material = SharedMat.spriteRed; else if(type === 'blue') this.glow.material = SharedMat.spriteBlue; else this.glow.material = SharedMat.spriteGreen;
         this.group.position.set(x, 10, y); this.group.visible = true;
@@ -701,7 +709,7 @@ class ExtraLife {
         this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(30, 30, 1);
         this.group.add(core); this.group.add(this.glow); this.group.visible = false; Game.scene.add(this.group);
     }
-    spawn(x, y) { this.active = true; this.x = x; this.y = y; this.group.position.set(x, 10, y); this.group.visible = true; }
+    spawn(x, y) { this.active = true; this.x = x; this.y = y; this.life = 15.0; this.group.position.set(x, 10, y); this.group.visible = true; }
     destroy() { this.active = false; this.group.visible = false; }
 }
 
@@ -859,7 +867,7 @@ const UI = {
         this.els.floor = document.getElementById('ui-floor'); this.els.enemiesLeft = document.getElementById('ui-enemies-left');
         this.els.enemyLabel = document.getElementById('ui-enemy-label'); this.els.essenceHud = document.getElementById('essence-hud'); this.els.essenceTimer = document.getElementById('essence-timer');
         this.els.overdriveText = document.getElementById('overdrive-text'); this.els.stacks = [document.getElementById('stack-1'), document.getElementById('stack-2'), document.getElementById('stack-3')];
-        this.els.ultFill = document.getElementById('ultimate-bar-fill'); this.els.ultText = document.getElementById('ultimate-ready-text');
+        this.els.ultFill = document.getElementById('ultimate-bar-fill'); this.els.ultText = document.getElementById('ultimate-ready-text'); this.els.ultContainer = document.getElementById('ultimate-bar-container');
         this.els.comboContainer = document.getElementById('combo-container'); this.els.comboText = document.getElementById('combo-text');
         this.els.comboBar = document.getElementById('combo-bar'); this.els.btnUlt = document.getElementById('btn-ult');
     },
@@ -891,6 +899,7 @@ const UI = {
             let uPct = `${(Game.ultimateTimer / (10.0 + Game.player.modifiers.ascensionDurationAdd)) * 100}%`;
             if(this.cache.ultCharge !== uPct || !this.cache.ultActive) {
                 this.els.ultFill.style.width = uPct; this.els.ultFill.style.background = '#ffffff'; this.els.ultText.classList.add('hidden');
+                this.els.ultContainer.classList.remove('ult-ready');
                 if(isTouchDevice && this.els.btnUlt) { this.els.btnUlt.classList.add('opacity-50', 'scale-75', 'bg-fuchsia-500/40', 'border-fuchsia-400', 'shadow-[0_0_15px_rgba(255,0,255,0.6)]'); this.els.btnUlt.classList.remove('animate-pulse', 'bg-cyan-500/60', 'border-cyan-300', 'shadow-[0_0_25px_rgba(0,255,255,0.9)]', 'opacity-100', 'scale-100'); }
                 this.cache.ultCharge = uPct; this.cache.ultActive = true;
             }
@@ -900,9 +909,11 @@ const UI = {
                 this.els.ultFill.style.width = uPct; this.els.ultFill.style.background = ''; 
                 if (Game.ultimateCharge >= 100) {
                     this.els.ultText.classList.remove('hidden');
+                    this.els.ultContainer.classList.add('ult-ready');
                     if(isTouchDevice && this.els.btnUlt) { this.els.btnUlt.classList.remove('opacity-50', 'scale-75', 'bg-fuchsia-500/40', 'border-fuchsia-400', 'shadow-[0_0_15px_rgba(255,0,255,0.6)]'); this.els.btnUlt.classList.add('animate-pulse', 'bg-cyan-500/60', 'border-cyan-300', 'shadow-[0_0_25px_rgba(0,255,255,0.9)]', 'opacity-100', 'scale-100'); }
                 } else {
                     this.els.ultText.classList.add('hidden');
+                    this.els.ultContainer.classList.remove('ult-ready');
                     if(isTouchDevice && this.els.btnUlt) { this.els.btnUlt.classList.add('opacity-50', 'scale-75', 'bg-fuchsia-500/40', 'border-fuchsia-400', 'shadow-[0_0_15px_rgba(255,0,255,0.6)]'); this.els.btnUlt.classList.remove('animate-pulse', 'bg-cyan-500/60', 'border-cyan-300', 'shadow-[0_0_25px_rgba(0,255,255,0.9)]', 'opacity-100', 'scale-100'); }
                 }
                 this.cache.ultCharge = uPct; this.cache.ultActive = false;
@@ -917,7 +928,9 @@ const UI = {
         if (isCombo) this.els.comboBar.style.width = `${(Game.comboTimer / Game.comboMaxTime) * 100}%`;
     },
     triggerComboAnim(combo) {
-        this.els.comboText.innerText = `COMBO x${combo}!`; let scale = isTouchDevice ? (1 + Math.min(combo * 0.03, 0.4)) : (1 + Math.min(combo * 0.05, 1.0)); this.els.comboText.style.transform = `scale(${scale})`;
+        this.els.comboText.innerText = `COMBO x${combo}!`; 
+        let scale = isTouchDevice ? (1 + Math.min(combo * 0.03, 0.4)) : (1 + Math.min(combo * 0.015, 0.4)); 
+        this.els.comboText.style.transform = `scale(${scale})`;
         let shadow = "0 0 15px #ffaa00, 0 0 5px #ff0000, 2px 2px 0 #000"; if (!isTouchDevice) shadow = "0 0 30px #ffaa00, 0 0 10px #ff0000, 4px 4px 0 #000";
         if(combo > 50) shadow = isTouchDevice ? "0 0 20px #ff00ff, 0 0 10px #ff0000, 2px 2px 0 #000" : "0 0 30px #ff00ff, 0 0 10px #ff0000, 4px 4px 0 #000";
         else if(combo > 20) shadow = isTouchDevice ? "0 0 20px #ff0000, 0 0 10px #ff0000, 2px 2px 0 #000" : "0 0 30px #ff0000, 0 0 10px #ff0000, 4px 4px 0 #000";
@@ -1132,6 +1145,11 @@ const Game = {
         for(let i = 0, len = this.essences.length; i < len; i++) {
             let e = this.essences[i];
             if(e.active) {
+                e.life -= dt;
+                if (e.life <= 0) { e.destroy(); continue; }
+                if (e.life < 3.0) e.group.visible = Math.floor(e.life * 8) % 2 === 0;
+                else e.group.visible = true;
+
                 e.group.rotation.y += dt; e.group.position.y = 10 + Math.sin(this.frameCount * 0.05) * 5;
                 if (MathUtils.distanceSq(this.player, e) < (this.player.radius + 20)**2) { this.player.collectEssence(e.type); e.destroy(); }
             }
@@ -1140,6 +1158,11 @@ const Game = {
         for(let i = 0, len = this.extraLivesDrops.length; i < len; i++) {
             let el = this.extraLivesDrops[i];
             if(el.active) {
+                el.life -= dt;
+                if (el.life <= 0) { el.destroy(); continue; }
+                if (el.life < 3.0) el.group.visible = Math.floor(el.life * 8) % 2 === 0;
+                else el.group.visible = true;
+
                 el.group.rotation.y += dt * 2; el.group.position.y = 10 + Math.sin(this.frameCount * 0.1) * 5;
                 if (MathUtils.distanceSq(this.player, el) < (this.player.radius + 20)**2) { this.lives++; el.destroy(); AudioEngine.playCollect(); this.getFloatingText().spawn(this.player.x, this.player.y, "VITA EXTRA!", '#ffffff', 30, true); }
             }
@@ -1302,7 +1325,6 @@ class Entity {
     takeDamage(amount, source, isCrit = false) {
         if (this.dead) return; this.stats.hp -= amount;
         
-        // SUONI DI IMPATTO
         if (source === Game.player) {
             AudioEngine.playHit(isCrit ? 'crit' : 'enemy');
         }
@@ -1343,17 +1365,24 @@ class Player extends Entity {
         AudioEngine.playCollect();
     }
     triggerElementalReaction(color1, color2) {
-        Game.addTrauma(1.5); Game.hitStop = 0.2; let comboName = ""; let color = '#ffffff';
+        Game.addTrauma(1.5); let comboName = ""; let color = '#ffffff';
         if ((color1 === 'red' && color2 === 'blue') || (color1 === 'blue' && color2 === 'red')) {
-            comboName = "SHOCK TERMICO!"; color = "#ddaaff"; Game.enemies.forEach(e => e.slowedTimer = 4.0);
+            comboName = "SHOCK TERMICO!"; color = "#ddaaff"; 
+            let shockRange = 250;
+            let nearby = Game.enemyGrid.findNearby(this, shockRange);
+            nearby.forEach(e => {
+                if (MathUtils.distanceSq(this, e) < shockRange * shockRange) {
+                    e.slowedTimer = 4.0; e.takeDamage(this.stats.maxDmg * 2 * this.modifiers.dmgMult, this, true, false);
+                }
+            });
             for(let i=0; i<40; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'spark'); AudioEngine.playShoot('chain_lightning');
         } else if ((color1 === 'red' && color2 === 'green') || (color1 === 'green' && color2 === 'red')) {
             comboName = "ESPLOSIONE TOSSICA!"; color = "#33FF00"; 
-            let poisonRange = 350;
+            let poisonRange = 180;
             let nearby = Game.enemyGrid.findNearby(this, poisonRange);
             nearby.forEach(e => {
                 if (MathUtils.distanceSq(this, e) < poisonRange*poisonRange) {
-                    e.takeDamage(this.stats.maxDmg * 3 * this.modifiers.dmgMult, this, true, true);
+                    e.takeDamage(this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, this, true, true);
                     e.infected = true; e.slowedTimer = 3.0;
                 }
             });
@@ -1364,8 +1393,17 @@ class Player extends Entity {
             }
             AudioEngine.playShoot('explosive_arrow');
         } else if ((color1 === 'blue' && color2 === 'green') || (color1 === 'green' && color2 === 'blue')) {
-            comboName = "VORTICE!"; color = "#00ffaa"; let nearby = Game.enemyGrid.findNearby(this, 400);
-            nearby.forEach(e => { let ang = Math.atan2(this.y - e.y, this.x - e.x); e.x += Math.cos(ang) * 150; e.y += Math.sin(ang) * 150; e.takeDamage(this.stats.maxDmg * 3, this, true, false); }); AudioEngine.playShoot('chain_lightning');
+            comboName = "VORTICE!"; color = "#00ffaa"; 
+            let vortexRange = 220;
+            let nearby = Game.enemyGrid.findNearby(this, vortexRange);
+            nearby.forEach(e => { 
+                if (MathUtils.distanceSq(this, e) < vortexRange*vortexRange) {
+                    let ang = Math.atan2(this.y - e.y, this.x - e.x); 
+                    e.x += Math.cos(ang) * 120; e.y += Math.sin(ang) * 120; 
+                    e.takeDamage(this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, this, true, false); 
+                }
+            }); 
+            AudioEngine.playShoot('chain_lightning');
         }
         Game.getFloatingText().spawn(this.x, this.y, comboName, color, 60, true);
     }

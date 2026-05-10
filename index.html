@@ -114,7 +114,7 @@
                 </div>
                 <div class="flex gap-2 w-full">
                     <button id="btn-toggle-audio" onclick="AudioEngine.toggleMute()" onmouseenter="AudioEngine.playHover()" class="flex-1 bg-gray-900/50 border border-gray-800 text-gray-400 py-2 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all hover:bg-gray-800 hover:text-white uppercase tracking-widest flex items-center justify-center gap-1.5"><i class="fa-solid fa-volume-high"></i> Audio: ON</button>
-                    <button id="btn-toggle-gfx" onclick="AppSettings.toggleGraphics()" onmouseenter="AudioEngine.playHover()" class="flex-1 bg-gray-900/50 border border-gray-800 text-gray-400 py-2 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all hover:bg-gray-800 hover:text-white uppercase tracking-widest flex items-center justify-center gap-1.5"><i class="fa-solid fa-wand-magic-sparkles"></i> QUALITÀ</button>
+                    <button id="btn-toggle-gfx" onclick="AppSettings.toggleGraphics()" onmouseenter="AudioEngine.playHover()" class="flex-1 bg-gray-900/50 border border-gray-800 text-green-400 py-2 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all hover:bg-gray-800 uppercase tracking-widest flex items-center justify-center gap-1.5"><i class="fa-solid fa-scale-balanced mr-1"></i> BILANCIATO</button>
                 </div>
                 <div class="flex flex-col gap-2 mt-1 mb-4 sm:mb-2 landscape:mb-0">
                     <button onmouseenter="AudioEngine.playHover()" onclick="AudioEngine.playClick(); startGameFromMenu()" class="w-full bg-gradient-to-b from-red-700 to-red-900 hover:from-red-600 hover:to-red-800 text-white font-black py-4 landscape:py-3 rounded-xl text-xl sm:text-2xl landscape:text-xl shadow-[0_0_20px_rgba(220,38,38,0.4)] hover:shadow-[0_0_35px_rgba(220,38,38,0.7)] border border-red-500/30 hover:border-red-400/60 transition-all transform hover:-translate-y-0.5 active:scale-95 active:translate-y-0 uppercase tracking-[0.2em] flex justify-center items-center gap-3">
@@ -224,21 +224,37 @@
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
 const AppSettings = {
-    lowGraphics: false,
+    mode: 1, // 0: Performance, 1: Bilanciato, 2: Ultra
+    get isLow() { return this.mode === 0; },
+    get shadowsEnabled() { return this.mode === 2 || (this.mode === 1 && !isTouchDevice); },
     toggleGraphics() {
-        this.lowGraphics = !this.lowGraphics;
+        this.mode = (this.mode + 1) % 3;
         const btn = document.getElementById('btn-toggle-gfx');
         const vignette = document.getElementById('vignette');
-        if (this.lowGraphics) {
+
+        if (this.mode === 0) {
             btn.innerHTML = '<i class="fa-solid fa-mobile-screen-button mr-1"></i> PERFORMANCE';
-            btn.classList.replace('text-gray-300', 'text-yellow-500'); vignette.style.opacity = '0';
-            if(Game.renderer) Game.renderer.shadowMap.enabled = false;
+            btn.classList.remove('text-green-400', 'text-cyan-400');
+            btn.classList.add('text-yellow-500');
+            vignette.style.opacity = '0';
+        } else if (this.mode === 1) {
+            btn.innerHTML = '<i class="fa-solid fa-scale-balanced mr-1"></i> BILANCIATO';
+            btn.classList.remove('text-yellow-500', 'text-cyan-400');
+            btn.classList.add('text-green-400');
+            vignette.style.opacity = '1';
         } else {
-            btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-1"></i> QUALITÀ';
-            btn.classList.replace('text-yellow-500', 'text-gray-300'); vignette.style.opacity = '1';
-            if(Game.renderer) Game.renderer.shadowMap.enabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-1"></i> ULTRA';
+            btn.classList.remove('text-yellow-500', 'text-green-400');
+            btn.classList.add('text-cyan-400');
+            vignette.style.opacity = '1';
         }
-        if(Game.scene) Game.scene.traverse(child => { if (child.material) child.material.needsUpdate = true; });
+
+        if(Game.renderer) {
+            Game.renderer.shadowMap.enabled = this.shadowsEnabled;
+        }
+        if(Game.scene) {
+            Game.scene.traverse(child => { if (child.material) child.material.needsUpdate = true; });
+        }
     }
 };
 
@@ -988,7 +1004,7 @@ const Game = {
         this.renderer = new THREE.WebGLRenderer({ antialias: !isTouchDevice, alpha: false, powerPreference: "high-performance" });
         this.renderer.setPixelRatio(pixelRatio); this.renderer.setSize(this.width, this.height);
         this.renderer.outputEncoding = THREE.sRGBEncoding; this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.0;
-        this.renderer.shadowMap.enabled = !AppSettings.lowGraphics; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.shadowMap.enabled = AppSettings.shadowsEnabled; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(this.renderer.domElement);
         
         const ambientLight = new THREE.AmbientLight(0x222233, 1.0); this.scene.add(ambientLight);
@@ -1046,7 +1062,7 @@ const Game = {
             this.ultimateCharge = 0; this.ultimateActive = true; this.ultimateTimer = 10.0 + this.player.modifiers.ascensionDurationAdd; 
             this.addTrauma(1.0); this.hitStop = 0.3; AudioEngine.playUltimate();
             this.getFloatingText().spawn(this.player.x, this.player.y, "ASCENSIONE!", '#00DDFF', 40, true);
-            let pCount = AppSettings.lowGraphics ? 4 : (isTouchDevice ? 10 : 30);
+            let pCount = AppSettings.isLow ? 4 : (isTouchDevice ? 10 : 30);
             for(let i=0; i<pCount; i++) this.getParticle().spawn(this.player.x, 20, this.player.y, SharedMat.spriteBlue, 'trail');
         }
     },
@@ -1230,7 +1246,7 @@ const Game = {
     draw() {
         if(!this.scene || !this.uiCtx) return;
         
-        if (!AppSettings.lowGraphics && this.composer) {
+        if (!AppSettings.isLow && this.composer) {
             this.composer.render();
         } else {
             this.renderer.render(this.scene, this.camera); 
@@ -1292,7 +1308,7 @@ class GameMap {
             if(this.grid[x][y] === 2) floorCount++; else if (this.grid[x][y] === 3) { floorCount++; pillarCount++; } else wallCount++;
         }
 
-        const isHighQ = !AppSettings.lowGraphics; const floorTex = createPatternTexture('floor'); const wallTex = createPatternTexture('wall');
+        const isHighQ = !AppSettings.isLow; const floorTex = createPatternTexture('floor'); const wallTex = createPatternTexture('wall');
         const floorGeo = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE); floorGeo.rotateX(-Math.PI/2);
         
         const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.9, metalness: 0.1, bumpMap: isHighQ ? floorTex : null, bumpScale: 1.5 });
@@ -1317,7 +1333,7 @@ class GameMap {
                         let crystal = new Enemy(x * TILE_SIZE, y * TILE_SIZE, 'crystal', 1);
                         crystal.onDeath = function() {
                             Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff00ff, 'crystal_fire');
-                            Game.addTrauma(1.5); let pCount = AppSettings.lowGraphics ? 5 : 20;
+                            Game.addTrauma(1.5); let pCount = AppSettings.isLow ? 5 : 20;
                             for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
                             AudioEngine.playShoot('explosive_arrow'); this.mat.dispose(); Game.scene.remove(this.mesh);
                         };
@@ -1382,7 +1398,7 @@ class Entity {
 
         if (isCrit && source === Game.player) { Game.hitStop = 0.05; Game.addTrauma(0.5); Game.addCombo(); } else if (source === Game.player) { Game.addCombo(); }
         Game.getFloatingText().spawn(this.x, this.y, Math.floor(amount), isCrit ? '#ffff00' : '#ffffff', isCrit ? 28 : 20, isCrit);
-        let pCount = AppSettings.lowGraphics ? (isCrit ? 2 : 1) : (isCrit ? (isTouchDevice?4:8) : (isTouchDevice?2:4));
+        let pCount = AppSettings.isLow ? (isCrit ? 2 : 1) : (isCrit ? (isTouchDevice?4:8) : (isTouchDevice?2:4));
         for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
         this.flashTimer = 0.1; for (let i = 0; i < this.flashMats.length; i++) this.flashMats[i].emissive.setHex(0x555555);
         if (this.stats.hp <= 0) { this.stats.hp = 0; this.dead = true; }
@@ -1443,7 +1459,7 @@ class Player extends Entity {
                 let shockRange = 250; let nearby = Game.enemyGrid.findNearby(this, shockRange);
                 nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < shockRange * shockRange) { e.slowedTimer = 4.0; e.takeDamage(this.stats.maxDmg * 2 * this.modifiers.dmgMult, this, true, false); } });
                 for(let i=0; i<40; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'spark'); 
-                if (!AppSettings.lowGraphics) {
+                if (!AppSettings.isLow) {
                     let flash = Game.getParticle(); flash.spawn(this.x, 20, this.y, SharedMat.spritePink, 'flame'); flash.baseSize = 80;
                     for(let i=0; i<20; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'trail');
                 }
@@ -1452,9 +1468,9 @@ class Player extends Entity {
                 comboName = "ESPLOSIONE TOSSICA!"; color = "#33FF00"; 
                 let poisonRange = 180; let nearby = Game.enemyGrid.findNearby(this, poisonRange);
                 nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < poisonRange*poisonRange) { e.takeDamage(this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, this, true, true); e.infected = true; e.slowedTimer = 3.0; } });
-                let pCount = AppSettings.lowGraphics ? 15 : 40;
+                let pCount = AppSettings.isLow ? 15 : 40;
                 for(let i=0; i<pCount; i++) { let a = (Math.PI * 2 / pCount) * i; Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'trail', a); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'flame', a); }
-                if (!AppSettings.lowGraphics) {
+                if (!AppSettings.isLow) {
                     for(let i=0; i<8; i++) { let p = Game.getParticle(); p.spawn(this.x + MathUtils.randomRange(-40,40), 20, this.y + MathUtils.randomRange(-40,40), SharedMat.spriteGreen, 'flame'); p.baseSize = 50; p.life = 1.0; p.maxLife = 1.0; }
                 }
                 AudioEngine.playShoot('explosive_arrow');
@@ -1462,9 +1478,9 @@ class Player extends Entity {
                 comboName = "VORTICE!"; color = "#00ffaa"; 
                 let vortexRange = 220; let nearby = Game.enemyGrid.findNearby(this, vortexRange);
                 nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < vortexRange*vortexRange) { let ang = Math.atan2(this.y - e.y, this.x - e.x); e.push(Math.cos(ang), Math.sin(ang), 120); e.takeDamage(this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, this, true, false); } }); 
-                let pCount = AppSettings.lowGraphics ? 15 : 40;
+                let pCount = AppSettings.isLow ? 15 : 40;
                 for(let i=0; i<pCount; i++) { let a = (Math.PI * 2 / pCount) * i; Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'trail', a + 0.5); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark', a - 0.5); }
-                if (!AppSettings.lowGraphics) {
+                if (!AppSettings.isLow) {
                     let flash = Game.getParticle(); flash.spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'flame'); flash.baseSize = 90;
                 }
                 AudioEngine.playShoot('chain_lightning');
@@ -1472,9 +1488,9 @@ class Player extends Entity {
                 comboName = "CAOS ELEMENTALE!"; color = "#ffffff"; Game.addTrauma(2.0);
                 let range = 300; let nearby = Game.enemyGrid.findNearby(this, range);
                 nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < range * range) { e.slowedTimer = 4.0; e.infected = true; e.takeDamage(this.stats.maxDmg * 3.5 * this.modifiers.dmgMult, this, true, true); } });
-                let pCount = AppSettings.lowGraphics ? 20 : 60;
+                let pCount = AppSettings.isLow ? 20 : 60;
                 for(let i=0; i<pCount; i++) { let mat = [SharedMat.spriteRed, SharedMat.spriteBlue, SharedMat.spriteGreen][i % 3]; Game.getParticle().spawn(this.x, 20, this.y, mat, 'trail'); }
-                if (!AppSettings.lowGraphics) {
+                if (!AppSettings.isLow) {
                     let core = Game.getParticle(); core.spawn(this.x, 30, this.y, SharedMat.spriteWhite, 'flame'); core.baseSize = 150; core.life = 0.5; core.maxLife = 0.5;
                     for(let i=0; i<25; i++) { Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'flame'); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'spark'); }
                 }
@@ -1493,7 +1509,7 @@ class Player extends Entity {
         this.essenceTimer = 5.0 * this.modifiers.essenceDurationMult;
         Game.getFloatingText().spawn(this.x, this.y, ESSENCE_NAMES[this.essence] + "!", '#' + ESSENCE_COLORS[this.essence].toString(16).padStart(6, '0'), 40, true);
         let mat = this.essence === 'red' ? SharedMat.spriteRed : (this.essence === 'blue' ? SharedMat.spriteBlue : SharedMat.spriteGreen);
-        let pCount = AppSettings.lowGraphics ? 4 : (isTouchDevice ? 10 : 30); for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, mat, 'trail');
+        let pCount = AppSettings.isLow ? 4 : (isTouchDevice ? 10 : 30); for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, mat, 'trail');
     }
     updateAppearance() {
         let colorHex = 0x222222; let lColor = 0xffffff; let gemColor = 0x00ffff;
@@ -1561,7 +1577,7 @@ class Player extends Entity {
         if (this.isAttacking) { this.attackSwing += dt * 30; this.modelParts.weaponGroup.rotation.x = -Math.PI/2 + this.attackSwing; if (this.attackSwing > Math.PI) { this.isAttacking = false; this.modelParts.weaponGroup.rotation.x = 0; } }
     }
     flamethrower(dt) {
-        if (Game.frameCount % (isTouchDevice ? 3 : 1) === 0) { let pCount = AppSettings.lowGraphics ? 1 : (isTouchDevice ? 2 : 4); for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x + Math.cos(this.angle)*20, 15 + MathUtils.randomRange(-5, 5), this.y + Math.sin(this.angle)*20, SharedMat.spriteRed, 'flame', this.angle); }
+        if (Game.frameCount % (isTouchDevice ? 3 : 1) === 0) { let pCount = AppSettings.isLow ? 1 : (isTouchDevice ? 2 : 4); for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x + Math.cos(this.angle)*20, 15 + MathUtils.randomRange(-5, 5), this.y + Math.sin(this.angle)*20, SharedMat.spriteRed, 'flame', this.angle); }
         if (Game.frameCount % 8 === 0) AudioEngine.playShoot('flame');
         let flameRange = 280; let nearby = Game.enemyGrid.findNearby(this, flameRange);
         for(let i=0, len=nearby.length; i<len; i++) {
@@ -1699,7 +1715,7 @@ class Enemy extends Entity {
         let diffSpeedMod = Game.difficultyMult < 1.0 ? 0.8 : (Game.difficultyMult > 1.0 ? 1.15 : 1.0); this.baseSpeed = 100 * spdMod * Math.min(3.2, 1 + (level * 0.05)) * diffSpeedMod; this.speed = this.baseSpeed;
         this.xpValue = Math.floor(20 * hpMod * level); this.infected = false; this.slowedTimer = 0; this.fireDebuffTimer = 0;
         
-        this.mat = type === 'crystal' ? new THREE.MeshPhongMaterial({color: 0x000000, emissive: color}) : new THREE.MeshStandardMaterial({color: color, roughness: 0.7, metalness: !AppSettings.lowGraphics ? 0.2 : 0.0}); 
+        this.mat = type === 'crystal' ? new THREE.MeshPhongMaterial({color: 0x000000, emissive: color}) : new THREE.MeshStandardMaterial({color: color, roughness: 0.7, metalness: !AppSettings.isLow ? 0.2 : 0.0}); 
         let modelData = ModelFactory.buildEnemy(type, size, this.mat);
         this.mesh = modelData.group; this.modelParts = modelData.parts;
         this.mesh.position.set(x, 0, y); Game.scene.add(this.mesh); 
@@ -1776,7 +1792,7 @@ class Enemy extends Entity {
     onDeath() {
         if (this.type === 'crystal') {
             Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff00ff, 'crystal_fire');
-            Game.addTrauma(1.5); let pCount = AppSettings.lowGraphics ? 5 : 20;
+            Game.addTrauma(1.5); let pCount = AppSettings.isLow ? 5 : 20;
             for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
             AudioEngine.playShoot('explosive_arrow'); this.mat.dispose(); Game.scene.remove(this.mesh);
             return;
@@ -1784,7 +1800,7 @@ class Enemy extends Entity {
         
         AudioEngine.playEnemyDeath();
         Game.player.gainXp(this.xpValue);
-        let pCount = AppSettings.lowGraphics ? 2 : (isTouchDevice ? 3 : 15); for(let i=0; i< pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
+        let pCount = AppSettings.isLow ? 2 : (isTouchDevice ? 3 : 15); for(let i=0; i< pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
         
         if (Game.player.modifiers.vampirismMaxHp > 0 && Math.random() < 0.10) { 
             let heal = Game.player.stats.maxHp * Game.player.modifiers.vampirismMaxHp;
@@ -1802,7 +1818,7 @@ class Enemy extends Entity {
             }
         }
 
-        if (!AppSettings.lowGraphics) {
+        if (!AppSettings.isLow) {
             let decal = Game.bloodDecals[Game.bloodDecalIndex]; decal.position.set(this.x, 1, this.y); decal.rotation.z = Math.random() * Math.PI; decal.scale.setScalar(1.0); decal.userData.life = MathUtils.randomRange(2.0, 3.0); decal.userData.baseScale = 1.0; 
             decal.userData.active = true; decal.visible = true; Game.bloodDecalIndex = (Game.bloodDecalIndex + 1) % Game.bloodDecals.length;
         }
@@ -1857,8 +1873,8 @@ class BossEnemy extends Enemy {
     onDeath() {
         AudioEngine.playEnemyDeath();
         Game.player.gainXp(this.xpValue);
-        let pCount = AppSettings.lowGraphics ? 10 : 50; for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 30, this.y, SharedMat.spriteBlood, 'blood');
-        if (!AppSettings.lowGraphics) {
+        let pCount = AppSettings.isLow ? 10 : 50; for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 30, this.y, SharedMat.spriteBlood, 'blood');
+        if (!AppSettings.isLow) {
             let decal = Game.bloodDecals[Game.bloodDecalIndex]; decal.position.set(this.x, 1, this.y); decal.rotation.z = Math.random() * Math.PI;
             decal.scale.setScalar(4.0); decal.userData.life = 4.0; decal.userData.baseScale = 4.0; decal.userData.active = true; decal.visible = true; Game.bloodDecalIndex = (Game.bloodDecalIndex + 1) % Game.bloodDecals.length;
         }
@@ -1958,7 +1974,7 @@ class Projectile {
         if (this.type === 'explosive_arrow' || this.type === 'enemy_fireball' || this.type === 'fire_shape') pMat = SharedMat.spriteRed;
         if (this.type === 'chain_lightning' || this.type === 'enemy_bolt') pMat = SharedMat.spriteBlue;
         if (this.type === 'homing_arrow') pMat = SharedMat.spriteGreen;
-        let count = AppSettings.lowGraphics ? 1 : (isTouchDevice ? 2 : 6);
+        let count = AppSettings.isLow ? 1 : (isTouchDevice ? 2 : 6);
         for(let i=0; i<count; i++) Game.getParticle().spawn(this.x, 15, this.y, pMat, 'spark');
         if (this.type === 'fire_shape') Game.getHazard().spawn(this.x, this.y, 45, 8.0, this.damage, 0xff3300, 'enemy_fire');
         if (this.type === 'explosive_arrow') {

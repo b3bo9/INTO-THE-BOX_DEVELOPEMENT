@@ -72,18 +72,37 @@
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_10%,_rgba(0,0,0,0.85)_100%)] pointer-events-none"></div>
         <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/95 pointer-events-none"></div>
 
-        <div class="w-full flex-1 flex flex-col justify-between items-center z-10 px-4 sm:px-8 py-6 sm:py-10">
-            <!-- TITOLO -->
-            <div class="flex flex-col items-center pointer-events-none shrink-0 w-full text-center mt-2 sm:mt-6">
-                <h1 class="font-black italic text-transparent bg-clip-text bg-gradient-to-b from-white via-red-500 to-red-900 mb-0 drop-shadow-[0_10px_20px_rgba(220,38,38,0.8)] tracking-tighter transform -skew-x-3 leading-none text-[11vw] sm:text-7xl md:text-8xl lg:text-9xl whitespace-nowrap">INTO THE BOX</h1>
-                <h2 class="text-[3vw] sm:text-xs md:text-sm text-red-500 uppercase tracking-[0.8em] font-bold drop-shadow-[0_0_10px_rgba(220,38,38,1)] mt-2 sm:mt-4 ml-2 sm:ml-4">Definitive Edition</h2>
+        <div class="w-full h-full flex flex-col justify-between items-center z-10 px-4 sm:px-8 py-6 sm:py-10">
+            <!-- TOP AREA: Titolo Gioco e Info Mobile -->
+            <div class="flex flex-col items-center z-10 w-full max-w-[450px] shrink-0 gap-4 sm:gap-6">
+                <!-- TITOLO -->
+                <div class="flex flex-col items-center pointer-events-none w-full text-center mt-2 sm:mt-6">
+                    <h1 class="font-black italic text-transparent bg-clip-text bg-gradient-to-b from-white via-red-500 to-red-900 mb-0 drop-shadow-[0_10px_20px_rgba(220,38,38,0.8)] tracking-tighter transform -skew-x-3 leading-none text-[11vw] sm:text-7xl md:text-8xl lg:text-9xl whitespace-nowrap">INTO THE BOX</h1>
+                    <h2 class="text-[3vw] sm:text-xs md:text-sm text-red-500 uppercase tracking-[0.8em] font-bold drop-shadow-[0_0_10px_rgba(220,38,38,1)] mt-2 sm:mt-4 ml-2 sm:ml-4">Definitive Edition</h2>
+                </div>
+
+                <!-- INFO STRIP MOBILE -->
+                <div id="mobile-controls-desc" class="hidden w-full gap-2 pointer-events-none">
+                    <div class="flex-1 bg-black/40 backdrop-blur-md border border-fuchsia-500/30 rounded-xl p-2.5 flex flex-col items-center justify-center text-center shadow-lg">
+                        <div class="flex gap-1.5 mb-1.5">
+                            <span class="w-2 h-2 rounded-full bg-[#FF1133] shadow-[0_0_8px_#FF1133]"></span>
+                            <span class="w-2 h-2 rounded-full bg-[#00AAFF] shadow-[0_0_8px_#00AAFF]"></span>
+                            <span class="w-2 h-2 rounded-full bg-[#33FF00] shadow-[0_0_8px_#33FF00]"></span>
+                        </div>
+                        <span class="text-[9px] text-gray-200 uppercase font-bold leading-tight">Mischia le<br>Essenze!</span>
+                    </div>
+                    <div class="flex-1 bg-black/40 backdrop-blur-md border border-amber-500/30 rounded-xl p-2.5 flex flex-col items-center justify-center text-center shadow-lg">
+                        <i class="fa-solid fa-bolt text-amber-500 text-sm mb-1 drop-shadow-[0_0_5px_rgba(255,170,0,0.8)]"></i>
+                        <span class="text-[9px] text-gray-200 uppercase font-bold leading-tight">Scatta sui nemici<br>per il Perfect Dodge</span>
+                    </div>
+                </div>
             </div>
 
             <!-- SPAZIO CENTRALE (Per vedere il Negromante) -->
             <div class="flex-1 w-full min-h-[50px] lg:min-h-[150px]"></div>
 
             <!-- UI INFERIORE (Desktop: 3 colonne | Mobile: 1 colonna centrale) -->
-            <div class="w-full max-w-[1400px] flex flex-col lg:flex-row justify-end lg:justify-between items-center lg:items-end gap-4 lg:gap-8 shrink-0 relative">
+            <div class="w-full max-w-[1400px] flex flex-col lg:flex-row justify-end lg:justify-between items-center lg:items-end gap-4 lg:gap-8 shrink-0 relative z-20">
                 
                 <!-- PANNELLO SINISTRO (Info Desktop) -->
                 <div class="hidden lg:flex flex-col gap-3 w-72 xl:w-80 pointer-events-none mb-4">
@@ -101,24 +120,8 @@
                 </div>
 
                 <!-- PANNELLO CENTRALE (Bottoni Azione) -->
-                <div class="w-full max-w-[450px] flex flex-col gap-3 sm:gap-4 pointer-events-auto z-20 shrink-0">
+                <div class="w-full max-w-[450px] flex flex-col gap-3 sm:gap-4 pointer-events-auto shrink-0">
                     
-                    <!-- INFO STRIP MOBILE -->
-                    <div id="mobile-controls-desc" class="hidden w-full gap-2 mb-1 pointer-events-none">
-                        <div class="flex-1 bg-black/40 backdrop-blur-md border border-fuchsia-500/30 rounded-xl p-2.5 flex flex-col items-center justify-center text-center shadow-lg">
-                            <div class="flex gap-1.5 mb-1.5">
-                                <span class="w-2 h-2 rounded-full bg-[#FF1133] shadow-[0_0_8px_#FF1133]"></span>
-                                <span class="w-2 h-2 rounded-full bg-[#00AAFF] shadow-[0_0_8px_#00AAFF]"></span>
-                                <span class="w-2 h-2 rounded-full bg-[#33FF00] shadow-[0_0_8px_#33FF00]"></span>
-                            </div>
-                            <span class="text-[9px] text-gray-200 uppercase font-bold leading-tight">Mischia le<br>Essenze!</span>
-                        </div>
-                        <div class="flex-1 bg-black/40 backdrop-blur-md border border-amber-500/30 rounded-xl p-2.5 flex flex-col items-center justify-center text-center shadow-lg">
-                            <i class="fa-solid fa-bolt text-amber-500 text-sm mb-1 drop-shadow-[0_0_5px_rgba(255,170,0,0.8)]"></i>
-                            <span class="text-[9px] text-gray-200 uppercase font-bold leading-tight">Scatta sui nemici<br>per il Perfect Dodge</span>
-                        </div>
-                    </div>
-
                     <!-- OPZIONI -->
                     <div class="flex gap-2 w-full h-12 sm:h-14">
                         <div class="relative group flex-1 h-full">
@@ -161,31 +164,62 @@
         </div>
     </div>
 
-    <!-- SCHERMATA MORTE E TRANSIZIONE ADATTATA AL RESPONSIVE -->
-    <div id="deathScreen" class="absolute inset-0 bg-red-950/90 flex flex-col items-center justify-center z-[100] hidden backdrop-blur-md pointer-events-auto overflow-y-auto">
-        <div class="flex flex-col landscape:flex-row landscape:w-[90%] landscape:max-w-[800px] items-center landscape:justify-around gap-4 landscape:gap-8 my-auto p-4 w-full">
-            <div class="flex flex-col items-center landscape:items-start text-center landscape:text-left w-full sm:w-auto">
+    <!-- SCHERMATA MORTE E TRANSIZIONE ADATTATA AL RESPONSIVE AAA -->
+    <div id="deathScreen" class="absolute inset-0 z-[100] hidden pointer-events-auto bg-cover bg-center bg-no-repeat overflow-hidden" style="background-image: url('bg_morte.png');">
+        <!-- Overlay scuro per i bordi e leggibilità testo -->
+        <div class="absolute inset-0 bg-gradient-to-b from-black/80 via-black/30 to-black/95 pointer-events-none"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_20%,_rgba(0,0,0,0.85)_100%)] pointer-events-none"></div>
+
+        <div class="w-full h-full flex flex-col justify-between items-center z-10 px-4 sm:px-8 py-8 sm:py-12 relative overflow-y-auto">
+            
+            <!-- TOP AREA: Titoli -->
+            <div class="flex flex-col items-center text-center w-full max-w-[800px] shrink-0">
                 <h1 id="deathTitle" class="text-[15vw] sm:text-8xl font-black text-red-600 mb-2 drop-shadow-[0_0_30px_rgba(220,38,38,1)] tracking-tighter uppercase whitespace-nowrap">R I P</h1>
-                <p id="deathSubtitle" class="text-sm sm:text-xl text-red-300 mb-2 font-bold px-2 landscape:px-0"></p>
-                <p id="deathQuote" class="text-xs sm:text-sm text-gray-400 italic mb-4 max-w-md hidden px-4 sm:px-0"></p>
+                <p id="deathSubtitle" class="text-sm sm:text-xl text-gray-300 font-bold px-4 py-1.5 bg-black/50 backdrop-blur-md rounded-full border border-red-900/30 drop-shadow-md tracking-wider"></p>
+                <p id="deathQuote" class="text-xs sm:text-sm text-red-400/80 italic mt-4 max-w-md hidden px-4 sm:px-0 drop-shadow-lg font-semibold"></p>
             </div>
-            <div class="flex flex-col gap-3 items-center w-full max-w-[350px]">
-                <div id="score-save-container" class="w-full flex flex-col gap-2 mb-2 hidden p-3 bg-black/60 border border-red-900/50 rounded-xl">
-                    <p class="text-[10px] sm:text-xs text-amber-500 font-bold uppercase tracking-widest text-center">Registra la tua fine</p>
-                    <input type="text" id="playerName" maxlength="10" placeholder="IL TUO NOME..." class="w-full bg-black border border-gray-700 text-white font-bold text-center py-2 rounded-lg focus:outline-none focus:border-red-500 uppercase tracking-widest text-sm">
-                    <button id="btn-save-score" onclick="submitScore()" class="w-full bg-red-900 hover:bg-red-700 text-white font-bold py-2 rounded-lg text-sm border border-red-700 transition-colors uppercase tracking-widest">Salva Punteggio</button>
+
+            <!-- MIDDLE AREA: Spazio vuoto per l'art -->
+            <div class="flex-1 w-full min-h-[50px] lg:min-h-[150px]"></div>
+
+            <!-- BOTTOM AREA: Bottoni e Form -->
+            <div class="flex flex-col gap-3 items-center w-full max-w-[350px] shrink-0 backdrop-blur-md bg-black/40 p-5 sm:p-6 rounded-3xl border border-red-900/30 shadow-[0_10px_40px_rgba(220,38,38,0.15)]">
+                <div id="score-save-container" class="w-full flex flex-col gap-3 mb-2 hidden">
+                    <p class="text-[10px] sm:text-xs text-amber-500 font-bold uppercase tracking-widest text-center"><i class="fa-solid fa-pen-fancy"></i> Registra la tua fine</p>
+                    <input type="text" id="playerName" maxlength="10" placeholder="IL TUO NOME..." class="w-full bg-black/80 border border-gray-700 text-white font-bold text-center py-3 rounded-xl focus:outline-none focus:border-red-500 uppercase tracking-widest text-sm shadow-inner transition-colors">
+                    <button id="btn-save-score" onclick="submitScore()" class="w-full bg-red-900 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-sm border border-red-700 transition-colors uppercase tracking-widest shadow-[0_0_15px_rgba(220,38,38,0.5)]">Salva Punteggio</button>
                 </div>
-                <button id="btn-restart" onclick="restartGame()" class="bg-black hover:bg-gray-900 text-red-500 font-black py-4 px-8 w-full rounded-xl text-xl sm:text-2xl border-4 border-red-800 shadow-[0_0_30px_rgba(220,38,38,0.8)] transition-all hover:scale-105 active:scale-95">RIPROVA</button>
-                <button id="btn-respawn" onclick="respawnPlayer()" class="hidden bg-black hover:bg-gray-900 text-pink-500 font-black py-4 px-8 w-full rounded-xl text-xl sm:text-2xl border-4 border-pink-800 shadow-[0_0_30px_rgba(255,105,180,0.8)] transition-all hover:scale-105 active:scale-95">RITORNA IN BATTAGLIA</button>
-                <button onclick="goToMainMenu()" class="bg-black hover:bg-gray-900 text-gray-400 font-bold py-3 px-6 w-full rounded-xl text-lg border-2 border-gray-700 transition-all hover:scale-105 active:scale-95 mt-1">TORNA AL MENU</button>
+                
+                <button id="btn-restart" onclick="restartGame()" class="bg-gradient-to-r from-red-900 via-red-700 to-red-900 hover:from-red-800 hover:via-red-500 hover:to-red-800 text-white font-black py-4 w-full rounded-2xl text-xl sm:text-2xl shadow-[0_0_30px_rgba(220,38,38,0.5)] border border-red-500/50 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest">RIPROVA</button>
+                
+                <button id="btn-respawn" onclick="respawnPlayer()" class="hidden bg-gradient-to-r from-pink-900 via-pink-600 to-pink-900 hover:from-pink-800 hover:via-pink-500 hover:to-pink-800 text-white font-black py-4 w-full rounded-2xl text-xl sm:text-2xl shadow-[0_0_30px_rgba(255,105,180,0.5)] border border-pink-500/50 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest">RITORNA IN BATTAGLIA</button>
+                
+                <button onclick="goToMainMenu()" class="bg-black/50 hover:bg-white/10 text-gray-400 hover:text-white font-bold py-3 w-full rounded-xl text-xs sm:text-sm border border-gray-700 transition-all active:scale-95 uppercase tracking-[0.2em] mt-1 shadow-lg">TORNA AL MENU</button>
             </div>
         </div>
     </div>
 
-    <div id="floorScreen" class="absolute inset-0 bg-blue-950/90 flex flex-col items-center justify-center z-[100] hidden backdrop-blur-md pointer-events-auto">
-        <h1 class="text-[10vw] sm:text-7xl font-black text-blue-400 mb-4 drop-shadow-[0_0_30px_rgba(96,165,250,1)] uppercase tracking-tight text-center px-2">Massacro Concluso</h1>
-        <p class="text-sm sm:text-xl text-blue-200 mb-10 font-bold text-center px-4">L'oscurità si intensifica al piano inferiore...</p>
-        <button onclick="nextFloor()" class="bg-black hover:bg-gray-900 text-blue-500 font-black py-4 px-8 sm:px-12 rounded-xl text-xl sm:text-2xl border-4 border-blue-600 shadow-[0_0_30px_rgba(59,130,246,0.6)] transition-all hover:scale-110 active:scale-95">SCENDI PIÙ A FONDO</button>
+    <div id="floorScreen" class="absolute inset-0 z-[100] hidden pointer-events-auto bg-cover bg-center bg-no-repeat overflow-hidden" style="background-image: url('bg_piano.png');">
+        <!-- Overlay blu/teal profondo -->
+        <div class="absolute inset-0 bg-gradient-to-b from-blue-950/80 via-transparent to-black/95 pointer-events-none"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_10%,_rgba(0,0,0,0.7)_100%)] pointer-events-none"></div>
+
+        <div class="w-full h-full flex flex-col justify-between items-center z-10 px-4 sm:px-8 py-10 sm:py-16 relative">
+            
+            <!-- TOP AREA -->
+            <div class="flex flex-col items-center text-center drop-shadow-2xl shrink-0 gap-3">
+                <h1 class="text-[10vw] sm:text-7xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 via-blue-500 to-blue-800 mb-0 drop-shadow-[0_10px_20px_rgba(59,130,246,0.5)] uppercase tracking-tighter leading-none">Massacro Concluso</h1>
+                <p class="text-[10px] sm:text-sm text-cyan-200 font-bold tracking-[0.3em] uppercase bg-blue-950/50 px-6 py-2 rounded-full border border-cyan-500/30 backdrop-blur-md shadow-[0_0_15px_rgba(34,211,238,0.2)]">L'oscurità si intensifica...</p>
+            </div>
+
+            <!-- MIDDLE AREA: Spazio visuale -->
+            <div class="flex-1 w-full min-h-[50px]"></div>
+
+            <!-- BOTTOM AREA -->
+            <button onclick="nextFloor()" class="shrink-0 bg-gradient-to-r from-cyan-900 via-blue-600 to-cyan-900 hover:from-blue-800 hover:via-cyan-400 hover:to-blue-800 text-white font-black py-4 sm:py-5 px-8 sm:px-12 rounded-2xl text-lg sm:text-2xl shadow-[0_0_40px_rgba(59,130,246,0.5)] hover:shadow-[0_0_60px_rgba(34,211,238,0.8)] border-2 border-blue-400/50 hover:border-cyan-300 transition-all transform hover:-translate-y-1 active:scale-95 uppercase tracking-[0.2em] flex items-center justify-center gap-3 group w-full max-w-[450px]">
+                SCENDI PIÙ A FONDO <i class="fa-solid fa-angles-down group-hover:translate-y-1 transition-transform"></i>
+            </button>
+        </div>
     </div>
 
     <div id="highScoreScreen" class="absolute inset-0 bg-black/95 z-[250] flex items-center justify-center backdrop-blur-xl pointer-events-auto hidden">

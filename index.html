@@ -165,36 +165,38 @@
     </div>
 
     <!-- SCHERMATA MORTE E TRANSIZIONE ADATTATA AL RESPONSIVE AAA -->
-    <div id="deathScreen" class="absolute inset-0 z-[100] hidden pointer-events-auto bg-cover bg-center bg-no-repeat overflow-hidden" style="background-image: url('bg_morte.png');">
-        <!-- Overlay scuro per i bordi e leggibilità testo -->
-        <div class="absolute inset-0 bg-gradient-to-b from-black/80 via-black/30 to-black/95 pointer-events-none"></div>
+    <div id="deathScreen" class="absolute inset-0 z-[100] hidden pointer-events-auto bg-cover bg-center bg-no-repeat overflow-hidden" style="background-image: url('bg_box.png');">
+        <!-- Overlay scuro per i bordi e leggibilità testo (il centro resta visibile) -->
+        <div class="absolute inset-0 bg-gradient-to-b from-black/90 via-black/20 to-black/95 pointer-events-none"></div>
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_20%,_rgba(0,0,0,0.85)_100%)] pointer-events-none"></div>
 
         <div class="w-full h-full flex flex-col justify-between items-center z-10 px-4 sm:px-8 py-8 sm:py-12 relative overflow-y-auto">
             
             <!-- TOP AREA: Titoli -->
-            <div class="flex flex-col items-center text-center w-full max-w-[800px] shrink-0">
-                <h1 id="deathTitle" class="text-[15vw] sm:text-8xl font-black text-red-600 mb-2 drop-shadow-[0_0_30px_rgba(220,38,38,1)] tracking-tighter uppercase whitespace-nowrap">R I P</h1>
-                <p id="deathSubtitle" class="text-sm sm:text-xl text-gray-300 font-bold px-4 py-1.5 bg-black/50 backdrop-blur-md rounded-full border border-red-900/30 drop-shadow-md tracking-wider"></p>
-                <p id="deathQuote" class="text-xs sm:text-sm text-red-400/80 italic mt-4 max-w-md hidden px-4 sm:px-0 drop-shadow-lg font-semibold"></p>
+            <div class="flex flex-col items-center text-center w-full max-w-[800px] shrink-0 mt-2 sm:mt-8">
+                <h1 id="deathTitle" class="text-[15vw] sm:text-8xl md:text-9xl font-black text-red-600 mb-2 drop-shadow-[0_0_40px_rgba(220,38,38,1)] tracking-tighter uppercase whitespace-nowrap">R I P</h1>
+                <p id="deathSubtitle" class="text-xs sm:text-lg md:text-xl text-red-100 font-bold px-6 py-2 bg-black/60 backdrop-blur-md rounded-full border border-red-900/50 drop-shadow-[0_0_15px_rgba(220,38,38,0.5)] tracking-wider mt-2"></p>
+                <p id="deathQuote" class="text-xs sm:text-base text-gray-400 italic mt-6 max-w-md hidden px-4 sm:px-0 drop-shadow-lg font-semibold"></p>
             </div>
 
-            <!-- MIDDLE AREA: Spazio vuoto per l'art -->
-            <div class="flex-1 w-full min-h-[50px] lg:min-h-[150px]"></div>
+            <!-- MIDDLE AREA: Spazio vuoto per l'art della scatola -->
+            <div class="flex-1 w-full min-h-[80px] lg:min-h-[250px]"></div>
 
             <!-- BOTTOM AREA: Bottoni e Form -->
-            <div class="flex flex-col gap-3 items-center w-full max-w-[350px] shrink-0 backdrop-blur-md bg-black/40 p-5 sm:p-6 rounded-3xl border border-red-900/30 shadow-[0_10px_40px_rgba(220,38,38,0.15)]">
+            <div class="flex flex-col gap-3 items-center w-full max-w-[400px] shrink-0 backdrop-blur-xl bg-black/50 p-5 sm:p-6 rounded-3xl border border-red-900/40 shadow-[0_10px_50px_rgba(220,38,38,0.3)] mb-2 sm:mb-6">
                 <div id="score-save-container" class="w-full flex flex-col gap-3 mb-2 hidden">
-                    <p class="text-[10px] sm:text-xs text-amber-500 font-bold uppercase tracking-widest text-center"><i class="fa-solid fa-pen-fancy"></i> Registra la tua fine</p>
-                    <input type="text" id="playerName" maxlength="10" placeholder="IL TUO NOME..." class="w-full bg-black/80 border border-gray-700 text-white font-bold text-center py-3 rounded-xl focus:outline-none focus:border-red-500 uppercase tracking-widest text-sm shadow-inner transition-colors">
-                    <button id="btn-save-score" onclick="submitScore()" class="w-full bg-red-900 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-sm border border-red-700 transition-colors uppercase tracking-widest shadow-[0_0_15px_rgba(220,38,38,0.5)]">Salva Punteggio</button>
+                    <p class="text-[10px] sm:text-xs text-red-400 font-bold uppercase tracking-widest text-center"><i class="fa-solid fa-pen-fancy"></i> Registra la tua fine</p>
+                    <input type="text" id="playerName" maxlength="10" placeholder="IL TUO NOME..." class="w-full bg-black/80 border border-red-900/50 text-white font-bold text-center py-3.5 rounded-xl focus:outline-none focus:border-red-500 uppercase tracking-widest text-sm shadow-inner transition-colors">
+                    <button id="btn-save-score" onclick="submitScore()" class="w-full bg-red-900 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl text-sm border border-red-700 transition-colors uppercase tracking-widest shadow-[0_0_20px_rgba(220,38,38,0.4)]">Salva Punteggio</button>
                 </div>
                 
-                <button id="btn-restart" onclick="restartGame()" class="bg-gradient-to-r from-red-900 via-red-700 to-red-900 hover:from-red-800 hover:via-red-500 hover:to-red-800 text-white font-black py-4 w-full rounded-2xl text-xl sm:text-2xl shadow-[0_0_30px_rgba(220,38,38,0.5)] border border-red-500/50 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest">RIPROVA</button>
+                <button id="btn-restart" onclick="restartGame()" class="bg-gradient-to-r from-red-900 via-red-600 to-red-900 hover:from-red-800 hover:via-red-500 hover:to-red-800 text-white font-black py-4 sm:py-5 w-full rounded-2xl text-xl sm:text-2xl shadow-[0_0_40px_rgba(220,38,38,0.5)] hover:shadow-[0_0_60px_rgba(220,38,38,0.8)] border border-red-500/50 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest group">
+                    <i class="fa-solid fa-rotate-right mr-2 group-hover:animate-spin"></i> RIPROVA
+                </button>
                 
-                <button id="btn-respawn" onclick="respawnPlayer()" class="hidden bg-gradient-to-r from-pink-900 via-pink-600 to-pink-900 hover:from-pink-800 hover:via-pink-500 hover:to-pink-800 text-white font-black py-4 w-full rounded-2xl text-xl sm:text-2xl shadow-[0_0_30px_rgba(255,105,180,0.5)] border border-pink-500/50 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest">RITORNA IN BATTAGLIA</button>
+                <button id="btn-respawn" onclick="respawnPlayer()" class="hidden bg-gradient-to-r from-pink-900 via-pink-600 to-pink-900 hover:from-pink-800 hover:via-pink-500 hover:to-pink-800 text-white font-black py-4 sm:py-5 w-full rounded-2xl text-xl sm:text-2xl shadow-[0_0_30px_rgba(255,105,180,0.5)] border border-pink-500/50 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest">RITORNA IN BATTAGLIA</button>
                 
-                <button onclick="goToMainMenu()" class="bg-black/50 hover:bg-white/10 text-gray-400 hover:text-white font-bold py-3 w-full rounded-xl text-xs sm:text-sm border border-gray-700 transition-all active:scale-95 uppercase tracking-[0.2em] mt-1 shadow-lg">TORNA AL MENU</button>
+                <button onclick="goToMainMenu()" class="bg-black/50 backdrop-blur-md hover:bg-white/10 text-gray-400 hover:text-white font-bold py-3.5 w-full rounded-xl text-xs sm:text-sm border border-gray-700 transition-all active:scale-95 uppercase tracking-[0.2em] mt-1 shadow-lg">TORNA AL MENU</button>
             </div>
         </div>
     </div>

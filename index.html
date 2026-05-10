@@ -2394,7 +2394,24 @@ function showHighScores() {
 
 function hideHighScores() { AudioEngine.playClick(); document.getElementById('highScoreScreen').classList.add('hidden'); }
 
+// Sistema invisibile per forzare il download delle immagini in cache
+const Preloader = {
+    preloadAll() {
+        const imagesToLoad = ['bg.png', 'bg_morte.png', 'bg_box.png', 'bg_piano.png'];
+        // Trova e precarica in automatico tutte le immagini delle reliquie
+        RelicSystem.allRelics.forEach(relic => {
+            if (relic.image) imagesToLoad.push(relic.image);
+        });
+        
+        imagesToLoad.forEach(src => {
+            const img = new Image();
+            img.src = src;
+        });
+    }
+};
+
 window.onload = () => {
+    Preloader.preloadAll(); // Avvia il download silente delle immagini
     ScoreManager.init(); Game.init();
     const initScreen = document.getElementById('initScreen'); const mainMenu = document.getElementById('mainMenu');
     

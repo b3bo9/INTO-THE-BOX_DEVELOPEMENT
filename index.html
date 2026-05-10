@@ -342,13 +342,10 @@ const AudioEngine = {
             this.playNoise(0.1, 'high');
         } else if (type === 'player') {
             let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
-            // Onda quadra per un timbro più tagliente e vagamente vocale
             osc.type = 'square'; 
-            // Pitch bend rapido verso il basso (ricrea l'intonazione di una voce che si lamenta)
             osc.frequency.setValueAtTime(450, t); 
             osc.frequency.exponentialRampToValueAtTime(120, t + 0.15);
             
-            // Filtro passa-basso che si chiude simulando il movimento della bocca ("O-u")
             let filter = this.ctx.createBiquadFilter();
             filter.type = 'lowpass';
             filter.frequency.setValueAtTime(2000, t);
@@ -361,7 +358,7 @@ const AudioEngine = {
             osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination); 
             osc.start(t); osc.stop(t + 0.2);
             
-            this.playNoise(0.05, 'high'); // Piccolo fruscio che aggiunge "sporcizia" al lamento
+            this.playNoise(0.05, 'high');
         }
     },
     playEnemyDeath() {
@@ -674,7 +671,6 @@ const SharedMat = {
     hazardCrystalPlane: new THREE.MeshBasicMaterial({color: 0xff00ff, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}),
     hazardCrystalRing: new THREE.MeshBasicMaterial({color: 0xffaaff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}),
     
-    // Ottimizzazione: Materiali condivisi per i nemici
     enemyDark: new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9}),
     enemyEye: new THREE.MeshBasicMaterial({color: 0xff0000}),
     leaperTeeth: new THREE.MeshBasicMaterial({color: 0xffffff}),
@@ -1052,7 +1048,14 @@ const Game = {
     hitStop: 0, trauma: 0, combo: 0, comboTimer: 0, comboMaxTime: 5.0, difficultyMult: 1.0, ultimateCharge: 0, ultimateActive: false, ultimateTimer: 0, lives: 3, playTime: 0, bossDefeatedTimer: 0,
     player: null, map: null, enemyGrid: null, enemies: [], projectiles: [], particles: [], essences: [], extraLivesDrops: [], floatingTexts: [], hazards: [], decoys: [], dashLines: [], bloodDecals: [], bloodDecalIndex: 0,
     
-    composer: null, bloomPass: null,
+    composer: null, bloomPass: null, dirLight: null,
+    
+    // Ottimizzazioni RAM/GC pre-allocate
+    _hpBars: Array.from({length: 500}, () => ({x:0, y:0, pct:0})),
+    _hpBarCount: 0,
+    
+    // Trigonometria globale calcolata una volta a frame
+    animBounce: 0, animFloat: 0, animArm: 0,
 
     init() {
         UI.init(); TouchControls.init(); const container = document.getElementById('game-container');
@@ -1068,11 +1071,20 @@ const Game = {
         container.appendChild(this.renderer.domElement);
         
         const ambientLight = new THREE.AmbientLight(0x222233, 1.0); this.scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0x6677aa, 1.5); dirLight.position.set(-500, 1000, -500); 
-        dirLight.castShadow = true; dirLight.shadow.camera.top = 1500; dirLight.shadow.camera.bottom = -1500;
-        dirLight.shadow.camera.left = -1500; dirLight.shadow.camera.right = 1500;
-        dirLight.shadow.camera.near = 100; dirLight.shadow.camera.far = 3000; dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
-        this.scene.add(dirLight);
+        
+        this.dirLight = new THREE.DirectionalLight(0x6677aa, 1.5); 
+        this.dirLight.position.set(-500, 1000, -500); 
+        this.dirLight.castShadow = true; 
+        this.dirLight.shadow.camera.top = 1000; 
+        this.dirLight.shadow.camera.bottom = -1000;
+        this.dirLight.shadow.camera.left = -1000; 
+        this.dirLight.shadow.camera.right = 1000;
+        this.dirLight.shadow.camera.near = 100; 
+        this.dirLight.shadow.camera.far = 3000; 
+        this.dirLight.shadow.mapSize.width = 2048; 
+        this.dirLight.shadow.mapSize.height = 2048;
+        this.scene.add(this.dirLight);
+        this.scene.add(this.dirLight.target);
 
         const renderScene = new THREE.RenderPass(this.scene, this.camera);
         
@@ -1136,6 +1148,10 @@ const Game = {
     snapCamera() {
         let camY = isTouchDevice ? 850 : 700; let camZ = this.player.y + (isTouchDevice ? 550 : 500);
         this.camera.position.set(this.player.x, camY, camZ); this.camera.lookAt(this.player.x, 0, this.player.y);
+        if (this.dirLight) {
+            this.dirLight.position.set(this.player.x - 400, 1000, this.player.y - 400);
+            this.dirLight.target.position.set(this.player.x, 0, this.player.y);
+        }
     },
     resize() {
         this.width = window.innerWidth; this.height = window.innerHeight; this.renderer.setSize(this.width, this.height);
@@ -1176,6 +1192,11 @@ const Game = {
         this._camTarget.set(camX + shakeX, camY + shakeY, camZ + shakeZ);
         this.camera.position.lerp(this._camTarget, 0.15); 
         this.camera.lookAt(this.player.x + shakeX*0.5, 0, this.player.y + shakeZ*0.5); 
+        
+        if (this.dirLight) {
+            this.dirLight.position.set(this.player.x - 400, 1000, this.player.y - 400);
+            this.dirLight.target.position.set(this.player.x, 0, this.player.y);
+        }
     },
     updateMouseWorld() {
         if (isTouchDevice && this.inputs.right.active) return; 
@@ -1242,6 +1263,12 @@ const Game = {
     update(dt) {
         if (this.state !== 'PLAYING') return;
         this.frameCount++; this.playTime += dt; 
+        
+        // Ottimizzazione: Calcolo Trigonometria Globale una volta a frame per tutti i mostri
+        this.animBounce = Math.sin(this.frameCount * 0.4) * 4;
+        this.animFloat = Math.sin(this.frameCount * 0.1) * 5;
+        this.animArm = Math.sin(this.frameCount * 0.3) * 0.5;
+
         if (this.combo > 0) { 
             this.comboTimer -= dt * (this.player ? this.player.modifiers.comboDecayRate : 1.0); 
             if (this.comboTimer <= 0) this.resetCombo(); 
@@ -1253,7 +1280,13 @@ const Game = {
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             let e = this.enemies[i]; e.update(dt); this.enemyGrid.updateClient(e); 
             if (e.dead) {
-                e.onDeath(); this.enemyGrid.remove(e); this.enemies.splice(i, 1); this.floorKills++; this.totalKills++;
+                e.onDeath(); this.enemyGrid.remove(e); 
+                
+                // Ottimizzazione Zero-Allocation: Nessun array splice costoso, scambio con l'ultimo elemento O(1)
+                this.enemies[i] = this.enemies[this.enemies.length - 1];
+                this.enemies.pop();
+                
+                this.floorKills++; this.totalKills++;
                 if (!this.isBossFloor && this.floorKills + this.enemies.length < this.floorMaxKills) this.spawnEnemy();
             }
         }
@@ -1276,7 +1309,7 @@ const Game = {
                 if (e.life < 3.0) e.group.visible = Math.floor(e.life * 8) % 2 === 0;
                 else e.group.visible = true;
 
-                e.group.rotation.y += dt; e.group.position.y = 10 + Math.sin(this.frameCount * 0.05) * 5;
+                e.group.rotation.y += dt; e.group.position.y = 10 + this.animFloat;
                 if (MathUtils.distanceSq(this.player, e) < pRadiusSq) { this.player.collectEssence(e.type); e.destroy(); }
             }
         }
@@ -1289,7 +1322,7 @@ const Game = {
                 if (el.life < 3.0) el.group.visible = Math.floor(el.life * 8) % 2 === 0;
                 else el.group.visible = true;
 
-                el.group.rotation.y += dt * 2; el.group.position.y = 10 + Math.sin(this.frameCount * 0.1) * 5;
+                el.group.rotation.y += dt * 2; el.group.position.y = 10 + this.animFloat;
                 if (MathUtils.distanceSq(this.player, el) < pRadiusSq) { this.lives++; el.destroy(); AudioEngine.playCollect(); this.getFloatingText().spawn(this.player.x, this.player.y, "VITA EXTRA!", '#ffffff', 30, true); }
             }
         }
@@ -1328,20 +1361,26 @@ const Game = {
             return Game._vec3Screen;
         };
         
-        // --- Ottimizzazione: Batching delle Barre Vita ---
-        let hpBars = [];
+        // --- Ottimizzazione Zero-Allocation: Barre Vita riutilizzabili ---
+        this._hpBarCount = 0;
         for(let i=0, len=this.enemies.length; i<len; i++) {
             let e = this.enemies[i];
             if (e.stats.hp < e.stats.maxHp && e.type !== 'crystal') {
                 let pos = toScreenPosition(e.x, e.radius + 35, e.y);
-                if(pos.z < 1) hpBars.push({x: pos.x, y: pos.y, pct: e.stats.hp / e.stats.maxHp});
+                if(pos.z < 1 && this._hpBarCount < this._hpBars.length) {
+                    this._hpBars[this._hpBarCount].x = pos.x;
+                    this._hpBars[this._hpBarCount].y = pos.y;
+                    this._hpBars[this._hpBarCount].pct = e.stats.hp / e.stats.maxHp;
+                    this._hpBarCount++;
+                }
             }
         }
-        if (hpBars.length > 0) {
+        
+        if (this._hpBarCount > 0) {
             this.uiCtx.fillStyle = 'rgba(0,0,0,0.8)';
-            for(let i=0, len=hpBars.length; i<len; i++) this.uiCtx.fillRect(hpBars[i].x - 16, hpBars[i].y-2, 32, 6);
+            for(let i=0; i<this._hpBarCount; i++) this.uiCtx.fillRect(this._hpBars[i].x - 16, this._hpBars[i].y-2, 32, 6);
             this.uiCtx.fillStyle = '#ff0000';
-            for(let i=0, len=hpBars.length; i<len; i++) this.uiCtx.fillRect(hpBars[i].x - 15, hpBars[i].y-1, 30 * hpBars[i].pct, 4);
+            for(let i=0; i<this._hpBarCount; i++) this.uiCtx.fillRect(this._hpBars[i].x - 15, this._hpBars[i].y-1, 30 * this._hpBars[i].pct, 4);
         }
 
         // --- Ottimizzazione: Canvas 2D Text State Caching ---
@@ -1671,7 +1710,7 @@ class Player extends Entity {
             let dx = 0, dy = 0;
             if (Game.keys['w']) dy -= 1; if (Game.keys['s']) dy += 1; if (Game.keys['a']) dx -= 1; if (Game.keys['d']) dx += 1;
             if (Game.inputs.left.active) { dx = Game.inputs.left.x; dy = Game.inputs.left.y; }
-            if (dx !== 0 || dy !== 0) { this.speed = currentSpeed; this.move(dx, dy, dt); this.mesh.position.y = Math.sin(Game.frameCount * 0.4) * 3; } else { this.mesh.position.y = 0; }
+            if (dx !== 0 || dy !== 0) { this.speed = currentSpeed; this.move(dx, dy, dt); this.mesh.position.y = Game.animBounce * 0.75; } else { this.mesh.position.y = 0; }
         } else {
             this.dashTimer -= dt;
             if (this.essence === 'red' && Game.frameCount % 8 === 0) Game.getHazard().spawn(this.x, this.y, 25, 3.0, this.stats.maxDmg * 0.5, ESSENCE_COLORS.red, 'fire');
@@ -1688,8 +1727,8 @@ class Player extends Entity {
         if (Game.frameCount % 8 === 0) AudioEngine.playShoot('flame');
         let flameRange = 280; let nearby = Game.enemyGrid.findNearby(this, flameRange);
         for(let i=0, len=nearby.length; i<len; i++) {
-            let e = nearby[i]; let ang = Math.atan2(e.y - this.y, e.x - this.x); let diff = Math.atan2(Math.sin(ang - this.angle), Math.cos(ang - this.angle)); let dist = MathUtils.distance(this, e);
-            if (Math.abs(diff) < Math.PI/4 && dist < flameRange) {
+            let e = nearby[i]; let ang = Math.atan2(e.y - this.y, e.x - this.x); let diff = Math.atan2(Math.sin(ang - this.angle), Math.cos(ang - this.angle)); 
+            if (Math.abs(diff) < Math.PI/4 && MathUtils.distanceSq(this, e) < flameRange * flameRange) {
                 if (!e.flameHitTimer) e.flameHitTimer = 0; e.flameHitTimer -= dt;
                 if (e.flameHitTimer <= 0) { e.takeDamage(this.stats.maxDmg * 1.5 * this.modifiers.dmgMult, this, false, true); e.flameHitTimer = 0.15; e.push(Math.cos(this.angle), Math.sin(this.angle), 8); }
             }
@@ -1749,7 +1788,7 @@ class Player extends Entity {
             if (dist > 0) {
                 for(let i=0, len=Game.enemies.length; i<len; i++) {
                     let e = Game.enemies[i]; let A = this.x - endX; let B = endY - this.y; let C = (endX*this.y) - (this.x*endY); let d = Math.abs(A*e.y + B*e.x + C) / Math.sqrt(A*A + B*B);
-                    if (d < e.radius + 20 && MathUtils.distance(this, e) < dist) { let dmg = this.stats.maxDmg * 2.0 * this.modifiers.dmgMult; e.takeDamage(dmg, this, true, true); Game.hitStop = 0.1; }
+                    if (d < e.radius + 20 && MathUtils.distanceSq(this, e) < dist * dist) { let dmg = this.stats.maxDmg * 2.0 * this.modifiers.dmgMult; e.takeDamage(dmg, this, true, true); Game.hitStop = 0.1; }
                 }
                 let dl = Game.getDashLine();
                 dl.spawn(this.x + dx*(dist/2), this.y + dy*(dist/2), dist, this.dashAngle);
@@ -1832,7 +1871,7 @@ class Enemy extends Entity {
     }
     update(dt) {
         if(this.dead) return; this.updateFlash(dt);
-        if (this.type === 'mage' || this.type === 'pyromancer') { this.mesh.rotation.y += dt; this.mesh.position.y = Math.sin(Game.frameCount * 0.1) * 5; if(this.modelParts.crystals) this.modelParts.crystals.rotation.y += dt*2; }
+        if (this.type === 'mage' || this.type === 'pyromancer') { this.mesh.rotation.y += dt; this.mesh.position.y = Game.animFloat; if(this.modelParts.crystals) this.modelParts.crystals.rotation.y += dt*2; }
         if (this.type === 'goblin') { this.mesh.rotation.x += dt * 15; this.mesh.rotation.y += dt * 10; }
         if (this.type === 'crystal') { this.modelParts.ring.rotation.x += dt; this.modelParts.gem.rotation.y -= dt; }
         
@@ -1845,8 +1884,8 @@ class Enemy extends Entity {
         if (this.type === 'crystal') return; 
 
         if (this.modelParts.armL && this.speed > 0 && this.state !== 'leaping') {
-            this.modelParts.armL.rotation.x = Math.sin(Game.frameCount * 0.3) * 0.5;
-            this.modelParts.armR.rotation.x = -Math.sin(Game.frameCount * 0.3) * 0.5;
+            this.modelParts.armL.rotation.x = Game.animArm;
+            this.modelParts.armR.rotation.x = -Game.animArm;
         }
 
         let target = Game.player; let closestDecoy = null; let minDist = Infinity;
@@ -1878,7 +1917,7 @@ class Enemy extends Entity {
         if (distToTarget < this.aggroRange) {
             if (distToTarget > this.attackRange) { 
                 this.move(Math.cos(this.angle), Math.sin(this.angle), dt); 
-                if (this.type !== 'mage' && this.type !== 'pyromancer' && this.type !== 'goblin') { this.mesh.position.y = Math.sin(Game.frameCount * 0.4) * 4; }
+                if (this.type !== 'mage' && this.type !== 'pyromancer' && this.type !== 'goblin') { this.mesh.position.y = Game.animBounce; }
             } else {
                 if (this.type === 'leaper' && this.leapCooldown <= 0) { this.state = 'leaping'; this.leapTimer = 0; this.leapDuration = 0.5; this.leapAngle = this.angle; this.leapCooldown = 2.0; } 
                 else if (this.attackCooldown <= 0 && target === Game.player) { this.attack(); }
@@ -1951,7 +1990,7 @@ class Enemy extends Entity {
         if (Game.player.modifiers.noHealDrops) lifeChance = 0;
         
         if (Math.random() < lifeChance) { Game.getExtraLife().spawn(this.x, this.y); } 
-        else if (Math.random() < 0.25 + (Game.combo * 0.005)) { let types = ['red', 'blue', 'green']; Game.getEssence().spawn(this.x, this.y, types[Math.floor(Math.random() * types.length)]); }
+        else if (Math.random() < 0.20 + (Game.combo * 0.003)) { Game.getEssence().spawn(this.x, this.y, ESSENCE_TYPES[Math.floor(Math.random() * ESSENCE_TYPES.length)]); }
     }
 }
 
@@ -1991,8 +2030,8 @@ class BossEnemy extends Enemy {
         }
         this.mat.dispose(); Game.scene.remove(this.mesh); Game.addTrauma(2.0); AudioEngine.playShoot('explosive_arrow');
         for(let i=0; i<6; i++) {
-            let types = ['red', 'blue', 'green']; let ex = this.x + MathUtils.randomRange(-60, 60); let ey = this.y + MathUtils.randomRange(-60, 60);
-            if(!Game.map.isSolid(ex, ey)) { Game.getEssence().spawn(ex, ey, types[Math.floor(Math.random() * types.length)]); }
+            let ex = this.x + MathUtils.randomRange(-60, 60); let ey = this.y + MathUtils.randomRange(-60, 60);
+            if(!Game.map.isSolid(ex, ey)) { Game.getEssence().spawn(ex, ey, ESSENCE_TYPES[Math.floor(Math.random() * ESSENCE_TYPES.length)]); }
         }
         Game.getExtraLife().spawn(this.x, this.y); 
         Game.getFloatingText().spawn(this.x, this.y, "VITTORIA!", '#ffaa00', 80, true); Game.bossDefeatedTimer = 5.0;
@@ -2026,8 +2065,9 @@ class Projectile {
         if (this.type === 'homing_arrow') {
             if (!this.target || this.target.dead || (Game.frameCount + this.updateOffset) % 15 === 0) {
                 let closest = null; let minDist = 400*400;
-                for(let i=0, len=Game.enemies.length; i<len; i++) {
-                    let e = Game.enemies[i];
+                let nearby = Game.enemyGrid.findNearby(this, 400);
+                for(let i=0, len=nearby.length; i<len; i++) {
+                    let e = nearby[i];
                     if(!this.hitEnemies.has(e.id) && !e.dead) { let dSq = MathUtils.distanceSq(this, e); if(dSq < minDist) { minDist = dSq; closest = e; } }
                 }
                 this.target = closest;
@@ -2137,6 +2177,7 @@ function clearScene() {
     for(let i=0, len=Game.floatingTexts.length; i<len; i++) { Game.floatingTexts[i].active = false; }
     for(let i=0, len=Game.bloodDecals.length; i<len; i++) { Game.bloodDecals[i].visible = false; Game.bloodDecals[i].userData.active = false; }
     for(let i=0, len=Game.decoys.length; i<len; i++) { Game.decoys[i].destroy(); }
+    for(let i=0, len=Game.dashLines.length; i<len; i++) { Game.dashLines[i].active = false; Game.dashLines[i].mesh.visible = false; }
     for(let i=0, len=Game.essences.length; i<len; i++) { Game.essences[i].destroy(); }
     for(let i=0, len=Game.extraLivesDrops.length; i<len; i++) { Game.extraLivesDrops[i].destroy(); }
     if(Game.player) Game.scene.remove(Game.player.mesh);

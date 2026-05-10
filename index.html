@@ -633,7 +633,7 @@ const SharedMat = {
 };
 
 const ModelFactory = {
-    setupShadows(mesh) { if(!isTouchDevice && !AppSettings.lowGraphics) { mesh.traverse(c => { if(c.isMesh) { c.castShadow = true; c.receiveShadow = true; } }); } },
+    setupShadows(mesh) { mesh.traverse(c => { if(c.isMesh) { c.castShadow = true; c.receiveShadow = true; } }); },
     buildPlayer(mat, gemMat) {
         let group = new THREE.Group();
         let body = new THREE.Mesh(SharedGeo.cone, mat); body.scale.set(16, 24, 16); body.position.y = 12;
@@ -988,16 +988,14 @@ const Game = {
         this.renderer = new THREE.WebGLRenderer({ antialias: !isTouchDevice, alpha: false, powerPreference: "high-performance" });
         this.renderer.setPixelRatio(pixelRatio); this.renderer.setSize(this.width, this.height);
         this.renderer.outputEncoding = THREE.sRGBEncoding; this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.0;
-        this.renderer.shadowMap.enabled = !isTouchDevice && !AppSettings.lowGraphics; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.shadowMap.enabled = !AppSettings.lowGraphics; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(this.renderer.domElement);
         
         const ambientLight = new THREE.AmbientLight(0x222233, 1.0); this.scene.add(ambientLight);
         const dirLight = new THREE.DirectionalLight(0x6677aa, 1.5); dirLight.position.set(-500, 1000, -500); 
-        if(!isTouchDevice) {
-            dirLight.castShadow = true; dirLight.shadow.camera.top = 1500; dirLight.shadow.camera.bottom = -1500;
-            dirLight.shadow.camera.left = -1500; dirLight.shadow.camera.right = 1500;
-            dirLight.shadow.camera.near = 100; dirLight.shadow.camera.far = 3000; dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
-        }
+        dirLight.castShadow = true; dirLight.shadow.camera.top = 1500; dirLight.shadow.camera.bottom = -1500;
+        dirLight.shadow.camera.left = -1500; dirLight.shadow.camera.right = 1500;
+        dirLight.shadow.camera.near = 100; dirLight.shadow.camera.far = 3000; dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
         this.scene.add(dirLight);
 
         const renderScene = new THREE.RenderPass(this.scene, this.camera);
@@ -1305,7 +1303,7 @@ class GameMap {
         const pillarGeo = new THREE.CylinderGeometry(15, 15, TILE_SIZE*1.5, 8);
         const pillarMesh = new THREE.InstancedMesh(pillarGeo, wallMat, pillarCount);
 
-        if(!isTouchDevice) { floorMesh.receiveShadow = true; wallMesh.castShadow = true; wallMesh.receiveShadow = true; pillarMesh.castShadow = true; pillarMesh.receiveShadow = true; }
+        floorMesh.receiveShadow = true; wallMesh.castShadow = true; wallMesh.receiveShadow = false; pillarMesh.castShadow = true; pillarMesh.receiveShadow = true;
 
         let dummy = new THREE.Object3D(); let fIdx = 0, wIdx = 0, pIdx = 0;
         for(let x=0; x<this.width; x++) {

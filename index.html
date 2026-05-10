@@ -617,29 +617,29 @@ const ScoreManager = {
 const RelicSystem = {
     allRelics: [
         // COMUNI
-        { id: 'c1', name: "Prisma", desc: "+10% Probabilità Critico", rarity: "common", image: "icona_prisma.png", apply: (p) => p.modifiers.critChance += 0.10 },
-        { id: 'c2', name: "Adrenalina", desc: "+10% Velocità Attacco", rarity: "common", image: "icona_adrenalina.png", apply: (p) => p.modifiers.atkSpeedMult += 0.10 },
-        { id: 'c3', name: "Piuma", desc: "+10% Velocità Movimento", rarity: "common", image: "icona_piuma.png", apply: (p) => p.modifiers.speedMult += 0.10 },
-        { id: 'c4', name: "Cristallo Vitale", desc: "+15% Salute Massima", rarity: "common", icon: "fa-heart", apply: (p) => { p.stats.maxHp = Math.floor(p.stats.maxHp * 1.15); p.stats.hp = p.stats.maxHp; } },
-        { id: 'c5', name: "Runa Minore", desc: "+10% Danni base", rarity: "common", icon: "fa-fire", apply: (p) => p.modifiers.dmgMult += 0.10 },
+        { id: 'c1', name: "Prisma", desc: "+10% Probabilità Critico", rarity: "common", image: "icona_prisma.png", icon: "fa-gem", apply: (p) => p.modifiers.critChance += 0.10 },
+        { id: 'c2', name: "Adrenalina", desc: "+10% Velocità Attacco", rarity: "common", image: "icona_adrenalina.png", icon: "fa-bolt", apply: (p) => p.modifiers.atkSpeedMult += 0.10 },
+        { id: 'c3', name: "Piuma", desc: "+10% Velocità Movimento", rarity: "common", image: "icona_piuma.png", icon: "fa-feather", apply: (p) => p.modifiers.speedMult += 0.10 },
+        { id: 'c4', name: "Cristallo Vitale", desc: "+15% Salute Massima", rarity: "common", image: "icona_cristallo_vitale.png", icon: "fa-heart", apply: (p) => { p.stats.maxHp = Math.floor(p.stats.maxHp * 1.15); p.stats.hp = p.stats.maxHp; } },
+        { id: 'c5', name: "Runa Minore", desc: "+10% Danni base", rarity: "common", image: "icona_runa_minore.png", icon: "fa-fire", apply: (p) => p.modifiers.dmgMult += 0.10 },
         // RARE
-        { id: 'r1', name: "Bussola Dimensionale", desc: "Essenze durano 50% in più", rarity: "rare", icon: "fa-compass", apply: (p) => p.modifiers.essenceDurationMult += 0.50 },
-        { id: 'r2', name: "Mercurio", desc: "Cooldown Scatto -25%", rarity: "rare", icon: "fa-shoe-prints", apply: (p) => p.modifiers.dashCooldownMult -= 0.25 },
-        { id: 'r3', name: "Scudo dell'Egidio", desc: "Blocca un attacco. Si ricarica in 15s", rarity: "rare", icon: "fa-shield-halved", apply: (p) => p.modifiers.shieldActive = true },
-        { id: 'r4', name: "Spirito Avaro", desc: "+50% XP, -50% cure", rarity: "rare", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.50; p.modifiers.healDropMult -= 0.50; } },
-        { id: 'r5', name: "Magnete delle Anime", desc: "Raggio raccolta raddoppiato", rarity: "rare", icon: "fa-magnet", apply: (p) => p.modifiers.pickupRadiusMult += 1.0 },
+        { id: 'r1', name: "Bussola Dimensionale", desc: "Essenze durano 50% in più", rarity: "rare", image: "icona_bussola_dimensionale.png", icon: "fa-compass", apply: (p) => p.modifiers.essenceDurationMult += 0.50 },
+        { id: 'r2', name: "Mercurio", desc: "Cooldown Scatto -25%", rarity: "rare", image: "icona_mercurio.png", icon: "fa-shoe-prints", apply: (p) => p.modifiers.dashCooldownMult -= 0.25 },
+        { id: 'r3', name: "Scudo dell'Egidio", desc: "Blocca un attacco. Si ricarica in 15s", rarity: "rare", image: "icona_scudo_dell_egidio.png", icon: "fa-shield-halved", apply: (p) => p.modifiers.shieldActive = true },
+        { id: 'r4', name: "Spirito Avaro", desc: "+50% XP, -50% cure", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.50; p.modifiers.healDropMult -= 0.50; } },
+        { id: 'r5', name: "Magnete delle Anime", desc: "Raggio raccolta raddoppiato", rarity: "rare", image: "icona_magnete_delle_anime.png", icon: "fa-magnet", apply: (p) => p.modifiers.pickupRadiusMult += 1.0 },
         // EPICHE
-        { id: 'e1', name: "Ritmo di Battaglia", desc: "Combo sale di +2 e decade più tardi", rarity: "epic", icon: "fa-drum", apply: (p) => { p.modifiers.comboStep += 1; p.modifiers.comboDecayAdd += 1.0; } },
-        { id: 'e2', name: "Riciclo Magico", desc: "Non perdi l'ultima essenza presa", rarity: "epic", icon: "fa-recycle", apply: (p) => p.modifiers.keepEssenceOnCombo = true },
-        { id: 'e3', name: "Passo Infernale", desc: "Lo scatto brucia. Nemici a fuoco subiscono +10% danni", rarity: "epic", icon: "fa-fire-flame-curved", apply: (p) => { p.modifiers.fireTrail = true; p.modifiers.fireTrailDebuff = true; } },
-        { id: 'e4', name: "Sovraccarico", desc: "Ascensione dura 4s in più", rarity: "epic", image: "icona_sovraccarico.png", apply: (p) => p.modifiers.ascensionDurationAdd += 4.0 },
-        { id: 'e5', name: "Zanna del Vampiro", desc: "10% probabilità di curare 2% HP per kill", rarity: "epic", image: "icona_zanna_del_vampiro.png", apply: (p) => p.modifiers.vampirismMaxHp += 0.02 },
+        { id: 'e1', name: "Ritmo di Battaglia", desc: "Combo sale di +2 e decade più tardi", rarity: "epic", image: "icona_ritmo_di_battaglia.png", icon: "fa-drum", apply: (p) => { p.modifiers.comboStep += 1; p.modifiers.comboDecayAdd += 1.0; } },
+        { id: 'e2', name: "Riciclo Magico", desc: "Non perdi l'ultima essenza presa", rarity: "epic", image: "icona_riciclo_magico.png", icon: "fa-recycle", apply: (p) => p.modifiers.keepEssenceOnCombo = true },
+        { id: 'e3', name: "Passo Infernale", desc: "Lo scatto brucia. Nemici a fuoco subiscono +10% danni", rarity: "epic", image: "icona_passo_infernale.png", icon: "fa-fire-flame-curved", apply: (p) => { p.modifiers.fireTrail = true; p.modifiers.fireTrailDebuff = true; } },
+        { id: 'e4', name: "Sovraccarico", desc: "Ascensione dura 4s in più", rarity: "epic", image: "icona_sovraccarico.png", icon: "fa-bolt-lightning", apply: (p) => p.modifiers.ascensionDurationAdd += 4.0 },
+        { id: 'e5', name: "Zanna del Vampiro", desc: "10% probabilità di curare 2% HP per kill", rarity: "epic", image: "icona_zanna_del_vampiro.png", icon: "fa-tooth", apply: (p) => p.modifiers.vampirismMaxHp += 0.02 },
         // LEGGENDARIE
-        { id: 'l1', name: "Follia Omicida", desc: "Critici infliggono 3X danni, ma subisci +25% danni", rarity: "legendary", image: "icona_follia_omicida.png", apply: (p) => { p.modifiers.critDmgMult = 3.0; p.modifiers.dmgTakenMult += 0.25; } },
-        { id: 'l2', name: "Lama del Giudizio", desc: "Danni Raddoppiati a nemici con <30% HP", rarity: "legendary", image: "icona_lama_del_giudizio.png", apply: (p) => p.modifiers.executioner = true },
-        { id: 'l3', name: "Patto Ascetico", desc: "Ascensione passiva (+2%/s), ma HP Max -30%", rarity: "legendary", image: "icona_patto_ascetico.png", apply: (p) => { p.modifiers.passiveUltCharge = true; p.stats.maxHp = Math.floor(p.stats.maxHp * 0.7); if(p.stats.hp > p.stats.maxHp) p.stats.hp = p.stats.maxHp; } },
-        { id: 'l4', name: "Sete di Sangue Eterna", desc: "Curati 5% ogni 10 kill. 0 cure a terra. HP non salgono con livello.", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", apply: (p) => { p.modifiers.bloodthirst = true; p.modifiers.noHealDrops = true; p.modifiers.noMaxHpLevelUp = true; } },
-        { id: 'l5', name: "Maestria del Flow", desc: "Bonus combo doppi e decado lento. Danni dimezzano HP attuali.", rarity: "legendary", image: "icona_maestria_del_flow.png", apply: (p) => { p.modifiers.flowMastery = true; p.modifiers.comboDecayRate *= 0.5; } }
+        { id: 'l1', name: "Follia Omicida", desc: "Critici infliggono 3X danni, ma subisci +25% danni", rarity: "legendary", image: "icona_follia_omicida.png", icon: "fa-skull", apply: (p) => { p.modifiers.critDmgMult = 3.0; p.modifiers.dmgTakenMult += 0.25; } },
+        { id: 'l2', name: "Lama del Giudizio", desc: "Danni Raddoppiati a nemici con <30% HP", rarity: "legendary", image: "icona_lama_del_giudizio.png", icon: "fa-gavel", apply: (p) => p.modifiers.executioner = true },
+        { id: 'l3', name: "Patto Ascetico", desc: "Ascensione passiva (+2%/s), ma HP Max -30%", rarity: "legendary", image: "icona_patto_ascetico.png", icon: "fa-link", apply: (p) => { p.modifiers.passiveUltCharge = true; p.stats.maxHp = Math.floor(p.stats.maxHp * 0.7); if(p.stats.hp > p.stats.maxHp) p.stats.hp = p.stats.maxHp; } },
+        { id: 'l4', name: "Sete di Sangue Eterna", desc: "Curati 5% ogni 10 kill. 0 cure a terra. HP non salgono con livello.", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", icon: "fa-droplet", apply: (p) => { p.modifiers.bloodthirst = true; p.modifiers.noHealDrops = true; p.modifiers.noMaxHpLevelUp = true; } },
+        { id: 'l5', name: "Maestria del Flow", desc: "Bonus combo doppi e decado lento. Danni dimezzano HP attuali.", rarity: "legendary", image: "icona_maestria_del_flow.png", icon: "fa-infinity", apply: (p) => { p.modifiers.flowMastery = true; p.modifiers.comboDecayRate *= 0.5; } }
     ],
     getRandomRarity() { let r = Math.random() * 100; if (r <= 55) return 'common'; if (r <= 83) return 'rare'; if (r <= 95) return 'epic'; return 'legendary'; },
     getChoices() {
@@ -660,13 +660,15 @@ const RelicSystem = {
             if (relic.rarity === 'epic') { colorClass = "rarity-epic bg-purple-900/60 text-purple-300"; fallbackIcon = "fa-eye"; rarityLabel = "EPICA"; }
             if (relic.rarity === 'legendary') { colorClass = "rarity-legendary bg-amber-900/60 text-amber-400"; fallbackIcon = "fa-crown"; rarityLabel = "LEGGENDA"; }
             
-            let visualElement = '';
-            if (relic.image) {
-                visualElement = `<img src="${relic.image}" alt="${relic.name}" class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-xl my-2 sm:my-4 border border-white/20 transition-transform" style="box-shadow: 0 0 20px currentColor;">`;
-            } else {
-                let iconClass = relic.icon || fallbackIcon;
-                visualElement = `<i class="fa-solid ${iconClass} text-4xl sm:text-5xl my-3 sm:my-4 opacity-90 drop-shadow-md"></i>`;
-            }
+            let iconClass = relic.icon || fallbackIcon;
+            
+            // Sistema Fallback: Se l'immagine c'è bene, altrimenti mostra l'icona FontAwesome di riserva nascondendo l'errore
+            let visualElement = `
+                <div class="relative flex justify-center items-center my-2 sm:my-4 w-16 h-16 sm:w-20 sm:h-20">
+                    <img src="${relic.image}" alt="${relic.name}" onload="this.nextElementSibling.style.display='none';" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" class="w-full h-full object-cover rounded-xl border border-white/20 transition-transform" style="box-shadow: 0 0 20px currentColor;">
+                    <i class="fa-solid ${iconClass} text-4xl sm:text-5xl opacity-90 drop-shadow-md" style="display:none;"></i>
+                </div>
+            `;
 
             let card = document.createElement('div'); card.className = `relic-card flex flex-col items-center justify-between p-4 sm:p-6 rounded-2xl border-2 w-full sm:w-1/3 backdrop-blur-md ${colorClass}`;
             card.innerHTML = `

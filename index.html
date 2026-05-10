@@ -226,6 +226,8 @@ const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 const AppSettings = {
     mode: 1, // 0: Performance, 1: Bilanciato, 2: Ultra
     get isLow() { return this.mode === 0; },
+    get isUltra() { return this.mode === 2; },
+    get isUltraPC() { return this.mode === 2 && !isTouchDevice; },
     get shadowsEnabled() { return this.mode === 2 || (this.mode === 1 && !isTouchDevice); },
     toggleGraphics() {
         this.mode = (this.mode + 1) % 3;
@@ -251,7 +253,31 @@ const AppSettings = {
 
         if(Game.renderer) {
             Game.renderer.shadowMap.enabled = this.shadowsEnabled;
+            if (!isTouchDevice) {
+                Game.renderer.setPixelRatio(this.isUltra ? Math.min(window.devicePixelRatio, 2.0) : Math.min(window.devicePixelRatio, 1.5));
+            }
         }
+        
+        if (Game.bloomPass) {
+            Game.bloomPass.strength = this.isUltraPC ? 1.8 : 1.3;
+            Game.bloomPass.radius = this.isUltraPC ? 0.8 : 0.6;
+        }
+
+        if (Game.map) {
+            if (Game.map.floorMat) {
+                Game.map.floorMat.roughness = this.isUltraPC ? 0.65 : 0.9;
+                Game.map.floorMat.metalness = this.isUltraPC ? 0.25 : 0.1;
+                Game.map.floorMat.bumpScale = this.isUltraPC ? 3.0 : 1.5;
+                Game.map.floorMat.needsUpdate = true;
+            }
+            if (Game.map.wallMat) {
+                Game.map.wallMat.roughness = this.isUltraPC ? 0.5 : 0.8;
+                Game.map.wallMat.metalness = this.isUltraPC ? 0.5 : 0.3;
+                Game.map.wallMat.bumpScale = this.isUltraPC ? 4.0 : 2.0;
+                Game.map.wallMat.needsUpdate = true;
+            }
+        }
+
         if(Game.scene) {
             Game.scene.traverse(child => { if (child.material) child.material.needsUpdate = true; });
         }
@@ -503,6 +529,7 @@ const MathUtils = {
 
 const TILE_SIZE = 64; const CHUNK_SIZE = 30; const FIXED_TIME_STEP = 1 / 60; const MAX_TIME_STEP = 0.1;
 const ESSENCE_COLORS = { 'red': 0xFF1133, 'blue': 0x00AAFF, 'green': 0x33FF00 }; const ESSENCE_NAMES = { 'red': 'INFERNO', 'blue': 'TEMPESTA', 'green': 'PANDEMIA' };
+const ESSENCE_TYPES = ['red', 'blue', 'green'];
 const DEATH_QUOTES = [
     "L'oscurità reclama un'altra anima.", "Non sei il primo a cadere, e non sarai l'ultimo.", "La scatola si chiude su di te.", "Cenere alla cenere.",
     "I demoni banchettano con i tuoi resti.", "Un flebile respiro, poi il buio assoluto.", "Hai combattuto valorosamente, ma la scatola vince sempre.",
@@ -645,7 +672,13 @@ const SharedMat = {
     hazardEnemyPlane: new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}),
     hazardEnemyRing: new THREE.MeshBasicMaterial({color: 0xff5555, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}),
     hazardCrystalPlane: new THREE.MeshBasicMaterial({color: 0xff00ff, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}),
-    hazardCrystalRing: new THREE.MeshBasicMaterial({color: 0xffaaff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending})
+    hazardCrystalRing: new THREE.MeshBasicMaterial({color: 0xffaaff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}),
+    
+    // Ottimizzazione: Materiali condivisi per i nemici
+    enemyDark: new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9}),
+    enemyEye: new THREE.MeshBasicMaterial({color: 0xff0000}),
+    leaperTeeth: new THREE.MeshBasicMaterial({color: 0xffffff}),
+    dashLine: new THREE.MeshBasicMaterial({color: 0x00ffff, blending: THREE.AdditiveBlending, transparent: true})
 };
 
 const ModelFactory = {
@@ -665,10 +698,11 @@ const ModelFactory = {
         return { group, staffGem, halo, weaponGroup, body };
     },
     buildEnemy(type, size, mat) {
-        let group = new THREE.Group(); let parts = {}; let darkMat = new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9});
+        let group = new THREE.Group(); let parts = {}; 
+        let darkMat = SharedMat.enemyDark;
         if (type === 'goblin') {
             let body = new THREE.Mesh(SharedGeo.tetrahedron, mat); body.scale.set(size*1.5, size*1.5, size*1.5); body.position.y = size; body.rotation.x = -Math.PI/4;
-            let eye = new THREE.Mesh(SharedGeo.box, new THREE.MeshBasicMaterial({color: 0xff0000})); eye.scale.set(size*0.8, size*0.2, size*0.2); eye.position.set(0, size*1.2, size*0.8);
+            let eye = new THREE.Mesh(SharedGeo.box, SharedMat.enemyEye); eye.scale.set(size*0.8, size*0.2, size*0.2); eye.position.set(0, size*1.2, size*0.8);
             group.add(body); group.add(eye);
         } else if (type === 'orc') {
             let torso = new THREE.Mesh(SharedGeo.box, mat); torso.scale.set(size*1.8, size*1.4, size); torso.position.y = size*1.4;
@@ -693,7 +727,7 @@ const ModelFactory = {
             group.add(robe); group.add(hood); group.add(crystals); parts.crystals = crystals;
         } else if (type === 'leaper') {
             let body = new THREE.Mesh(SharedGeo.sphere, mat); body.scale.set(size*1.2, size*1.2, size*1.2); body.position.y = size*1.2;
-            let teeth = new THREE.Mesh(SharedGeo.cone, new THREE.MeshBasicMaterial({color: 0xffffff})); teeth.scale.set(size*0.8, size*1.5, size*0.8); teeth.position.set(0, size*1.2, size); teeth.rotation.x = Math.PI/2;
+            let teeth = new THREE.Mesh(SharedGeo.cone, SharedMat.leaperTeeth); teeth.scale.set(size*0.8, size*1.5, size*0.8); teeth.position.set(0, size*1.2, size); teeth.rotation.x = Math.PI/2;
             group.add(body); group.add(teeth);
         } else if (type === 'fire_demon') {
             let torso = new THREE.Mesh(SharedGeo.box, darkMat); torso.scale.set(size*1.5, size*1.5, size*1.5); torso.position.y = size*1.5;
@@ -722,6 +756,29 @@ const ModelFactory = {
         return { group, parts };
     }
 };
+
+class DashLine {
+    constructor() {
+        this.active = false;
+        this.mesh = new THREE.Mesh(SharedGeo.box, SharedMat.dashLine);
+        this.mesh.visible = false;
+        Game.scene.add(this.mesh);
+    }
+    spawn(x, y, dist, angle) {
+        this.active = true; this.life = 0.15; this.maxLife = 0.15;
+        this.mesh.position.set(x, 15, y);
+        this.mesh.scale.set(dist, 4, 4);
+        this.mesh.rotation.y = -angle;
+        this.mesh.visible = true;
+    }
+    update(dt) {
+        if(!this.active) return;
+        this.life -= dt;
+        if(this.life <= 0) { this.active = false; this.mesh.visible = false; return; }
+        this.mesh.scale.y = 4 * (this.life/this.maxLife);
+        this.mesh.scale.z = 4 * (this.life/this.maxLife);
+    }
+}
 
 class Essence {
     constructor() {
@@ -989,10 +1046,11 @@ const Game = {
     width: window.innerWidth, height: window.innerHeight, keys: {}, mouse: { x: 0, y: 0, worldX: 0, worldY: 0, leftDown: false },
     inputs: { left: {x:0, y:0, active:false}, right: {x:0, y:0, active:false} },
     _vec2: new THREE.Vector2(), _vec3: new THREE.Vector3(), _plane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), _vec3Screen: new THREE.Vector3(),
-    _particleIdx: 0, _projectileIdx: 0, _hazardIdx: 0, _textIdx: 0, _essenceIdx: 0, _extraLifeIdx: 0, _decoyIdx: 0,
+    _camTarget: new THREE.Vector3(),
+    _particleIdx: 0, _projectileIdx: 0, _hazardIdx: 0, _textIdx: 0, _essenceIdx: 0, _extraLifeIdx: 0, _decoyIdx: 0, _dashLineIdx: 0,
     lastTime: 0, accumulator: 0, state: 'MENU', floor: 1, floorMaxKills: 0, floorKills: 0, totalKills: 0, frameCount: 0, isBossFloor: false,
     hitStop: 0, trauma: 0, combo: 0, comboTimer: 0, comboMaxTime: 5.0, difficultyMult: 1.0, ultimateCharge: 0, ultimateActive: false, ultimateTimer: 0, lives: 3, playTime: 0, bossDefeatedTimer: 0,
-    player: null, map: null, enemyGrid: null, enemies: [], projectiles: [], particles: [], essences: [], extraLivesDrops: [], floatingTexts: [], hazards: [], decoys: [], bloodDecals: [], bloodDecalIndex: 0,
+    player: null, map: null, enemyGrid: null, enemies: [], projectiles: [], particles: [], essences: [], extraLivesDrops: [], floatingTexts: [], hazards: [], decoys: [], dashLines: [], bloodDecals: [], bloodDecalIndex: 0,
     
     composer: null, bloomPass: null,
 
@@ -1000,7 +1058,9 @@ const Game = {
         UI.init(); TouchControls.init(); const container = document.getElementById('game-container');
         this.scene = new THREE.Scene(); this.scene.fog = new THREE.Fog(0x050508, 400, 1800); 
         this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 1, 3000);
-        const pixelRatio = isTouchDevice ? 1.0 : Math.min(window.devicePixelRatio, 1.5);
+        
+        const pixelRatio = isTouchDevice ? 1.0 : (AppSettings.isUltra ? Math.min(window.devicePixelRatio, 2.0) : Math.min(window.devicePixelRatio, 1.5));
+        
         this.renderer = new THREE.WebGLRenderer({ antialias: !isTouchDevice, alpha: false, powerPreference: "high-performance" });
         this.renderer.setPixelRatio(pixelRatio); this.renderer.setSize(this.width, this.height);
         this.renderer.outputEncoding = THREE.sRGBEncoding; this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.0;
@@ -1015,8 +1075,11 @@ const Game = {
         this.scene.add(dirLight);
 
         const renderScene = new THREE.RenderPass(this.scene, this.camera);
-        this.bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(this.width, this.height), 1.3, 0.6, 0.35);
-        this.bloomPass.threshold = 0.35; this.bloomPass.strength = 1.3; this.bloomPass.radius = 0.6;
+        
+        let initialStrength = AppSettings.isUltraPC ? 1.8 : 1.3;
+        let initialRadius = AppSettings.isUltraPC ? 0.8 : 0.6;
+        this.bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(this.width, this.height), initialStrength, initialRadius, 0.35);
+        this.bloomPass.threshold = 0.35;
         this.composer = new THREE.EffectComposer(this.renderer);
         this.composer.addPass(renderScene); this.composer.addPass(this.bloomPass);
 
@@ -1025,14 +1088,15 @@ const Game = {
     },
 
     initPools() {
-        this.particles = Array.from({length: isTouchDevice ? 400 : 1000}, () => new Particle());
+        this.particles = Array.from({length: isTouchDevice ? 400 : 2500}, () => new Particle());
         this.projectiles = Array.from({length: 300}, () => new Projectile());
         this.floatingTexts = Array.from({length: 100}, () => new FloatingText());
         this.hazards = Array.from({length: 60}, () => new Hazard());
         this.essences = Array.from({length: 50}, () => new Essence());
         this.extraLivesDrops = Array.from({length: 10}, () => new ExtraLife());
         this.decoys = Array.from({length: 10}, () => new Decoy());
-        this.bloodDecals = []; this.bloodDecalIndex = 0; let bloodMax = isTouchDevice ? 150 : 500;
+        this.dashLines = Array.from({length: 15}, () => new DashLine());
+        this.bloodDecals = []; this.bloodDecalIndex = 0; let bloodMax = isTouchDevice ? 150 : 1000;
         for(let i=0; i<bloodMax; i++) {
             let decal = new THREE.Mesh(SharedGeo.bloodPlane, SharedMat.blood); decal.rotation.x = -Math.PI/2; decal.visible = false; decal.userData = { active: false, life: 0 };
             this.scene.add(decal); this.bloodDecals.push(decal);
@@ -1046,6 +1110,7 @@ const Game = {
     getEssence() { let e = this.essences[this._essenceIdx]; this._essenceIdx = (this._essenceIdx + 1) % this.essences.length; return e; },
     getExtraLife() { let e = this.extraLivesDrops[this._extraLifeIdx]; this._extraLifeIdx = (this._extraLifeIdx + 1) % this.extraLivesDrops.length; return e; },
     getDecoy() { let d = this.decoys[this._decoyIdx]; this._decoyIdx = (this._decoyIdx + 1) % this.decoys.length; return d; },
+    getDashLine() { let d = this.dashLines[this._dashLineIdx]; this._dashLineIdx = (this._dashLineIdx + 1) % this.dashLines.length; return d; },
 
     addCombo(amount = 1) { 
         this.combo += amount * (this.player ? this.player.modifiers.comboStep : 1); 
@@ -1062,7 +1127,7 @@ const Game = {
             this.ultimateCharge = 0; this.ultimateActive = true; this.ultimateTimer = 10.0 + this.player.modifiers.ascensionDurationAdd; 
             this.addTrauma(1.0); this.hitStop = 0.3; AudioEngine.playUltimate();
             this.getFloatingText().spawn(this.player.x, this.player.y, "ASCENSIONE!", '#00DDFF', 40, true);
-            let pCount = AppSettings.isLow ? 4 : (isTouchDevice ? 10 : 30);
+            let pCount = AppSettings.isLow ? 4 : (isTouchDevice ? 10 : (AppSettings.isUltraPC ? 60 : 30));
             for(let i=0; i<pCount; i++) this.getParticle().spawn(this.player.x, 20, this.player.y, SharedMat.spriteBlue, 'trail');
         }
     },
@@ -1108,7 +1173,9 @@ const Game = {
             shakeX = MathUtils.randomRange(-shakeForce, shakeForce); shakeY = MathUtils.randomRange(-shakeForce, shakeForce); shakeZ = MathUtils.randomRange(-shakeForce, shakeForce);
             this.trauma -= dt * 2.0; if (this.trauma < 0) this.trauma = 0;
         }
-        this.camera.position.lerp(new THREE.Vector3(camX + shakeX, camY + shakeY, camZ + shakeZ), 0.15); this.camera.lookAt(this.player.x + shakeX*0.5, 0, this.player.y + shakeZ*0.5); 
+        this._camTarget.set(camX + shakeX, camY + shakeY, camZ + shakeZ);
+        this.camera.position.lerp(this._camTarget, 0.15); 
+        this.camera.lookAt(this.player.x + shakeX*0.5, 0, this.player.y + shakeZ*0.5); 
     },
     updateMouseWorld() {
         if (isTouchDevice && this.inputs.right.active) return; 
@@ -1194,6 +1261,7 @@ const Game = {
         for (let i = 0, len = this.projectiles.length; i < len; i++) if(this.projectiles[i].active) this.projectiles[i].update(dt);
         for (let i = 0, len = this.hazards.length; i < len; i++) if(this.hazards[i].active) this.hazards[i].update(dt);
         for (let i = 0, len = this.decoys.length; i < len; i++) if(this.decoys[i].active) this.decoys[i].update(dt);
+        for (let i = 0, len = this.dashLines.length; i < len; i++) if(this.dashLines[i].active) this.dashLines[i].update(dt);
         for (let i = 0, len = this.particles.length; i < len; i++) if(this.particles[i].active) this.particles[i].update(dt);
         for (let i = 0, len = this.floatingTexts.length; i < len; i++) if(this.floatingTexts[i].active) this.floatingTexts[i].update(dt);
 
@@ -1253,31 +1321,54 @@ const Game = {
         }
         
         this.uiCtx.clearRect(0, 0, this.width, this.height);
+        
         const toScreenPosition = (x, y, z) => {
             Game._vec3Screen.set(x, y, z); Game._vec3Screen.project(this.camera);
             Game._vec3Screen.x = (Game._vec3Screen.x * 0.5 + 0.5) * this.width; Game._vec3Screen.y = -(Game._vec3Screen.y * 0.5 - 0.5) * this.height;
             return Game._vec3Screen;
         };
-        this.uiCtx.fillStyle = 'rgba(0,0,0,0.8)';
+        
+        // --- Ottimizzazione: Batching delle Barre Vita ---
+        let hpBars = [];
         for(let i=0, len=this.enemies.length; i<len; i++) {
             let e = this.enemies[i];
-            if (e.stats.hp < e.stats.maxHp && e.type !== 'crystal') { let pos = toScreenPosition(e.x, e.radius + 35, e.y); if(pos.z < 1) this.uiCtx.fillRect(pos.x - 16, pos.y-2, 32, 6); }
+            if (e.stats.hp < e.stats.maxHp && e.type !== 'crystal') {
+                let pos = toScreenPosition(e.x, e.radius + 35, e.y);
+                if(pos.z < 1) hpBars.push({x: pos.x, y: pos.y, pct: e.stats.hp / e.stats.maxHp});
+            }
         }
-        this.uiCtx.fillStyle = '#ff0000';
-        for(let i=0, len=this.enemies.length; i<len; i++) {
-            let e = this.enemies[i];
-            if (e.stats.hp < e.stats.maxHp && e.type !== 'crystal') { let pos = toScreenPosition(e.x, e.radius + 35, e.y); if(pos.z < 1) this.uiCtx.fillRect(pos.x - 15, pos.y-1, 30 * (e.stats.hp / e.stats.maxHp), 4); }
+        if (hpBars.length > 0) {
+            this.uiCtx.fillStyle = 'rgba(0,0,0,0.8)';
+            for(let i=0, len=hpBars.length; i<len; i++) this.uiCtx.fillRect(hpBars[i].x - 16, hpBars[i].y-2, 32, 6);
+            this.uiCtx.fillStyle = '#ff0000';
+            for(let i=0, len=hpBars.length; i<len; i++) this.uiCtx.fillRect(hpBars[i].x - 15, hpBars[i].y-1, 30 * hpBars[i].pct, 4);
         }
-        for (let i = 0; i < this.floatingTexts.length; i++) {
+
+        // --- Ottimizzazione: Canvas 2D Text State Caching ---
+        this.uiCtx.textAlign = 'center';
+        this.uiCtx.strokeStyle = '#000';
+        this.uiCtx.lineWidth = isTouchDevice ? 2 : 4;
+        let currentFont = "";
+        let currentColor = "";
+
+        for (let i = 0, len = this.floatingTexts.length; i < len; i++) {
             let ft = this.floatingTexts[i]; if (!ft.active) continue;
             let pos = toScreenPosition(ft.x, ft.h, ft.y);
             if(pos.z < 1) {
-                let progress = ft.life / ft.maxLife; this.uiCtx.globalAlpha = Math.max(0, progress); let scale = ft.isCrit ? (2.0 - progress) : (1.5 - progress*0.5);
-                this.uiCtx.font = `900 ${Math.max(10, ft.size * scale * (isTouchDevice?0.7:1))}px 'Impact', sans-serif`;
-                this.uiCtx.fillStyle = ft.color; this.uiCtx.textAlign = 'center'; this.uiCtx.strokeStyle = '#000'; this.uiCtx.lineWidth = isTouchDevice ? 2 : 4;
-                this.uiCtx.strokeText(ft.text, pos.x, pos.y); this.uiCtx.fillText(ft.text, pos.x, pos.y); this.uiCtx.globalAlpha = 1;
+                let progress = ft.life / ft.maxLife; 
+                this.uiCtx.globalAlpha = Math.max(0, progress); 
+                let scale = ft.isCrit ? (2.0 - progress) : (1.5 - progress*0.5);
+                let size = Math.floor(Math.max(10, ft.size * scale * (isTouchDevice ? 0.7 : 1)));
+                let fontStr = `900 ${size}px 'Impact', sans-serif`;
+                
+                if (currentFont !== fontStr) { this.uiCtx.font = fontStr; currentFont = fontStr; }
+                if (currentColor !== ft.color) { this.uiCtx.fillStyle = ft.color; currentColor = ft.color; }
+                
+                this.uiCtx.strokeText(ft.text, pos.x, pos.y); 
+                this.uiCtx.fillText(ft.text, pos.x, pos.y); 
             }
         }
+        this.uiCtx.globalAlpha = 1;
     }
 };
 
@@ -1286,6 +1377,7 @@ class GameMap {
         this.width = w; this.height = h; this.grid = [];
         for(let x=0; x<w; x++) { this.grid[x] = []; for(let y=0; y<h; y++) this.grid[x][y] = 1; }
         this.mapGroup = new THREE.Group();
+        this.floorMat = null; this.wallMat = null;
     }
     generate(isBossFloor = false) {
         const rooms = []; const numRooms = 15; 
@@ -1311,13 +1403,26 @@ class GameMap {
         const isHighQ = !AppSettings.isLow; const floorTex = createPatternTexture('floor'); const wallTex = createPatternTexture('wall');
         const floorGeo = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE); floorGeo.rotateX(-Math.PI/2);
         
-        const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.9, metalness: 0.1, bumpMap: isHighQ ? floorTex : null, bumpScale: 1.5 });
-        const floorMesh = new THREE.InstancedMesh(floorGeo, floorMat, floorCount); 
+        this.floorMat = new THREE.MeshStandardMaterial({ 
+            map: floorTex, 
+            roughness: AppSettings.isUltraPC ? 0.65 : 0.9, 
+            metalness: AppSettings.isUltraPC ? 0.25 : 0.1, 
+            bumpMap: isHighQ ? floorTex : null, 
+            bumpScale: AppSettings.isUltraPC ? 3.0 : 1.5 
+        });
+        const floorMesh = new THREE.InstancedMesh(floorGeo, this.floorMat, floorCount); 
+        
         const wallGeo = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
-        const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.8, metalness: 0.3, bumpMap: isHighQ ? wallTex : null, bumpScale: 2.0 });
-        const wallMesh = new THREE.InstancedMesh(wallGeo, wallMat, wallCount);
+        this.wallMat = new THREE.MeshStandardMaterial({ 
+            map: wallTex, 
+            roughness: AppSettings.isUltraPC ? 0.5 : 0.8, 
+            metalness: AppSettings.isUltraPC ? 0.5 : 0.3, 
+            bumpMap: isHighQ ? wallTex : null, 
+            bumpScale: AppSettings.isUltraPC ? 4.0 : 2.0 
+        });
+        const wallMesh = new THREE.InstancedMesh(wallGeo, this.wallMat, wallCount);
         const pillarGeo = new THREE.CylinderGeometry(15, 15, TILE_SIZE*1.5, 8);
-        const pillarMesh = new THREE.InstancedMesh(pillarGeo, wallMat, pillarCount);
+        const pillarMesh = new THREE.InstancedMesh(pillarGeo, this.wallMat, pillarCount);
 
         floorMesh.receiveShadow = true; wallMesh.castShadow = true; wallMesh.receiveShadow = false; pillarMesh.castShadow = true; pillarMesh.receiveShadow = true;
 
@@ -1333,7 +1438,7 @@ class GameMap {
                         let crystal = new Enemy(x * TILE_SIZE, y * TILE_SIZE, 'crystal', 1);
                         crystal.onDeath = function() {
                             Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff00ff, 'crystal_fire');
-                            Game.addTrauma(1.5); let pCount = AppSettings.isLow ? 5 : 20;
+                            Game.addTrauma(1.5); let pCount = AppSettings.isLow ? 5 : (AppSettings.isUltraPC ? 40 : 20);
                             for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
                             AudioEngine.playShoot('explosive_arrow'); this.mat.dispose(); Game.scene.remove(this.mesh);
                         };
@@ -1398,7 +1503,7 @@ class Entity {
 
         if (isCrit && source === Game.player) { Game.hitStop = 0.05; Game.addTrauma(0.5); Game.addCombo(); } else if (source === Game.player) { Game.addCombo(); }
         Game.getFloatingText().spawn(this.x, this.y, Math.floor(amount), isCrit ? '#ffff00' : '#ffffff', isCrit ? 28 : 20, isCrit);
-        let pCount = AppSettings.isLow ? (isCrit ? 2 : 1) : (isCrit ? (isTouchDevice?4:8) : (isTouchDevice?2:4));
+        let pCount = AppSettings.isLow ? (isCrit ? 2 : 1) : (isCrit ? (isTouchDevice ? 4 : (AppSettings.isUltraPC ? 16 : 8)) : (isTouchDevice ? 2 : (AppSettings.isUltraPC ? 8 : 4)));
         for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
         this.flashTimer = 0.1; for (let i = 0; i < this.flashMats.length; i++) this.flashMats[i].emissive.setHex(0x555555);
         if (this.stats.hp <= 0) { this.stats.hp = 0; this.dead = true; }
@@ -1428,7 +1533,7 @@ class Player extends Entity {
         this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}), new THREE.MeshPhongMaterial({color: 0x00ffff, emissive: 0x00ffff}));
         this.mesh = this.modelParts.group; this.staffGemMat = this.modelParts.staffGem.material;
         
-        this.light = new THREE.PointLight(0xffffff, 1.2, 800); this.light.position.y = 120; 
+        this.light = new THREE.PointLight(0xffffff, 1.0, 600); this.light.position.y = 40; 
         
         this.mesh.add(this.light); this.mesh.position.set(this.x, 0, this.y); Game.scene.add(this.mesh);
         this.mesh.traverse(c => { if(c.material && c.material.emissive && c !== this.modelParts.staffGem) this.flashMats.push(c.material); });
@@ -1458,27 +1563,28 @@ class Player extends Entity {
                 comboName = "SHOCK TERMICO!"; color = "#ddaaff"; 
                 let shockRange = 250; let nearby = Game.enemyGrid.findNearby(this, shockRange);
                 nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < shockRange * shockRange) { e.slowedTimer = 4.0; e.takeDamage(this.stats.maxDmg * 2 * this.modifiers.dmgMult, this, true, false); } });
-                for(let i=0; i<40; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'spark'); 
+                for(let i=0; i<(AppSettings.isUltraPC?80:40); i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'spark'); 
                 if (!AppSettings.isLow) {
                     let flash = Game.getParticle(); flash.spawn(this.x, 20, this.y, SharedMat.spritePink, 'flame'); flash.baseSize = 80;
-                    for(let i=0; i<20; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'trail');
+                    for(let i=0; i<(AppSettings.isUltraPC?40:20); i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'trail');
                 }
                 AudioEngine.playShoot('chain_lightning');
             } else if (counts.red > 0 && counts.green > 0 && counts.blue === 0) {
                 comboName = "ESPLOSIONE TOSSICA!"; color = "#33FF00"; 
                 let poisonRange = 180; let nearby = Game.enemyGrid.findNearby(this, poisonRange);
                 nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < poisonRange*poisonRange) { e.takeDamage(this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, this, true, true); e.infected = true; e.slowedTimer = 3.0; } });
-                let pCount = AppSettings.isLow ? 15 : 40;
+                let pCount = AppSettings.isLow ? 15 : (AppSettings.isUltraPC ? 80 : 40);
                 for(let i=0; i<pCount; i++) { let a = (Math.PI * 2 / pCount) * i; Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'trail', a); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'flame', a); }
                 if (!AppSettings.isLow) {
-                    for(let i=0; i<8; i++) { let p = Game.getParticle(); p.spawn(this.x + MathUtils.randomRange(-40,40), 20, this.y + MathUtils.randomRange(-40,40), SharedMat.spriteGreen, 'flame'); p.baseSize = 50; p.life = 1.0; p.maxLife = 1.0; }
+                    let flashCount = AppSettings.isUltraPC ? 16 : 8;
+                    for(let i=0; i<flashCount; i++) { let p = Game.getParticle(); p.spawn(this.x + MathUtils.randomRange(-40,40), 20, this.y + MathUtils.randomRange(-40,40), SharedMat.spriteGreen, 'flame'); p.baseSize = 50; p.life = 1.0; p.maxLife = 1.0; }
                 }
                 AudioEngine.playShoot('explosive_arrow');
             } else if (counts.blue > 0 && counts.green > 0 && counts.red === 0) {
                 comboName = "VORTICE!"; color = "#00ffaa"; 
                 let vortexRange = 220; let nearby = Game.enemyGrid.findNearby(this, vortexRange);
                 nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < vortexRange*vortexRange) { let ang = Math.atan2(this.y - e.y, this.x - e.x); e.push(Math.cos(ang), Math.sin(ang), 120); e.takeDamage(this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, this, true, false); } }); 
-                let pCount = AppSettings.isLow ? 15 : 40;
+                let pCount = AppSettings.isLow ? 15 : (AppSettings.isUltraPC ? 80 : 40);
                 for(let i=0; i<pCount; i++) { let a = (Math.PI * 2 / pCount) * i; Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'trail', a + 0.5); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark', a - 0.5); }
                 if (!AppSettings.isLow) {
                     let flash = Game.getParticle(); flash.spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'flame'); flash.baseSize = 90;
@@ -1488,11 +1594,11 @@ class Player extends Entity {
                 comboName = "CAOS ELEMENTALE!"; color = "#ffffff"; Game.addTrauma(2.0);
                 let range = 300; let nearby = Game.enemyGrid.findNearby(this, range);
                 nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < range * range) { e.slowedTimer = 4.0; e.infected = true; e.takeDamage(this.stats.maxDmg * 3.5 * this.modifiers.dmgMult, this, true, true); } });
-                let pCount = AppSettings.isLow ? 20 : 60;
+                let pCount = AppSettings.isLow ? 20 : (AppSettings.isUltraPC ? 120 : 60);
                 for(let i=0; i<pCount; i++) { let mat = [SharedMat.spriteRed, SharedMat.spriteBlue, SharedMat.spriteGreen][i % 3]; Game.getParticle().spawn(this.x, 20, this.y, mat, 'trail'); }
                 if (!AppSettings.isLow) {
                     let core = Game.getParticle(); core.spawn(this.x, 30, this.y, SharedMat.spriteWhite, 'flame'); core.baseSize = 150; core.life = 0.5; core.maxLife = 0.5;
-                    for(let i=0; i<25; i++) { Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'flame'); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'spark'); }
+                    for(let i=0; i<(AppSettings.isUltraPC?50:25); i++) { Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'flame'); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'spark'); }
                 }
                 AudioEngine.playShoot('explosive_arrow'); AudioEngine.playShoot('chain_lightning');
                 this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + 10); Game.getFloatingText().spawn(this.x, this.y + 20, "+10 HP", '#ff0000', 25);
@@ -1509,16 +1615,17 @@ class Player extends Entity {
         this.essenceTimer = 5.0 * this.modifiers.essenceDurationMult;
         Game.getFloatingText().spawn(this.x, this.y, ESSENCE_NAMES[this.essence] + "!", '#' + ESSENCE_COLORS[this.essence].toString(16).padStart(6, '0'), 40, true);
         let mat = this.essence === 'red' ? SharedMat.spriteRed : (this.essence === 'blue' ? SharedMat.spriteBlue : SharedMat.spriteGreen);
-        let pCount = AppSettings.isLow ? 4 : (isTouchDevice ? 10 : 30); for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, mat, 'trail');
+        let pCount = AppSettings.isLow ? 4 : (isTouchDevice ? 10 : (AppSettings.isUltraPC ? 60 : 30)); for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, mat, 'trail');
     }
     updateAppearance() {
         let colorHex = 0x222222; let lColor = 0xffffff; let gemColor = 0x00ffff;
+        let isUltra = AppSettings.isUltraPC;
         if (this.essence) { colorHex = ESSENCE_COLORS[this.essence]; lColor = ESSENCE_COLORS[this.essence]; gemColor = ESSENCE_COLORS[this.essence]; }
         this.modelParts.body.material.color.setHex(colorHex); this.light.color.setHex(lColor);
         this.staffGemMat.color.setHex(gemColor); this.staffGemMat.emissive.setHex(gemColor);
-        if (this.overdrive) { this.light.intensity = 2.5; this.modelParts.body.material.emissive.setHex(colorHex); this.modelParts.body.material.emissiveIntensity = 1.0; } 
-        else { this.light.intensity = this.essence ? 1.8 : 1.2; this.modelParts.body.material.emissive.setHex(0x000000); }
-        if (Game.ultimateActive) { this.modelParts.body.material.emissive.setHex(0x00DDFF); this.modelParts.body.material.emissiveIntensity = 2.0; this.light.color.setHex(0x00DDFF); this.light.intensity = 3.5; this.staffGemMat.emissive.setHex(0xffffff); }
+        if (this.overdrive) { this.light.intensity = isUltra ? 1.5 : 2.5; this.modelParts.body.material.emissive.setHex(colorHex); this.modelParts.body.material.emissiveIntensity = 1.0; } 
+        else { this.light.intensity = this.essence ? (isUltra ? 1.2 : 1.8) : (isUltra ? 0.8 : 1.2); this.modelParts.body.material.emissive.setHex(0x000000); }
+        if (Game.ultimateActive) { this.modelParts.body.material.emissive.setHex(0x00DDFF); this.modelParts.body.material.emissiveIntensity = 2.0; this.light.color.setHex(0x00DDFF); this.light.intensity = isUltra ? 2.2 : 3.5; this.staffGemMat.emissive.setHex(0xffffff); }
     }
     update(dt) {
         if (this.dead) return; this.updateFlash(dt);
@@ -1577,7 +1684,7 @@ class Player extends Entity {
         if (this.isAttacking) { this.attackSwing += dt * 30; this.modelParts.weaponGroup.rotation.x = -Math.PI/2 + this.attackSwing; if (this.attackSwing > Math.PI) { this.isAttacking = false; this.modelParts.weaponGroup.rotation.x = 0; } }
     }
     flamethrower(dt) {
-        if (Game.frameCount % (isTouchDevice ? 3 : 1) === 0) { let pCount = AppSettings.isLow ? 1 : (isTouchDevice ? 2 : 4); for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x + Math.cos(this.angle)*20, 15 + MathUtils.randomRange(-5, 5), this.y + Math.sin(this.angle)*20, SharedMat.spriteRed, 'flame', this.angle); }
+        if (Game.frameCount % (isTouchDevice ? 3 : 1) === 0) { let pCount = AppSettings.isLow ? 1 : (isTouchDevice ? 2 : (AppSettings.isUltraPC ? 8 : 4)); for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x + Math.cos(this.angle)*20, 15 + MathUtils.randomRange(-5, 5), this.y + Math.sin(this.angle)*20, SharedMat.spriteRed, 'flame', this.angle); }
         if (Game.frameCount % 8 === 0) AudioEngine.playShoot('flame');
         let flameRange = 280; let nearby = Game.enemyGrid.findNearby(this, flameRange);
         for(let i=0, len=nearby.length; i<len; i++) {
@@ -1644,6 +1751,8 @@ class Player extends Entity {
                     let e = Game.enemies[i]; let A = this.x - endX; let B = endY - this.y; let C = (endX*this.y) - (this.x*endY); let d = Math.abs(A*e.y + B*e.x + C) / Math.sqrt(A*A + B*B);
                     if (d < e.radius + 20 && MathUtils.distance(this, e) < dist) { let dmg = this.stats.maxDmg * 2.0 * this.modifiers.dmgMult; e.takeDamage(dmg, this, true, true); Game.hitStop = 0.1; }
                 }
+                let dl = Game.getDashLine();
+                dl.spawn(this.x + dx*(dist/2), this.y + dy*(dist/2), dist, this.dashAngle);
             }
 
             this.x = endX; this.y = endY; this.dashTimer = 0; this.isDashing = false;
@@ -1689,7 +1798,7 @@ class Player extends Entity {
             if (!this.modifiers.noMaxHpLevelUp) this.stats.maxHp += 15; 
             this.stats.hp = this.stats.maxHp; 
             this.stats.minDmg += 3; this.stats.maxDmg += 5;
-            for(let i=0; i< (isTouchDevice?10:30); i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteLevel, 'level'); Game.getFloatingText().spawn(this.x, this.y, "LEVEL UP!", '#ffffff', 28, true);
+            for(let i=0; i< (isTouchDevice?10:(AppSettings.isUltraPC?60:30)); i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteLevel, 'level'); Game.getFloatingText().spawn(this.x, this.y, "LEVEL UP!", '#ffffff', 28, true);
             AudioEngine.playLevelUp();
         }
     }
@@ -1715,7 +1824,7 @@ class Enemy extends Entity {
         let diffSpeedMod = Game.difficultyMult < 1.0 ? 0.8 : (Game.difficultyMult > 1.0 ? 1.15 : 1.0); this.baseSpeed = 100 * spdMod * Math.min(3.2, 1 + (level * 0.05)) * diffSpeedMod; this.speed = this.baseSpeed;
         this.xpValue = Math.floor(20 * hpMod * level); this.infected = false; this.slowedTimer = 0; this.fireDebuffTimer = 0;
         
-        this.mat = type === 'crystal' ? new THREE.MeshPhongMaterial({color: 0x000000, emissive: color}) : new THREE.MeshStandardMaterial({color: color, roughness: 0.7, metalness: !AppSettings.isLow ? 0.2 : 0.0}); 
+        this.mat = type === 'crystal' ? new THREE.MeshPhongMaterial({color: 0x000000, emissive: color}) : new THREE.MeshStandardMaterial({color: color, roughness: AppSettings.isUltraPC ? 0.4 : 0.7, metalness: AppSettings.isUltraPC ? 0.6 : (!AppSettings.isLow ? 0.2 : 0.0)}); 
         let modelData = ModelFactory.buildEnemy(type, size, this.mat);
         this.mesh = modelData.group; this.modelParts = modelData.parts;
         this.mesh.position.set(x, 0, y); Game.scene.add(this.mesh); 
@@ -1792,7 +1901,7 @@ class Enemy extends Entity {
     onDeath() {
         if (this.type === 'crystal') {
             Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff00ff, 'crystal_fire');
-            Game.addTrauma(1.5); let pCount = AppSettings.isLow ? 5 : 20;
+            Game.addTrauma(1.5); let pCount = AppSettings.isLow ? 5 : (AppSettings.isUltraPC ? 40 : 20);
             for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
             AudioEngine.playShoot('explosive_arrow'); this.mat.dispose(); Game.scene.remove(this.mesh);
             return;
@@ -1800,7 +1909,7 @@ class Enemy extends Entity {
         
         AudioEngine.playEnemyDeath();
         Game.player.gainXp(this.xpValue);
-        let pCount = AppSettings.isLow ? 2 : (isTouchDevice ? 3 : 15); for(let i=0; i< pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
+        let pCount = AppSettings.isLow ? 2 : (isTouchDevice ? 3 : (AppSettings.isUltraPC ? 30 : 15)); for(let i=0; i< pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
         
         if (Game.player.modifiers.vampirismMaxHp > 0 && Math.random() < 0.10) { 
             let heal = Game.player.stats.maxHp * Game.player.modifiers.vampirismMaxHp;
@@ -1819,7 +1928,9 @@ class Enemy extends Entity {
         }
 
         if (!AppSettings.isLow) {
-            let decal = Game.bloodDecals[Game.bloodDecalIndex]; decal.position.set(this.x, 1, this.y); decal.rotation.z = Math.random() * Math.PI; decal.scale.setScalar(1.0); decal.userData.life = MathUtils.randomRange(2.0, 3.0); decal.userData.baseScale = 1.0; 
+            let decal = Game.bloodDecals[Game.bloodDecalIndex]; decal.position.set(this.x, 1, this.y); decal.rotation.z = Math.random() * Math.PI; decal.scale.setScalar(1.0); 
+            decal.userData.life = AppSettings.isUltraPC ? MathUtils.randomRange(4.0, 6.0) : MathUtils.randomRange(2.0, 3.0); 
+            decal.userData.baseScale = AppSettings.isUltraPC ? 1.5 : 1.0; 
             decal.userData.active = true; decal.visible = true; Game.bloodDecalIndex = (Game.bloodDecalIndex + 1) % Game.bloodDecals.length;
         }
         if(this.mat) this.mat.dispose(); Game.scene.remove(this.mesh);
@@ -1873,10 +1984,10 @@ class BossEnemy extends Enemy {
     onDeath() {
         AudioEngine.playEnemyDeath();
         Game.player.gainXp(this.xpValue);
-        let pCount = AppSettings.isLow ? 10 : 50; for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 30, this.y, SharedMat.spriteBlood, 'blood');
+        let pCount = AppSettings.isLow ? 10 : (AppSettings.isUltraPC ? 100 : 50); for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 30, this.y, SharedMat.spriteBlood, 'blood');
         if (!AppSettings.isLow) {
             let decal = Game.bloodDecals[Game.bloodDecalIndex]; decal.position.set(this.x, 1, this.y); decal.rotation.z = Math.random() * Math.PI;
-            decal.scale.setScalar(4.0); decal.userData.life = 4.0; decal.userData.baseScale = 4.0; decal.userData.active = true; decal.visible = true; Game.bloodDecalIndex = (Game.bloodDecalIndex + 1) % Game.bloodDecals.length;
+            decal.scale.setScalar(AppSettings.isUltraPC ? 6.0 : 4.0); decal.userData.life = AppSettings.isUltraPC ? 6.0 : 4.0; decal.userData.baseScale = AppSettings.isUltraPC ? 6.0 : 4.0; decal.userData.active = true; decal.visible = true; Game.bloodDecalIndex = (Game.bloodDecalIndex + 1) % Game.bloodDecals.length;
         }
         this.mat.dispose(); Game.scene.remove(this.mesh); Game.addTrauma(2.0); AudioEngine.playShoot('explosive_arrow');
         for(let i=0; i<6; i++) {
@@ -1974,7 +2085,7 @@ class Projectile {
         if (this.type === 'explosive_arrow' || this.type === 'enemy_fireball' || this.type === 'fire_shape') pMat = SharedMat.spriteRed;
         if (this.type === 'chain_lightning' || this.type === 'enemy_bolt') pMat = SharedMat.spriteBlue;
         if (this.type === 'homing_arrow') pMat = SharedMat.spriteGreen;
-        let count = AppSettings.isLow ? 1 : (isTouchDevice ? 2 : 6);
+        let count = AppSettings.isLow ? 1 : (isTouchDevice ? 2 : (AppSettings.isUltraPC ? 12 : 6));
         for(let i=0; i<count; i++) Game.getParticle().spawn(this.x, 15, this.y, pMat, 'spark');
         if (this.type === 'fire_shape') Game.getHazard().spawn(this.x, this.y, 45, 8.0, this.damage, 0xff3300, 'enemy_fire');
         if (this.type === 'explosive_arrow') {

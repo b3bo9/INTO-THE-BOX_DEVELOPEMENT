@@ -582,21 +582,30 @@ const AudioEngine = {
         if (!this.ctx || this.muted) return; if (this.ctx.state === 'suspended') this.ctx.resume();
         let t = this.ctx.currentTime;
         
-        // Impatto di bassi profondo (Bass Drop)
-        let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
-        osc.type = 'sine'; 
-        osc.frequency.setValueAtTime(100, t); 
-        osc.frequency.exponentialRampToValueAtTime(10, t + 4.0);
-        gain.gain.setValueAtTime(0.8, t); 
-        gain.gain.exponentialRampToValueAtTime(0.01, t + 4.0);
-        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 4.0);
+        // 1. "Gong" metallico dissonante
+        const notes = [150, 155, 220, 225]; 
+        notes.forEach(freq => {
+            let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain(); 
+            osc.type = 'triangle'; osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.4, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 4.0);
+            osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 4.0);
+        });
+
+        // 2. Bass Drop molto più udibile (Sawtooth dà armoniche alte, perfette per gli smartphone)
+        let oscDrop = this.ctx.createOscillator(); let gainDrop = this.ctx.createGain();
+        oscDrop.type = 'sawtooth'; 
+        oscDrop.frequency.setValueAtTime(250, t); 
+        oscDrop.frequency.exponentialRampToValueAtTime(20, t + 3.5);
+        gainDrop.gain.setValueAtTime(0.6, t); 
+        gainDrop.gain.exponentialRampToValueAtTime(0.01, t + 3.5);
+        oscDrop.connect(gainDrop); gainDrop.connect(this.ctx.destination); oscDrop.start(t); oscDrop.stop(t + 3.5);
         
-        // Rimbombo sotterraneo oscuro
+        // 3. Rimbombo cupo del portale che si chiude
         if (this.noiseBuffer) {
             let noiseSource = this.ctx.createBufferSource(); noiseSource.buffer = this.noiseBuffer;
             let noiseFilter = this.ctx.createBiquadFilter(); noiseFilter.type = 'lowpass';
-            noiseFilter.frequency.setValueAtTime(150, t); noiseFilter.frequency.linearRampToValueAtTime(20, t + 4.0);
-            let noiseGain = this.ctx.createGain(); noiseGain.gain.setValueAtTime(0.6, t); noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 4.0);
+            noiseFilter.frequency.setValueAtTime(500, t); noiseFilter.frequency.exponentialRampToValueAtTime(30, t + 4.0);
+            let noiseGain = this.ctx.createGain(); noiseGain.gain.setValueAtTime(0.8, t); noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 4.0);
             noiseSource.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(this.ctx.destination);
             noiseSource.start(t); noiseSource.stop(t + 4.0);
         }

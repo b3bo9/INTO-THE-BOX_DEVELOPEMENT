@@ -146,7 +146,7 @@
         </div>
 
         <div class="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 text-white/30 text-[8px] sm:text-[10px] font-bold tracking-[0.3em] uppercase pointer-events-none z-30 whitespace-nowrap">
-            b3bo 2026 Build 40
+            b3bo 2026 Build 42
         </div>
     </div>
 
@@ -980,11 +980,14 @@ class Essence {
     constructor() {
         this.active = false; this.type = 'red'; this.group = new THREE.Group();
         this.coreMat = new THREE.MeshBasicMaterial({color: 0x000000});
-        let core = new THREE.Mesh(SharedGeo.icosahedron, this.coreMat); core.scale.setScalar(5);
+        let core = new THREE.Mesh(SharedGeo.icosahedron, this.coreMat); core.scale.setScalar(12);
         this.haloMat = new THREE.MeshBasicMaterial({wireframe: true, transparent: true, opacity: 0.9});
-        let halo = new THREE.Mesh(SharedGeo.icosahedron, this.haloMat); halo.scale.setScalar(8);
-        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(30, 30, 1);
-        this.group.matrixAutoUpdate = false; core.matrixAutoUpdate = false; halo.matrixAutoUpdate = false; this.glow.matrixAutoUpdate = false;
+        let halo = new THREE.Mesh(SharedGeo.icosahedron, this.haloMat); halo.scale.setScalar(18);
+        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(60, 60, 1);
+        this.group.matrixAutoUpdate = false; 
+        core.matrixAutoUpdate = false; core.updateMatrix();
+        halo.matrixAutoUpdate = false; halo.updateMatrix();
+        this.glow.matrixAutoUpdate = false; this.glow.updateMatrix();
         this.group.add(core); this.group.add(halo); this.group.add(this.glow); this.group.visible = false; Game.scene.add(this.group);
     }
     spawn(x, y, type) {
@@ -992,7 +995,7 @@ class Essence {
         this.life = 15.0;
         this.coreMat.color.setHex(color); this.haloMat.color.setHex(color);
         if(type === 'red') this.glow.material = SharedMat.spriteRed; else if(type === 'blue') this.glow.material = SharedMat.spriteBlue; else this.glow.material = SharedMat.spriteGreen;
-        this.group.position.set(x, 10, y); this.group.updateMatrix(); this.group.visible = true;
+        this.group.position.set(x, 15, y); this.group.updateMatrix(); this.group.visible = true;
     }
     destroy() { this.active = false; this.group.visible = false; }
 }
@@ -1001,12 +1004,14 @@ class ExtraLife {
     constructor() {
         this.active = false; this.group = new THREE.Group();
         this.mat = new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0xffffff, roughness: 0.1, metalness: 0.5, emissiveIntensity: 2.0});
-        let core = new THREE.Mesh(SharedGeo.heart, this.mat); core.scale.setScalar(3);
-        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(30, 30, 1);
-        this.group.matrixAutoUpdate = false; core.matrixAutoUpdate = false; this.glow.matrixAutoUpdate = false;
+        let core = new THREE.Mesh(SharedGeo.heart, this.mat); core.scale.setScalar(8);
+        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(60, 60, 1);
+        this.group.matrixAutoUpdate = false; 
+        core.matrixAutoUpdate = false; core.updateMatrix();
+        this.glow.matrixAutoUpdate = false; this.glow.updateMatrix();
         this.group.add(core); this.group.add(this.glow); this.group.visible = false; Game.scene.add(this.group);
     }
-    spawn(x, y) { this.active = true; this.x = x; this.y = y; this.life = 15.0; this.group.position.set(x, 10, y); this.group.updateMatrix(); this.group.visible = true; }
+    spawn(x, y) { this.active = true; this.x = x; this.y = y; this.life = 15.0; this.group.position.set(x, 15, y); this.group.updateMatrix(); this.group.visible = true; }
     destroy() { this.active = false; this.group.visible = false; }
 }
 
@@ -1520,7 +1525,8 @@ const Game = {
                 if (e.life < 3.0) e.group.visible = Math.floor(e.life * 8) % 2 === 0;
                 else e.group.visible = true;
 
-                e.group.rotation.y += dt; e.group.position.y = 10 + this.animFloat;
+                e.group.rotation.y += dt; e.group.position.y = 15 + this.animFloat;
+                e.group.updateMatrix();
                 if (MathUtils.distanceSq(this.player, e) < pRadiusSq) { this.player.collectEssence(e.type); e.destroy(); }
             }
         }
@@ -1533,7 +1539,8 @@ const Game = {
                 if (el.life < 3.0) el.group.visible = Math.floor(el.life * 8) % 2 === 0;
                 else el.group.visible = true;
 
-                el.group.rotation.y += dt * 2; el.group.position.y = 10 + this.animFloat;
+                el.group.rotation.y += dt * 2; el.group.position.y = 15 + this.animFloat;
+                el.group.updateMatrix();
                 if (MathUtils.distanceSq(this.player, el) < pRadiusSq) { this.lives++; el.destroy(); AudioEngine.playCollect(); this.getFloatingText().spawn(this.player.x, this.player.y, "VITA EXTRA!", '#ffffff', 30, true); }
             }
         }

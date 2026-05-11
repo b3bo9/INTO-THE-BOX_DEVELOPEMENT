@@ -412,10 +412,10 @@ const AudioEngine = {
             this.playNoise(0.05, 'high', 0.05);
         } else if (type === 'crit') {
             let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
-            osc.type = 'square'; osc.frequency.setValueAtTime(1200 * r, t); osc.frequency.exponentialRampToValueAtTime(100, t + 0.15);
-            gain.gain.setValueAtTime(0.15, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+            osc.type = 'triangle'; osc.frequency.setValueAtTime(900 * r, t); osc.frequency.exponentialRampToValueAtTime(100, t + 0.15);
+            gain.gain.setValueAtTime(0.08, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
             osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 0.15);
-            this.playNoise(0.1, 'high', 0.05);
+            this.playNoise(0.1, 'high', 0.02);
         } else if (type === 'player') {
             let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
             osc.type = 'square'; 
@@ -564,9 +564,9 @@ const AudioEngine = {
         // Suono aggiuntivo cristallino e gratificante per i colpi CRITICI (escluso il lanciafiamme per non fare rumore metallico continuo)
         if (isCrit && type !== 'flame') {
             let critOsc = this.ctx.createOscillator(); let critGain = this.ctx.createGain();
-            critOsc.type = 'sine'; critOsc.frequency.setValueAtTime(2000 * r, t); critOsc.frequency.exponentialRampToValueAtTime(500, t + 0.25);
-            critGain.gain.setValueAtTime(0.2, t); critGain.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
-            critOsc.connect(critGain); critGain.connect(this.ctx.destination); critOsc.start(t); critOsc.stop(t + 0.25);
+            critOsc.type = 'sine'; critOsc.frequency.setValueAtTime(1500 * r, t); critOsc.frequency.exponentialRampToValueAtTime(600, t + 0.2);
+            critGain.gain.setValueAtTime(0.06, t); critGain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+            critOsc.connect(critGain); critGain.connect(this.ctx.destination); critOsc.start(t); critOsc.stop(t + 0.2);
         }
     },
     playDeathMusic() {
@@ -577,6 +577,29 @@ const AudioEngine = {
             gain.gain.setValueAtTime(0, t + i * 0.5); gain.gain.linearRampToValueAtTime(0.3, t + i * 0.5 + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.5 + 1.0);
             osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t + i * 0.5); osc.stop(t + i * 0.5 + 1.0);
         });
+    },
+    playGameOverSound() {
+        if (!this.ctx || this.muted) return; if (this.ctx.state === 'suspended') this.ctx.resume();
+        let t = this.ctx.currentTime;
+        
+        // Impatto di bassi profondo (Bass Drop)
+        let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+        osc.type = 'sine'; 
+        osc.frequency.setValueAtTime(100, t); 
+        osc.frequency.exponentialRampToValueAtTime(10, t + 4.0);
+        gain.gain.setValueAtTime(0.8, t); 
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 4.0);
+        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 4.0);
+        
+        // Rimbombo sotterraneo oscuro
+        if (this.noiseBuffer) {
+            let noiseSource = this.ctx.createBufferSource(); noiseSource.buffer = this.noiseBuffer;
+            let noiseFilter = this.ctx.createBiquadFilter(); noiseFilter.type = 'lowpass';
+            noiseFilter.frequency.setValueAtTime(150, t); noiseFilter.frequency.linearRampToValueAtTime(20, t + 4.0);
+            let noiseGain = this.ctx.createGain(); noiseGain.gain.setValueAtTime(0.6, t); noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 4.0);
+            noiseSource.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(this.ctx.destination);
+            noiseSource.start(t); noiseSource.stop(t + 4.0);
+        }
     },
     playLevelCompleteMusic() {
         if (!this.ctx || this.ctx.state === 'suspended' || this.muted) return;
@@ -2007,13 +2030,15 @@ class Player extends Entity {
         if (!wasDead) {
             Game.addTrauma(0.8);
             if (this.stats.hp <= 0) { 
-                Game.lives--; this.dead = true; Game.state = 'DEAD'; AudioEngine.playDeathMusic();
+                Game.lives--; this.dead = true; Game.state = 'DEAD'; 
                 let ds = document.getElementById('deathScreen');
                 ds.classList.remove('hidden'); document.getElementById('score-save-container').classList.add('hidden');
                 if (Game.lives > 0) { 
+                    AudioEngine.playDeathMusic();
                     ds.style.backgroundImage = "url('bg_morte.png')";
                     document.getElementById('deathTitle').innerText = "SEI CADUTO"; document.getElementById('deathSubtitle').innerText = `Vite rimaste: ${Game.lives}`; document.getElementById('deathQuote').classList.add('hidden'); document.getElementById('btn-respawn').classList.remove('hidden'); document.getElementById('btn-restart').classList.add('hidden'); 
                 } else {
+                    AudioEngine.playGameOverSound();
                     ds.style.backgroundImage = "url('bg_box.png')";
                     document.getElementById('deathTitle').innerText = "R I P"; document.getElementById('deathSubtitle').innerText = `Piano: ${Game.floor} | Demoni: ${Game.totalKills} | Tempo: ${ScoreManager.formatTime(Game.playTime)}`; document.getElementById('deathQuote').innerText = `"${DEATH_QUOTES[Math.floor(Math.random() * DEATH_QUOTES.length)]}"`; document.getElementById('deathQuote').classList.remove('hidden'); document.getElementById('btn-respawn').classList.add('hidden'); document.getElementById('btn-restart').classList.remove('hidden'); document.getElementById('score-save-container').classList.remove('hidden'); document.getElementById('playerName').value = '';
                     let btnSave = document.getElementById('btn-save-score'); btnSave.innerText = 'SALVA PUNTEGGIO'; btnSave.disabled = false; btnSave.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-700'); btnSave.classList.add('bg-red-900', 'hover:bg-red-700');

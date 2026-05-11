@@ -1128,7 +1128,7 @@ const Game = {
     _camTarget: new THREE.Vector3(),
     _particleIdx: 0, _projectileIdx: 0, _hazardIdx: 0, _textIdx: 0, _essenceIdx: 0, _extraLifeIdx: 0, _decoyIdx: 0, _dashLineIdx: 0,
     lastTime: 0, accumulator: 0, state: 'MENU', floor: 1, floorMaxKills: 0, floorKills: 0, totalKills: 0, frameCount: 0, isBossFloor: false,
-    hitStop: 0, trauma: 0, combo: 0, comboTimer: 0, comboMaxTime: 5.0, difficultyMult: 1.0, ultimateCharge: 0, ultimateActive: false, ultimateTimer: 0, lives: 3, playTime: 0, bossDefeatedTimer: 0,
+    hitStop: 0, trauma: 0, combo: 0, comboTimer: 0, comboMaxTime: 5.0, difficultyMult: 1.0, ultimateCharge: 0, ultimateActive: false, ultimateTimer: 0, lives: 3, playTime: 0, bossDefeatedTimer: 0, floorEndTimer: 0, floorEndTriggered: false,
     player: null, map: null, enemyGrid: null, enemies: [], projectiles: [], particles: [], essences: [], extraLivesDrops: [], floatingTexts: [], hazards: [], decoys: [], dashLines: [], bloodDecals: [], bloodDecalIndex: 0,
     
     composer: null, bloomPass: null, dirLight: null,
@@ -1299,6 +1299,7 @@ const Game = {
 
     setupFloor() {
         this.bossDefeatedTimer = 0; this.isBossFloor = (this.floor % 5 === 0);
+        this.floorEndTimer = 0; this.floorEndTriggered = false;
         this.enemyGrid = new SpatialHashGrid([[-1000, -1000], [CHUNK_SIZE*TILE_SIZE+1000, CHUNK_SIZE*TILE_SIZE+1000]], [200, 200]);
         this.map = new GameMap(CHUNK_SIZE, CHUNK_SIZE); this.map.generate(this.isBossFloor);
         
@@ -1339,6 +1340,7 @@ const Game = {
         if (isTouchDevice) document.getElementById('mobile-controls').classList.remove('hidden');
         this.difficultyMult = diffMult || 1.0;
         this.floor = 1; this.totalKills = 0; this.lives = 3; this.playTime = 0; this.enemies = []; this.ultimateCharge = 0; this.ultimateActive = false;
+        this.floorEndTimer = 0; this.floorEndTriggered = false;
         if (this.player) { Game.scene.remove(this.player.mesh); this.player = null; }
         clearScene(); this.setupFloor(); this.state = 'PLAYING';
     },
@@ -1421,8 +1423,39 @@ const Game = {
         if (this.isBossFloor && this.bossDefeatedTimer > 0) {
             this.bossDefeatedTimer -= dt;
             if (this.bossDefeatedTimer <= 0 && this.state === 'PLAYING') { this.state = 'RELIC_SELECTION'; RelicSystem.showChoices(); }
-        } else if (!this.isBossFloor && this.floorKills >= this.floorMaxKills && this.enemies.length === 0 && this.state === 'PLAYING') {
-            this.state = 'FLOOR_TRANSITION'; document.getElementById('floorScreen').classList.remove('hidden'); AudioEngine.playLevelCompleteMusic();
+        } else if (!this.isBossFloor && this.state === 'PLAYING') {
+            let enemiesLeft = this.floorMaxKills - this.floorKills;
+            
+            if (enemiesLeft <= 2 && enemiesLeft > 0 && !this.floorEndTriggered) {
+                this.floorEndTriggered = true;
+                this.floorEndTimer = 5.0;
+                Game.getFloatingText().spawn(this.player.x, this.player.y, "IL PORTALE SI APRE!", '#00DDFF', 40, true);
+            }
+            
+            if (this.floorEndTriggered) {
+                let oldSec = Math.ceil(this.floorEndTimer);
+                this.floorEndTimer -= dt;
+                let newSec = Math.ceil(this.floorEndTimer);
+                
+                if (oldSec !== newSec && newSec > 0) {
+                    Game.getFloatingText().spawn(this.player.x, this.player.y, newSec.toString(), '#00DDFF', 60, true);
+                    AudioEngine.playHit('player');
+                }
+                
+                if (this.floorEndTimer <= 0 || (enemiesLeft <= 0 && this.enemies.length === 0)) {
+                    for (let i = this.enemies.length - 1; i >= 0; i--) {
+                        let e = this.enemies[i];
+                        if (!e.dead) { e.takeDamage(999999, this.player, false, false); e.onDeath(); }
+                    }
+                    this.state = 'FLOOR_TRANSITION'; 
+                    document.getElementById('floorScreen').classList.remove('hidden'); 
+                    AudioEngine.playLevelCompleteMusic();
+                }
+            } else if (enemiesLeft <= 0 && this.enemies.length === 0) {
+                this.state = 'FLOOR_TRANSITION'; 
+                document.getElementById('floorScreen').classList.remove('hidden'); 
+                AudioEngine.playLevelCompleteMusic();
+            }
         }
         UI.update();
     },

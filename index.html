@@ -2018,13 +2018,22 @@ class Player extends Entity {
         if (this.essence === 'green') { Game.getDecoy().spawn(this.x, this.y); Game.getHazard().spawn(this.x, this.y, 40, 3.0, this.stats.maxDmg * 0.5 * this.modifiers.dmgMult, ESSENCE_COLORS.green, 'poison'); }
         if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); }
     }
+    
     takeDamage(amount, source) {
         if (this.invincibilityTimer > 0) return; 
-        if (this.modifiers.shieldActive && !this.modifiers.shieldConsumed) { this.modifiers.shieldConsumed = true; Game.getFloatingText().spawn(this.x, this.y, "SCUDO!", '#00DDFF', 30, true); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'spark'); this.invincibilityTimer = 0.5; return; }
+        
+        // FIX BUG INVINCIBILITÀ: Resetta il timer PRIMA che lo scudo assorba l'impatto
+        this.modifiers.timeSinceLastHit = 0;
+        
+        if (this.modifiers.shieldActive && !this.modifiers.shieldConsumed) { 
+            this.modifiers.shieldConsumed = true; 
+            Game.getFloatingText().spawn(this.x, this.y, "SCUDO!", '#00DDFF', 30, true); 
+            Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'spark'); 
+            this.invincibilityTimer = 0.5; 
+            return; 
+        }
         
         let wasDead = this.dead; amount *= this.modifiers.dmgTakenMult; if (Game.ultimateActive) amount *= 0.5; 
-        
-        this.modifiers.timeSinceLastHit = 0;
         
         if (this.modifiers.flowMastery && !wasDead) {
             Game.ultimateCharge = 0;
@@ -2055,6 +2064,7 @@ class Player extends Entity {
             }
         }
     }
+    
     gainXp(amount) {
         this.xp += amount * this.modifiers.xpMult;
         if (this.xp >= this.xpNeeded) {
@@ -2320,7 +2330,10 @@ class Projectile {
         }
         this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt; this.group.position.set(this.x, 15, this.y);
         if (this.type !== 'arrow' && this.type !== 'homing_arrow') { this.mesh.rotation.x += dt * 5; this.mesh.rotation.y += dt * 5; }
-        if (Game.map.isSolid(this.x, this.y)) { this.handleHit(null); return; }
+        
+        if (this.life <= 0) { this.destroy(); return; }
+        if (Game.map.isSolid(this.x, this.y)) { this.destroy(); return; }
+
         if (this.owner === 'player') {
             let radSqCheck = (this.radius + 30) * (this.radius + 30);
             let nearby = Game.enemyGrid.findNearby(this, this.radius + 30);

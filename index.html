@@ -63,6 +63,7 @@
         <h1 class="text-[8vw] sm:text-4xl font-extrabold text-red-700 tracking-widest animate-pulse text-center px-4 drop-shadow-[0_0_15px_rgba(220,38,38,0.8)] z-10 whitespace-nowrap">Tocca per Entrare</h1>
     </div>
 
+    <!-- MAIN MENU -->
     <div id="mainMenu" class="absolute inset-0 z-[200] pointer-events-auto hidden flex-col justify-between overflow-y-auto overflow-x-hidden bg-cover bg-center bg-no-repeat" style="background-image: url('bg.png');">
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_10%,_rgba(0,0,0,0.85)_100%)] pointer-events-none"></div>
         <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/95 pointer-events-none"></div>
@@ -145,10 +146,11 @@
         </div>
 
         <div class="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 text-white/30 text-[8px] sm:text-[10px] font-bold tracking-[0.3em] uppercase pointer-events-none z-30 whitespace-nowrap">
-            b3bo 2026 Build 34
+            b3bo 2026 Build 40
         </div>
     </div>
 
+    <!-- SCHERMATA MORTE -->
     <div id="deathScreen" class="absolute inset-0 z-[100] hidden pointer-events-auto bg-cover bg-center bg-no-repeat overflow-hidden">
         <div class="absolute inset-0 bg-gradient-to-b from-black/90 via-black/20 to-black/95 pointer-events-none"></div>
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_20%,_rgba(0,0,0,0.85)_100%)] pointer-events-none"></div>
@@ -180,6 +182,7 @@
         </div>
     </div>
 
+    <!-- TRANSIZIONE PIANO -->
     <div id="floorScreen" class="absolute inset-0 z-[100] hidden pointer-events-auto bg-cover bg-center bg-no-repeat overflow-hidden" style="background-image: url('bg_piano.png');">
         <div class="absolute inset-0 bg-gradient-to-b from-blue-950/80 via-transparent to-black/95 pointer-events-none"></div>
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_10%,_rgba(0,0,0,0.7)_100%)] pointer-events-none"></div>
@@ -198,6 +201,7 @@
         </div>
     </div>
 
+    <!-- PUNTEGGI -->
     <div id="highScoreScreen" class="absolute inset-0 bg-black/95 z-[250] flex items-center justify-center backdrop-blur-xl pointer-events-auto hidden">
         <div class="bg-red-950/20 border border-red-900/50 p-6 sm:p-8 w-[90%] max-w-[500px] landscape:max-w-[700px] flex flex-col gap-4 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.2)]">
             <h2 class="text-3xl sm:text-4xl font-black text-center text-transparent bg-clip-text bg-gradient-to-br from-amber-200 via-amber-500 to-red-600 drop-shadow-[0_0_10px_rgba(255,170,0,0.5)] mb-2">ONORE AI CADUTI</h2>
@@ -206,16 +210,19 @@
         </div>
     </div>
 
+    <!-- RELIQUIE -->
     <div id="relicScreen" class="absolute inset-0 bg-black/95 z-[250] flex flex-col items-center justify-center backdrop-blur-xl pointer-events-auto hidden overflow-y-auto">
         <h2 class="text-3xl sm:text-5xl font-black text-center text-amber-500 drop-shadow-[0_0_15px_rgba(251,191,36,0.6)] mb-2 uppercase tracking-widest">Scegli il tuo Destino</h2>
         <p class="text-sm sm:text-base text-gray-400 mb-8 font-bold text-center px-4">Solo una reliquia può essere portata al piano inferiore...</p>
         <div id="relicCardsContainer" class="flex flex-col landscape:flex-row sm:flex-row gap-4 sm:gap-6 w-[90%] max-w-[900px] justify-center items-stretch my-auto"></div>
     </div>
 
+    <!-- CONTAINER 3D -->
     <div id="game-container"></div>
     <canvas id="uiCanvas"></canvas>
     <div id="vignette"></div>
 
+    <!-- CONTROLLI MOBILE -->
     <div id="mobile-controls" class="absolute inset-0 pointer-events-none z-50 hidden">
         <div id="joy-left-zone" class="absolute bottom-8 left-8 sm:bottom-12 sm:left-12 landscape:bottom-6 landscape:left-12 w-32 h-32 bg-white/10 rounded-full border border-white/20 pointer-events-auto touch-none">
             <div id="joy-left-stick" class="absolute top-1/2 left-1/2 w-14 h-14 bg-white/40 rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-[0_0_15px_rgba(255,255,255,0.3)] backdrop-blur-sm pointer-events-none transition-transform duration-75"></div>
@@ -227,6 +234,7 @@
         <button id="btn-ult" class="absolute bottom-[11rem] right-12 landscape:bottom-24 landscape:right-40 w-14 h-14 bg-fuchsia-500/40 backdrop-blur-md rounded-full border border-fuchsia-400 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(255,0,255,0.6)] opacity-50 scale-75 transition-all flex items-center justify-center touch-none"><i class="fa-solid fa-angles-up text-2xl"></i></button>
     </div>
 
+    <!-- HUD IN-GAME -->
     <div id="hud" class="absolute inset-0 pointer-events-none hidden z-10">
         <div class="absolute top-3 left-3 sm:top-6 sm:left-6 bg-black/85 border border-gray-700 p-2.5 sm:p-4 landscape:p-2 rounded-xl flex flex-col gap-1.5 w-[55vw] min-w-[200px] max-w-[320px] sm:w-[350px] sm:max-w-none landscape:w-[280px] shadow-2xl backdrop-blur-md pointer-events-none">
             <div class="flex flex-col gap-1 border-b border-gray-700 pb-1.5">
@@ -333,7 +341,7 @@ const AudioEngine = {
     gameBGM: (() => { let a = new Audio('Gameplay.mp3'); a.loop = true; a.preload = 'auto'; return a; })(),
     bossBGM: (() => { let a = new Audio('Boss.mp3'); a.loop = true; a.preload = 'auto'; return a; })(),
     _menuFade: null, _gameFade: null, _bossFade: null,
-    lastHitFrame: 0, hitCount: 0, lastShootFrame: 0, shootCount: 0,
+    lastHitTime: 0, hitCount: 0, lastShootTime: 0, shootCount: 0,
     init() {
         if (this.initialized) return; window.AudioContext = window.AudioContext || window.webkitAudioContext;
         this.ctx = new AudioContext(); this.initialized = true; 
@@ -378,12 +386,12 @@ const AudioEngine = {
     playHit(type) {
         if (!this.ctx || this.muted) return; if (this.ctx.state === 'suspended') this.ctx.resume();
         
-        let now = window.Game ? Game.frameCount : 0;
-        if (now - this.lastHitFrame < 3) {
+        let now = Date.now();
+        if (now - this.lastHitTime < 50) {
             this.hitCount++;
             if (this.hitCount > 2) return; 
         } else {
-            this.lastHitFrame = now;
+            this.lastHitTime = now;
             this.hitCount = 1;
         }
 
@@ -577,12 +585,12 @@ const AudioEngine = {
     playShoot(type, isCrit = false) {
         if (!this.ctx || this.muted) return; if (this.ctx.state === 'suspended') this.ctx.resume();
         
-        let now = window.Game ? Game.frameCount : 0;
-        if (now - this.lastShootFrame < 3) {
+        let now = Date.now();
+        if (now - this.lastShootTime < 40) {
             this.shootCount++;
             if (this.shootCount > 2) return; 
         } else {
-            this.lastShootFrame = now;
+            this.lastShootTime = now;
             this.shootCount = 1;
         }
 
@@ -972,14 +980,11 @@ class Essence {
     constructor() {
         this.active = false; this.type = 'red'; this.group = new THREE.Group();
         this.coreMat = new THREE.MeshBasicMaterial({color: 0x000000});
-        let core = new THREE.Mesh(SharedGeo.icosahedron, this.coreMat); core.scale.setScalar(12);
+        let core = new THREE.Mesh(SharedGeo.icosahedron, this.coreMat); core.scale.setScalar(5);
         this.haloMat = new THREE.MeshBasicMaterial({wireframe: true, transparent: true, opacity: 0.9});
-        let halo = new THREE.Mesh(SharedGeo.icosahedron, this.haloMat); halo.scale.setScalar(18);
-        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(60, 60, 1);
-        this.group.matrixAutoUpdate = false; 
-        core.matrixAutoUpdate = false; core.updateMatrix();
-        halo.matrixAutoUpdate = false; halo.updateMatrix();
-        this.glow.matrixAutoUpdate = false; this.glow.updateMatrix();
+        let halo = new THREE.Mesh(SharedGeo.icosahedron, this.haloMat); halo.scale.setScalar(8);
+        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(30, 30, 1);
+        this.group.matrixAutoUpdate = false; core.matrixAutoUpdate = false; halo.matrixAutoUpdate = false; this.glow.matrixAutoUpdate = false;
         this.group.add(core); this.group.add(halo); this.group.add(this.glow); this.group.visible = false; Game.scene.add(this.group);
     }
     spawn(x, y, type) {
@@ -996,11 +1001,9 @@ class ExtraLife {
     constructor() {
         this.active = false; this.group = new THREE.Group();
         this.mat = new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0xffffff, roughness: 0.1, metalness: 0.5, emissiveIntensity: 2.0});
-        let core = new THREE.Mesh(SharedGeo.heart, this.mat); core.scale.setScalar(8);
-        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(60, 60, 1);
-        this.group.matrixAutoUpdate = false; 
-        core.matrixAutoUpdate = false; core.updateMatrix();
-        this.glow.matrixAutoUpdate = false; this.glow.updateMatrix();
+        let core = new THREE.Mesh(SharedGeo.heart, this.mat); core.scale.setScalar(3);
+        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(30, 30, 1);
+        this.group.matrixAutoUpdate = false; core.matrixAutoUpdate = false; this.glow.matrixAutoUpdate = false;
         this.group.add(core); this.group.add(this.glow); this.group.visible = false; Game.scene.add(this.group);
     }
     spawn(x, y) { this.active = true; this.x = x; this.y = y; this.life = 15.0; this.group.position.set(x, 10, y); this.group.updateMatrix(); this.group.visible = true; }
@@ -1091,7 +1094,7 @@ class Decoy {
 class SpatialHashGrid {
     constructor(bounds, dimensions) {
         this.bounds = bounds; this.dimensions = dimensions; this.cells = new Map();
-        this._tempKeys = []; this._tempResults = []; this.queryId = 0;
+        this._tempKeys = []; this._tempResults = []; this._seen = new Set();
     }
     insert(client) {
         this._clientKeys(client, this._tempKeys); 
@@ -1099,8 +1102,8 @@ class SpatialHashGrid {
         client.gridKeys.length = 0; 
         for(let i=0; i<this._tempKeys.length; i++) {
             let k = this._tempKeys[i]; client.gridKeys.push(k);
-            let cell = this.cells.get(k); if (!cell) { cell = []; this.cells.set(k, cell); }
-            cell.push(client);
+            let cell = this.cells.get(k); if (!cell) { cell = new Set(); this.cells.set(k, cell); }
+            cell.add(client);
         }
     }
     updateClient(client) { this.remove(client); this.insert(client); }
@@ -1108,27 +1111,16 @@ class SpatialHashGrid {
         if (!client.gridKeys) return;
         for(let i=0; i<client.gridKeys.length; i++) {
             let k = client.gridKeys[i]; let cell = this.cells.get(k);
-            if (cell) { 
-                let idx = cell.indexOf(client);
-                if (idx !== -1) { cell[idx] = cell[cell.length - 1]; cell.pop(); }
-                if (cell.length === 0) this.cells.delete(k); 
-            }
+            if (cell) { cell.delete(client); if (cell.size === 0) this.cells.delete(k); }
         }
         client.gridKeys.length = 0;
     }
     findNearby(client, radius) {
-        this._tempResults.length = 0; this.queryId++;
+        this._tempResults.length = 0; this._seen.clear();
         this._clientKeys({ x: client.x, y: client.y, radius: radius || client.radius }, this._tempKeys);
         for(let i=0; i<this._tempKeys.length; i++) {
             let cell = this.cells.get(this._tempKeys[i]);
-            if (cell) { 
-                for (let j=0; j<cell.length; j++) { 
-                    let other = cell[j];
-                    if (client !== other && other._gridQueryId !== this.queryId) { 
-                        other._gridQueryId = this.queryId; this._tempResults.push(other); 
-                    } 
-                } 
-            }
+            if (cell) { for (const other of cell) { if (client !== other && !this._seen.has(other.id)) { this._seen.add(other.id); this._tempResults.push(other); } } }
         }
         return this._tempResults;
     }
@@ -1528,8 +1520,7 @@ const Game = {
                 if (e.life < 3.0) e.group.visible = Math.floor(e.life * 8) % 2 === 0;
                 else e.group.visible = true;
 
-                e.group.rotation.y += dt; e.group.position.y = 15 + this.animFloat;
-                e.group.updateMatrix();
+                e.group.rotation.y += dt; e.group.position.y = 10 + this.animFloat;
                 if (MathUtils.distanceSq(this.player, e) < pRadiusSq) { this.player.collectEssence(e.type); e.destroy(); }
             }
         }
@@ -1542,8 +1533,7 @@ const Game = {
                 if (el.life < 3.0) el.group.visible = Math.floor(el.life * 8) % 2 === 0;
                 else el.group.visible = true;
 
-                el.group.rotation.y += dt * 2; el.group.position.y = 15 + this.animFloat;
-                el.group.updateMatrix();
+                el.group.rotation.y += dt * 2; el.group.position.y = 10 + this.animFloat;
                 if (MathUtils.distanceSq(this.player, el) < pRadiusSq) { this.lives++; el.destroy(); AudioEngine.playCollect(); this.getFloatingText().spawn(this.player.x, this.player.y, "VITA EXTRA!", '#ffffff', 30, true); }
             }
         }
@@ -1784,7 +1774,7 @@ class Entity {
     constructor(x, y, radius, speed) {
         this.id = Math.random().toString(36).substr(2, 9); this.x = x; this.y = y; this.radius = radius; this.speed = speed;
         this.angle = 0; this.dead = false; this.mesh = new THREE.Group(); this.stats = { hp: 100, maxHp: 100, minDmg: 5, maxDmg: 10 };
-        this.flashTimer = 0; this.flashMats = []; this._gridQueryId = 0; 
+        this.flashTimer = 0; this.flashMats = []; 
     }
     move(dx, dy, dt) {
         let len = Math.sqrt(dx*dx + dy*dy); if (len > 0) { dx /= len; dy /= len; }
@@ -2526,16 +2516,16 @@ class Projectile {
                 while (diff < -Math.PI) diff += Math.PI * 2; while (diff > Math.PI) diff -= Math.PI * 2;
                 this.angle += diff * 5.0 * dt; let speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
                 this.vx = Math.cos(this.angle) * speed; this.vy = Math.sin(this.angle) * speed; this.mesh.rotation.y = -this.angle;
-                this.mesh.updateMatrix();
+                this.mesh.updateMatrix(); // OTTIMIZZAZIONE
             }
         }
         this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt; this.group.position.set(this.x, 15, this.y);
         if (this.type !== 'arrow' && this.type !== 'homing_arrow') { 
             this.mesh.rotation.x += dt * 5; this.mesh.rotation.y += dt * 5; 
-            this.mesh.updateMatrix();
+            this.mesh.updateMatrix(); // OTTIMIZZAZIONE
         }
         
-        this.group.updateMatrix();
+        this.group.updateMatrix(); // OTTIMIZZAZIONE
 
         if (this.life <= 0) { this.destroy(); return; }
         if (Game.map.isSolid(this.x, this.y)) { this.destroy(); return; }
@@ -2598,7 +2588,7 @@ class Projectile {
 class Particle {
     constructor() { 
         this.active = false; this.mesh = new THREE.Sprite(SharedMat.spriteWhite); 
-        this.mesh.matrixAutoUpdate = false; 
+        this.mesh.matrixAutoUpdate = false; // OTTIMIZZAZIONE CPU
         this.mesh.visible = false; Game.scene.add(this.mesh); 
     }
     spawn(x, y, z, mat, type='spark', dirAngle=null) {
@@ -2608,7 +2598,7 @@ class Particle {
         let a = dirAngle !== null ? dirAngle + MathUtils.randomRange(-0.4, 0.4) : Math.random() * Math.PI * 2; 
         let speed = type==='blood' ? Math.random()*150+50 : (type==='flame' ? Math.random()*500+250 : Math.random()*100+50);
         this.vx = Math.cos(a) * speed; this.vy = type==='trail' ? Math.random()*20 : (type==='flame' ? MathUtils.randomRange(-20, 20) : Math.random()*200+50); this.vz = Math.sin(a) * speed;
-        this.mesh.updateMatrix(); 
+        this.mesh.updateMatrix(); // OTTIMIZZAZIONE
         this.mesh.visible = true;
     }
     update(dt) {
@@ -2619,7 +2609,7 @@ class Particle {
         if (this.mesh.position.y < 2) { this.mesh.position.y = 2; this.vx *= 0.5; this.vz *= 0.5; this.vy *= -0.3; } 
         let currentSize = this.baseSize * (this.type === 'flame' ? (this.life / this.maxLife) * 1.5 : (this.life / this.maxLife));
         this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
-        this.mesh.updateMatrix(); 
+        this.mesh.updateMatrix(); // OTTIMIZZAZIONE
         this.life -= dt; if(this.life <= 0) { this.active = false; this.mesh.visible = false; }
     }
 }
@@ -2728,9 +2718,11 @@ function showHighScores() {
 
 function hideHighScores() { AudioEngine.playClick(); document.getElementById('highScoreScreen').classList.add('hidden'); }
 
+// Sistema invisibile per forzare il download delle immagini in cache
 const Preloader = {
     preloadAll() {
         const imagesToLoad = ['bg.png', 'bg_morte.png', 'bg_box.png', 'bg_piano.png'];
+        // Trova e precarica in automatico tutte le immagini delle reliquie
         RelicSystem.allRelics.forEach(relic => {
             if (relic.image) imagesToLoad.push(relic.image);
         });
@@ -2740,6 +2732,7 @@ const Preloader = {
             img.src = src;
         });
 
+        // Preload Audio: usa fetch per forzare il salvataggio nella cache del browser senza intaccare le prestazioni
         fetch('The_Iron_Pulse.mp3').catch(e => console.warn('Audio prefetch saltato', e));
         fetch('Gameplay.mp3').catch(e => console.warn('Audio prefetch saltato', e));
         fetch('Boss.mp3').catch(e => console.warn('Audio prefetch saltato', e));
@@ -2747,7 +2740,7 @@ const Preloader = {
 };
 
 window.onload = () => {
-    Preloader.preloadAll();
+    Preloader.preloadAll(); // Avvia il download silente delle immagini
     ScoreManager.init(); Game.init();
     const initScreen = document.getElementById('initScreen'); const mainMenu = document.getElementById('mainMenu');
     

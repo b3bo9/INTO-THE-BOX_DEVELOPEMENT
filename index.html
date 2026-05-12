@@ -134,7 +134,7 @@
                 <!-- Perfect Dodge -->
                 <div>
                     <h3 class="text-amber-500 font-bold mb-0.5 uppercase flex items-center gap-1"><i class="fa-solid fa-bolt"></i> Perfect Dodge</h3>
-                    <p>Scatta (<span id="info-dodge-btn" class="text-white bg-white/10 px-1.5 py-0.5 rounded border border-white/20 shadow-inner font-bold uppercase"></span>) verso un nemico all'ultimo istante. Ricarica lo scatto, aumenta la combo e carica l'Ascensione!</p>
+                    <p>Scatta (<span id="info-dodge-btn" class="text-white bg-white/10 px-1.5 py-0.5 rounded border border-white/20 shadow-inner font-bold uppercase"></span>) verso un nemico all'ultimo istante. Ricarica lo scatto instantaneamente e aumenta la combo!</p>
                 </div>
                 
                 <!-- Essenze -->
@@ -2140,14 +2140,14 @@ class Player extends Entity {
     }
     
     dash() {
-        if (this.dashCooldown > 0 && !(this.overdrive && this.essence === 'blue')) return; 
-        
-        let perfectDodge = false; let grazeRange = this.radius + 30; let nearby = Game.enemyGrid.findNearby(this, grazeRange);
-        if (nearby.length > 0) { 
-            perfectDodge = true; Game.getFloatingText().spawn(this.x, this.y, "PERFECT!", '#ffffff', 40, true); 
-            Game.hitStop = 0.1; Game.addCombo(3); Game.addUltimateCharge(15); 
-            AudioEngine.playPerfectDodge(); 
-        } else {
+        if (this.dashCooldown > 0 && !(this.overdrive && this.essence === 'blue')) return; 
+        
+        let perfectDodge = false; let grazeRange = this.radius + 30; let nearby = Game.enemyGrid.findNearby(this, grazeRange);
+        if (nearby.length > 0) { 
+            perfectDodge = true; Game.getFloatingText().spawn(this.x, this.y, "PERFECT!", '#ffffff', 40, true); 
+            Game.hitStop = 0.1; Game.addCombo(2); // Rimosso il caricamento dell'Ascensione
+            AudioEngine.playPerfectDodge(); 
+        } else {
             AudioEngine.playDash();
         }
         

@@ -119,102 +119,107 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 55</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 56</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODALE INFO -->
-    <div id="infoModal" class="absolute inset-0 bg-black/90 z-[250] flex items-center justify-center backdrop-blur-md pointer-events-auto hidden p-3">
-        <div class="bg-gray-900 border border-blue-500/50 p-4 sm:p-5 rounded-2xl w-full max-w-[420px] max-h-[95vh] flex flex-col shadow-[0_0_30px_rgba(59,130,246,0.2)]">
-            
-            <!-- TITOLO -->
-            <h2 class="text-xl sm:text-2xl font-black text-blue-400 mb-3 border-b border-gray-700 pb-2 uppercase tracking-widest flex items-center gap-2 shrink-0">
-                <i class="fa-solid fa-book"></i> Manuale
-            </h2>
-            
-            <!-- CONTENUTO SCROLLABILE -->
-            <div class="space-y-4 overflow-y-auto pr-1 shrink text-[11px] sm:text-xs text-gray-300 leading-snug custom-scrollbar">
-                
-                <!-- Perfect Dodge -->
-                <div class="bg-black/40 p-3 rounded-xl border border-gray-800">
-                    <h3 class="text-amber-500 font-black mb-1.5 uppercase flex items-center gap-1.5 text-xs sm:text-sm">
-                        <i class="fa-solid fa-bolt"></i> Perfect Dodge
-                    </h3>
-                    <p class="text-gray-400">Scatta (<span id="info-dodge-btn" class="text-white bg-white/10 px-1.5 py-0.5 rounded border border-white/20 shadow-inner font-bold uppercase text-[10px]"></span>) verso un nemico all'ultimo istante. <span class="text-white font-bold">Ricarica lo scatto</span> instantaneamente e <span class="text-amber-400 font-bold">aumenta la combo</span>!</p>
-                </div>
-                
-               <!-- Essenze -->
+   <!-- MODALE INFO -->
+    <div id="infoModal" class="absolute inset-0 bg-black/90 z-[250] flex items-center justify-center backdrop-blur-md pointer-events-auto hidden p-3">
+        <div class="bg-gray-900 border border-blue-500/50 p-5 rounded-2xl w-full max-w-[420px] max-h-[95vh] flex flex-col shadow-[0_0_40px_rgba(59,130,246,0.3)] relative overflow-hidden">
+            
+            <!-- Decorazione sfondo -->
+            <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-blue-900/20 to-transparent pointer-events-none"></div>
+
+            <!-- TITOLO -->
+            <h2 class="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 mb-4 border-b border-gray-700/80 pb-3 uppercase tracking-widest flex items-center gap-2 shrink-0 drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">
+                <i class="fa-solid fa-book text-blue-400"></i> Manuale di Battaglia
+            </h2>
+            
+            <!-- CONTENUTO SCROLLABILE -->
+            <div class="space-y-5 overflow-y-auto pr-2 shrink text-[11px] sm:text-xs text-gray-300 leading-snug custom-scrollbar relative z-10">
+                
+                <!-- Perfect Dodge -->
+                <div class="bg-gradient-to-r from-amber-900/20 to-black/40 p-4 rounded-xl border border-amber-700/30 shadow-[inset_0_0_15px_rgba(245,158,11,0.05)] relative">
+                    <div class="absolute -right-2 -top-2 opacity-10 text-amber-500 text-5xl pointer-events-none"><i class="fa-solid fa-bolt"></i></div>
+                    <h3 class="text-amber-400 font-black mb-2 uppercase flex items-center gap-1.5 text-xs sm:text-sm tracking-wide drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]">
+                        <i class="fa-solid fa-bolt"></i> Perfect Dodge
+                    </h3>
+                    <p class="text-gray-400 relative z-10">Scatta (<span id="info-dodge-btn" class="text-white bg-white/10 px-1.5 py-0.5 rounded border border-white/20 shadow-inner font-bold uppercase text-[10px]"></span>) verso un nemico all'ultimo istante. <span class="text-white font-bold">Ricarica lo scatto</span> instantaneamente e <span class="text-amber-400 font-bold drop-shadow-[0_0_2px_#fbbf24]">aumenta la combo</span>!</p>
+                </div>
+                
+                <!-- Essenze -->
                 <div>
-                    <h3 class="text-fuchsia-400 font-black mb-1.5 uppercase flex items-center gap-1.5 text-xs sm:text-sm">
+                    <h3 class="text-fuchsia-400 font-black mb-2 uppercase flex items-center gap-1.5 text-xs sm:text-sm tracking-wide drop-shadow-[0_0_5px_rgba(232,121,249,0.5)]">
                         <i class="fa-solid fa-gem"></i> Magia Elementale
                     </h3>
-                    <p class="mb-2 text-gray-400">Raccogli 3 essenze uguali per attivare l'<strong class="text-white">Overdrive</strong>. Mischiale per creare magie uniche:</p>
+                    <p class="mb-3 text-gray-400">Raccogli 3 essenze uguali per attivare l'<strong class="text-white drop-shadow-[0_0_3px_#fff]">Overdrive</strong>. Mischiale per creare magie uniche:</p>
                     
-                    <div class="flex flex-col gap-3.5 bg-black/50 p-3 sm:p-4 rounded-xl border border-white/10 shadow-inner">
+                    <div class="flex flex-col gap-2.5">
                         
                         <!-- Shock Termico -->
-                        <div class="flex items-center gap-2 sm:gap-3">
-                            <div class="flex items-center justify-center w-16 shrink-0 gap-1.5">
-                                <span class="w-3 h-3 rounded-full bg-[#FF1133] shadow-[0_0_8px_#FF1133] dot-glow-red"></span>
-                                <span class="text-gray-500 font-black text-[10px]">+</span>
-                                <span class="w-3 h-3 rounded-full bg-[#00AAFF] shadow-[0_0_8px_#00AAFF] dot-glow-blue"></span>
+                        <div class="flex items-center gap-3 bg-black/60 p-2.5 rounded-xl border border-purple-900/40 shadow-inner hover:border-purple-500/50 transition-colors group">
+                            <div class="flex items-center gap-1.5 shrink-0 bg-gray-900/80 px-2.5 py-2 rounded-lg border border-gray-700 shadow-md">
+                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#FF1133] dot-glow-red shrink-0"></span>
+                                <span class="text-gray-500 font-bold text-[10px]">+</span>
+                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#00AAFF] dot-glow-blue shrink-0"></span>
                             </div>
-                            <div class="leading-tight">
-                                <span class="text-purple-300 font-bold text-[11px] sm:text-xs uppercase tracking-wide">Shock Termico</span><br>
-                                <span class="text-gray-500 text-[9px] sm:text-[10px]">Danni area + Rallenta</span>
+                            <div class="leading-tight flex-1">
+                                <span class="text-purple-300 font-bold text-[11px] sm:text-xs uppercase tracking-widest drop-shadow-[0_0_5px_rgba(216,180,254,0.4)] group-hover:text-purple-200 transition-colors">Shock Termico</span><br>
+                                <span class="text-gray-500 text-[9px] sm:text-[10px] font-semibold">Danni area + Rallenta</span>
                             </div>
                         </div>
 
                         <!-- Tossina -->
-                        <div class="flex items-center gap-2 sm:gap-3">
-                            <div class="flex items-center justify-center w-16 shrink-0 gap-1.5">
-                                <span class="w-3 h-3 rounded-full bg-[#FF1133] shadow-[0_0_8px_#FF1133] dot-glow-red"></span>
-                                <span class="text-gray-500 font-black text-[10px]">+</span>
-                                <span class="w-3 h-3 rounded-full bg-[#33FF00] shadow-[0_0_8px_#33FF00] dot-glow-green"></span>
+                        <div class="flex items-center gap-3 bg-black/60 p-2.5 rounded-xl border border-green-900/40 shadow-inner hover:border-green-500/50 transition-colors group">
+                            <div class="flex items-center gap-1.5 shrink-0 bg-gray-900/80 px-2.5 py-2 rounded-lg border border-gray-700 shadow-md">
+                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#FF1133] dot-glow-red shrink-0"></span>
+                                <span class="text-gray-500 font-bold text-[10px]">+</span>
+                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#33FF00] dot-glow-green shrink-0"></span>
                             </div>
-                            <div class="leading-tight">
-                                <span class="text-green-300 font-bold text-[11px] sm:text-xs uppercase tracking-wide">Tossina</span><br>
-                                <span class="text-gray-500 text-[9px] sm:text-[10px]">Danni + Veleno</span>
+                            <div class="leading-tight flex-1">
+                                <span class="text-green-400 font-bold text-[11px] sm:text-xs uppercase tracking-widest drop-shadow-[0_0_5px_rgba(74,222,128,0.4)] group-hover:text-green-300 transition-colors">Tossina</span><br>
+                                <span class="text-gray-500 text-[9px] sm:text-[10px] font-semibold">Danni + Veleno</span>
                             </div>
                         </div>
 
                         <!-- Vortice -->
-                        <div class="flex items-center gap-2 sm:gap-3">
-                            <div class="flex items-center justify-center w-16 shrink-0 gap-1.5">
-                                <span class="w-3 h-3 rounded-full bg-[#00AAFF] shadow-[0_0_8px_#00AAFF] dot-glow-blue"></span>
-                                <span class="text-gray-500 font-black text-[10px]">+</span>
-                                <span class="w-3 h-3 rounded-full bg-[#33FF00] shadow-[0_0_8px_#33FF00] dot-glow-green"></span>
+                        <div class="flex items-center gap-3 bg-black/60 p-2.5 rounded-xl border border-cyan-900/40 shadow-inner hover:border-cyan-500/50 transition-colors group">
+                            <div class="flex items-center gap-1.5 shrink-0 bg-gray-900/80 px-2.5 py-2 rounded-lg border border-gray-700 shadow-md">
+                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#00AAFF] dot-glow-blue shrink-0"></span>
+                                <span class="text-gray-500 font-bold text-[10px]">+</span>
+                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#33FF00] dot-glow-green shrink-0"></span>
                             </div>
-                            <div class="leading-tight">
-                                <span class="text-cyan-300 font-bold text-[11px] sm:text-xs uppercase tracking-wide">Vortice</span><br>
-                                <span class="text-gray-500 text-[9px] sm:text-[10px]">Respinge + Danni</span>
+                            <div class="leading-tight flex-1">
+                                <span class="text-cyan-400 font-bold text-[11px] sm:text-xs uppercase tracking-widest drop-shadow-[0_0_5px_rgba(34,211,238,0.4)] group-hover:text-cyan-300 transition-colors">Vortice</span><br>
+                                <span class="text-gray-500 text-[9px] sm:text-[10px] font-semibold">Respinge + Danni</span>
                             </div>
                         </div>
 
                         <!-- Caos Elementale -->
-                        <div class="flex items-center gap-2 sm:gap-3">
-                            <div class="flex items-center justify-center w-16 shrink-0 gap-1.5">
-                                <span class="w-3 h-3 rounded-full bg-[#FF1133] shadow-[0_0_8px_#FF1133] dot-glow-red"></span>
-                                <span class="w-3 h-3 rounded-full bg-[#00AAFF] shadow-[0_0_8px_#00AAFF] dot-glow-blue"></span>
-                                <span class="w-3 h-3 rounded-full bg-[#33FF00] shadow-[0_0_8px_#33FF00] dot-glow-green"></span>
+                        <div class="flex items-center gap-3 bg-gradient-to-r from-gray-800 to-black p-2.5 rounded-xl border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.05)] mt-1 hover:border-white/40 transition-colors group">
+                            <div class="flex items-center gap-1.5 shrink-0 bg-black px-2.5 py-2 rounded-lg border border-gray-600 shadow-[0_0_10px_rgba(0,0,0,0.8)]">
+                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#FF1133] dot-glow-red"></span>
+                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#00AAFF] dot-glow-blue"></span>
+                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#33FF00] dot-glow-green"></span>
                             </div>
-                            <div class="leading-tight">
-                                <span class="text-white font-bold text-[11px] sm:text-xs uppercase tracking-wide drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]">Caos Elementale</span><br>
-                                <span class="text-gray-500 text-[9px] sm:text-[10px]">Max Danni + Cura</span>
+                            <div class="leading-tight flex-1">
+                                <span class="text-white font-black text-[11px] sm:text-xs uppercase tracking-widest drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]">Caos Elementale</span><br>
+                                <span class="text-gray-300 text-[9px] sm:text-[10px] font-semibold">Danni Massimi + Cura</span>
                             </div>
                         </div>
 
                     </div>
                 </div>
-            
-            <!-- TASTO CHIUSURA -->
-            <button onclick="UIManager.hideModal('infoModal')" class="mt-4 sm:mt-5 w-full bg-gradient-to-t from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 text-white font-bold py-3.5 rounded-xl border border-gray-500 transition-all active:scale-95 uppercase tracking-widest text-[10px] sm:text-xs shadow-lg shrink-0">
+            </div>
+            
+            <!-- TASTO CHIUSURA -->
+            <button onclick="UIManager.hideModal('infoModal')" class="mt-5 w-full bg-gradient-to-t from-blue-900 to-blue-800 hover:from-blue-800 hover:to-blue-700 text-white font-bold py-3.5 rounded-xl border border-blue-500/50 transition-all active:scale-95 uppercase tracking-[0.2em] text-[10px] sm:text-xs shadow-[0_0_15px_rgba(59,130,246,0.3)] shrink-0 z-10 hover:shadow-[0_0_25px_rgba(59,130,246,0.5)]">
                 Torna al menu
             </button>
-        </div>
-    </div>
+        </div>
+    </div>
 <!-- MODALE OPZIONI -->
     <div id="optionsModal" class="absolute inset-0 bg-black/90 z-[250] flex items-center justify-center backdrop-blur-md pointer-events-auto hidden p-4">
         <div class="bg-gray-900 border border-gray-500/50 p-6 rounded-2xl w-full max-w-[400px] shadow-2xl">

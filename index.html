@@ -984,9 +984,9 @@ class Essence {
         let core = new THREE.Mesh(SharedGeo.icosahedron, this.coreMat); core.scale.setScalar(9);
         this.haloMat = new THREE.MeshBasicMaterial({wireframe: true, transparent: true, opacity: 0.9});
         // MODIFICA: Scala dell'halo ridotta da 18 a 13.5
-        let halo = new THREE.Mesh(SharedGeo.icosahedron, this.haloMat); halo.scale.setScalar(13.5);
+        let halo = new THREE.Mesh(SharedGeo.icosahedron, this.haloMat); halo.scale.setScalar(10.5); // <-- Halo poligonale ridotto
         // MODIFICA: Scala del glow ridotta da 60 a 45
-        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(45, 45, 1);
+        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(30, 30, 1); // <-- Texture luminosa ridotta
         this.group.matrixAutoUpdate = false; 
         core.matrixAutoUpdate = false; core.updateMatrix();
         halo.matrixAutoUpdate = false; halo.updateMatrix();
@@ -1011,7 +1011,7 @@ class ExtraLife {
         // MODIFICA: Scala del cuore ridotta da 8 a 6
         let core = new THREE.Mesh(SharedGeo.heart, this.mat); core.scale.setScalar(6);
         // MODIFICA: Scala del glow ridotta da 60 a 45
-        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(45, 45, 1);
+        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(30, 30, 1); // <-- Texture luminosa ridotta
         this.group.matrixAutoUpdate = false; 
         core.matrixAutoUpdate = false; core.updateMatrix();
         this.glow.matrixAutoUpdate = false; this.glow.updateMatrix();

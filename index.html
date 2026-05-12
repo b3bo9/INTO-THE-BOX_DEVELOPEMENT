@@ -81,38 +81,39 @@
            <!-- CONTROLLI IN BASSO -->
             <div class="w-full max-w-[450px] flex flex-col gap-3 pointer-events-auto shrink-0 relative z-20 mb-4 sm:mb-8">
                 
-                <!-- RIGA 3 BOTTONI: DIFFICOLTA, OPZIONI, INFO -->
-                <div class="grid grid-cols-3 gap-2 w-full">
+                <!-- BOTTONI: OPZIONI, INFO, DIFFICOLTA -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full">
                     
-                    <!-- DIFFICOLTA (Select) -->
-                    <div class="relative group h-12 sm:h-14">
-                        <select id="gameDifficulty" onmouseenter="AudioEngine.playHover()" class="w-full h-full bg-black/80 backdrop-blur-xl text-white border border-gray-600 hover:border-red-500 rounded-xl focus:outline-none transition-colors appearance-none cursor-pointer text-[10px] sm:text-xs font-bold text-center pl-1 pr-3 tracking-widest uppercase shadow-lg">
-                            <option value="0.6" class="text-black bg-white" selected>🟢 NORM</option>
-                            <option value="1.0" class="text-black bg-white">🟡 DIFF</option>
-                            <option value="1.6" class="text-black bg-white">🔴 HARD</option>
-                        </select>
-                        <i class="fa-solid fa-caret-down absolute right-2 top-1/2 -translate-y-1/2 text-red-500 pointer-events-none text-[10px] sm:text-xs"></i>
-                    </div>
-
                     <!-- OPZIONI -->
-                    <button onclick="UIManager.showModal('optionsModal')" onmouseenter="AudioEngine.playHover()" class="h-12 sm:h-14 bg-black/80 backdrop-blur-xl border border-gray-600 text-white rounded-xl text-[9px] sm:text-xs font-bold transition-all hover:bg-gray-800 uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-lg">
-                        <i class="fa-solid fa-gear text-gray-400"></i> <span class="hidden sm:inline">OPZIONI</span><span class="sm:hidden">OPZ.</span>
+                    <button onclick="UIManager.showModal('optionsModal')" onmouseenter="AudioEngine.playHover()" class="col-span-1 h-12 sm:h-14 bg-black/80 backdrop-blur-xl border border-gray-600 text-white rounded-xl text-[10px] sm:text-xs font-bold transition-all hover:bg-gray-800 uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-lg">
+                        <i class="fa-solid fa-gear text-gray-400"></i> OPZIONI
                     </button>
 
                     <!-- INFO -->
-                    <button onclick="UIManager.showModal('infoModal')" onmouseenter="AudioEngine.playHover()" class="h-12 sm:h-14 bg-black/80 backdrop-blur-xl border border-gray-600 text-white rounded-xl text-[9px] sm:text-xs font-bold transition-all hover:bg-gray-800 uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-lg">
+                    <button onclick="UIManager.showModal('infoModal')" onmouseenter="AudioEngine.playHover()" class="col-span-1 h-12 sm:h-14 bg-black/80 backdrop-blur-xl border border-gray-600 text-white rounded-xl text-[10px] sm:text-xs font-bold transition-all hover:bg-gray-800 uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-lg">
                         <i class="fa-solid fa-book text-blue-400"></i> INFO
                     </button>
+
+                    <!-- DIFFICOLTA (Occupa 2 colonne su smartphone, 1 colonna su PC) -->
+                    <div class="relative group col-span-2 sm:col-span-1 h-12 sm:h-14">
+                        <select id="gameDifficulty" onmouseenter="AudioEngine.playHover()" class="w-full h-full bg-black/80 backdrop-blur-xl text-white border border-gray-600 hover:border-red-500 rounded-xl focus:outline-none transition-colors appearance-none cursor-pointer text-xs font-bold text-center tracking-widest uppercase shadow-lg">
+                            <option value="0.6" class="text-black bg-white" selected>🟢 NORMALE</option>
+                            <option value="1.0" class="text-black bg-white">🟡 DIFFICILE</option>
+                            <option value="1.6" class="text-black bg-white">🔴 INFERNO</option>
+                        </select>
+                        <i class="fa-solid fa-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-red-500 pointer-events-none text-xs"></i>
+                    </div>
+
                 </div>
 
-                <!-- TASTO GIOCA (Ridimensionato) -->
-                <button onmouseenter="AudioEngine.playHover()" onclick="AudioEngine.playClick(); startGameFromMenu()" class="relative w-full bg-gradient-to-r from-red-900 via-red-600 to-red-900 hover:from-red-800 hover:via-red-500 hover:to-red-800 text-white font-black py-3 sm:py-4 rounded-xl text-xl sm:text-2xl shadow-[0_0_20px_rgba(220,38,38,0.4)] hover:shadow-[0_0_40px_rgba(220,38,38,0.7)] border border-red-500/50 hover:border-red-400 transition-all duration-300 transform hover:-translate-y-1 active:scale-95 active:translate-y-0 uppercase tracking-[0.3em] overflow-hidden group">
+                <!-- TASTO GIOCA -->
+                <button onmouseenter="AudioEngine.playHover()" onclick="AudioEngine.playClick(); startGameFromMenu()" class="relative w-full bg-gradient-to-r from-red-900 via-red-600 to-red-900 hover:from-red-800 hover:via-red-500 hover:to-red-800 text-white font-black py-4 sm:py-5 rounded-xl text-2xl sm:text-3xl shadow-[0_0_20px_rgba(220,38,38,0.4)] hover:shadow-[0_0_40px_rgba(220,38,38,0.7)] border border-red-500/50 hover:border-red-400 transition-all duration-300 transform hover:-translate-y-1 active:scale-95 active:translate-y-0 uppercase tracking-[0.3em] overflow-hidden group mt-1">
                     <div class="absolute inset-0 w-[200%] h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer pointer-events-none"></div>
                     <span class="relative z-10 flex justify-center items-center gap-3 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"><i class="fa-solid fa-play"></i> GIOCA</span>
                 </button>
                 
                 <!-- PUNTEGGI -->
-                <button onmouseenter="AudioEngine.playHover()" onclick="AudioEngine.playClick(); showHighScores()" class="w-full bg-black/50 backdrop-blur-xl hover:bg-white/10 text-gray-300 hover:text-white font-bold py-3 rounded-xl text-xs sm:text-sm border border-gray-700 hover:border-gray-400 transition-all active:scale-95 uppercase tracking-[0.2em] flex justify-center items-center gap-2 shadow-lg">
+                <button onmouseenter="AudioEngine.playHover()" onclick="AudioEngine.playClick(); showHighScores()" class="w-full bg-black/50 backdrop-blur-xl hover:bg-white/10 text-gray-300 hover:text-white font-bold py-3.5 rounded-xl text-xs sm:text-sm border border-gray-700 hover:border-gray-400 transition-all active:scale-95 uppercase tracking-[0.2em] flex justify-center items-center gap-2 shadow-lg">
                     <i class="fa-solid fa-trophy text-amber-500"></i> CLASSIFICA
                 </button>
 

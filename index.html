@@ -1119,52 +1119,51 @@ class Hazard {
         this.group.visible = true;
     }
     update(dt) {
-        if (!this.active) return;
-        this.life -= dt;
-        if (this.activationTimer > 0) { 
-            this.activationTimer -= dt; let pulse = (1.0 - this.activationTimer) * 0.5;
-            this.plane.material.opacity = 0.05 + pulse; this.ring.material.opacity = 0.2 + pulse;
-        } else { 
-            this.plane.material.opacity = 0.15 + Math.sin(this.life * 10) * 0.05; 
-            this.ring.material.opacity = 0.8 + Math.sin(this.life * 15) * 0.2; 
-        }
-        if ((Game.frameCount + this.updateOffset) % 5 === 0 && !isTouchDevice && this.activationTimer <= 0) { 
-            let mat = this.type === 'poison' ? SharedMat.spriteGreen : (this.type === 'crystal_fire' ? SharedMat.spritePink : SharedMat.spriteRed);
-            Game.getParticle().spawn(this.x + MathUtils.randomRange(-this.radius, this.radius), 2, this.y + MathUtils.randomRange(-this.radius, this.radius), mat, 'trail');
-        }
-        
-        if (this.activationTimer <= 0) {
-            if ((Game.frameCount + this.updateOffset) % 6 === 0) {
-                if (this.type === 'fire' || this.type === 'poison' || this.type === 'crystal_fire') {
-                    let nearby = Game.enemyGrid.findNearby(this, this.radius);
-                    for (let i=0, len=nearby.length; i<len; i++) {
-                        let e = nearby[i];
-                        let cd = this.hitCooldown.get(e.id) || 0;
-                        if (cd <= 0 && MathUtils.distanceSq(this, e) < (this.radius + e.radius)**2) {
-                            e.takeDamage(this.damage, Game.player, false, false); 
-                            if(this.type === 'poison') e.slowedTimer = 2.0; 
-                            if(this.type === 'fire' && Game.player && Game.player.modifiers.fireTrailDebuff) e.fireDebuffTimer = 3.0;
-                            this.hitCooldown.set(e.id, 0.5);
-                        }
-                    }
-                }
-            }
-            if ((this.type === 'enemy_fire' || this.type === 'crystal_fire') && (Game.frameCount + this.updateOffset) % 6 === 0) {
-                let pCd = this.hitCooldown.get('player') || 0;
-                if (pCd <= 0 && MathUtils.distanceSq(this, Game.player) < (this.radius + Game.player.radius)**2) { 
-                    let playerDmg = this.type === 'crystal_fire' ? 35 * Game.difficultyMult : this.damage;
-                    Game.player.takeDamage(playerDmg, null); 
-                    this.hitCooldown.set('player', 1.0); 
-                }
-            }
-        }
-        
-        for (let [key, value] of this.hitCooldown.entries()) {
-            this.hitCooldown.set(key, value - dt);
-        }
+        if (!this.active) return;
+        this.life -= dt;
+        if (this.activationTimer > 0) { 
+            this.activationTimer -= dt; let pulse = (1.0 - this.activationTimer) * 0.5;
+            this.plane.material.opacity = 0.05 + pulse; this.ring.material.opacity = 0.2 + pulse;
+        } else { 
+            this.plane.material.opacity = 0.15 + Math.sin(this.life * 10) * 0.05; 
+            this.ring.material.opacity = 0.8 + Math.sin(this.life * 15) * 0.2; 
+        }
+        if ((Game.frameCount + this.updateOffset) % 5 === 0 && !isTouchDevice && this.activationTimer <= 0) { 
+            let mat = this.type === 'poison' ? SharedMat.spriteGreen : (this.type === 'crystal_fire' ? SharedMat.spritePink : SharedMat.spriteRed);
+            Game.getParticle().spawn(this.x + MathUtils.randomRange(-this.radius, this.radius), 2, this.y + MathUtils.randomRange(-this.radius, this.radius), mat, 'trail');
+        }
+        
+        if (this.activationTimer <= 0) {
+            if ((Game.frameCount + this.updateOffset) % 6 === 0) {
+                if (this.type === 'fire' || this.type === 'poison' || this.type === 'crystal_fire') {
+                    let nearby = Game.enemyGrid.findNearby(this, this.radius);
+                    for (let i=0, len=nearby.length; i<len; i++) {
+                        let e = nearby[i];
+                        // MODIFICA: Uso il tempo assoluto per il calcolo del cooldown
+                        let cd = this.hitCooldown.get(e.id) || 0;
+                        if (Game.playTime >= cd && MathUtils.distanceSq(this, e) < (this.radius + e.radius)**2) {
+                            e.takeDamage(this.damage, Game.player, false, false); 
+                            if(this.type === 'poison') e.slowedTimer = 2.0; 
+                            if(this.type === 'fire' && Game.player && Game.player.modifiers.fireTrailDebuff) e.fireDebuffTimer = 3.0;
+                            this.hitCooldown.set(e.id, Game.playTime + 0.5);
+                        }
+                    }
+                }
+            }
+            if ((this.type === 'enemy_fire' || this.type === 'crystal_fire') && (Game.frameCount + this.updateOffset) % 6 === 0) {
+                let pCd = this.hitCooldown.get('player') || 0;
+                if (Game.playTime >= pCd && MathUtils.distanceSq(this, Game.player) < (this.radius + Game.player.radius)**2) { 
+                    let playerDmg = this.type === 'crystal_fire' ? 35 * Game.difficultyMult : this.damage;
+                    Game.player.takeDamage(playerDmg, null); 
+                    this.hitCooldown.set('player', Game.playTime + 1.0); 
+                }
+            }
+        }
+        
+        // Il vecchio ciclo for (let [key, value] of this.hitCooldown.entries()) è stato completamente rimosso!
 
-        if (this.life <= 0) { this.active = false; this.group.visible = false; }
-    }
+        if (this.life <= 0) { this.active = false; this.group.visible = false; }
+    }
 }
 
 class Decoy {
@@ -2140,57 +2139,60 @@ class Player extends Entity {
     }
     
     dash() {
-        if (this.dashCooldown > 0 && !(this.overdrive && this.essence === 'blue')) return; 
-        
+        if (this.dashCooldown > 0 && !(this.overdrive && this.essence === 'blue')) return; 
+        
         let perfectDodge = false; let grazeRange = this.radius + 30; let nearby = Game.enemyGrid.findNearby(this, grazeRange);
-        if (nearby.length > 0) { 
-            perfectDodge = true; Game.getFloatingText().spawn(this.x, this.y, "PERFECT!", '#ffffff', 40, true); 
-            Game.hitStop = 0.1; Game.addCombo(2); // Rimosso il caricamento dell'Ascensione
-            AudioEngine.playPerfectDodge(); 
+        if (nearby.length > 0) { 
+            perfectDodge = true; Game.getFloatingText().spawn(this.x, this.y, "PERFECT!", '#ffffff', 40, true); 
+            Game.hitStop = 0.1; Game.addCombo(2);
+            AudioEngine.playPerfectDodge(); 
         } else {
-            AudioEngine.playDash();
-        }
-        
-        this.isDashing = true; this.dashTimer = 0.25; this.dashAngle = Game.inputs.left.active ? Math.atan2(Game.inputs.left.y, Game.inputs.left.x) : this.angle;
-        this.dashCooldown = perfectDodge ? 0 : 1.0 * this.modifiers.dashCooldownMult;
-        
-        if (this.essence === 'blue') {
-            let maxDist = 250; 
-            let dx = Math.cos(this.dashAngle); let dy = Math.sin(this.dashAngle);
-            let safeDist = 0; let step = 10; let rCheck = this.radius * 0.8;
-            
-            for (let d = step; d <= maxDist; d += step) {
-                let nx = this.x + dx * d; let ny = this.y + dy * d;
-                if (Game.map.isSolid(nx + rCheck, ny + rCheck) || Game.map.isSolid(nx - rCheck, ny - rCheck) || Game.map.isSolid(nx + rCheck, ny - rCheck) || Game.map.isSolid(nx - rCheck, ny + rCheck)) { break; }
-                safeDist = d;
-            }
-            
-            let dist = safeDist;
-            let endX = this.x + dx * dist; let endY = this.y + dy * dist;
-            
-            if (dist > 0) {
-                let A = this.x - endX; let B = endY - this.y; let C = (endX*this.y) - (this.x*endY);
-                let denom = Math.sqrt(A*A + B*B);
-                let distSqCheck = dist * dist;
-                let dmg = this.stats.maxDmg * 2.0 * this.modifiers.dmgMult;
-                
-                for(let i=0, len=Game.enemies.length; i<len; i++) {
-                    let e = Game.enemies[i]; 
-                    if(e.dead) continue;
-                    let d = Math.abs(A*e.y + B*e.x + C) / denom;
-                    if (d < e.radius + 20 && MathUtils.distanceSq(this, e) < distSqCheck) { 
-                        e.takeDamage(dmg, this, true, true); Game.hitStop = 0.1; 
-                    }
-                }
-                let dl = Game.getDashLine();
-                dl.spawn(this.x + dx*(dist/2), this.y + dy*(dist/2), dist, this.dashAngle);
-            }
+            AudioEngine.playDash();
+        }
+        
+        this.isDashing = true; this.dashTimer = 0.25; this.dashAngle = Game.inputs.left.active ? Math.atan2(Game.inputs.left.y, Game.inputs.left.x) : this.angle;
+        this.dashCooldown = perfectDodge ? 0 : 1.0 * this.modifiers.dashCooldownMult;
+        
+        if (this.essence === 'blue') {
+            let maxDist = 250; 
+            let dx = Math.cos(this.dashAngle); let dy = Math.sin(this.dashAngle);
+            let safeDist = 0; let step = 10; let rCheck = this.radius * 0.8;
+            
+            for (let d = step; d <= maxDist; d += step) {
+                let nx = this.x + dx * d; let ny = this.y + dy * d;
+                if (Game.map.isSolid(nx + rCheck, ny + rCheck) || Game.map.isSolid(nx - rCheck, ny - rCheck) || Game.map.isSolid(nx + rCheck, ny - rCheck) || Game.map.isSolid(nx - rCheck, ny + rCheck)) { break; }
+                safeDist = d;
+            }
+            
+            let dist = safeDist;
+            let endX = this.x + dx * dist; let endY = this.y + dy * dist;
+            
+            if (dist > 0) {
+                let A = this.x - endX; let B = endY - this.y; let C = (endX*this.y) - (this.x*endY);
+                let denom = Math.sqrt(A*A + B*B);
+                let distSqCheck = dist * dist;
+                let dmg = this.stats.maxDmg * 2.0 * this.modifiers.dmgMult;
+                
+                // MODIFICA: Filtriamo solo i nemici nella griglia vicini alla traiettoria dello scatto
+                let dashEnemies = Game.enemyGrid.findNearby(this, dist + 50);
+                
+                for(let i=0, len=dashEnemies.length; i<len; i++) {
+                    let e = dashEnemies[i]; 
+                    if(e.dead) continue;
+                    let d = Math.abs(A*e.y + B*e.x + C) / denom;
+                    if (d < e.radius + 20 && MathUtils.distanceSq(this, e) < distSqCheck) { 
+                        e.takeDamage(dmg, this, true, true); Game.hitStop = 0.1; 
+                    }
+                }
+                let dl = Game.getDashLine();
+                dl.spawn(this.x + dx*(dist/2), this.y + dy*(dist/2), dist, this.dashAngle);
+            }
 
-            this.x = endX; this.y = endY; this.dashTimer = 0; this.isDashing = false;
-        }
-        if (this.essence === 'green') { Game.getDecoy().spawn(this.x, this.y); Game.getHazard().spawn(this.x, this.y, 40, 3.0, this.stats.maxDmg * 0.5 * this.modifiers.dmgMult, ESSENCE_COLORS.green, 'poison'); }
-        if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); }
-    }
+            this.x = endX; this.y = endY; this.dashTimer = 0; this.isDashing = false;
+        }
+        if (this.essence === 'green') { Game.getDecoy().spawn(this.x, this.y); Game.getHazard().spawn(this.x, this.y, 40, 3.0, this.stats.maxDmg * 0.5 * this.modifiers.dmgMult, ESSENCE_COLORS.green, 'poison'); }
+        if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); }
+    }
     
     takeDamage(amount, source) {
         if (this.invincibilityTimer > 0) return; 

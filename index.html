@@ -119,87 +119,87 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 42</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 55</p>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- MODALE INFO -->
-    <div id="infoModal" class="absolute inset-0 bg-black/90 z-[250] flex items-center justify-center backdrop-blur-md pointer-events-auto hidden p-3">
-        <div class="bg-gray-900 border border-blue-500/50 p-4 sm:p-5 rounded-2xl w-full max-w-[420px] shadow-[0_0_30px_rgba(59,130,246,0.2)]">
-            <h2 class="text-lg sm:text-xl font-black text-blue-400 mb-3 border-b border-gray-700 pb-1 uppercase tracking-widest flex items-center gap-2"><i class="fa-solid fa-book"></i> Manuale</h2>
-            
-            <div class="space-y-3 text-[11px] sm:text-xs text-gray-300 leading-snug">
-                <!-- Perfect Dodge -->
-                <div>
-                    <h3 class="text-amber-500 font-bold mb-0.5 uppercase flex items-center gap-1"><i class="fa-solid fa-bolt"></i> Perfect Dodge</h3>
-                    <p>Scatta (<span id="info-dodge-btn" class="text-white bg-white/10 px-1.5 py-0.5 rounded border border-white/20 shadow-inner font-bold uppercase"></span>) verso un nemico all'ultimo istante. Ricarica lo scatto instantaneamente e aumenta la combo!</p>
-                </div>
-                
-                <!-- Essenze -->
-                <div>
-                    <h3 class="text-fuchsia-400 font-bold mb-1 uppercase flex items-center gap-1"><i class="fa-solid fa-gem"></i> Magia Elementale</h3>
-                    <p class="mb-1.5">Raccogli le essenze. 3 uguali attivano l'<strong class="text-white">Overdrive</strong>. Mischiale per creare magie uniche:</p>
-                    
-                    <div class="flex flex-col gap-2 bg-black/50 p-3 rounded-xl border border-white/10 shadow-inner">
-                        <div class="flex items-center gap-2">
-                            <div class="flex items-center justify-between w-14 shrink-0">
-                                <span class="w-3 h-3 rounded-full bg-[#FF1133] shadow-[0_0_5px_#FF1133]"></span><span class="text-gray-500 text-[10px]">+</span><span class="w-3 h-3 rounded-full bg-[#00AAFF] shadow-[0_0_5px_#00AAFF]"></span>
-                            </div>
-                            <span class="text-purple-300 font-bold text-[10px] sm:text-xs">= Shock Termico <span class="text-gray-400 font-normal hidden sm:inline">(Danni area + Rallenta)</span></span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <div class="flex items-center justify-between w-14 shrink-0">
-                                <span class="w-3 h-3 rounded-full bg-[#FF1133] shadow-[0_0_5px_#FF1133]"></span><span class="text-gray-500 text-[10px]">+</span><span class="w-3 h-3 rounded-full bg-[#33FF00] shadow-[0_0_5px_#33FF00]"></span>
-                            </div>
-                            <span class="text-green-300 font-bold text-[10px] sm:text-xs">= Tossina <span class="text-gray-400 font-normal hidden sm:inline">(Danni + Veleno)</span></span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <div class="flex items-center justify-between w-14 shrink-0">
-                                <span class="w-3 h-3 rounded-full bg-[#00AAFF] shadow-[0_0_5px_#00AAFF]"></span><span class="text-gray-500 text-[10px]">+</span><span class="w-3 h-3 rounded-full bg-[#33FF00] shadow-[0_0_5px_#33FF00]"></span>
-                            </div>
-                            <span class="text-cyan-300 font-bold text-[10px] sm:text-xs">= Vortice <span class="text-gray-400 font-normal hidden sm:inline">(Respinge + Danni)</span></span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <div class="flex items-center justify-between w-14 shrink-0">
-                                <span class="w-2.5 h-2.5 rounded-full bg-[#FF1133]"></span><span class="text-gray-500 text-[9px]">+</span><span class="w-2.5 h-2.5 rounded-full bg-[#00AAFF]"></span><span class="text-gray-500 text-[9px]">+</span><span class="w-2.5 h-2.5 rounded-full bg-[#33FF00]"></span>
-                            </div>
-                            <span class="text-white font-bold text-[10px] sm:text-xs">= Caos Elementale <span class="text-gray-400 font-normal hidden sm:inline">(Cura + Danni)</span></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- TASTO CHIUSURA -->
-            <button onclick="UIManager.hideModal('infoModal')" class="mt-5 w-full bg-gradient-to-t from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 text-white font-bold py-3.5 rounded-xl border border-gray-500 transition-all active:scale-95 uppercase tracking-widest text-[10px] sm:text-xs shadow-lg">Torna al menu principale</button>
-        </div>
-    </div>
-
-    <!-- MODALE OPZIONI -->
-    <div id="optionsModal" class="absolute inset-0 bg-black/90 z-[250] flex items-center justify-center backdrop-blur-md pointer-events-auto hidden p-4">
-        <div class="bg-gray-900 border border-gray-500/50 p-6 rounded-2xl w-full max-w-[400px] shadow-2xl">
-            <h2 class="text-2xl font-black text-white mb-4 border-b border-gray-700 pb-2 uppercase tracking-widest flex items-center gap-2"><i class="fa-solid fa-gear text-gray-400"></i> Opzioni</h2>
+    <div id="infoModal" class="absolute inset-0 bg-black/90 z-[250] flex items-center justify-center backdrop-blur-md pointer-events-auto hidden p-3">
+        <div class="bg-gray-900 border border-blue-500/50 p-4 sm:p-5 rounded-2xl w-full max-w-[420px] max-h-[95vh] flex flex-col shadow-[0_0_30px_rgba(59,130,246,0.2)]">
             
-            <div class="space-y-3">
-                <button id="btn-opt-gfx" onclick="AppSettings.toggleGraphics(); UIManager.updateOptionsUI();" class="w-full bg-black/50 border border-gray-700 text-green-400 rounded-xl py-3 text-sm font-bold transition-all hover:bg-white/10 uppercase tracking-widest flex items-center justify-between px-4">
-                    <span>Grafica</span> <span id="opt-gfx-text"><i class="fa-solid fa-scale-balanced"></i> BILANCIATA</span>
-                </button>
+            <!-- TITOLO -->
+            <h2 class="text-xl sm:text-2xl font-black text-blue-400 mb-3 border-b border-gray-700 pb-2 uppercase tracking-widest flex items-center gap-2 shrink-0">
+                <i class="fa-solid fa-book"></i> Manuale
+            </h2>
+            
+            <!-- CONTENUTO SCROLLABILE -->
+            <div class="space-y-4 overflow-y-auto pr-1 shrink text-[11px] sm:text-xs text-gray-300 leading-snug custom-scrollbar">
                 
-                <button id="btn-opt-music" onclick="AudioEngine.toggleMusic(); UIManager.updateOptionsUI();" class="w-full bg-black/50 border border-gray-700 text-white rounded-xl py-3 text-sm font-bold transition-all hover:bg-white/10 uppercase tracking-widest flex items-center justify-between px-4">
-                    <span>Musica</span> <span id="opt-music-text" class="text-green-400">ON</span>
-                </button>
+                <!-- Perfect Dodge -->
+                <div class="bg-black/40 p-3 rounded-xl border border-gray-800">
+                    <h3 class="text-amber-500 font-black mb-1.5 uppercase flex items-center gap-1.5 text-xs sm:text-sm">
+                        <i class="fa-solid fa-bolt"></i> Perfect Dodge
+                    </h3>
+                    <p class="text-gray-400">Scatta (<span id="info-dodge-btn" class="text-white bg-white/10 px-1.5 py-0.5 rounded border border-white/20 shadow-inner font-bold uppercase text-[10px]"></span>) verso un nemico all'ultimo istante. <span class="text-white font-bold">Ricarica lo scatto</span> instantaneamente e <span class="text-amber-400 font-bold">aumenta la combo</span>!</p>
+                </div>
+                
+                <!-- Essenze -->
+                <div>
+                    <h3 class="text-fuchsia-400 font-black mb-1.5 uppercase flex items-center gap-1.5 text-xs sm:text-sm">
+                        <i class="fa-solid fa-gem"></i> Magia Elementale
+                    </h3>
+                    <p class="mb-2 text-gray-400">Raccogli 3 essenze uguali per attivare l'<strong class="text-white">Overdrive</strong>. Mischiale per creare magie uniche:</p>
+                    
+                    <div class="grid grid-cols-[auto_auto_auto_1fr] gap-x-2.5 gap-y-3.5 items-center bg-black/50 p-3 sm:p-4 rounded-xl border border-white/10 shadow-inner">
+                        
+                        <!-- Shock Termico -->
+                        <span class="w-3 h-3 rounded-full bg-[#FF1133] shadow-[0_0_5px_#FF1133] justify-self-center"></span>
+                        <span class="text-gray-600 font-bold text-[10px] justify-self-center">+</span>
+                        <span class="w-3 h-3 rounded-full bg-[#00AAFF] shadow-[0_0_5px_#00AAFF] justify-self-center"></span>
+                        <div class="ml-1 leading-tight">
+                            <span class="text-purple-300 font-bold text-[11px] sm:text-xs uppercase tracking-wide">Shock Termico</span><br>
+                            <span class="text-gray-500 text-[9px] sm:text-[10px]">Danni area + Rallenta</span>
+                        </div>
 
-                <button id="btn-opt-sfx" onclick="AudioEngine.toggleSFX(); UIManager.updateOptionsUI();" class="w-full bg-black/50 border border-gray-700 text-white rounded-xl py-3 text-sm font-bold transition-all hover:bg-white/10 uppercase tracking-widest flex items-center justify-between px-4">
-                    <span>Effetti (SFX)</span> <span id="opt-sfx-text" class="text-green-400">ON</span>
-                </button>
+                        <!-- Tossina -->
+                        <span class="w-3 h-3 rounded-full bg-[#FF1133] shadow-[0_0_5px_#FF1133] justify-self-center"></span>
+                        <span class="text-gray-600 font-bold text-[10px] justify-self-center">+</span>
+                        <span class="w-3 h-3 rounded-full bg-[#33FF00] shadow-[0_0_5px_#33FF00] justify-self-center"></span>
+                        <div class="ml-1 leading-tight">
+                            <span class="text-green-300 font-bold text-[11px] sm:text-xs uppercase tracking-wide">Tossina</span><br>
+                            <span class="text-gray-500 text-[9px] sm:text-[10px]">Danni + Veleno</span>
+                        </div>
 
-                <button id="btn-opt-colorblind" onclick="AppSettings.toggleColorblind(); UIManager.updateOptionsUI();" class="w-full bg-black/50 border border-gray-700 text-white rounded-xl py-3 text-sm font-bold transition-all hover:bg-white/10 uppercase tracking-widest flex items-center justify-between px-4">
-                    <span>Daltonismo</span> <span id="opt-colorblind-text" class="text-gray-500">OFF</span>
-                </button>
+                        <!-- Vortice -->
+                        <span class="w-3 h-3 rounded-full bg-[#00AAFF] shadow-[0_0_5px_#00AAFF] justify-self-center"></span>
+                        <span class="text-gray-600 font-bold text-[10px] justify-self-center">+</span>
+                        <span class="w-3 h-3 rounded-full bg-[#33FF00] shadow-[0_0_5px_#33FF00] justify-self-center"></span>
+                        <div class="ml-1 leading-tight">
+                            <span class="text-cyan-300 font-bold text-[11px] sm:text-xs uppercase tracking-wide">Vortice</span><br>
+                            <span class="text-gray-500 text-[9px] sm:text-[10px]">Respinge + Danni</span>
+                        </div>
+
+                        <!-- Caos Elementale -->
+                        <div class="flex gap-1 justify-center col-span-3">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#FF1133]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#00AAFF]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#33FF00]"></span>
+                        </div>
+                        <div class="ml-1 leading-tight">
+                            <span class="text-white font-bold text-[11px] sm:text-xs uppercase tracking-wide drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]">Caos Elementale</span><br>
+                            <span class="text-gray-500 text-[9px] sm:text-[10px]">Max Danni + Cura</span>
+                        </div>
+
+                    </div>
+                </div>
             </div>
-            
-            <button onclick="UIManager.hideModal('optionsModal')" class="mt-6 w-full bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded-xl border border-gray-600 transition-colors uppercase tracking-widest">Chiudi</button>
+            
+            <!-- TASTO CHIUSURA -->
+            <button onclick="UIManager.hideModal('infoModal')" class="mt-4 sm:mt-5 w-full bg-gradient-to-t from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 text-white font-bold py-3.5 rounded-xl border border-gray-500 transition-all active:scale-95 uppercase tracking-widest text-[10px] sm:text-xs shadow-lg shrink-0">
+                Torna al menu
+            </button>
         </div>
     </div>
 

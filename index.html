@@ -1474,7 +1474,7 @@ const Game = {
         let difficulty = this.floor + (this.floorKills * 0.1); this.spawnSpecificEnemy(pos.x * TILE_SIZE + TILE_SIZE/2, pos.y * TILE_SIZE + TILE_SIZE/2, difficulty);
     },
     spawnEnemies() {
-        let initialSpawns = Math.min(20 + (this.floor*5), this.floorMaxKills); for(let i=0; i<initialSpawns; i++) this.spawnEnemy();
+        let initialSpawns = Math.min(20 + (this.floor*4), this.floorMaxKills); for(let i=0; i<initialSpawns; i++) this.spawnEnemy();
     },
     updateCamera(dt) {
         let camX = this.player.x; let camY = isTouchDevice ? 850 : 600; let camZ = this.player.y + (isTouchDevice ? 550 : 400);
@@ -1552,7 +1552,7 @@ const Game = {
             let boss = new BossEnemy(cx, cy, this.floor); this.enemies.push(boss); this.enemyGrid.insert(boss);
             AudioEngine.playBossMusic(); setTimeout(() => Game.getFloatingText().spawn(this.player.x, this.player.y, "ATTENZIONE: BOSS!", '#FF2244', 50, true), 100);
         } else {
-            this.floorMaxKills = 20 + (this.floor * 10); 
+            this.floorMaxKills = 20 + (this.floor * 8); 
             for(let i=0; i<this.enemies.length; i++) { if(this.enemies[i].type === 'crystal') this.floorMaxKills++; }
             this.floorKills = 0;
             let pos = this.map.getRandomFloorTile();

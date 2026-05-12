@@ -1263,6 +1263,7 @@ const Game = {
     _camTarget: new THREE.Vector3(),
     _particleIdx: 0, _projectileIdx: 0, _hazardIdx: 0, _textIdx: 0, _essenceIdx: 0, _extraLifeIdx: 0, _decoyIdx: 0, _dashLineIdx: 0,
     lastTime: 0, accumulator: 0, state: 'MENU', floor: 1, floorMaxKills: 0, floorKills: 0, totalKills: 0, frameCount: 0, isBossFloor: false,
+    lastDrawTime: 0, frameInterval: isTouchDevice ? 1000 / 60 : 0, // <-- NUOVO: Cap 60fps solo su mobile
     hitStop: 0, trauma: 0, combo: 0, comboTimer: 0, comboMaxTime: 5.0, difficultyMult: 1.0, ultimateCharge: 0, ultimateActive: false, ultimateTimer: 0, lives: 3, playTime: 0, bossDefeatedTimer: 0, floorEndTimer: 0, floorEndTriggered: false,
     player: null, map: null, enemyGrid: null, enemies: [], projectiles: [], particles: [], essences: [], extraLivesDrops: [], floatingTexts: [], hazards: [], decoys: [], dashLines: [], bloodDecals: [], bloodDecalIndex: 0,
     
@@ -1421,15 +1422,33 @@ const Game = {
         this.raycaster.setFromCamera(this._vec2, this.camera); this.raycaster.ray.intersectPlane(this._plane, this._vec3);
         if (this._vec3) { this.mouse.worldX = this._vec3.x; this.mouse.worldY = this._vec3.z; }
     },
-    loop(timestamp) {
-        if (!this.lastTime) this.lastTime = timestamp; let frameTime = (timestamp - this.lastTime) / 1000; this.lastTime = timestamp;
-        if (frameTime > MAX_TIME_STEP) frameTime = MAX_TIME_STEP; this.accumulator += frameTime;
-        while(this.accumulator >= FIXED_TIME_STEP) {
-            if (this.hitStop > 0) this.hitStop -= FIXED_TIME_STEP; else this.update(FIXED_TIME_STEP);
-            this.accumulator -= FIXED_TIME_STEP;
-        }
-        this.draw(); requestAnimationFrame(this.loop.bind(this));
-    },
+   loop(timestamp) {
+        // --- INIZIO CAP FPS ---
+        if (this.frameInterval > 0) {
+            if (!this.lastDrawTime) this.lastDrawTime = timestamp;
+            const elapsed = timestamp - this.lastDrawTime;
+            if (elapsed < this.frameInterval) {
+                requestAnimationFrame(this.loop.bind(this));
+                return; // Salta il frame se è passato troppo poco tempo
+            }
+            // Sincronizza il tempo per evitare micro-stuttering
+            this.lastDrawTime = timestamp - (elapsed % this.frameInterval);
+        }
+        // --- FINE CAP FPS ---
+
+        if (!this.lastTime) this.lastTime = timestamp; 
+        let frameTime = (timestamp - this.lastTime) / 1000; 
+        this.lastTime = timestamp;
+        if (frameTime > MAX_TIME_STEP) frameTime = MAX_TIME_STEP; 
+        this.accumulator += frameTime;
+        while(this.accumulator >= FIXED_TIME_STEP) {
+            if (this.hitStop > 0) this.hitStop -= FIXED_TIME_STEP; 
+            else this.update(FIXED_TIME_STEP);
+            this.accumulator -= FIXED_TIME_STEP;
+        }
+        this.draw(); 
+        requestAnimationFrame(this.loop.bind(this));
+    },
 
     setupFloor() {
         this.bossDefeatedTimer = 0; this.isBossFloor = (this.floor % 5 === 0);

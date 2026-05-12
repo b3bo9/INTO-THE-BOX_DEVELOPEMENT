@@ -977,42 +977,49 @@ class DashLine {
 }
 
 class Essence {
-    constructor() {
-        this.active = false; this.type = 'red'; this.group = new THREE.Group();
-        this.coreMat = new THREE.MeshBasicMaterial({color: 0x000000});
-        let core = new THREE.Mesh(SharedGeo.icosahedron, this.coreMat); core.scale.setScalar(12);
-        this.haloMat = new THREE.MeshBasicMaterial({wireframe: true, transparent: true, opacity: 0.9});
-        let halo = new THREE.Mesh(SharedGeo.icosahedron, this.haloMat); halo.scale.setScalar(18);
-        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(60, 60, 1);
-        this.group.matrixAutoUpdate = false; 
-        core.matrixAutoUpdate = false; core.updateMatrix();
-        halo.matrixAutoUpdate = false; halo.updateMatrix();
-        this.glow.matrixAutoUpdate = false; this.glow.updateMatrix();
-        this.group.add(core); this.group.add(halo); this.group.add(this.glow); this.group.visible = false; Game.scene.add(this.group);
-    }
-    spawn(x, y, type) {
-        this.active = true; this.x = x; this.y = y; this.type = type; let color = ESSENCE_COLORS[type]; 
-        this.life = 15.0;
-        this.coreMat.color.setHex(color); this.haloMat.color.setHex(color);
-        if(type === 'red') this.glow.material = SharedMat.spriteRed; else if(type === 'blue') this.glow.material = SharedMat.spriteBlue; else this.glow.material = SharedMat.spriteGreen;
-        this.group.position.set(x, 15, y); this.group.updateMatrix(); this.group.visible = true;
-    }
-    destroy() { this.active = false; this.group.visible = false; }
+    constructor() {
+        this.active = false; this.type = 'red'; this.group = new THREE.Group();
+        this.coreMat = new THREE.MeshBasicMaterial({color: 0x000000});
+        // MODIFICA: Scala del core ridotta da 12 a 9
+        let core = new THREE.Mesh(SharedGeo.icosahedron, this.coreMat); core.scale.setScalar(9);
+        this.haloMat = new THREE.MeshBasicMaterial({wireframe: true, transparent: true, opacity: 0.9});
+        // MODIFICA: Scala dell'halo ridotta da 18 a 13.5
+        let halo = new THREE.Mesh(SharedGeo.icosahedron, this.haloMat); halo.scale.setScalar(13.5);
+        // MODIFICA: Scala del glow ridotta da 60 a 45
+        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(45, 45, 1);
+        this.group.matrixAutoUpdate = false; 
+        core.matrixAutoUpdate = false; core.updateMatrix();
+        halo.matrixAutoUpdate = false; halo.updateMatrix();
+        this.glow.matrixAutoUpdate = false; this.glow.updateMatrix();
+        this.group.add(core); this.group.add(halo); this.group.add(this.glow); this.group.visible = false; Game.scene.add(this.group);
+    }
+    spawn(x, y, type) {
+        this.active = true; this.x = x; this.y = y; this.type = type; let color = ESSENCE_COLORS[type]; 
+        this.life = 15.0;
+        this.coreMat.color.setHex(color); this.haloMat.color.setHex(color);
+        if(type === 'red') this.glow.material = SharedMat.spriteRed; else if(type === 'blue') this.glow.material = SharedMat.spriteBlue; else this.glow.material = SharedMat.spriteGreen;
+        // MODIFICA: Altezza di spawn abbassata da 15 a 12 per adattarsi alle nuove dimensioni
+        this.group.position.set(x, 12, y); this.group.updateMatrix(); this.group.visible = true;
+    }
+    destroy() { this.active = false; this.group.visible = false; }
 }
 
 class ExtraLife {
-    constructor() {
-        this.active = false; this.group = new THREE.Group();
-        this.mat = new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0xffffff, roughness: 0.1, metalness: 0.5, emissiveIntensity: 2.0});
-        let core = new THREE.Mesh(SharedGeo.heart, this.mat); core.scale.setScalar(8);
-        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(60, 60, 1);
-        this.group.matrixAutoUpdate = false; 
-        core.matrixAutoUpdate = false; core.updateMatrix();
-        this.glow.matrixAutoUpdate = false; this.glow.updateMatrix();
-        this.group.add(core); this.group.add(this.glow); this.group.visible = false; Game.scene.add(this.group);
-    }
-    spawn(x, y) { this.active = true; this.x = x; this.y = y; this.life = 15.0; this.group.position.set(x, 15, y); this.group.updateMatrix(); this.group.visible = true; }
-    destroy() { this.active = false; this.group.visible = false; }
+    constructor() {
+        this.active = false; this.group = new THREE.Group();
+        this.mat = new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0xffffff, roughness: 0.1, metalness: 0.5, emissiveIntensity: 2.0});
+        // MODIFICA: Scala del cuore ridotta da 8 a 6
+        let core = new THREE.Mesh(SharedGeo.heart, this.mat); core.scale.setScalar(6);
+        // MODIFICA: Scala del glow ridotta da 60 a 45
+        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(45, 45, 1);
+        this.group.matrixAutoUpdate = false; 
+        core.matrixAutoUpdate = false; core.updateMatrix();
+        this.glow.matrixAutoUpdate = false; this.glow.updateMatrix();
+        this.group.add(core); this.group.add(this.glow); this.group.visible = false; Game.scene.add(this.group);
+    }
+    // MODIFICA: Altezza di spawn abbassata da 15 a 12
+    spawn(x, y) { this.active = true; this.x = x; this.y = y; this.life = 15.0; this.group.position.set(x, 12, y); this.group.updateMatrix(); this.group.visible = true; }
+    destroy() { this.active = false; this.group.visible = false; }
 }
 
 class Hazard {
@@ -1544,7 +1551,7 @@ const Game = {
                 if (e.life < 3.0) e.group.visible = Math.floor(e.life * 8) % 2 === 0;
                 else e.group.visible = true;
 
-                e.group.rotation.y += dt; e.group.position.y = 15 + this.animFloat;
+                e.group.rotation.y += dt; e.group.position.y = 12 + this.animFloat; // <-- MODIFICA: altezza base da 15 a 12
                 e.group.updateMatrix();
                 if (MathUtils.distanceSq(this.player, e) < pRadiusSq) { this.player.collectEssence(e.type); e.destroy(); }
             }
@@ -1558,7 +1565,7 @@ const Game = {
                 if (el.life < 3.0) el.group.visible = Math.floor(el.life * 8) % 2 === 0;
                 else el.group.visible = true;
 
-                el.group.rotation.y += dt * 2; el.group.position.y = 15 + this.animFloat;
+                el.group.rotation.y += dt * 2; el.group.position.y = 12 + this.animFloat; // <-- MODIFICA: altezza base da 15 a 12
                 el.group.updateMatrix();
                 if (MathUtils.distanceSq(this.player, el) < pRadiusSq) { this.lives++; el.destroy(); AudioEngine.playCollect(); this.getFloatingText().spawn(this.player.x, this.player.y, "VITA EXTRA!", '#ffffff', 30, true); }
             }

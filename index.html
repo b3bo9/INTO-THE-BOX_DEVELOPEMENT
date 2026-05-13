@@ -410,16 +410,16 @@
             </div>
         </div>
 
-        <div id="combo-container" class="absolute top-4 right-4 sm:top-8 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 text-right sm:text-center transition-opacity duration-100 opacity-0 flex flex-col items-end sm:items-center w-auto pointer-events-none z-20">
-            <h2 id="combo-text" class="font-black text-white m-0 leading-none origin-right sm:origin-center text-2xl sm:text-6xl lg:text-7xl drop-shadow-xl">COMBO x2!</h2>
-            <div class="w-24 sm:w-48 h-2 sm:h-3 bg-black/80 border border-amber-500 rounded-full overflow-hidden mt-1 sm:mt-1.5 shadow-[0_0_10px_rgba(255,170,0,0.8)]"><div id="combo-bar" class="h-full bg-amber-500 w-full transition-all duration-100 ease-linear"></div></div>
+        <div id="combo-container" class="absolute top-24 right-4 sm:top-1/4 sm:right-8 sm:left-auto sm:translate-x-0 text-right transition-opacity duration-100 opacity-0 flex flex-col items-end w-auto pointer-events-none z-20">
+            <!-- Testo più compatto, in corsivo per dinamismo, ancorato a destra -->
+            <h2 id="combo-text" class="font-black text-white m-0 leading-none origin-right text-3xl sm:text-6xl lg:text-7xl drop-shadow-xl italic">x2 HITS!</h2>
+            <div class="w-20 sm:w-48 h-1.5 sm:h-3 bg-black/80 border border-amber-500 rounded-full overflow-hidden mt-1 shadow-[0_0_10px_rgba(255,170,0,0.8)]"><div id="combo-bar" class="h-full bg-amber-500 w-full transition-all duration-100 ease-linear origin-right"></div></div>
         </div>
-
-       <!-- Essenze spostate a destra sotto la combo su mobile -->
-       <div id="essence-hud" class="absolute top-20 right-4 sm:top-32 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 flex flex-col items-end sm:items-center justify-center gap-1.5 sm:gap-3 bg-black/60 sm:bg-black/85 border border-gray-600/80 rounded-2xl p-3 sm:p-5 shadow-lg backdrop-blur-md transition-opacity duration-300 opacity-0 min-w-[130px] sm:min-w-[200px]">
+        
+      <div id="essence-hud" class="absolute top-36 right-4 sm:top-[calc(25%+4rem)] sm:right-8 sm:left-auto sm:translate-x-0 flex flex-col items-end sm:items-center justify-center gap-1.5 sm:gap-3 bg-black/50 sm:bg-black/85 border border-gray-600/50 sm:border-gray-600/80 rounded-2xl p-2.5 sm:p-5 shadow-lg backdrop-blur-sm sm:backdrop-blur-md transition-opacity duration-300 opacity-0 min-w-[120px] sm:min-w-[200px]">
             <div class="flex gap-2 sm:gap-4 mb-0.5 sm:mb-1"><div class="stack-dot" id="stack-1"></div><div class="stack-dot" id="stack-2"></div><div class="stack-dot" id="stack-3"></div></div>
-            <div id="overdrive-text" class="font-black text-sm sm:text-2xl text-white hidden tracking-widest uppercase drop-shadow-[0_0_10px_rgba(255,255,255,1)]">INFERNO!</div>
-            <div class="w-full h-1.5 sm:h-3 bg-gray-800/80 border border-gray-600 rounded-full overflow-hidden mt-0.5 sm:mt-1"><div id="essence-timer" class="h-full w-0 bg-white transition-all duration-100 linear"></div></div>
+            <div id="overdrive-text" class="font-black text-xs sm:text-2xl text-white hidden tracking-widest uppercase drop-shadow-[0_0_10px_rgba(255,255,255,1)]">INFERNO!</div>
+            <div class="w-full h-1 sm:h-3 bg-gray-800/80 border border-gray-600/50 rounded-full overflow-hidden mt-0.5"><div id="essence-timer" class="h-full w-0 bg-white transition-all duration-100 linear"></div></div>
         </div>
         <button id="btn-ult" class="absolute bottom-[11rem] right-12 landscape:bottom-24 landscape:right-40 w-14 h-14 bg-black/60 backdrop-blur-md rounded-full border-2 border-gray-600 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(0,0,0,0.8)] opacity-75 transition-all flex items-center justify-center touch-none overflow-hidden group">
             <div id="btn-ult-fill" class="absolute bottom-0 left-0 w-full bg-cyan-500/50 h-0 transition-all duration-200 pointer-events-none"></div>

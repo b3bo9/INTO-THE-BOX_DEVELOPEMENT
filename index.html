@@ -23,12 +23,12 @@
         
         .health-bar-container { background: #111; border: 1px solid #444; border-radius: 4px; overflow: hidden; position: relative; box-shadow: 0 0 10px rgba(0,0,0,0.8); }
         .health-bar-fill { height: 100%; background: linear-gradient(90deg, #bb0000, #ff4444); width: 100%; transition: width 0.1s; }
-        .stack-dot { width: 14px; height: 14px; border-radius: 50%; background: #1a1a1a; border: 1px solid #555; transition: all 0.3s; box-shadow: inset 0 0 5px #000; }
-        @media (min-width: 640px) { .stack-dot { width: 22px; height: 22px; border-width: 2px; } }
+        .stack-dot { width: 22px; height: 22px; border-radius: 50%; background: #1a1a1a; border: 2px solid #555; transition: all 0.3s; box-shadow: inset 0 0 8px #000; }
+        @media (min-width: 640px) { .stack-dot { width: 30px; height: 30px; border-width: 3px; } }
         
-        .stack-dot.active.red { background: #FF1133; border-color: #ffaaaa; box-shadow: 0 0 20px #FF1133; }
-        .stack-dot.active.blue { background: #00AAFF; border-color: #aaccff; box-shadow: 0 0 20px #00AAFF; }
-        .stack-dot.active.green { background: #33FF00; border-color: #aaffaa; box-shadow: 0 0 20px #33FF00; }
+        .stack-dot.active.red { background: #FF1133; border-color: #ffffff; box-shadow: 0 0 25px #FF1133, inset 0 0 8px rgba(255,255,255,0.8); }
+        .stack-dot.active.blue { background: #00AAFF; border-color: #ffffff; box-shadow: 0 0 25px #00AAFF, inset 0 0 8px rgba(255,255,255,0.8); }
+        .stack-dot.active.green { background: #33FF00; border-color: #ffffff; box-shadow: 0 0 25px #33FF00, inset 0 0 8px rgba(255,255,255,0.8); }
         
         #combo-text { text-shadow: 0 0 15px #ffaa00, 0 0 5px #ff0000, 2px 2px 0 #000; }
         @media (min-width: 640px) { #combo-text { text-shadow: 0 0 30px #ffaa00, 0 0 10px #ff0000, 4px 4px 0 #000; } }
@@ -130,7 +130,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 67</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 68</p>
                 </div>
             </div>
         </div>
@@ -371,10 +371,10 @@
             <div class="w-20 sm:w-48 h-1.5 sm:h-3 bg-black/80 border border-amber-500 rounded-full overflow-hidden mt-1 sm:mt-1.5 shadow-[0_0_10px_rgba(255,170,0,0.8)]"><div id="combo-bar" class="h-full bg-amber-500 w-full transition-all duration-100 ease-linear"></div></div>
         </div>
 
-        <div id="essence-hud" class="absolute bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center justify-center gap-1.5 sm:gap-2 bg-black/80 border border-gray-700 rounded-xl p-3 sm:p-4 shadow-[0_5px_20px_rgba(0,0,0,0.9)] backdrop-blur-sm transition-opacity duration-300 opacity-0">
-            <div class="flex gap-2 sm:gap-3 mb-0.5"><div class="stack-dot" id="stack-1"></div><div class="stack-dot" id="stack-2"></div><div class="stack-dot" id="stack-3"></div></div>
-            <div id="overdrive-text" class="font-black text-sm sm:text-xl text-white hidden tracking-widest uppercase drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]">INFERNO!</div>
-            <div class="w-full h-1.5 sm:h-2 bg-gray-800 rounded-full overflow-hidden mt-0.5"><div id="essence-timer" class="h-full w-0 bg-white transition-all duration-100 linear"></div></div>
+       <div id="essence-hud" class="absolute bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center justify-center gap-2 sm:gap-3 bg-black/85 border-2 border-gray-600 rounded-2xl p-4 sm:p-5 shadow-[0_10px_30px_rgba(0,0,0,0.95)] backdrop-blur-md transition-opacity duration-300 opacity-0 min-w-[150px] sm:min-w-[200px]">
+            <div class="flex gap-3 sm:gap-4 mb-1"><div class="stack-dot" id="stack-1"></div><div class="stack-dot" id="stack-2"></div><div class="stack-dot" id="stack-3"></div></div>
+            <div id="overdrive-text" class="font-black text-lg sm:text-2xl text-white hidden tracking-widest uppercase drop-shadow-[0_0_12px_rgba(255,255,255,1)]">INFERNO!</div>
+            <div class="w-full h-2.5 sm:h-3 bg-gray-800 border border-gray-600 rounded-full overflow-hidden mt-1"><div id="essence-timer" class="h-full w-0 bg-white transition-all duration-100 linear"></div></div>
         </div>
     </div> 
 

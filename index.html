@@ -55,12 +55,12 @@
             0%, 100% { box-shadow: inset 0 0 80px rgba(255, 0, 0, 0.5); background-color: rgba(255, 0, 0, 0.05); }
             50% { box-shadow: inset 0 0 250px rgba(255, 0, 0, 0.9); background-color: rgba(255, 0, 0, 0.25); }
         }
-        #low-hp-vignette { 
-            position: absolute; inset: 0; pointer-events: none; z-index: 6; 
-            animation: heartbeat-pulse 1s infinite ease-in-out; 
-            transition: opacity 0.3s; opacity: 0; 
-            background-image: radial-gradient(circle, transparent 40%, rgba(255, 0, 0, 0.2) 100%);
-        }
+       #low-hp-vignette { 
+            position: absolute; inset: 0; pointer-events: none; z-index: 40; 
+            animation: heartbeat-pulse 1s infinite ease-in-out; 
+            opacity: 0; display: none;
+            background-image: radial-gradient(circle, transparent 40%, rgba(255, 0, 0, 0.2) 100%);
+        }
         .relic-card { transition: all 0.2s; cursor: pointer; } .relic-card:hover { transform: scale(1.05) translateY(-5px); } .relic-card:active { transform: scale(0.95); }
         .rarity-common { border-color: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); } .rarity-rare { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
         .rarity-epic { border-color: #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.6); } .rarity-legendary { border-color: #fbbf24; box-shadow: 0 0 30px rgba(251, 191, 36, 0.8); }
@@ -129,7 +129,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 65</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 66</p>
                 </div>
             </div>
         </div>
@@ -1352,28 +1352,28 @@ const UI = {
       // --- LOGICA LOW HP ---
         let isLowHP = hpPct <= 35 && !Game.player.dead;
         
-        // Forza l'inizializzazione della cache se undefined
-        if (typeof this.cache.isLowHP === 'undefined') {
-            this.cache.isLowHP = false; 
+        let vignette = document.getElementById('low-hp-vignette');
+        if (vignette) {
+            if (isLowHP) {
+                if (vignette.style.display !== 'block') vignette.style.display = 'block';
+                vignette.style.opacity = '1';
+            } else {
+                vignette.style.opacity = '0';
+                if (vignette.style.display !== 'none') vignette.style.display = 'none';
+            }
         }
-
+        
         if (this.cache.isLowHP !== isLowHP) {
-            let vignette = document.getElementById('low-hp-vignette');
-            if (vignette) {
-                // Usiamo l'assegnazione numerica per l'opacità per massima compatibilità
-                vignette.style.opacity = isLowHP ? 1 : 0;
-            }
-
-            // Ripristina il volume SOLO se il gioco è ancora in corso (evita sbalzi audio alla morte)
             if (!isLowHP && this.cache.isLowHP && Game.state === 'PLAYING') {
-                AudioEngine.restoreMusicVolume();
+                try { AudioEngine.restoreMusicVolume(); } catch(e) {}
             }
-
             this.cache.isLowHP = isLowHP;
         }
-
-        if (isLowHP) AudioEngine.playHeartbeat();
-        // ---------------------
+        
+        if (isLowHP) {
+            try { AudioEngine.playHeartbeat(); } catch(e) {}
+        }
+        // ---------------------
         if (this.cache.hpPct !== hpPct) { this.els.hpFill.style.width = `${hpPct}%`; this.cache.hpPct = hpPct; }
         if (this.cache.hpText !== hpText) { this.els.hpText.innerText = hpText; this.cache.hpText = hpText; }
         if (this.cache.lives !== Game.lives) { this.els.lives.innerText = '❤️'.repeat(Math.max(0, Game.lives)); this.cache.lives = Game.lives; }

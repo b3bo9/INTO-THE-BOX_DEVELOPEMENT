@@ -480,6 +480,8 @@ const AudioEngine = {
     gameBGM: (() => { let a = new Audio('Gameplay.mp3'); a.loop = true; a.preload = 'auto'; return a; })(),
     bossBGM: (() => { let a = new Audio('Boss.mp3'); a.loop = true; a.preload = 'auto'; return a; })(),
     transitionSFX: (() => { let a = new Audio('Vittoria_Piano.mp3'); a.preload = 'auto'; return a; })(),
+    deathSFX: (() => { let a = new Audio('Caduto.mp3'); a.preload = 'auto'; return a; })(),
+    gameOverSFX: (() => { let a = new Audio('RIP.mp3'); a.preload = 'auto'; return a; })(),
     _menuFade: null, _gameFade: null, _bossFade: null,
     lastHitTime: 0, hitCount: 0, lastShootTime: 0, shootCount: 0,
     // ---> AGGIUNGI QUESTO BLOCCO <---
@@ -803,25 +805,20 @@ const AudioEngine = {
         }
     },
     playDeathMusic() {
-        if (!this.ctx || this.sfxMuted) return; if (this.ctx.state === 'suspended') this.ctx.resume();
-        const notes = [311.13, 233.08, 155.56, 116.54]; let t = this.ctx.currentTime;
-        notes.forEach((freq, i) => {
-            let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain(); osc.type = 'sawtooth'; osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0, t + i * 0.5); gain.gain.linearRampToValueAtTime(0.3, t + i * 0.5 + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.5 + 1.0);
-            osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t + i * 0.5); osc.stop(t + i * 0.5 + 1.0);
-        });
+        if (this.sfxMuted) return;
+        this.deathSFX.currentTime = 0; 
+        this.deathSFX.volume = 0.8; 
+        let p = this.deathSFX.play();
+        if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
+    },
     },
     playGameOverSound() {
-        if (!this.ctx || this.sfxMuted) return; if (this.ctx.state === 'suspended') this.ctx.resume();
-        let t = this.ctx.currentTime;
-        
-        const notes = [150, 155, 220, 225]; 
-        notes.forEach(freq => {
-            let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain(); 
-            osc.type = 'triangle'; osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.4, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 4.0);
-            osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 4.0);
-        });
+        if (this.sfxMuted) return;
+        this.gameOverSFX.currentTime = 0; 
+        this.gameOverSFX.volume = 0.8; 
+        let p = this.gameOverSFX.play();
+        if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
+    },
 
         let oscDrop = this.ctx.createOscillator(); let gainDrop = this.ctx.createGain();
         oscDrop.type = 'sawtooth'; 
@@ -3133,6 +3130,8 @@ const Preloader = {
         fetch('Gameplay.mp3').catch(e => console.warn('Audio prefetch saltato', e));
         fetch('Boss.mp3').catch(e => console.warn('Audio prefetch saltato', e));
         fetch('Vittoria_piano').catch(e => console.warn('Audio prefetch saltato', e));
+        fetch('Caduto').catch(e => console.warn('Audio prefetch saltato', e));
+        fetch('RIP').catch(e => console.warn('Audio prefetch saltato', e));
     }
 };
 

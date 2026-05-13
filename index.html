@@ -51,11 +51,27 @@
         .animate-shimmer { animation: shimmer 1.5s infinite linear; }
 
         #vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.8) 110%); box-shadow: inset 0 0 150px rgba(0,0,0,0.9); z-index: 5; pointer-events: none; mix-blend-mode: multiply; transition: opacity 0.5s; }
-        @keyframes heartbeat-pulse {
-            0%, 100% { box-shadow: inset 0 0 50px rgba(255, 0, 0, 0.3); background: radial-gradient(circle, transparent 60%, rgba(200,0,0,0.2) 100%); }
-            50% { box-shadow: inset 0 0 200px rgba(255, 0, 0, 0.8); background: radial-gradient(circle, transparent 30%, rgba(255,0,0,0.5) 100%); }
+       @keyframes heartbeat-pulse {
+            0%, 100% { 
+                box-shadow: inset 0 0 60px rgba(255, 0, 0, 0.4); 
+                background-color: rgba(255, 0, 0, 0.05); 
+            }
+            50% { 
+                box-shadow: inset 0 0 250px rgba(255, 0, 0, 0.9); 
+                background-color: rgba(255, 0, 0, 0.25); 
+            }
         }
-        #low-hp-vignette { position: absolute; inset: 0; pointer-events: none; z-index: 6; animation: heartbeat-pulse 1s infinite ease-in-out; transition: opacity 0.3s; opacity: 0; }
+        #low-hp-vignette { 
+            position: absolute; 
+            inset: 0; 
+            pointer-events: none; 
+            z-index: 6; 
+            animation: heartbeat-pulse 1s infinite ease-in-out; 
+            transition: opacity 0.3s; 
+            opacity: 0; 
+            /* Usiamo un gradiente fisso di base, in modo che non mandi in blocco il CSS */
+            background-image: radial-gradient(circle, transparent 50%, rgba(255, 0, 0, 0.15) 100%);
+        }
         .relic-card { transition: all 0.2s; cursor: pointer; } .relic-card:hover { transform: scale(1.05) translateY(-5px); } .relic-card:active { transform: scale(0.95); }
         .rarity-common { border-color: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); } .rarity-rare { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
         .rarity-epic { border-color: #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.6); } .rarity-legendary { border-color: #fbbf24; box-shadow: 0 0 30px rgba(251, 191, 36, 0.8); }
@@ -124,7 +140,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 64</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 65</p>
                 </div>
             </div>
         </div>

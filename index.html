@@ -1847,7 +1847,7 @@ const Game = {
             for(let i=0; i<this._hpBarCount; i++) this.uiCtx.fillRect(this._hpBars[i].x - 15, this._hpBars[i].y-1, 30 * this._hpBars[i].pct, 4);
         }
        // INDICATORI NEMICI FUORI SCHERMO
-        this.uiCtx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+        this.uiCtx.fillStyle = 'rgba(255, 0, 0, 0.4)';
         for(let i=0; i<this.enemies.length; i++) {
             let e = this.enemies[i];
             if (e.dead || e.type === 'crystal' || e.angle === undefined) continue;

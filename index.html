@@ -1377,7 +1377,7 @@ const UI = {
         
         let eLeft = Math.max(0, Game.floorMaxKills - Game.floorKills); 
         if (this.cache.enemiesLeft !== eLeft) { this.els.enemiesLeft.innerText = eLeft; this.cache.enemiesLeft = eLeft; }
-        let progressPct = Game.isBossFloor ? ((Game.floorMaxKills - eLeft) / Game.floorMaxKills) * 100 : (Game.floorKills / Math.max(1, Game.floorMaxKills)) * 100;
+        let progressPct = Game.isBossFloor ? ((Game.floorMaxKills - eLeft) / Game.floorMaxKills) * 100 : Math.min(100, (Game.floorKills / Math.max(1, Game.floorMaxKills - 2)) * 100);
         if (this.cache.progressPct !== progressPct) { this.els.floorProgress.style.width = `${progressPct}%`; this.cache.progressPct = progressPct; }
         
         let hasEssence = Game.player.essenceList.length > 0 || Game.player.overdrive;

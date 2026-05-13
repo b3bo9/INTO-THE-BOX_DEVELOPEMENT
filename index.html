@@ -1350,21 +1350,29 @@ const UI = {
         let hpText = `${Math.floor(Game.player.stats.hp)}/${Math.floor(Game.player.stats.maxHp)}`;
         
       // --- LOGICA LOW HP ---
-        let isLowHP = hpPct <= 35 && !Game.player.dead;
-        
-        if (this.cache.isLowHP !== isLowHP) {
-            let vignette = document.getElementById('low-hp-vignette');
-            if (vignette) vignette.style.opacity = isLowHP ? '1' : '0';
-            
-            // Ripristina il volume SOLO se il gioco è ancora in corso (evita sbalzi audio alla morte)
-            if (!isLowHP && this.cache.isLowHP && Game.state === 'PLAYING') {
-                AudioEngine.restoreMusicVolume();
-            }
-            
-            this.cache.isLowHP = isLowHP;
-        }
-        
-        if (isLowHP) AudioEngine.playHeartbeat();
+        let isLowHP = hpPct <= 35 && !Game.player.dead;
+        
+        // Forza l'inizializzazione della cache se undefined
+        if (typeof this.cache.isLowHP === 'undefined') {
+            this.cache.isLowHP = false; 
+        }
+
+        if (this.cache.isLowHP !== isLowHP) {
+            let vignette = document.getElementById('low-hp-vignette');
+            if (vignette) {
+                // Usiamo l'assegnazione numerica per l'opacità per massima compatibilità
+                vignette.style.opacity = isLowHP ? 1 : 0;
+            }
+
+            // Ripristina il volume SOLO se il gioco è ancora in corso (evita sbalzi audio alla morte)
+            if (!isLowHP && this.cache.isLowHP && Game.state === 'PLAYING') {
+                AudioEngine.restoreMusicVolume();
+            }
+
+            this.cache.isLowHP = isLowHP;
+        }
+
+        if (isLowHP) AudioEngine.playHeartbeat();
         // ---------------------
         if (this.cache.hpPct !== hpPct) { this.els.hpFill.style.width = `${hpPct}%`; this.cache.hpPct = hpPct; }
         if (this.cache.hpText !== hpText) { this.els.hpText.innerText = hpText; this.cache.hpText = hpText; }

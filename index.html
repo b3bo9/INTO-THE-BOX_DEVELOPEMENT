@@ -51,16 +51,17 @@
         .animate-shimmer { animation: shimmer 1.5s infinite linear; }
 
         #vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.8) 110%); box-shadow: inset 0 0 150px rgba(0,0,0,0.9); z-index: 5; pointer-events: none; mix-blend-mode: multiply; transition: opacity 0.5s; }
-     @keyframes heartbeat-pulse {
-            0%, 100% { box-shadow: inset 0 0 80px rgba(255, 0, 0, 0.5); background-color: rgba(255, 0, 0, 0.05); }
-            50% { box-shadow: inset 0 0 250px rgba(255, 0, 0, 0.9); background-color: rgba(255, 0, 0, 0.25); }
-        }
-       #low-hp-vignette { 
-            position: absolute; inset: 0; pointer-events: none; z-index: 40; 
-            animation: heartbeat-pulse 1s infinite ease-in-out; 
-            opacity: 0; display: none;
-            background-image: radial-gradient(circle, transparent 40%, rgba(255, 0, 0, 0.2) 100%);
+        /* ---> AGGIUNGI QUESTO BLOCCO <--- */
+        @keyframes pulse-blood {
+            0%, 100% { background: radial-gradient(ellipse at center, transparent 35%, rgba(200, 0, 0, 0.4) 110%); box-shadow: inset 0 0 80px rgba(255, 0, 0, 0.6); }
+            50% { background: radial-gradient(ellipse at center, transparent 25%, rgba(220, 0, 0, 0.7) 110%); box-shadow: inset 0 0 150px rgba(255, 0, 0, 0.9); }
         }
+        .vignette-low-hp {
+            animation: pulse-blood 0.8s infinite ease-in-out !important;
+            mix-blend-mode: normal !important;
+            opacity: 1 !important; /* Si assicura che si veda anche se la grafica è al minimo */
+        }
+        /* -------------------------------- */
         .relic-card { transition: all 0.2s; cursor: pointer; } .relic-card:hover { transform: scale(1.05) translateY(-5px); } .relic-card:active { transform: scale(0.95); }
         .rarity-common { border-color: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); } .rarity-rare { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
         .rarity-epic { border-color: #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.6); } .rarity-legendary { border-color: #fbbf24; box-shadow: 0 0 30px rgba(251, 191, 36, 0.8); }
@@ -129,7 +130,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 66</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 67</p>
                 </div>
             </div>
         </div>
@@ -327,7 +328,6 @@
     <div id="game-container"></div>
     <canvas id="uiCanvas"></canvas>
     <div id="vignette"></div>
-    <div id="low-hp-vignette"></div>
 
     <!-- CONTROLLI MOBILE -->
     <div id="mobile-controls" class="absolute inset-0 pointer-events-none z-50 hidden">
@@ -430,6 +430,36 @@ const AudioEngine = {
     bossBGM: (() => { let a = new Audio('Boss.mp3'); a.loop = true; a.preload = 'auto'; return a; })(),
     _menuFade: null, _gameFade: null, _bossFade: null,
     lastHitTime: 0, hitCount: 0, lastShootTime: 0, shootCount: 0,
+    // ---> AGGIUNGI QUESTO BLOCCO <---
+    heartbeatTimer: 0, isLowHp: false,
+    setLowHpState(active) {
+        if (this.isLowHp === active) return;
+        this.isLowHp = active;
+        if (active) {
+            if (!this.musicMuted) { this.gameBGM.volume = 0.1; this.bossBGM.volume = 0.1; }
+        } else {
+            if (!this.musicMuted) {
+                if (!this.gameBGM.paused) this.gameBGM.volume = 0.3;
+                if (!this.bossBGM.paused) this.bossBGM.volume = 0.4;
+            }
+        }
+    },
+    playHeartbeat(dt) {
+        if (this.sfxMuted || !this.ctx || this.ctx.state === 'suspended') return;
+        this.heartbeatTimer -= dt;
+        if (this.heartbeatTimer <= 0) {
+            this.heartbeatTimer = 0.8; // Ripete il battito ogni 0.8 secondi
+            this._playThump(this.ctx.currentTime);
+            this._playThump(this.ctx.currentTime + 0.15); // Doppio battito tipico del cuore
+        }
+    },
+    _playThump(t) {
+        let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(60, t); osc.frequency.exponentialRampToValueAtTime(20, t + 0.15);
+        gain.gain.setValueAtTime(0.8, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 0.15);
+    },
+    // --------------------------------
     init() {
         if (this.initialized) return; window.AudioContext = window.AudioContext || window.webkitAudioContext;
         this.ctx = new AudioContext(); this.initialized = true; 
@@ -790,41 +820,14 @@ const AudioEngine = {
         this.playNoise(0.15, 'high');
     },
     playUltimate() {
-        if (!this.ctx || this.ctx.state === 'suspended' || this.sfxMuted) return;
-        let osc1 = this.ctx.createOscillator(); let osc2 = this.ctx.createOscillator(); let gain = this.ctx.createGain();
-        osc1.type = 'sawtooth'; osc1.frequency.setValueAtTime(100, this.ctx.currentTime); osc1.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 1.0);
-        osc2.type = 'square'; osc2.frequency.setValueAtTime(200, this.ctx.currentTime); osc2.frequency.exponentialRampToValueAtTime(20, this.ctx.currentTime + 0.5);
-        gain.gain.setValueAtTime(0, this.ctx.currentTime); gain.gain.linearRampToValueAtTime(0.4, this.ctx.currentTime + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 1.5);
-        osc1.connect(gain); osc2.connect(gain); gain.connect(this.ctx.destination); osc1.start(); osc2.start(); osc1.stop(this.ctx.currentTime + 1.5); osc2.stop(this.ctx.currentTime + 1.5);
-        this.playNoise(1.0, 'low');
-    },
-    playHeartbeat() {
-        if (!this.ctx || this.sfxMuted || this.ctx.state === 'suspended') return;
-        let now = this.ctx.currentTime;
-        if (now - (this.lastHeartbeatTime || 0) < 1.0) return; 
-        this.lastHeartbeatTime = now;
-
-        let osc1 = this.ctx.createOscillator(); let gain1 = this.ctx.createGain();
-        osc1.type = 'sine'; osc1.frequency.setValueAtTime(60, now); osc1.frequency.exponentialRampToValueAtTime(40, now + 0.1);
-        gain1.gain.setValueAtTime(0, now); gain1.gain.linearRampToValueAtTime(1.5, now + 0.05); gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-        osc1.connect(gain1); gain1.connect(this.ctx.destination); osc1.start(now); osc1.stop(now + 0.2);
-
-        let osc2 = this.ctx.createOscillator(); let gain2 = this.ctx.createGain();
-        osc2.type = 'sine'; osc2.frequency.setValueAtTime(70, now + 0.2); osc2.frequency.exponentialRampToValueAtTime(40, now + 0.3);
-        gain2.gain.setValueAtTime(0, now + 0.2); gain2.gain.linearRampToValueAtTime(1.5, now + 0.25); gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-        osc2.connect(gain2); gain2.connect(this.ctx.destination); osc2.start(now + 0.2); osc2.stop(now + 0.4);
-
-        if (!this.musicMuted) {
-            if (Game.isBossFloor && this.bossBGM.volume > 0.05) this.bossBGM.volume = 0.05;
-            else if (!Game.isBossFloor && this.gameBGM.volume > 0.05) this.gameBGM.volume = 0.05;
-        }
-    },
-    restoreMusicVolume() {
-        if (!this.musicMuted) {
-            if (Game.isBossFloor && this.bossBGM.volume > 0) this.bossBGM.volume = 0.4;
-            else if (!Game.isBossFloor && this.gameBGM.volume > 0) this.gameBGM.volume = 0.3;
-        }
-    }
+        if (!this.ctx || this.ctx.state === 'suspended' || this.sfxMuted) return;
+        let osc1 = this.ctx.createOscillator(); let osc2 = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+        osc1.type = 'sawtooth'; osc1.frequency.setValueAtTime(100, this.ctx.currentTime); osc1.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 1.0);
+        osc2.type = 'square'; osc2.frequency.setValueAtTime(200, this.ctx.currentTime); osc2.frequency.exponentialRampToValueAtTime(20, this.ctx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0, this.ctx.currentTime); gain.gain.linearRampToValueAtTime(0.4, this.ctx.currentTime + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 1.5);
+        osc1.connect(gain); osc2.connect(gain); gain.connect(this.ctx.destination); osc1.start(); osc2.start(); osc1.stop(this.ctx.currentTime + 1.5); osc2.stop(this.ctx.currentTime + 1.5);
+        this.playNoise(1.0, 'low');
+    }
 };
 
 const MathUtils = {
@@ -1346,34 +1349,7 @@ const UI = {
     },
     update() {
         if (!Game.player) return;
-        let hpPct = (Game.player.stats.hp / Game.player.stats.maxHp) * 100; 
-        let hpText = `${Math.floor(Game.player.stats.hp)}/${Math.floor(Game.player.stats.maxHp)}`;
-        
-      // --- LOGICA LOW HP ---
-        let isLowHP = hpPct <= 35 && !Game.player.dead;
-        
-        let vignette = document.getElementById('low-hp-vignette');
-        if (vignette) {
-            if (isLowHP) {
-                if (vignette.style.display !== 'block') vignette.style.display = 'block';
-                vignette.style.opacity = '1';
-            } else {
-                vignette.style.opacity = '0';
-                if (vignette.style.display !== 'none') vignette.style.display = 'none';
-            }
-        }
-        
-        if (this.cache.isLowHP !== isLowHP) {
-            if (!isLowHP && this.cache.isLowHP && Game.state === 'PLAYING') {
-                try { AudioEngine.restoreMusicVolume(); } catch(e) {}
-            }
-            this.cache.isLowHP = isLowHP;
-        }
-        
-        if (isLowHP) {
-            try { AudioEngine.playHeartbeat(); } catch(e) {}
-        }
-        // ---------------------
+        let hpPct = (Game.player.stats.hp / Game.player.stats.maxHp) * 100; let hpText = `${Math.floor(Game.player.stats.hp)}/${Math.floor(Game.player.stats.maxHp)}`;
         if (this.cache.hpPct !== hpPct) { this.els.hpFill.style.width = `${hpPct}%`; this.cache.hpPct = hpPct; }
         if (this.cache.hpText !== hpText) { this.els.hpText.innerText = hpText; this.cache.hpText = hpText; }
         if (this.cache.lives !== Game.lives) { this.els.lives.innerText = '❤️'.repeat(Math.max(0, Game.lives)); this.cache.lives = Game.lives; }
@@ -1699,7 +1675,16 @@ const Game = {
         if (this.ultimateActive) { this.ultimateTimer -= dt; if (this.ultimateTimer <= 0) this.ultimateActive = false; }
 
         this.updateMouseWorld(); this.player.update(dt); this.updateCamera(dt);
-
+// ---> AGGIUNGI QUESTO BLOCCO SUBITO DOPO <---
+        if ((this.player.stats.hp / this.player.stats.maxHp) < 0.30 && !this.player.dead) {
+            document.getElementById('vignette').classList.add('vignette-low-hp');
+            AudioEngine.setLowHpState(true);
+            AudioEngine.playHeartbeat(dt);
+        } else {
+            document.getElementById('vignette').classList.remove('vignette-low-hp');
+            AudioEngine.setLowHpState(false);
+        }
+        // ---------------------------------------------
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             let e = this.enemies[i]; e.update(dt); this.enemyGrid.updateClient(e); 
             if (e.dead) {

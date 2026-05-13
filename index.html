@@ -1516,7 +1516,7 @@ const UI = {
         if (isCombo) this.els.comboBar.style.width = `${(Game.comboTimer / Game.comboMaxTime) * 100}%`;
     },
     triggerComboAnim(combo) {
-        this.els.comboText.innerText = `COMBO x${combo}!`; 
+        this.els.comboText.innerText = `x${combo} HITS!`;
         let scale = isTouchDevice ? (1 + Math.min(combo * 0.03, 0.4)) : (1 + Math.min(combo * 0.015, 0.4)); 
         this.els.comboText.style.transform = `scale(${scale})`;
         let shadow = "0 0 15px #ffaa00, 0 0 5px #ff0000, 2px 2px 0 #000"; if (!isTouchDevice) shadow = "0 0 30px #ffaa00, 0 0 10px #ff0000, 4px 4px 0 #000";

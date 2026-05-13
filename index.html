@@ -130,7 +130,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 71</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 72</p>
                 </div>
             </div>
         </div>
@@ -283,7 +283,7 @@
                 </button>
                 
                 <button id="btn-respawn" onclick="respawnPlayer()" class="hidden bg-gradient-to-r from-pink-900 via-pink-600 to-pink-900 hover:from-pink-800 hover:via-pink-500 hover:to-pink-800 text-white font-black py-4 sm:py-5 w-full rounded-2xl text-xl sm:text-2xl shadow-[0_0_30px_rgba(255,105,180,0.5)] border border-pink-500/50 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest">RITORNA IN BATTAGLIA</button>
-                
+                <button onclick="UIManager.showCollectedRelics()" class="bg-purple-900/40 backdrop-blur-md hover:bg-purple-800/60 text-purple-200 font-bold py-3 w-full rounded-xl text-xs sm:text-sm border border-purple-500/30 transition-all active:scale-95 uppercase tracking-[0.1em] mt-1 shadow-[0_0_15px_rgba(168,85,247,0.2)]"><i class="fa-solid fa-gem mr-1"></i> LE TUE RELIQUIE</button>
                 <button onclick="goToMainMenu()" class="bg-black/50 backdrop-blur-md hover:bg-white/10 text-gray-400 hover:text-white font-bold py-3.5 w-full rounded-xl text-xs sm:text-sm border border-gray-700 transition-all active:scale-95 uppercase tracking-[0.2em] mt-1 shadow-lg">TORNA AL MENU</button>
             </div>
         </div>
@@ -301,7 +301,7 @@
             </div>
 
             <div class="flex-1 w-full min-h-[50px]"></div>
-
+            <button onclick="UIManager.showCollectedRelics()" class="mb-4 bg-purple-900/50 backdrop-blur-md hover:bg-purple-800/80 text-purple-200 font-bold py-3 px-6 rounded-xl text-xs sm:text-sm border border-purple-500/50 transition-all active:scale-95 uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(168,85,247,0.3)] w-full max-w-[450px]"><i class="fa-solid fa-gem mr-2"></i> LE TUE RELIQUIE</button>
             <button onclick="nextFloor()" class="shrink-0 bg-gradient-to-r from-cyan-900 via-blue-600 to-cyan-900 hover:from-blue-800 hover:via-cyan-400 hover:to-blue-800 text-white font-black py-4 sm:py-5 px-8 sm:px-12 rounded-2xl text-lg sm:text-2xl shadow-[0_0_40px_rgba(59,130,246,0.5)] hover:shadow-[0_0_60px_rgba(34,211,238,0.8)] border-2 border-blue-400/50 hover:border-cyan-300 transition-all transform hover:-translate-y-1 active:scale-95 uppercase tracking-[0.2em] flex items-center justify-center gap-3 group w-full max-w-[450px]">
                 SCENDI PIÙ A FONDO <i class="fa-solid fa-angles-down group-hover:translate-y-1 transition-transform"></i>
             </button>
@@ -323,7 +323,23 @@
         <p class="text-sm sm:text-base text-gray-400 mb-8 font-bold text-center px-4">Solo una reliquia può essere portata al piano inferiore...</p>
         <div id="relicCardsContainer" class="flex flex-col landscape:flex-row sm:flex-row gap-4 sm:gap-6 w-[90%] max-w-[900px] justify-center items-stretch my-auto"></div>
     </div>
+<!-- MODALE RELIQUIE COLLEZIONATE -->
+    <div id="collectedRelicsModal" class="absolute inset-0 bg-black/95 z-[260] flex flex-col items-center justify-center backdrop-blur-md pointer-events-auto hidden p-4">
+        <div class="bg-gray-900 border border-purple-500/50 p-5 rounded-2xl w-full max-w-[450px] shadow-[0_0_40px_rgba(168,85,247,0.3)] flex flex-col max-h-[85vh]">
+            <h2 class="text-xl sm:text-2xl font-black text-purple-400 mb-4 border-b border-gray-700 pb-2 uppercase tracking-widest flex items-center gap-2 shrink-0"><i class="fa-solid fa-gem"></i> Inventario Reliquie</h2>
+            
+            <div id="collectedRelicsGrid" class="flex flex-wrap gap-3 overflow-y-auto custom-scrollbar p-2 justify-center content-start flex-1 min-h-[120px]">
+                <!-- Popolato da JS -->
+            </div>
 
+            <div class="mt-4 bg-black/60 border border-gray-700 rounded-xl p-3 min-h-[85px] flex flex-col justify-center items-center text-center shrink-0">
+                <h3 id="relic-detail-name" class="text-sm font-black text-gray-300 uppercase tracking-widest mb-1">IL TUO ARSENALE</h3>
+                <p id="relic-detail-desc" class="text-xs text-gray-400 font-bold">Tocca o passa il cursore sopra un'icona per i dettagli.</p>
+            </div>
+
+            <button onclick="UIManager.hideModal('collectedRelicsModal')" class="mt-5 w-full bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded-xl border border-gray-600 transition-colors uppercase tracking-widest shrink-0">Chiudi</button>
+        </div>
+    </div>
     <!-- CONTAINER 3D -->
     <div id="game-container"></div>
     <canvas id="uiCanvas"></canvas>
@@ -879,6 +895,53 @@ const UIManager = {
         AudioEngine.playClick();
         document.getElementById(id).classList.add('hidden');
     },
+    showCollectedRelics() {
+        AudioEngine.playClick();
+        const grid = document.getElementById('collectedRelicsGrid');
+        const detailName = document.getElementById('relic-detail-name');
+        const detailDesc = document.getElementById('relic-detail-desc');
+        
+        grid.innerHTML = '';
+        detailName.innerText = "IL TUO ARSENALE";
+        detailName.className = "text-sm font-black text-gray-300 uppercase tracking-widest mb-1";
+        
+        if (!Game.player || !Game.player.relics || Game.player.relics.length === 0) {
+            detailDesc.innerText = "Non hai ancora raccolto nessuna reliquia.";
+        } else {
+            detailDesc.innerText = "Tocca o passa il cursore sopra un'icona per leggerne il potere.";
+            
+            Game.player.relics.forEach(relic => {
+                let colorClass = relic.rarity === 'legendary' ? 'border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]' : 
+                                 relic.rarity === 'epic' ? 'border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.5)]' : 
+                                 relic.rarity === 'rare' ? 'border-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 
+                                 'border-green-400 shadow-[0_0_10px_rgba(34,197,94,0.5)]';
+                
+                let textColor = relic.rarity === 'legendary' ? 'text-amber-400' : 
+                                relic.rarity === 'epic' ? 'text-purple-400' : 
+                                relic.rarity === 'rare' ? 'text-blue-400' : 
+                                'text-green-400';
+                                 
+                let imgBox = document.createElement('div');
+                imgBox.className = `w-14 h-14 sm:w-16 sm:h-16 rounded-xl border-2 ${colorClass} overflow-hidden cursor-pointer transition-transform hover:scale-110 flex items-center justify-center bg-black/50`;
+                imgBox.innerHTML = `<img src="${relic.image}" alt="${relic.name}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><i class="fa-solid ${relic.icon || 'fa-gem'} text-2xl ${textColor}" style="display:none;"></i>`;
+                
+                const updateDetails = () => {
+                    AudioEngine.playHover();
+                    detailName.innerText = relic.name;
+                    detailName.className = `text-sm font-black uppercase tracking-widest mb-1 ${textColor}`;
+                    detailDesc.innerText = relic.desc;
+                    detailDesc.className = "text-xs text-white font-bold leading-snug";
+                };
+                
+                // Supporto nativo sia per PC (Hover) che Mobile (Touch)
+                imgBox.onmouseenter = updateDetails;
+                imgBox.ontouchstart = (e) => { e.preventDefault(); updateDetails(); };
+                
+                grid.appendChild(imgBox);
+            });
+        }
+        document.getElementById('collectedRelicsModal').classList.remove('hidden');
+    },
     updateOptionsUI() {
         // Grafica
         const gfxTxt = document.getElementById('opt-gfx-text');
@@ -962,7 +1025,7 @@ const RelicSystem = {
                 <p class="text-[11px] sm:text-xs font-bold text-center leading-snug text-white/80 flex-grow flex items-center justify-center">${relic.desc}</p>
                 <button class="mt-4 w-full bg-white/10 hover:bg-white/20 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors shadow-inner border border-white/5">Scegli</button>
             `;
-            card.onclick = () => { AudioEngine.playClick(); relic.apply(Game.player); Game.getFloatingText().spawn(Game.player.x, Game.player.y, "POTERE ACQUISITO", '#ffff00', 40, true); document.getElementById('relicScreen').classList.add('hidden'); Game.state = 'FLOOR_TRANSITION'; document.getElementById('floorScreen').classList.remove('hidden'); };
+            card.onclick = () => { AudioEngine.playClick(); relic.apply(Game.player); Game.player.relics.push(relic); Game.getFloatingText().spawn(Game.player.x, Game.player.y, "POTERE ACQUISITO", '#ffff00', 40, true); document.getElementById('relicScreen').classList.add('hidden'); Game.state = 'FLOOR_TRANSITION'; document.getElementById('floorScreen').classList.remove('hidden'); };
             container.appendChild(card);
         }
         document.getElementById('relicScreen').classList.remove('hidden');
@@ -2117,7 +2180,7 @@ class Player extends Entity {
         super(x, y, 16, 200); this.baseSpeed = 200; this.level = 1; this.xp = 0; this.xpNeeded = 100;
         this.attackTimer = 0; this.baseAttackSpeed = 3.5; this.isAttacking = false; this.attackSwing = 0;
         this.dashTimer = 0; this.isDashing = false; this.dashCooldown = 0; this.stats = { hp: 100, maxHp: 100, minDmg: 8, maxDmg: 15 };
-        this.essenceList = []; this.essence = null; this.essenceTimer = 0; this.overdrive = false; this.invincibilityTimer = 0;
+        this.essenceList = []; this.essence = null; this.essenceTimer = 0; this.overdrive = false; this.invincibilityTimer = 0; this.relics = [];
         
         this.modifiers = { 
             critChance: 0.10, dmgMult: 1.0, speedMult: 1.0, atkSpeedMult: 1.0, dashCooldownMult: 1.0, vampirismMaxHp: 0, 

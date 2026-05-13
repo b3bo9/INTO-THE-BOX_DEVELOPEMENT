@@ -368,7 +368,7 @@
                 
                 <div class="flex justify-between w-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-gray-300 drop-shadow-md mt-1">
                     <span id="ui-floor-text">Piano <span id="ui-floor" class="text-white">1</span></span>
-                    <span id="ui-enemy-label">Demoni: <span id="ui-enemies-left" class="text-white">0</span></span>
+                    <span><span id="ui-enemy-label">Demoni:</span> <span id="ui-enemies-left" class="text-white">0</span></span>
                 </div>
                 <div class="w-full h-1.5 sm:h-2 bg-black/80 border border-gray-700 rounded-full overflow-hidden shadow-inner backdrop-blur-md">
                     <div id="ui-floor-progress" class="h-full w-0 bg-gradient-to-r from-red-900 via-red-600 to-amber-500 transition-all duration-300"></div>
@@ -1671,10 +1671,14 @@ const Game = {
         document.getElementById('mainMenu').classList.add('hidden'); document.getElementById('hud').classList.remove('hidden');
         if (isTouchDevice) document.getElementById('mobile-controls').classList.remove('hidden');
         this.difficultyMult = diffMult || 1.0;
-        this.floor = 1; this.totalKills = 0; this.lives = 3; this.playTime = 0; this.enemies = []; this.ultimateCharge = 0; this.ultimateActive = false;
+        this.floor = 1; this.totalKills = 0; this.lives = 3; this.playTime = 0; 
+        this.ultimateCharge = 0; this.ultimateActive = false;
         this.floorEndTimer = 0; this.floorEndTriggered = false;
         if (this.player) { Game.scene.remove(this.player.mesh); this.player = null; }
-        clearScene(); this.setupFloor(); this.state = 'PLAYING';
+        
+        clearScene(); // <--- ORA PULISCE PRIMA DI AZZERARE GLI ARRAY
+        this.enemies = []; 
+        this.setupFloor(); this.state = 'PLAYING';
     },
     
     update(dt) {
@@ -1848,24 +1852,20 @@ const Game = {
             let e = this.enemies[i];
             if (e.dead || e.type === 'crystal' || e.angle === undefined) continue;
             
-            // Verifica se il nemico è in zona aggro ma fuori dallo schermo
-            if(MathUtils.distanceSq(this.player, e) < (e.aggroRangeSq || 1000000)) {
+            // FIX: Aggiunto check di sicurezza per this.player
+            if(this.player && MathUtils.distanceSq(this.player, e) < (e.aggroRangeSq || 1000000)) {
                 let pos = toScreenPosition(e.x, 20, e.y);
                 let padding = 20;
                 
-                // FIX: Controllo se è fuori schermo o DIETRO la telecamera (pos.z > 1 evita il crash e l'inversione!)
                 if (pos.x < padding || pos.x > this.width - padding || pos.y < padding || pos.y > this.height - padding || pos.z > 1) {
                     let cx = this.width / 2; let cy = this.height / 2;
-                    // FIX: Calcola l'angolo in base alla posizione reale nel mondo 3D, non in base allo schermo 2D distorto
                     let angle = Math.atan2(e.y - this.player.y, e.x - this.player.x);
                     
-                    // Clamping al bordo dello schermo
                     let edgeX = cx + Math.cos(angle) * (this.width/2 - padding);
                     let edgeY = cy + Math.sin(angle) * (this.height/2 - padding);
                     edgeX = Math.max(padding, Math.min(this.width - padding, edgeX));
                     edgeY = Math.max(padding, Math.min(this.height - padding, edgeY));
                     
-                    // Disegna freccia direzionale
                     this.uiCtx.beginPath();
                     this.uiCtx.moveTo(edgeX + Math.cos(angle)*10, edgeY + Math.sin(angle)*10);
                     this.uiCtx.lineTo(edgeX + Math.cos(angle - 2.5)*15, edgeY + Math.sin(angle - 2.5)*15);

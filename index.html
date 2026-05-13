@@ -810,7 +810,7 @@ const AudioEngine = {
         this.deathSFX.volume = 0.8; 
         let p = this.deathSFX.play();
         if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
-    },
+    
     },
     playGameOverSound() {
         if (this.sfxMuted) return;

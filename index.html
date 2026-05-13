@@ -130,7 +130,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 70</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 71</p>
                 </div>
             </div>
         </div>
@@ -383,10 +383,6 @@
             <div id="overdrive-text" class="font-black text-lg sm:text-2xl text-white hidden tracking-widest uppercase drop-shadow-[0_0_12px_rgba(255,255,255,1)]">INFERNO!</div>
             <div class="w-full h-2.5 sm:h-3 bg-gray-800 border border-gray-600 rounded-full overflow-hidden mt-1"><div id="essence-timer" class="h-full w-0 bg-white transition-all duration-100 linear"></div></div>
         </div>
-        <button id="btn-ult" class="absolute bottom-[11rem] right-12 landscape:bottom-24 landscape:right-40 w-14 h-14 bg-black/60 backdrop-blur-md rounded-full border-2 border-gray-600 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(0,0,0,0.8)] opacity-75 transition-all flex items-center justify-center touch-none overflow-hidden group">
-            <div id="btn-ult-fill" class="absolute bottom-0 left-0 w-full bg-cyan-500/50 h-0 transition-all duration-200 pointer-events-none"></div>
-            <i class="fa-solid fa-angles-up text-2xl relative z-10 drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"></i>
-        </button>
         <button id="btn-ult" class="absolute bottom-[11rem] right-12 landscape:bottom-24 landscape:right-40 w-14 h-14 bg-black/60 backdrop-blur-md rounded-full border-2 border-gray-600 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(0,0,0,0.8)] opacity-75 transition-all flex items-center justify-center touch-none overflow-hidden group">
             <div id="btn-ult-fill" class="absolute bottom-0 left-0 w-full bg-cyan-500/50 h-0 transition-all duration-200 pointer-events-none"></div>
             <i class="fa-solid fa-angles-up text-2xl relative z-10 drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"></i>
@@ -1367,6 +1363,7 @@ const UI = {
         this.els.comboBar = document.getElementById('combo-bar'); 
         this.els.btnUlt = document.getElementById('btn-ult');
         this.els.btnUltFill = document.getElementById('btn-ult-fill');
+        this.els.ultChargeText = document.getElementById('ult-charge-text'); // Aggiungi questa riga
     },
     update() {
         if (!Game.player) return;
@@ -1402,24 +1399,28 @@ const UI = {
         } else { this.els.essenceHud.classList.remove('opacity-100'); this.els.essenceHud.classList.add('opacity-0'); }
 
         if (Game.ultimateActive) {
-            let uPct = `${(Game.ultimateTimer / (10.0 + Game.player.modifiers.ascensionDurationAdd)) * 100}%`;
-            if(this.cache.ultCharge !== uPct || !this.cache.ultActive) {
-                if(this.els.btnUltFill) { this.els.btnUltFill.style.height = uPct; this.els.btnUltFill.className = "absolute bottom-0 left-0 w-full bg-white transition-all duration-200 pointer-events-none"; }
-                if(this.els.btnUlt) { this.els.btnUlt.classList.add('opacity-100', 'border-cyan-400', 'shadow-[0_0_20px_rgba(0,221,255,0.8)]'); this.els.btnUlt.classList.remove('opacity-75', 'border-gray-600', 'animate-pulse'); }
-                this.cache.ultCharge = uPct; this.cache.ultActive = true;
-            }
+    let uPct = `${(Game.ultimateTimer / (10.0 + Game.player.modifiers.ascensionDurationAdd)) * 100}%`;
+    if(this.cache.ultCharge !== uPct || !this.cache.ultActive) {
+        if(this.els.btnUltFill) { this.els.btnUltFill.style.height = uPct; this.els.btnUltFill.className = "absolute bottom-0 left-0 w-full bg-white transition-all duration-200 pointer-events-none"; }
+        if(this.els.btnUlt) { this.els.btnUlt.classList.add('opacity-100', 'border-cyan-400', 'ult-ready'); this.els.btnUlt.classList.remove('opacity-75', 'border-gray-600'); }
+        if(this.els.ultChargeText) { this.els.ultChargeText.innerText = "ON"; }
+        this.cache.ultCharge = uPct; this.cache.ultActive = true;
+    }
+} else {
+    let uPct = `${Game.ultimateCharge}%`;
+    if (this.cache.ultCharge !== uPct || this.cache.ultActive) {
+        if(this.els.btnUltFill) { this.els.btnUltFill.style.height = uPct; this.els.btnUltFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-200 pointer-events-none"; }
+        
+        if (Game.ultimateCharge >= 100) {
+            if(this.els.btnUlt) { this.els.btnUlt.classList.add('opacity-100', 'border-cyan-300', 'ult-ready'); this.els.btnUlt.classList.remove('opacity-75', 'border-gray-600'); }
+            if(this.els.ultChargeText) { this.els.ultChargeText.innerText = "MAX"; this.els.ultChargeText.classList.add('animate-pulse', 'text-cyan-200'); }
         } else {
-            let uPct = `${Game.ultimateCharge}%`;
-            if (this.cache.ultCharge !== uPct || this.cache.ultActive) {
-                if(this.els.btnUltFill) { this.els.btnUltFill.style.height = uPct; this.els.btnUltFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-200 pointer-events-none"; }
-                if (Game.ultimateCharge >= 100) {
-                    if(this.els.btnUlt) { this.els.btnUlt.classList.add('opacity-100', 'border-cyan-300', 'shadow-[0_0_25px_rgba(0,255,255,0.9)]', 'animate-pulse'); this.els.btnUlt.classList.remove('opacity-75', 'border-gray-600'); }
-                } else {
-                    if(this.els.btnUlt) { this.els.btnUlt.classList.add('opacity-75', 'border-gray-600'); this.els.btnUlt.classList.remove('opacity-100', 'border-cyan-300', 'shadow-[0_0_25px_rgba(0,255,255,0.9)]', 'animate-pulse'); }
-                }
-                this.cache.ultCharge = uPct; this.cache.ultActive = false;
-            }
+            if(this.els.btnUlt) { this.els.btnUlt.classList.add('opacity-75', 'border-gray-600'); this.els.btnUlt.classList.remove('opacity-100', 'border-cyan-300', 'ult-ready'); }
+            if(this.els.ultChargeText) { this.els.ultChargeText.innerText = Math.floor(Game.ultimateCharge) + "%"; this.els.ultChargeText.classList.remove('animate-pulse', 'text-cyan-200'); }
         }
+        this.cache.ultCharge = uPct; this.cache.ultActive = false;
+    }
+}
 
         let isCombo = Game.combo > 0;
         if (this.cache.comboOpacity !== isCombo) { 

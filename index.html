@@ -479,6 +479,7 @@ const AudioEngine = {
     menuBGM: (() => { let a = new Audio('The_Iron_Pulse.mp3'); a.loop = true; a.preload = 'auto'; return a; })(),
     gameBGM: (() => { let a = new Audio('Gameplay.mp3'); a.loop = true; a.preload = 'auto'; return a; })(),
     bossBGM: (() => { let a = new Audio('Boss.mp3'); a.loop = true; a.preload = 'auto'; return a; })(),
+    transitionSFX: (() => { let a = new Audio('Vittoria_Piano.mp3'); a.preload = 'auto'; return a; })(),
     _menuFade: null, _gameFade: null, _bossFade: null,
     lastHitTime: 0, hitCount: 0, lastShootTime: 0, shootCount: 0,
     // ---> AGGIUNGI QUESTO BLOCCO <---
@@ -839,15 +840,13 @@ const AudioEngine = {
             noiseSource.start(t); noiseSource.stop(t + 4.0);
         }
     },
-    playLevelCompleteMusic() {
-        if (!this.ctx || this.ctx.state === 'suspended' || this.sfxMuted) return;
-        const now = this.ctx.currentTime; const notes = [220.00, 261.63, 329.63, 440.00];
-        notes.forEach((freq, i) => {
-            let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain(); osc.type = 'sawtooth'; osc.frequency.value = freq; let time = now + (i * 0.15);
-            gain.gain.setValueAtTime(0, time); gain.gain.linearRampToValueAtTime(0.2, time + 0.05); gain.gain.exponentialRampToValueAtTime(0.01, time + 0.8);
-            let filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.setValueAtTime(600 + (i * 200), time); filter.frequency.exponentialRampToValueAtTime(100, time + 0.8);
-            osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination); osc.start(time); osc.stop(time + 1.0);
-        });
+   playLevelCompleteMusic() {
+        if (this.sfxMuted) return;
+        this.transitionSFX.currentTime = 0; // Fa ripartire l'audio dall'inizio
+        this.transitionSFX.volume = 0.8; // Regola il volume (da 0.0 a 1.0)
+        let p = this.transitionSFX.play();
+        if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
+    },
         setTimeout(() => {
             if(!this.ctx || this.sfxMuted) return; let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain(); osc.type = 'sine'; osc.frequency.value = 440.0;
             gain.gain.setValueAtTime(0, this.ctx.currentTime); gain.gain.linearRampToValueAtTime(0.15, this.ctx.currentTime + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 2.5);
@@ -3133,6 +3132,7 @@ const Preloader = {
         fetch('The_Iron_Pulse.mp3').catch(e => console.warn('Audio prefetch saltato', e));
         fetch('Gameplay.mp3').catch(e => console.warn('Audio prefetch saltato', e));
         fetch('Boss.mp3').catch(e => console.warn('Audio prefetch saltato', e));
+        fetch('Vittoria_piano').catch(e => console.warn('Audio prefetch saltato', e));
     }
 };
 

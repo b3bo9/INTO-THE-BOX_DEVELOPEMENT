@@ -130,7 +130,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 69</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 70</p>
                 </div>
             </div>
         </div>
@@ -1853,9 +1853,13 @@ const Game = {
                 let pos = toScreenPosition(e.x, 20, e.y);
                 let padding = 20;
                 
-                if (pos.x < padding || pos.x > this.width - padding || pos.y < padding || pos.y > this.height - padding) {
+                // FIX: Controllo se è fuori schermo o DIETRO la telecamera (pos.z > 1)
+                if (pos.x < padding || pos.x > this.width - padding || pos.y < padding || pos.y > this.height - padding || pos.z > 1) {
                     let cx = this.width / 2; let cy = this.height / 2;
-                    let angle = Math.atan2(pos.y - cy, pos.x - cx);
+                    
+                    // FIX: Calcola l'angolo in base alla posizione reale nel mondo 3D. 
+                    // Essendo la visuale top-down, l'angolo del mondo corrisponde perfettamente allo schermo.
+                    let angle = Math.atan2(e.y - this.player.y, e.x - this.player.x);
                     
                     // Clamping al bordo dello schermo
                     let edgeX = cx + Math.cos(angle) * (this.width/2 - padding);
@@ -2059,6 +2063,7 @@ class Entity {
             foundText.accumulated += amount;
             foundText.text = Math.floor(foundText.accumulated).toString() + (isCrit || foundText.isCrit ? "!" : "");
             foundText.life = foundText.maxLife; 
+            foundText.vy = isCrit || foundText.isCrit ? 60 : 30; // Ripristina la spinta verso l'alto!
             if (isCrit) { foundText.color = '#ffff00'; foundText.isCrit = true; }
             foundText.size = Math.min(foundText.size + 4, 50); 
         } else {

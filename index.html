@@ -2075,6 +2075,16 @@ class Entity {
         this.flashTimer = 0.1; for (let i = 0; i < this.flashMats.length; i++) this.flashMats[i].emissive.setHex(0x555555);
         if (this.stats.hp <= 0) { this.stats.hp = 0; this.dead = true; }
     }
+    updateFlash(dt) {
+        if (this.flashTimer > 0) {
+            this.flashTimer -= dt;
+            if (this.flashTimer <= 0) {
+                for (let i = 0; i < this.flashMats.length; i++) {
+                    this.flashMats[i].emissive.setHex(0x000000);
+                }
+            }
+        }
+    }
 }
 
 class Player extends Entity {
@@ -2604,7 +2614,6 @@ class BossEnemy extends Enemy {
             AudioEngine.playGameOverSound(); 
         }
 
-        this.updateFlash(dt);
         if (this.modelParts.armL && this.speed > 0 && this.state !== 'leaping') {
             this.modelParts.armL.rotation.x = Game.animArm * (this.isEnraged ? 2 : 1);
             this.modelParts.armR.rotation.x = -Game.animArm * (this.isEnraged ? 2 : 1);

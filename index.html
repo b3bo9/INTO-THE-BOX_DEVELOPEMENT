@@ -820,23 +820,7 @@ const AudioEngine = {
         if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
     },
 
-        let oscDrop = this.ctx.createOscillator(); let gainDrop = this.ctx.createGain();
-        oscDrop.type = 'sawtooth'; 
-        oscDrop.frequency.setValueAtTime(250, t); 
-        oscDrop.frequency.exponentialRampToValueAtTime(20, t + 3.5);
-        gainDrop.gain.setValueAtTime(0.6, t); 
-        gainDrop.gain.exponentialRampToValueAtTime(0.01, t + 3.5);
-        oscDrop.connect(gainDrop); gainDrop.connect(this.ctx.destination); oscDrop.start(t); oscDrop.stop(t + 3.5);
         
-        if (this.noiseBuffer) {
-            let noiseSource = this.ctx.createBufferSource(); noiseSource.buffer = this.noiseBuffer;
-            let noiseFilter = this.ctx.createBiquadFilter(); noiseFilter.type = 'lowpass';
-            noiseFilter.frequency.setValueAtTime(500, t); noiseFilter.frequency.exponentialRampToValueAtTime(30, t + 4.0);
-            let noiseGain = this.ctx.createGain(); noiseGain.gain.setValueAtTime(0.8, t); noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 4.0);
-            noiseSource.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(this.ctx.destination);
-            noiseSource.start(t); noiseSource.stop(t + 4.0);
-        }
-    },
    playLevelCompleteMusic() {
         if (this.sfxMuted) return;
         this.transitionSFX.currentTime = 0; // Fa ripartire l'audio dall'inizio
@@ -844,12 +828,7 @@ const AudioEngine = {
         let p = this.transitionSFX.play();
         if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
     },
-        setTimeout(() => {
-            if(!this.ctx || this.sfxMuted) return; let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain(); osc.type = 'sine'; osc.frequency.value = 440.0;
-            gain.gain.setValueAtTime(0, this.ctx.currentTime); gain.gain.linearRampToValueAtTime(0.15, this.ctx.currentTime + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 2.5);
-            osc.connect(gain); gain.connect(this.ctx.destination); osc.start(this.ctx.currentTime); osc.stop(this.ctx.currentTime + 2.5);
-        }, notes.length * 150);
-    },
+       
     playDescendSound() {
         if (!this.ctx || this.ctx.state === 'suspended' || this.sfxMuted) return;
         let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();

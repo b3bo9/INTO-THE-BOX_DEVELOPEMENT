@@ -1842,23 +1842,21 @@ const Game = {
             this.uiCtx.fillStyle = '#ff0000';
             for(let i=0; i<this._hpBarCount; i++) this.uiCtx.fillRect(this._hpBars[i].x - 15, this._hpBars[i].y-1, 30 * this._hpBars[i].pct, 4);
         }
-        // INDICATORI NEMICI FUORI SCHERMO
+       // INDICATORI NEMICI FUORI SCHERMO
         this.uiCtx.fillStyle = 'rgba(255, 0, 0, 0.8)';
         for(let i=0; i<this.enemies.length; i++) {
             let e = this.enemies[i];
-            if (e.dead || e.type === 'crystal' || !e.angle) continue;
+            if (e.dead || e.type === 'crystal' || e.angle === undefined) continue;
             
             // Verifica se il nemico è in zona aggro ma fuori dallo schermo
-            if(MathUtils.distanceSq(this.player, e) < e.aggroRangeSq) {
+            if(MathUtils.distanceSq(this.player, e) < (e.aggroRangeSq || 1000000)) {
                 let pos = toScreenPosition(e.x, 20, e.y);
                 let padding = 20;
                 
-                // FIX: Controllo se è fuori schermo o DIETRO la telecamera (pos.z > 1)
+                // FIX: Controllo se è fuori schermo o DIETRO la telecamera (pos.z > 1 evita il crash e l'inversione!)
                 if (pos.x < padding || pos.x > this.width - padding || pos.y < padding || pos.y > this.height - padding || pos.z > 1) {
                     let cx = this.width / 2; let cy = this.height / 2;
-                    
-                    // FIX: Calcola l'angolo in base alla posizione reale nel mondo 3D. 
-                    // Essendo la visuale top-down, l'angolo del mondo corrisponde perfettamente allo schermo.
+                    // FIX: Calcola l'angolo in base alla posizione reale nel mondo 3D, non in base allo schermo 2D distorto
                     let angle = Math.atan2(e.y - this.player.y, e.x - this.player.x);
                     
                     // Clamping al bordo dello schermo
@@ -2059,11 +2057,11 @@ class Entity {
             let ft = Game.floatingTexts[i];
             if (ft.active && ft.targetId === this.id) { foundText = ft; break; }
         }
-        if (foundText) {
+       if (foundText) {
             foundText.accumulated += amount;
             foundText.text = Math.floor(foundText.accumulated).toString() + (isCrit || foundText.isCrit ? "!" : "");
             foundText.life = foundText.maxLife; 
-            foundText.vy = isCrit || foundText.isCrit ? 60 : 30; // Ripristina la spinta verso l'alto!
+            foundText.vy = isCrit || foundText.isCrit ? 60 : 30; // FIX: Ripristina la spinta verso l'alto ad ogni colpo concatenato!
             if (isCrit) { foundText.color = '#ffff00'; foundText.isCrit = true; }
             foundText.size = Math.min(foundText.size + 4, 50); 
         } else {

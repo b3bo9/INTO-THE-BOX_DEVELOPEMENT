@@ -2896,16 +2896,10 @@ class Enemy extends Entity {
             }
         }
         
-        if (this.isElite) {
-            Game.getFloatingText().spawn(this.x, this.y, "ELITE SCONFITTO", '#ffaa00', 30, true);
-        }
-        }
-    }
-        if (Game.player.modifiers.noHealDrops) lifeChance = 0;
-        
-        if (Math.random() < lifeChance) { Game.getExtraLife().spawn(this.x, this.y); } 
-        else if (Math.random() < 0.20 + (Game.combo * 0.003)) { Game.getEssence().spawn(this.x, this.y, ESSENCE_TYPES[Math.floor(Math.random() * ESSENCE_TYPES.length)]); }
-    }
+       if (this.isElite) {
+            Game.getFloatingText().spawn(this.x, this.y, "ELITE SCONFITTO", '#ffaa00', 30, true);
+        }
+    }
 }
 
 class BossEnemy extends Enemy {

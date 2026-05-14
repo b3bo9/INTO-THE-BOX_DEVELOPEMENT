@@ -2967,8 +2967,9 @@ class BossEnemy extends Enemy {
         this.isBoss = true; this.radius = 35; this.aggroRange = 2000; this.attackRange = 600;
         this.spawnMinionTimer = 2.0; this.hazardTimer = 4.0; 
         
-        let hpScale = level >= 10 ? (level/5) * 1.0 : (level/5) * 0.5;
-        this.stats.maxHp = Math.floor(2000 * (1 + hpScale) * Game.difficultyMult); this.stats.hp = this.stats.maxHp;
+        let hpScale = level >= 10 ? (level/5) * 1.2 : (level/5) * 1.0;
+        this.stats.maxHp = Math.floor(3000 * (1 + hpScale) * Game.difficultyMult); 
+        this.stats.hp = this.stats.maxHp;
         this.stats.minDmg = Math.floor(15 * (1 + (level/5) * 0.3) * Game.difficultyMult); this.stats.maxDmg = Math.floor(25 * (1 + (level/5) * 0.3) * Game.difficultyMult);
         this.baseSpeed = 140; this.speed = this.baseSpeed; this.xpValue = 1000 * (level/5); 
         this.mat.color.setHex(0x550000);

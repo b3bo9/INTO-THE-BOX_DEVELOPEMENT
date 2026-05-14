@@ -2700,6 +2700,14 @@ class Enemy extends Entity {
         this.type = type; 
         this.level = level; 
         this.attackCooldown = 0;
+
+        // --- BUGFIX 1: RESET DELLO STATO DAL POOL ---
+        // Previene l'esplosione dei poligoni resettando animazioni e stati residui
+        this.state = 'walk';
+        this.leapTimer = 0;
+        this.mesh.position.y = 0;
+        this.mesh.rotation.set(0, 0, 0); 
+        // -------------------------------------------
         
         let hpMod = 1, dmgMod = 1, spdMod = 1, color = 0x666666, size = 12;
         
@@ -2734,8 +2742,9 @@ class Enemy extends Entity {
         this.infected = false; this.slowedTimer = 0; this.fireDebuffTimer = 0;
         this.aggroRangeSq = this.aggroRange * this.aggroRange; this.attackRangeSq = this.attackRange * this.attackRange;
         
-        // RECICLO MODELLO 3D SE IL TIPO E' CAMBIATO
-        if (this.currentType !== type) {
+        // --- BUGFIX 2: CONTROLLO SCALA ELITE ---
+        // Ricostruisce il modello non solo se cambia il tipo, ma anche se passa da Normal a Elite (o viceversa)
+        if (this.currentType !== type || this.wasElite !== this.isElite) {
             while(this.mesh.children.length > 0){ this.mesh.remove(this.mesh.children[0]); }
             if (this.mat) this.mat.dispose();
 
@@ -2748,12 +2757,19 @@ class Enemy extends Entity {
             this.mesh.add(modelData.group); 
             this.modelParts = modelData.parts;
             this.currentType = type;
+            this.wasElite = this.isElite; // <-- Salviamo lo stato elite del modello
 
             this.flashMats = [];
             if (type !== 'crystal') { this.mesh.traverse(c => { if(c.isMesh && c.material === this.mat) this.flashMats.push(c.material); }); }
         } else {
             if (this.isElite) this.mat.emissive.setHex(0x440000);
             else this.mat.emissive.setHex(0x000000);
+
+            // Resetta l'animazione delle braccia in caso fosse morto mid-animazione
+            if (this.modelParts && this.modelParts.armL) {
+                this.modelParts.armL.rotation.x = 0;
+                this.modelParts.armR.rotation.x = 0;
+            }
         }
 
         this.mesh.position.set(x, 0, y); 

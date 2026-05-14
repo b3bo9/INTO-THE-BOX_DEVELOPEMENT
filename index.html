@@ -987,11 +987,11 @@ const RelicSystem = {
         { id: 'r1', name: "Bussola Dimensionale", desc: "Essenze durano 50% in più", rarity: "rare", image: "icona_bussola_dimensionale.png", icon: "fa-compass", apply: (p) => p.modifiers.essenceDurationMult += 0.50 },
         { id: 'r2', name: "Mercurio", desc: "Cooldown Scatto -25%", rarity: "rare", image: "icona_mercurio.png", icon: "fa-shoe-prints", apply: (p) => p.modifiers.dashCooldownMult -= 0.25 },
         { id: 'r3', name: "Scudo dell'Egidio", desc: "Blocca un attacco. Si ricarica in 15s", rarity: "rare", image: "icona_scudo_dell_egidio.png", icon: "fa-shield-halved", apply: (p) => p.modifiers.shieldActive = true },
-        { id: 'r4', name: "Spirito Avaro", desc: "+50% XP, -50% cure", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.50; p.modifiers.healDropMult -= 0.50; } },
+       { id: 'r4', name: "Spirito Avaro", desc: "+50% XP, ma subisci +15% di danni", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.50; p.modifiers.dmgTakenMult += 0.15; } },
         { id: 'r5', name: "Magnete delle Anime", desc: "Raggio raccolta raddoppiato", rarity: "rare", image: "icona_magnete_delle_anime.png", icon: "fa-magnet", apply: (p) => p.modifiers.pickupRadiusMult += 1.0 },
         { id: 'e1', name: "Ritmo di Battaglia", desc: "Combo sale di +2 e decade più tardi", rarity: "epic", image: "icona_ritmo_di_battaglia.png", icon: "fa-drum", apply: (p) => { p.modifiers.comboStep += 1; p.modifiers.comboDecayAdd += 1.0; } },
         { id: 'e2', name: "Riciclo Magico", desc: "Non perdi l'ultima essenza presa", rarity: "epic", image: "icona_riciclo_magico.png", icon: "fa-recycle", apply: (p) => p.modifiers.keepEssenceOnCombo = true },
-        { id: 'e3', name: "Passo Infernale", desc: "Lo scatto brucia. Nemici a fuoco subiscono +10% danni", rarity: "epic", image: "icona_passo_infernale.png", icon: "fa-fire-flame-curved", apply: (p) => { p.modifiers.fireTrail = true; p.modifiers.fireTrailDebuff = true; } },
+        { id: 'e3', name: "Passo Infernale", desc: "Lo scatto brucia. Nemici a fuoco subiscono +25% danni", rarity: "epic", image: "icona_passo_infernale.png", icon: "fa-fire-flame-curved", apply: (p) => { p.modifiers.fireTrail = true; p.modifiers.fireTrailDebuff = true; } },
         { id: 'e4', name: "Sovraccarico", desc: "Ascensione dura 4s in più", rarity: "epic", image: "icona_sovraccarico.png", icon: "fa-bolt-lightning", apply: (p) => p.modifiers.ascensionDurationAdd += 4.0 },
         { id: 'e5', name: "Zanna del Vampiro", desc: "10% probabilità di curare 2% HP per kill", rarity: "epic", image: "icona_zanna_del_vampiro.png", icon: "fa-tooth", apply: (p) => p.modifiers.vampirismMaxHp += 0.02 },
         { id: 'l1', name: "Follia Omicida", desc: "Critici infliggono 3X danni, ma subisci +25% danni", rarity: "legendary", image: "icona_follia_omicida.png", icon: "fa-skull", apply: (p) => { p.modifiers.critDmgMult = 3.0; p.modifiers.dmgTakenMult += 0.25; } },
@@ -2341,7 +2341,9 @@ class Player extends Entity {
                     for(let i=0; i<(AppSettings.isUltraPC?50:25); i++) { Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'flame'); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'spark'); }
                 }
                 AudioEngine.playShoot('explosive_arrow'); AudioEngine.playShoot('chain_lightning');
-                this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + 10); Game.getFloatingText().spawn(this.x, this.y + 20, "+10 HP", '#ff0000', 25);
+                let healAmount = this.stats.maxHp * 0.20;
+                this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount); 
+                Game.getFloatingText().spawn(this.x, this.y + 20, `+${Math.floor(healAmount)} HP`, '#00DDFF', 25);
             }
             Game.getFloatingText().spawn(this.x, this.y, comboName, color, 60, true);
             let kept = this.modifiers.keepEssenceOnCombo ? this.essenceList[this.essenceList.length - 1] : null;
@@ -2878,7 +2880,7 @@ class Enemy extends Entity {
     }
     takeDamage(amount, source, isCrit = false, canInfect = true) {
         if (source === Game.player && Game.player.modifiers.executioner && (this.stats.hp / this.stats.maxHp) < 0.3) amount *= 2.0;
-        if (this.fireDebuffTimer > 0) amount *= 1.10;
+        if (this.fireDebuffTimer > 0 && Game.player.modifiers.fireTrailDebuff) amount *= 1.25;
         super.takeDamage(amount, source, isCrit); if (Game.player.overdrive && Game.player.essence === 'green' && canInfect) this.infected = true;
     }
     onDeath() {

@@ -999,15 +999,7 @@ const RelicSystem = {
         { id: 'l3', name: "Patto Ascetico", desc: "Ascensione passiva (+2%/s), ma HP Max -30%", rarity: "legendary", image: "icona_patto_ascetico.png", icon: "fa-link", apply: (p) => { p.modifiers.passiveUltCharge = true; p.stats.maxHp = Math.floor(p.stats.maxHp * 0.7); if(p.stats.hp > p.stats.maxHp) p.stats.hp = p.stats.maxHp; } },
         { id: 'l4', name: "Sete di Sangue Eterna", desc: "Curati 5% ogni 10 kill. 0 cure a terra. HP non salgono con livello.", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", icon: "fa-droplet", apply: (p) => { p.modifiers.bloodthirst = true; p.modifiers.noHealDrops = true; p.modifiers.noMaxHpLevelUp = true; } },
         { id: 'l5', name: "Maestria del Flow", desc: "Bonus combo doppi e decado lento. Danni dimezzano HP attuali.", rarity: "legendary", image: "icona_maestria_del_flow.png", icon: "fa-infinity", apply: (p) => { p.modifiers.flowMastery = true; p.modifiers.comboDecayRate *= 0.5; } },
-        { 
-            id: 'e6', 
-            name: "Batteria a Ioni", 
-            desc: "Lo Scudo Cinetico dura 2 secondi in più (Totale: 4s).", 
-            rarity: "epic", 
-            image: "icona_batteria_ioni.png", 
-            icon: "fa-battery-full", 
-            apply: (p) => p.modifiers.shieldDurationAdd += 2.0 
-        },
+        { id: 'e6', name: "Batteria a Ioni", desc: "Lo Scudo Cinetico dura 2 secondi in più (Totale: 4s).", rarity: "epic", image: "icona_batteria_ioni.png", icon: "fa-battery-full", apply: (p) => p.modifiers.shieldDurationAdd += 2.0   },
         { id: 'l6', name: "Aegis del Guardiano", desc: "Lo Scudo attivo esplode alla fine. L'area e i danni aumentano per ogni proiettile assorbito.", rarity: "legendary", image: "fa-shieldx.png", icon: "fa-shield", apply: (p) => { p.modifiers.explosiveShield = true; } }
     ],
     getRandomRarity() { let r = Math.random() * 100; if (r <= 55) return 'common'; if (r <= 83) return 'rare'; if (r <= 95) return 'epic'; return 'legendary'; },

@@ -2373,8 +2373,8 @@ class Player extends Entity {
 
         if (this.invincibilityTimer > 0) {
             this.invincibilityTimer -= dt; let isVisible = (Math.floor(this.invincibilityTimer * 15) % 2 === 0);
-            this.mesh.children.forEach(child => { if (child !== this.light) child.visible = isVisible; });
-            if (this.invincibilityTimer <= 0) { this.mesh.children.forEach(child => child.visible = true); }
+            this.mesh.children.forEach(child => { if (child !== this.light && child !== this.shieldMesh) child.visible = isVisible; });
+            if (this.invincibilityTimer <= 0) { this.mesh.children.forEach(child => { if (child !== this.light && child !== this.shieldMesh) child.visible = true; }); }
         }
         if (!Game.ultimateActive && this.modelParts.body.material.emissive.getHex() === 0x00DDFF) this.updateAppearance();
         
@@ -3120,10 +3120,15 @@ function respawnPlayer() {
     Game.player.x = pos.x * TILE_SIZE + TILE_SIZE/2; Game.player.y = pos.y * TILE_SIZE + TILE_SIZE/2;
     Game.player.mesh.position.set(Game.player.x, 0, Game.player.y); Game.player.stats.hp = Game.player.stats.maxHp; Game.player.dead = false; Game.player.invincibilityTimer = 3.0; 
     if (Game.player.modifiers.shieldActive) Game.player.modifiers.shieldConsumed = false;
-    Game.player.mesh.children.forEach(child => child.visible = true); Game.snapCamera(); Game.state = 'PLAYING';
+    Game.player.mesh.children.forEach(child => { if (child !== Game.player.light && child !== Game.player.shieldMesh) child.visible = true; }); 
+    Game.snapCamera(); Game.state = 'PLAYING';
     if (Game.isBossFloor) AudioEngine.playBossMusic(); else AudioEngine.playGameMusic();
     Game.getFloatingText().spawn(Game.player.x, Game.player.y, "RESPAWN!", '#ff66bb', 40, true);
+    
+    // Reset completo e pulito dello scudo
     Game.player.activeShieldTimer = 0;
+    Game.player.activeShieldCooldown = 0;
+    Game.player.shieldAbsorbed = 0;
     Game.player.shieldMesh.visible = false;
 }
 

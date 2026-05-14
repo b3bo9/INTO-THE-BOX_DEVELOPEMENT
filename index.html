@@ -239,7 +239,7 @@
                     <h3 class="text-blue-400 font-black mb-2 uppercase flex items-center gap-1.5 text-xs sm:text-sm tracking-wide drop-shadow-[0_0_5px_rgba(59,130,246,0.5)]">
                         <i class="fa-solid fa-shield-halved"></i> Scudo Cinetico
                     </h3>
-                    <p class="text-gray-400 relative z-10">Attiva una barriera (<span id="info-shield-btn" class="text-white bg-white/10 px-1.5 py-0.5 rounded border border-white/20 shadow-inner font-bold uppercase text-[10px]"></span>) per <span class="text-white font-bold">2 secondi</span>. Distrugge i proiettili nemici al contatto <span class="text-cyan-400 font-bold drop-shadow-[0_0_2px_#22d3ee]">curandoti del 3%</span> per colpo, ma <span class="text-red-400 font-bold drop-shadow-[0_0_2px_#ef4444]">non blocca</span> attacchi fisici o ambientali. Richiede 8s per ricaricarsi.</p>
+                    <p class="text-gray-400 relative z-10">Attiva una barriera (<span id="info-shield-btn" class="text-white bg-white/10 px-1.5 py-0.5 rounded border border-white/20 shadow-inner font-bold uppercase text-[10px]"></span>) per <span class="text-white font-bold">2 secondi</span>. Distrugge i proiettili nemici al contatto <span class="text-cyan-400 font-bold drop-shadow-[0_0_2px_#22d3ee]">curandoti del 5%</span> per colpo, ma <span class="text-red-400 font-bold drop-shadow-[0_0_2px_#ef4444]">non blocca</span> attacchi fisici o ambientali. Richiede 8s per ricaricarsi.</p>
                 </div>
             </div>
             
@@ -3030,7 +3030,7 @@ class Projectile {
                     AudioEngine.playHit('enemy'); 
                     
                     // --- LOGICA CURA E FLASH ---
-                    let heal = Game.player.stats.maxHp * 0.03; // Cura del 3% per proiettile
+                    let heal = Game.player.stats.maxHp * 0.05; // Cura del 5% per proiettile
                     Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + heal);
                     Game.getFloatingText().spawn(Game.player.x, Game.player.y + 10, `+${Math.floor(heal)}`, '#00DDFF', 22, true);
                     Game.player.shieldFlashTimer = 0.15; // Innesca il lampo visivo

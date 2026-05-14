@@ -2470,9 +2470,15 @@ class Player extends Entity {
     }
     
     attack() {
-        let flowCapMult = this.modifiers.flowMastery ? 2 : 1;
-        let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult; if (this.overdrive && this.essence === 'blue') spdMult *= 3.0; if (Game.ultimateActive) spdMult *= 2.0; 
-        this.attackTimer = 1 / (this.baseAttackSpeed * spdMult); this.isAttacking = true; this.attackSwing = 0;
+        let flowCapMult = this.modifiers.flowMastery ? 2 : 1;
+        let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult; 
+        if (this.overdrive && this.essence === 'blue') spdMult *= 3.0; 
+        
+        // --- MODIFICA CADENZA ARMA ROSSA ---
+        if (this.essence === 'red') spdMult *= 0.6; // Abbassa la velocità di attacco
+        
+        if (Game.ultimateActive) spdMult *= 2.0; 
+        this.attackTimer = 1 / (this.baseAttackSpeed * spdMult); this.isAttacking = true; this.attackSwing = 0;
         let critChance = this.modifiers.critChance + Math.min(Game.combo * 0.005, 0.5 * flowCapMult); let isCrit = Math.random() < critChance;
         let baseDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * (1 + Math.min(Game.combo * 0.04, 2.0 * flowCapMult)) * this.modifiers.dmgMult; if (Game.ultimateActive) baseDmg *= 2.0; if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         let projType = 'arrow'; if (this.essence === 'red') projType = 'explosive_arrow'; if (this.essence === 'blue') projType = 'chain_lightning'; if (this.essence === 'green') projType = 'homing_arrow';

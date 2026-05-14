@@ -2666,6 +2666,7 @@ class Enemy extends Entity {
         super(x, y, 14, 100); this.type = type; this.level = level; this.attackCooldown = 0;
         let hpMod = 1, dmgMod = 1, spdMod = 1, color = 0x666666, size = 12;
         
+        // --- ASSEGNAZIONE BASE DELLE STATISTICHE ---
         if (type === 'goblin') { color = 0x33FF00; size = 10; spdMod = 1.8; hpMod = 0.5; dmgMod = 1.2; this.aggroRange = 500; this.attackRange = 40; } 
         else if (type === 'orc') { color = 0x8c564b; size = 18; spdMod = 0.8; hpMod = 1.6; dmgMod = 2.5; this.aggroRange = 450; this.attackRange = 55; } 
         else if (type === 'skeleton_archer') { color = 0xaaaaaa; size = 14; spdMod = 1.1; hpMod = 0.4; dmgMod = 1.5; this.aggroRange = 700; this.attackRange = 400; } 
@@ -2676,17 +2677,58 @@ class Enemy extends Entity {
         else if (type === 'crystal') { color = 0xff00ff; size = 12; this.aggroRange = 0; this.speed = 0; hpMod = 0.001; }
         else if (type === 'boss') { color = 0x550000; size = 35; }
         
-        this.radius = size; this.stats.maxHp = type === 'crystal' ? 1 : Math.floor(32 * hpMod * (1 + level * 0.3) * Game.difficultyMult); this.stats.hp = this.stats.maxHp;
-        this.stats.minDmg = Math.floor(12 * dmgMod * (1 + level * 0.15) * Game.difficultyMult); this.stats.maxDmg = Math.floor(22 * dmgMod * (1 + level * 0.15) * Game.difficultyMult);
-        let diffSpeedMod = Game.difficultyMult < 1.0 ? 0.8 : (Game.difficultyMult > 1.0 ? 1.15 : 1.0); this.baseSpeed = 100 * spdMod * Math.min(3.2, 1 + (level * 0.05)) * diffSpeedMod; this.speed = this.baseSpeed;
-        this.xpValue = Math.floor(20 * hpMod * level); this.infected = false; this.slowedTimer = 0; this.fireDebuffTimer = 0;
+        // --- LOGICA ELITE (AGGIUNTA) ---
+        this.isElite = false;
+        // Escludiamo boss, crystal (totem) e leaper (farfalle)
+        if (type !== 'boss' && type !== 'crystal' && type !== 'leaper') {
+            if (Math.random() < 0.05) { // 5% di probabilità
+                this.isElite = true;
+                size *= 1.5;     // 50% più grande
+                hpMod *= 3.0;    // 3x Vita
+                dmgMod *= 1.5;   // 50% in più di danni
+                spdMod *= 1.2;   // 20% più veloce
+            }
+        }
+        // ------------------------------
+
+        this.radius = size; 
+        this.stats.maxHp = type === 'crystal' ? 1 : Math.floor(32 * hpMod * (1 + level * 0.3) * Game.difficultyMult); 
+        this.stats.hp = this.stats.maxHp;
+        this.stats.minDmg = Math.floor(12 * dmgMod * (1 + level * 0.15) * Game.difficultyMult); 
+        this.stats.maxDmg = Math.floor(22 * dmgMod * (1 + level * 0.15) * Game.difficultyMult);
+        
+        let diffSpeedMod = Game.difficultyMult < 1.0 ? 0.8 : (Game.difficultyMult > 1.0 ? 1.15 : 1.0); 
+        this.baseSpeed = 100 * spdMod * Math.min(3.2, 1 + (level * 0.05)) * diffSpeedMod; 
+        this.speed = this.baseSpeed;
+        
+        // Se è Elite, dà il triplo dell'esperienza
+        this.xpValue = Math.floor(20 * hpMod * level) * (this.isElite ? 3 : 1); 
+        
+        this.infected = false; this.slowedTimer = 0; this.fireDebuffTimer = 0;
         this.aggroRangeSq = this.aggroRange * this.aggroRange; this.attackRangeSq = this.attackRange * this.attackRange;
         
-        this.mat = type === 'crystal' ? new THREE.MeshPhongMaterial({color: 0x000000, emissive: color}) : new THREE.MeshStandardMaterial({color: color, roughness: AppSettings.isUltraPC ? 0.4 : 0.7, metalness: AppSettings.isUltraPC ? 0.6 : (!AppSettings.isLow ? 0.2 : 0.0)}); 
+        // Colore Materiale (Diamo agli elite un leggero bagliore per distinguerli)
+        this.mat = type === 'crystal' ? new THREE.MeshPhongMaterial({color: 0x000000, emissive: color}) : new THREE.MeshStandardMaterial({
+            color: color, 
+            roughness: AppSettings.isUltraPC ? 0.4 : 0.7, 
+            metalness: AppSettings.isUltraPC ? 0.6 : (!AppSettings.isLow ? 0.2 : 0.0)
+        }); 
+        
+        if (this.isElite) {
+            this.mat.emissive.setHex(0x440000); // Un'aura rossastra scura
+        }
+
         let modelData = ModelFactory.buildEnemy(type, size, this.mat);
         this.mesh = modelData.group; this.modelParts = modelData.parts;
         this.mesh.position.set(x, 0, y); Game.scene.add(this.mesh); 
         if (type !== 'crystal') { this.mesh.traverse(c => { if(c.isMesh && c.material === this.mat) this.flashMats.push(c.material); }); }
+        
+        // Testo galleggiante alla nascita
+        if (this.isElite) {
+            setTimeout(() => { 
+                if(!this.dead) Game.getFloatingText().spawn(this.x, this.y + 20, "ELITE", '#ff3300', 35, true); 
+            }, 100);
+        }
     }
     update(dt) {
         
@@ -2835,6 +2877,29 @@ class Enemy extends Entity {
         let floorDecay = Math.max(0.50, 1.0 - (Game.floor * 0.025));
         
         let lifeChance = baseLifeChance * floorDecay * Game.player.modifiers.healDropMult;
+        if (this.isElite) lifeChance *= 2.0; 
+        
+        if (Game.player.modifiers.noHealDrops) lifeChance = 0;
+        
+        if (Math.random() < lifeChance) { 
+            Game.getExtraLife().spawn(this.x, this.y); 
+        } 
+        else {
+            // Se è Elite droppa sempre un'essenza (100%), altrimenti probabilità standard
+            let essenceChance = this.isElite ? 1.0 : (0.20 + (Game.combo * 0.003));
+            if (Math.random() < essenceChance) { 
+                Game.getEssence().spawn(this.x, this.y, ESSENCE_TYPES[Math.floor(Math.random() * ESSENCE_TYPES.length)]); 
+                // Se è elite e non hai appena droppato una vita, c'è un 30% di droppare una SECONDA essenza
+                if (this.isElite && Math.random() < 0.3) {
+                     Game.getEssence().spawn(this.x + 30, this.y - 30, ESSENCE_TYPES[Math.floor(Math.random() * ESSENCE_TYPES.length)]); 
+                }
+            }
+        }
+        
+        if (this.isElite) {
+            Game.getFloatingText().spawn(this.x, this.y, "ELITE SCONFITTO", '#ffaa00', 30, true);
+        }
+    }
         if (Game.player.modifiers.noHealDrops) lifeChance = 0;
         
         if (Math.random() < lifeChance) { Game.getExtraLife().spawn(this.x, this.y); } 

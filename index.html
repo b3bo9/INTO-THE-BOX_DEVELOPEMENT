@@ -2762,8 +2762,15 @@ class Enemy extends Entity {
             this.flashMats = [];
             if (type !== 'crystal') { this.mesh.traverse(c => { if(c.isMesh && c.material === this.mat) this.flashMats.push(c.material); }); }
         } else {
-            if (this.isElite) this.mat.emissive.setHex(0x440000);
-            else this.mat.emissive.setHex(0x000000);
+            // --- BUGFIX: MANTIENI IL COLORE DEL CRISTALLO ---
+            if (this.type === 'crystal') {
+                this.mat.emissive.setHex(color); // Lo fa tornare viola!
+            } else if (this.isElite) {
+                this.mat.emissive.setHex(0x440000);
+            } else {
+                this.mat.emissive.setHex(0x000000);
+            }
+            // ------------------------------------------------
 
             // Resetta l'animazione delle braccia in caso fosse morto mid-animazione
             if (this.modelParts && this.modelParts.armL) {

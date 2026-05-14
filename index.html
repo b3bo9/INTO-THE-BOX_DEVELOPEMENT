@@ -436,13 +436,9 @@
             <span class="absolute -top-6 text-[10px] text-gray-400 font-bold hidden lg:block tracking-widest whitespace-nowrap">TASTO DX</span>
         </button>
        <!-- Tasto Scudo -->
-        <button id="btn-shield" onclick="if(Game.state === 'PLAYING') Game.player.activateShield();" class="absolute bottom-[16rem] right-12 landscape:bottom-[11rem] landscape:right-40 w-14 h-14 bg-black/60 backdrop-blur-md rounded-full border-2 border-gray-600 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(0,0,0,0.8)] opacity-75 transition-all flex items-center justify-center touch-none overflow-hidden group">
+        <button id="btn-shield" onclick="if(Game.state === 'PLAYING') Game.player.activateShield();" class="absolute bottom-[11rem] left-12 landscape:bottom-24 landscape:left-40 w-14 h-14 bg-black/60 backdrop-blur-md rounded-full border-2 border-gray-600 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(0,0,0,0.8)] opacity-75 transition-all flex items-center justify-center touch-none overflow-hidden group">
             <div id="btn-shield-fill" class="absolute bottom-0 left-0 w-full bg-blue-500/50 h-0 transition-all duration-200 pointer-events-none"></div>
-            
-            <!-- ICONA DELLO SCUDO -->
             <i class="fa-solid fa-shield text-2xl relative z-10 drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"></i>
-            
-            <!-- ETICHETTA PC -->
             <span class="absolute -top-6 text-[10px] text-gray-400 font-bold hidden lg:block tracking-widest whitespace-nowrap">SHIFT</span>
         </button>
     </div> 
@@ -2370,12 +2366,29 @@ class Player extends Entity {
                 this.shieldMesh.visible = false;
                 this.activeShieldCooldown = 8.0; // Inizio del Cooldown
                 
+                // Logica della Reliquia: Aegis Esplosiva (CORRETTA)
                 if (this.modifiers.explosiveShield && this.shieldAbsorbed > 0) {
                     let dmg = this.stats.maxDmg * 2.5 + (this.stats.maxDmg * 2.0 * this.shieldAbsorbed);
                     let radius = 60 + (this.shieldAbsorbed * 15);
-                    Game.getHazard().spawn(this.x, this.y, radius, 0.5, dmg, 0x00DDFF, 'crystal_fire');
-                    Game.addTrauma(0.5 + (this.shieldAbsorbed * 0.2));
-                    AudioEngine.playShoot('explosive_arrow');
+                    
+                    // 1. Danno Istantaneo ad Area (Nessun fuoco amico!)
+                    let nearby = Game.enemyGrid.findNearby(this, radius);
+                    for(let i = 0; i < nearby.length; i++) {
+                        let e = nearby[i];
+                        if(MathUtils.distanceSq(this, e) < radius * radius && !e.dead) {
+                            e.takeDamage(dmg, this, true, false);
+                        }
+                    }
+
+                    // 2. Esplosione di particelle visive (invece dell'Hazard)
+                    let pCount = AppSettings.isLow ? 15 : (AppSettings.isUltraPC ? 60 : 30);
+                    for(let i=0; i<pCount; i++) {
+                        Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'trail');
+                        Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'spark');
+                    }
+
+                    Game.addTrauma(Math.min(1.0, 0.5 + (this.shieldAbsorbed * 0.1))); // Cap al tremore schermo
+                    AudioEngine.playShoot('chain_lightning'); // Suono più "elettrico/energetico"
                     Game.getFloatingText().spawn(this.x, this.y, `RILASCIO! (${this.shieldAbsorbed})`, '#00DDFF', 40, true);
                 }
             }

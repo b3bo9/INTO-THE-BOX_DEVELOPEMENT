@@ -130,7 +130,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 72</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 74</p>
                 </div>
             </div>
         </div>
@@ -426,6 +426,12 @@
             <i class="fa-solid fa-angles-up text-2xl relative z-10 drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"></i>
             <!-- Etichetta visibile solo su PC (schermi larghi) -->
             <span class="absolute -top-6 text-[10px] text-gray-400 font-bold hidden lg:block tracking-widest whitespace-nowrap">TASTO DX</span>
+        </button>
+        <!-- Tasto Scudo -->
+        <button id="btn-shield" class="absolute bottom-[16rem] right-12 landscape:bottom-[11rem] landscape:right-40 w-14 h-14 bg-black/60 backdrop-blur-md rounded-full border-2 border-gray-600 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(0,0,0,0.8)] opacity-75 transition-all flex items-center justify-center touch-none overflow-hidden group">
+            <div id="btn-shield-fill" class="absolute bottom-0 left-0 w-full bg-blue-500/50 h-0 transition-all duration-200 pointer-events-none"></div>
+            <i class="fa-solid fa-shield-halved text-2xl relative z-10 drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"></i>
+            <span class="absolute -top-6 text-[10px] text-gray-400 font-bold hidden lg:block tracking-widest whitespace-nowrap">SHIFT</span>
         </button>
     </div> 
 
@@ -986,6 +992,7 @@ const RelicSystem = {
         { id: 'l3', name: "Patto Ascetico", desc: "Ascensione passiva (+2%/s), ma HP Max -30%", rarity: "legendary", image: "icona_patto_ascetico.png", icon: "fa-link", apply: (p) => { p.modifiers.passiveUltCharge = true; p.stats.maxHp = Math.floor(p.stats.maxHp * 0.7); if(p.stats.hp > p.stats.maxHp) p.stats.hp = p.stats.maxHp; } },
         { id: 'l4', name: "Sete di Sangue Eterna", desc: "Curati 5% ogni 10 kill. 0 cure a terra. HP non salgono con livello.", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", icon: "fa-droplet", apply: (p) => { p.modifiers.bloodthirst = true; p.modifiers.noHealDrops = true; p.modifiers.noMaxHpLevelUp = true; } },
         { id: 'l5', name: "Maestria del Flow", desc: "Bonus combo doppi e decado lento. Danni dimezzano HP attuali.", rarity: "legendary", image: "icona_maestria_del_flow.png", icon: "fa-infinity", apply: (p) => { p.modifiers.flowMastery = true; p.modifiers.comboDecayRate *= 0.5; } }
+        { id: 'l6', name: "Aegis del Guardiano", desc: "Lo Scudo attivo esplode alla fine. L'area e i danni aumentano per ogni proiettile assorbito.", rarity: "legendary", image: "icona_aegis.png", icon: "fa-shield", apply: (p) => { p.modifiers.explosiveShield = true; } }
     ],
     getRandomRarity() { let r = Math.random() * 100; if (r <= 55) return 'common'; if (r <= 83) return 'rare'; if (r <= 95) return 'epic'; return 'legendary'; },
     getChoices() {
@@ -1381,6 +1388,7 @@ const TouchControls = {
         this.setupJoystick(document.getElementById('joy-right-zone'), document.getElementById('joy-right-stick'), 'right');
         document.getElementById('btn-dash').addEventListener('touchstart', (e) => { e.preventDefault(); if(Game.state === 'PLAYING') Game.player.dash(); });
         document.getElementById('btn-ult').addEventListener('touchstart', (e) => { e.preventDefault(); Game.activateUltimate(); });
+        document.getElementById('btn-shield').addEventListener('touchstart', (e) => { e.preventDefault(); if(Game.state === 'PLAYING') Game.player.activateShield(); });
     },
     setupJoystick(zone, stick, side) {
         let identifier = null; const maxR = 40; let cx = 0, cy = 0;
@@ -1423,7 +1431,9 @@ const UI = {
         this.els.comboBar = document.getElementById('combo-bar'); 
         this.els.btnUlt = document.getElementById('btn-ult');
         this.els.btnUltFill = document.getElementById('btn-ult-fill');
-        this.els.ultChargeText = document.getElementById('ult-charge-text'); // Aggiungi questa riga
+        this.els.ultChargeText = document.getElementById('ult-charge-text');
+        this.els.btnShield = document.getElementById('btn-shield');
+        this.els.btnShieldFill = document.getElementById('btn-shield-fill');
     },
     update() {
         if (!Game.player) return;
@@ -1489,6 +1499,28 @@ const UI = {
             this.cache.comboOpacity = isCombo; 
         }
         if (isCombo) this.els.comboBar.style.width = `${(Game.comboTimer / Game.comboMaxTime) * 100}%`;
+        // Update Scudo Attivo
+        if (Game.player.activeShieldTimer > 0) {
+            if (this.els.btnShield) {
+                this.els.btnShield.classList.add('border-blue-400', 'opacity-100');
+                this.els.btnShield.classList.remove('border-gray-600', 'opacity-75');
+                this.els.btnShieldFill.style.height = '100%';
+                this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-white transition-all duration-100 pointer-events-none";
+            }
+        } else {
+            if (this.els.btnShield) {
+                let cdPct = Game.player.activeShieldCooldown > 0 ? (1 - (Game.player.activeShieldCooldown / 8.0)) * 100 : 100;
+                this.els.btnShieldFill.style.height = `${cdPct}%`;
+                this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-blue-500/50 transition-all duration-100 pointer-events-none";
+                if (Game.player.activeShieldCooldown <= 0) {
+                    this.els.btnShield.classList.add('border-blue-400', 'opacity-100');
+                    this.els.btnShield.classList.remove('border-gray-600', 'opacity-75');
+                } else {
+                    this.els.btnShield.classList.remove('border-blue-400', 'opacity-100');
+                    this.els.btnShield.classList.add('border-gray-600', 'opacity-75');
+                }
+            }
+        }
     },
     triggerComboAnim(combo) {
         this.els.comboText.innerText = `x${combo} HITS!`;
@@ -1629,6 +1661,11 @@ const Game = {
         window.addEventListener('mousedown', e => { if (e.button === 0) this.mouse.leftDown = true; if (e.button === 2) { this.mouse.rightDown = true; this.activateUltimate(); } });
         window.addEventListener('mouseup', e => { if (e.button === 0) this.mouse.leftDown = false; if (e.button === 2) this.mouse.rightDown = false; });
         window.addEventListener('contextmenu', e => e.preventDefault()); 
+        window.addEventListener('keydown', e => { 
+            this.keys[e.key.toLowerCase()] = true; 
+            if(e.code === 'Space' && this.state === 'PLAYING') this.player.dash(); 
+            if((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && this.state === 'PLAYING') this.player.activateShield();
+        });
     },
     spawnSpecificEnemy(x, y, difficulty) {
         const r = Math.random(); let type = 'goblin';
@@ -2178,6 +2215,9 @@ class Player extends Entity {
         this.attackTimer = 0; this.baseAttackSpeed = 3.5; this.isAttacking = false; this.attackSwing = 0;
         this.dashTimer = 0; this.isDashing = false; this.dashCooldown = 0; this.stats = { hp: 100, maxHp: 100, minDmg: 8, maxDmg: 15 };
         this.essenceList = []; this.essence = null; this.essenceTimer = 0; this.overdrive = false; this.invincibilityTimer = 0; this.relics = [];
+        this.activeShieldTimer = 0;
+        this.activeShieldCooldown = 0;
+        this.shieldAbsorbed = 0;
         
         this.modifiers = { 
             critChance: 0.10, dmgMult: 1.0, speedMult: 1.0, atkSpeedMult: 1.0, dashCooldownMult: 1.0, vampirismMaxHp: 0, 
@@ -2186,6 +2226,7 @@ class Player extends Entity {
             comboStep: 1, comboDecayAdd: 0, comboDecayRate: 1.0, keepEssenceOnCombo: false, pickupRadiusMult: 1.0,
             passiveUltCharge: false, noHealDrops: false, noMaxHpLevelUp: false, bloodthirst: false, bloodthirstCount: 0, flowMastery: false,
             timeSinceLastHit: 0 
+            explosiveShield: false
         };
         
         this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}), new THREE.MeshPhongMaterial({color: 0x00ffff, emissive: 0x00ffff}));
@@ -2195,6 +2236,11 @@ class Player extends Entity {
         
         this.mesh.add(this.light); this.mesh.position.set(this.x, 0, this.y); Game.scene.add(this.mesh);
         this.mesh.traverse(c => { if(c.material && c.material.emissive && c !== this.modelParts.staffGem) this.flashMats.push(c.material); });
+    this.shieldMesh = new THREE.Mesh(SharedGeo.icosahedron, new THREE.MeshBasicMaterial({color: 0x00DDFF, wireframe: true, transparent: true, opacity: 0.6}));
+        this.shieldMesh.scale.set(24, 24, 24);
+        this.shieldMesh.position.y = 12;
+        this.shieldMesh.visible = false;
+        this.mesh.add(this.shieldMesh);
     }
     collectEssence(type) {
         if (this.overdrive) { 
@@ -2506,6 +2552,14 @@ class Player extends Entity {
             AudioEngine.playLevelUp();
         }
     }
+    activateShield() {
+        if (this.activeShieldCooldown <= 0 && this.activeShieldTimer <= 0) {
+            this.activeShieldTimer = 1.5; // Durata dello scudo
+            this.shieldAbsorbed = 0;
+            this.shieldMesh.visible = true;
+            AudioEngine.playCollect(); // Riutilizziamo un suono "magico"
+        }
+    }
 }
 
 class Enemy extends Entity {
@@ -2536,6 +2590,28 @@ class Enemy extends Entity {
         if (type !== 'crystal') { this.mesh.traverse(c => { if(c.isMesh && c.material === this.mat) this.flashMats.push(c.material); }); }
     }
     update(dt) {
+        if (this.activeShieldCooldown > 0) this.activeShieldCooldown -= dt;
+        
+        if (this.activeShieldTimer > 0) {
+            this.activeShieldTimer -= dt;
+            this.shieldMesh.rotation.y += dt * 5;
+            this.shieldMesh.rotation.z += dt * 3;
+            
+            if (this.activeShieldTimer <= 0) {
+                this.shieldMesh.visible = false;
+                this.activeShieldCooldown = 8.0; // Inizio del Cooldown
+                
+                // Logica della Reliquia: Aegis Esplosiva
+                if (this.modifiers.explosiveShield && this.shieldAbsorbed > 0) {
+                    let dmg = this.stats.maxDmg * 2.5 + (this.stats.maxDmg * 2.0 * this.shieldAbsorbed);
+                    let radius = 60 + (this.shieldAbsorbed * 15);
+                    Game.getHazard().spawn(this.x, this.y, radius, 0.5, dmg, 0x00DDFF, 'crystal_fire');
+                    Game.addTrauma(0.5 + (this.shieldAbsorbed * 0.2));
+                    AudioEngine.playShoot('explosive_arrow');
+                    Game.getFloatingText().spawn(this.x, this.y, `RILASCIO! (${this.shieldAbsorbed})`, '#00DDFF', 40, true);
+                }
+            }
+        }
         if(this.dead) return; this.updateFlash(dt);
         if (this.type === 'mage' || this.type === 'pyromancer') { this.mesh.rotation.y += dt; this.mesh.position.y = Game.animFloat; if(this.modelParts.crystals) this.modelParts.crystals.rotation.y += dt*2; }
         if (this.type === 'goblin') { this.mesh.rotation.x += dt * 15; this.mesh.rotation.y += dt * 10; }
@@ -2914,11 +2990,20 @@ class Projectile {
                 }
             }
         } else {
-            let pRadCheck = (this.radius + Game.player.radius) * (this.radius + Game.player.radius);
-            if (MathUtils.distanceSq(this, Game.player) < pRadCheck) {
-                if (this.type !== 'fire_shape') Game.player.takeDamage(this.damage, null); this.handleHit(null); 
-            }
-        }
+            let pRadCheck = (this.radius + Game.player.radius) * (this.radius + Game.player.radius);
+            if (MathUtils.distanceSq(this, Game.player) < pRadCheck) {
+                // CONTROLLO SCUDO ATTIVO
+                if (Game.player.activeShieldTimer > 0 && this.type !== 'fire_shape') {
+                    Game.player.shieldAbsorbed++;
+                    Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteBlue, 'spark');
+                    AudioEngine.playHit('enemy'); // Effetto sonoro del parry
+                    this.handleHit(null);
+                } else {
+                    if (this.type !== 'fire_shape') Game.player.takeDamage(this.damage, null); 
+                    this.handleHit(null); 
+                }
+            }
+        }
         if (this.life <= 0) this.destroy();
         if(this.active && this.type !== 'arrow' && (Game.frameCount + this.updateOffset) % (isTouchDevice?6:3) === 0) {
             let pMat = SharedMat.spriteWhite;
@@ -3028,6 +3113,8 @@ function respawnPlayer() {
     Game.player.mesh.children.forEach(child => child.visible = true); Game.snapCamera(); Game.state = 'PLAYING';
     if (Game.isBossFloor) AudioEngine.playBossMusic(); else AudioEngine.playGameMusic();
     Game.getFloatingText().spawn(Game.player.x, Game.player.y, "RESPAWN!", '#ff66bb', 40, true);
+    Game.player.activeShieldTimer = 0;
+    Game.player.shieldMesh.visible = false;
 }
 
 function goToMainMenu() {

@@ -239,7 +239,7 @@
                     <h3 class="text-blue-400 font-black mb-2 uppercase flex items-center gap-1.5 text-xs sm:text-sm tracking-wide drop-shadow-[0_0_5px_rgba(59,130,246,0.5)]">
                         <i class="fa-solid fa-shield-halved"></i> Scudo Cinetico
                     </h3>
-                    <p class="text-gray-400 relative z-10">Attiva una barriera (<span id="info-shield-btn" class="text-white bg-white/10 px-1.5 py-0.5 rounded border border-white/20 shadow-inner font-bold uppercase text-[10px]"></span>) per <span class="text-white font-bold">1.5 secondi</span>. Distrugge i proiettili nemici al contatto, ma <span class="text-red-400 font-bold drop-shadow-[0_0_2px_#ef4444]">non blocca</span> attacchi fisici o ambientali. Richiede 8s per ricaricarsi.</p>
+                    <p class="text-gray-400 relative z-10">Attiva una barriera (<span id="info-shield-btn" class="text-white bg-white/10 px-1.5 py-0.5 rounded border border-white/20 shadow-inner font-bold uppercase text-[10px]"></span>) per <span class="text-white font-bold">2 secondi</span>. Distrugge i proiettili nemici al contatto, ma <span class="text-red-400 font-bold drop-shadow-[0_0_2px_#ef4444]">non blocca</span> attacchi fisici o ambientali. Richiede 8s per ricaricarsi.</p>
                 </div>
             </div>
             
@@ -435,10 +435,14 @@
             <!-- Etichetta visibile solo su PC (schermi larghi) -->
             <span class="absolute -top-6 text-[10px] text-gray-400 font-bold hidden lg:block tracking-widest whitespace-nowrap">TASTO DX</span>
         </button>
-        <!-- Tasto Scudo -->
-        <button id="btn-shield" class="absolute bottom-[16rem] right-12 landscape:bottom-[11rem] landscape:right-40 w-14 h-14 bg-black/60 backdrop-blur-md rounded-full border-2 border-gray-600 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(0,0,0,0.8)] opacity-75 transition-all flex items-center justify-center touch-none overflow-hidden group">
+       <!-- Tasto Scudo -->
+        <button id="btn-shield" onclick="if(Game.state === 'PLAYING') Game.player.activateShield();" class="absolute bottom-[16rem] right-12 landscape:bottom-[11rem] landscape:right-40 w-14 h-14 bg-black/60 backdrop-blur-md rounded-full border-2 border-gray-600 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(0,0,0,0.8)] opacity-75 transition-all flex items-center justify-center touch-none overflow-hidden group">
             <div id="btn-shield-fill" class="absolute bottom-0 left-0 w-full bg-blue-500/50 h-0 transition-all duration-200 pointer-events-none"></div>
-            <i class="fa-solid fa-shield-halved text-2xl relative z-10 drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"></i>
+            
+            <!-- ICONA DELLO SCUDO -->
+            <i class="fa-solid fa-shield text-2xl relative z-10 drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"></i>
+            
+            <!-- ETICHETTA PC -->
             <span class="absolute -top-6 text-[10px] text-gray-400 font-bold hidden lg:block tracking-widest whitespace-nowrap">SHIFT</span>
         </button>
     </div> 
@@ -2582,7 +2586,7 @@ class Player extends Entity {
     }
     activateShield() {
         if (this.activeShieldCooldown <= 0 && this.activeShieldTimer <= 0) {
-            this.activeShieldTimer = 1.5; // Durata dello scudo
+            this.activeShieldTimer = 2; // Durata dello scudo
             this.shieldAbsorbed = 0;
             this.shieldMesh.visible = true;
             AudioEngine.playCollect(); // Riutilizziamo un suono "magico"

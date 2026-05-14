@@ -2397,7 +2397,7 @@ class Player extends Entity {
                 // Logica della Reliquia: Aegis Esplosiva (CORRETTA)
                 if (this.modifiers.explosiveShield && this.shieldAbsorbed > 0) {
                     let dmg = this.stats.maxDmg * 2.5 + (this.stats.maxDmg * 2.0 * this.shieldAbsorbed);
-                    let radius = 60 + (this.shieldAbsorbed * 15);
+                    let radius = 60 + (this.shieldAbsorbed * 20);
                     
                     // 1. Danno Istantaneo ad Area (Nessun fuoco amico!)
                     let nearby = Game.enemyGrid.findNearby(this, radius);

@@ -2863,7 +2863,8 @@ class Enemy extends Entity {
             Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff00ff, 'crystal_fire');
             Game.addTrauma(1.5); let pCount = AppSettings.isLow ? 5 : (AppSettings.isUltraPC ? 40 : 20);
             for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
-            AudioEngine.playShoot('explosive_arrow'); this.mat.dispose(); Game.scene.remove(this.mesh);
+            AudioEngine.playShoot('explosive_arrow'); 
+            this.active = false; this.mesh.visible = false; // <-- CORRETTO PER IL POOLING
             return;
         }
         
@@ -3033,7 +3034,7 @@ class BossEnemy extends Enemy {
         super.update(dt);
     }
     
-    spawnMinions() {
+   spawnMinions() {
         let count = isTouchDevice ? (this.isEnraged ? 2 : 1) : (this.isEnraged ? 3 : 2); 
         let spawned = false;
         for(let i=0; i<count; i++) {
@@ -3042,7 +3043,9 @@ class BossEnemy extends Enemy {
                 let minionType = this.level >= 10 ? (Math.random() > 0.5 ? 'orc' : 'pyromancer') : null;
                 
                 if(minionType) {
-                    let enemy = new Enemy(sx, sy, minionType, this.level); 
+                    // USA IL POOL ANCHE PER I MINION!
+                    let enemy = Game.getEnemy(); 
+                    enemy.spawn(sx, sy, minionType, this.level); 
                     Game.enemies.push(enemy); Game.enemyGrid.insert(enemy);
                 } else {
                     Game.spawnSpecificEnemy(sx, sy, this.level); 

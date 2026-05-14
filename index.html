@@ -2450,7 +2450,7 @@ class Player extends Entity {
         if (Game.frameCount % (isTouchDevice ? 3 : 1) === 0) { let pCount = AppSettings.isLow ? 1 : (isTouchDevice ? 2 : (AppSettings.isUltraPC ? 8 : 4)); for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x + Math.cos(this.angle)*20, 15 + MathUtils.randomRange(-5, 5), this.y + Math.sin(this.angle)*20, SharedMat.spriteRed, 'flame', this.angle); }
         if (Game.frameCount % 8 === 0) AudioEngine.playShoot('flame');
         
-        let flameRange = 280; let flameRangeSq = flameRange * flameRange;
+        let flameRange = 170; let flameRangeSq = flameRange * flameRange;
         let nearby = Game.enemyGrid.findNearby(this, flameRange);
         
         let cosA = Math.cos(this.angle); let sinA = Math.sin(this.angle); 
@@ -2475,7 +2475,7 @@ class Player extends Entity {
         
         if (!this.flamePoolTimer) this.flamePoolTimer = 0; this.flamePoolTimer -= dt;
         if (this.flamePoolTimer <= 0) {
-            let poolX = this.x + cosA * MathUtils.randomRange(60, 220); let poolY = this.y + sinA * MathUtils.randomRange(60, 220);
+            let poolX = this.x + cosA * MathUtils.randomRange(50, 160); let poolY = this.y + sinA * MathUtils.randomRange(50, 160);
             if (!Game.map.isSolid(poolX, poolY)) Game.getHazard().spawn(poolX, poolY, 35, 2.5, this.stats.maxDmg * 0.5 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire');
             this.flamePoolTimer = 0.4;
         }

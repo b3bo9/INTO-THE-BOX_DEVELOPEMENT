@@ -1002,7 +1002,13 @@ const RelicSystem = {
         { id: 'e6', name: "Batteria a Ioni", desc: "Lo Scudo Cinetico dura 2 secondi in più (Totale: 4s).", rarity: "epic", image: "icona_batteria_ioni.png", icon: "fa-battery-full", apply: (p) => p.modifiers.shieldDurationAdd += 2.0   },
         { id: 'l6', name: "Aegis del Guardiano", desc: "Lo Scudo attivo esplode alla fine. L'area e i danni aumentano per ogni proiettile assorbito.", rarity: "legendary", image: "fa_shieldx.png", icon: "fa-shield", apply: (p) => { p.modifiers.explosiveShield = true; } }
     ],
-    getRandomRarity() { let r = Math.random() * 100; if (r <= 55) return 'common'; if (r <= 83) return 'rare'; if (r <= 95) return 'epic'; return 'legendary'; },
+    getRandomRarity() { 
+        let r = Math.random() * 100; 
+        if (r <= 45) return 'common';   // 45% 
+        if (r <= 75) return 'rare';     // 30% 
+        if (r <= 92) return 'epic';     // 17% 
+        return 'legendary';             // 8%  
+    },
     getChoices() {
         let choices = []; let availablePool = [...this.allRelics];
         for(let i=0; i<3; i++) {

@@ -2455,8 +2455,30 @@ class Player extends Entity {
         if (this.isAttacking) { this.attackSwing += dt * 30; this.modelParts.weaponGroup.rotation.x = -Math.PI/2 + this.attackSwing; if (this.attackSwing > Math.PI) { this.isAttacking = false; this.modelParts.weaponGroup.rotation.x = 0; } }
     }
     
-    flamethrower(dt) {
-        if (Game.frameCount % (isTouchDevice ? 3 : 1) === 0) { let pCount = AppSettings.isLow ? 1 : (isTouchDevice ? 2 : (AppSettings.isUltraPC ? 8 : 4)); for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x + Math.cos(this.angle)*20, 15 + MathUtils.randomRange(-5, 5), this.y + Math.sin(this.angle)*20, SharedMat.spriteRed, 'flame', this.angle); }
+   flamethrower(dt) {
+        if (Game.frameCount % (isTouchDevice ? 2 : 1) === 0) {
+            // Aumentiamo leggermente il numero di particelle per dare volume al fuoco
+            let pCount = AppSettings.isLow ? 2 : (isTouchDevice ? 4 : (AppSettings.isUltraPC ? 12 : 6));
+            for(let i=0; i<pCount; i++) {
+                // 1. Apriamo il cono visivo a ~90 gradi totali per matchare l'hitbox del danno
+                let spread = MathUtils.randomRange(-0.8, 0.8);
+                let pAngle = this.angle + spread;
+
+                // 2. Mescoliamo particelle rosse e bianche/gialle al centro per simulare il calore
+                let mat = (Math.abs(spread) < 0.3 && Math.random() > 0.5) ? SharedMat.spriteWhite : SharedMat.spriteRed;
+
+                let p = Game.getParticle();
+                p.spawn(this.x + Math.cos(this.angle)*20, 15 + MathUtils.randomRange(-8, 8), this.y + Math.sin(this.angle)*20, mat, 'flame', pAngle);
+
+                // 3. Forziamo la fisica: velocità iniziale alta per raggiungere le 170 unità di distanza
+                let speed = MathUtils.randomRange(500, 750);
+                p.vx = Math.cos(pAngle) * speed;
+                p.vz = Math.sin(pAngle) * speed;
+                p.life = MathUtils.randomRange(0.25, 0.45);
+                p.maxLife = p.life;
+                p.baseSize = MathUtils.randomRange(25, 45); // Le facciamo nascere più voluminose
+            }
+        }
         if (Game.frameCount % 8 === 0) AudioEngine.playShoot('flame');
         
         let flameRange = 170; let flameRangeSq = flameRange * flameRange;
@@ -3148,7 +3170,12 @@ class Particle {
     update(dt) {
         if (!this.active) return;
         if(this.type === 'blood' || this.type === 'spark') this.vy -= 600 * dt; 
-        if(this.type === 'flame') { this.vx *= 0.9; this.vz *= 0.9; this.baseSize += dt * 50; }
+        if(this.type === 'flame') { 
+            // Attrito basato sul DeltaTime per far viaggiare le particelle esattamente fino a ~170/180 unità
+            this.vx -= this.vx * 2.5 * dt; 
+            this.vz -= this.vz * 2.5 * dt; 
+            this.baseSize += dt * 120; // Il fuoco si allarga man mano che si dissolve
+        }
         this.mesh.position.x += this.vx * dt; this.mesh.position.y += this.vy * dt; this.mesh.position.z += this.vz * dt;
         if (this.mesh.position.y < 2) { this.mesh.position.y = 2; this.vx *= 0.5; this.vz *= 0.5; this.vy *= -0.3; } 
         let currentSize = this.baseSize * (this.type === 'flame' ? (this.life / this.maxLife) * 1.5 : (this.life / this.maxLife));

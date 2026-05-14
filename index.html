@@ -1687,7 +1687,16 @@ const Game = {
         let difficulty = this.floor + (this.floorKills * 0.1); this.spawnSpecificEnemy(pos.x * TILE_SIZE + TILE_SIZE/2, pos.y * TILE_SIZE + TILE_SIZE/2, difficulty);
     },
     spawnEnemies() {
-        let initialSpawns = Math.min(20 + (this.floor*4), this.floorMaxKills); for(let i=0; i<initialSpawns; i++) this.spawnEnemy();
+        // Cap massimo di nemici attivi contemporaneamente.
+        // Mettiamo un limite più basso su smartphone per questioni di spazio e performance.
+        let maxActiveEnemies = isTouchDevice ? 22 : 35; 
+        
+        // Scegliamo il minimo tra il Cap vitale e il numero totale di nemici del piano
+        let initialSpawns = Math.min(maxActiveEnemies, this.floorMaxKills); 
+        
+        for(let i=0; i<initialSpawns; i++) {
+            this.spawnEnemy();
+        }
     },
     updateCamera(dt) {
         let camX = this.player.x; let camY = isTouchDevice ? 850 : 600; let camZ = this.player.y + (isTouchDevice ? 550 : 400);
@@ -2585,6 +2594,7 @@ class Player extends Entity {
         }
 
         super.takeDamage(amount, source);
+        this.invincibilityTimer = 0.2; // <-- 0.2 secondi di invincibilità ad ogni hit
         AudioEngine.playHit('player');
 
         if (!wasDead) {
@@ -2710,7 +2720,26 @@ class Enemy extends Entity {
         
         if (distToTargetSq < this.aggroRangeSq) {
             if (distToTargetSq > this.attackRangeSq) { 
-                this.move(Math.cos(this.angle), Math.sin(this.angle), dt); 
+                // SOLUZIONE 5: Logica di Separazione
+                let mx = Math.cos(this.angle), my = Math.sin(this.angle);
+                let nearby = Game.enemyGrid.findNearby(this, 35); // Cerca chi è troppo vicino
+                let sx = 0, sy = 0, c = 0;
+                
+                for(let i=0; i<nearby.length; i++) {
+                    let o = nearby[i]; if(o.dead || o.type === 'crystal') continue;
+                    let difX = this.x - o.x, difY = this.y - o.y, dSq = difX*difX + difY*difY;
+                    if(dSq > 0 && dSq < 1225) { // 35*35
+                        let d = Math.sqrt(dSq); sx += difX/d; sy += difY/d; c++; 
+                    }
+                }
+                
+                // Mixiamo la direzione bersaglio (60%) con la direzione di fuga (80%)
+                if(c > 0) { 
+                    mx = mx*0.6 + (sx/c)*0.8; my = my*0.6 + (sy/c)*0.8; 
+                    let mag = Math.sqrt(mx*mx + my*my); mx /= mag; my /= mag; 
+                }
+                
+                this.move(mx, my, dt); 
                 if (this.type !== 'mage' && this.type !== 'pyromancer' && this.type !== 'goblin') { this.mesh.position.y = Game.animBounce; }
             } else {
                 if (this.type === 'leaper' && this.leapCooldown <= 0) { this.state = 'leaping'; this.leapTimer = 0; this.leapDuration = 0.5; this.leapAngle = this.angle; this.leapCooldown = 2.0; } 

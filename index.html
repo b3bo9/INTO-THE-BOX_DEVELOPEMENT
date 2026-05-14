@@ -130,7 +130,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 80</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 82</p>
                 </div>
             </div>
         </div>
@@ -1559,6 +1559,17 @@ const Game = {
     
     animBounce: 0, animFloat: 0, animArm: 0,
 
+    enemyPool: [],
+    _enemyIdx: 0,
+    getEnemy() {
+        for(let i=0; i<this.enemyPool.length; i++) {
+            let e = this.enemyPool[this._enemyIdx];
+            this._enemyIdx = (this._enemyIdx + 1) % this.enemyPool.length;
+            if (!e.active) return e;
+        }
+        return this.enemyPool[0]; // Ritorna il primo se tutti sono occupati
+    },
+
     init() {
         UI.init(); TouchControls.init(); const container = document.getElementById('game-container');
         this.scene = new THREE.Scene(); this.scene.fog = new THREE.Fog(0x050508, 400, 1800); 
@@ -1602,6 +1613,7 @@ const Game = {
     },
 
     initPools() {
+        this.enemyPool = Array.from({length: 80}, () => new Enemy()); // Pre-alloca 80 nemici
         this.particles = Array.from({length: isTouchDevice ? 400 : 2500}, () => new Particle());
         this.projectiles = Array.from({length: 300}, () => new Projectile());
         this.floatingTexts = Array.from({length: 100}, () => new FloatingText());
@@ -1679,7 +1691,11 @@ const Game = {
         if (difficulty >= 1.0 && r > 0.3) type = 'orc'; if (difficulty >= 1.0 && r > 0.5) type = 'skeleton_archer'; 
         if (difficulty > 1.2 && r > 0.7) type = 'mage'; if (difficulty > 1.5 && r > 0.8) type = 'leaper';
         if (difficulty > 2.0 && r > 0.85) type = 'pyromancer'; if (difficulty > 2.5 && r > 0.90) type = 'fire_demon';        
-        let enemy = new Enemy(x, y, type, difficulty); this.enemies.push(enemy); this.enemyGrid.insert(enemy);
+        
+        let enemy = this.getEnemy();
+        enemy.spawn(x, y, type, difficulty);
+        this.enemies.push(enemy); 
+        this.enemyGrid.insert(enemy);
     },
     spawnEnemy() {
         let pos = this.map.getRandomFloorTile(); let attempts = 0;
@@ -2116,12 +2132,14 @@ class GameMap {
                             dummy.position.y = TILE_SIZE*0.75; dummy.updateMatrix(); pillarMesh.setMatrixAt(pIdx++, dummy.matrix);
                         } else if (!isBossFloor && Math.random() < 0.015) { 
                             // FIX: Manteniamo anche i cristalli al centro della mattonella
-                            let crystal = new Enemy(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 'crystal', 1);
+                            let crystal = Game.getEnemy();
+                            crystal.spawn(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 'crystal', 1);
                             crystal.onDeath = function() {
                                 Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff00ff, 'crystal_fire');
                                 Game.addTrauma(1.5); let pCount = AppSettings.isLow ? 5 : (AppSettings.isUltraPC ? 40 : 20);
                                 for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
-                                AudioEngine.playShoot('explosive_arrow'); this.mat.dispose(); Game.scene.remove(this.mesh);
+                                AudioEngine.playShoot('explosive_arrow'); 
+                                this.active = false; this.mesh.visible = false; // <-- Ottimizzazione pooling
                             };
                             Game.enemies.push(crystal); Game.enemyGrid.insert(crystal);
                         }
@@ -2662,11 +2680,27 @@ class Player extends Entity {
 }
 
 class Enemy extends Entity {
-    constructor(x, y, type, level) {
-        super(x, y, 14, 100); this.type = type; this.level = level; this.attackCooldown = 0;
+    constructor() {
+        super(0, 0, 14, 100); 
+        this.active = false;
+        this.mesh = new THREE.Group();
+        this.mesh.visible = false;
+        Game.scene.add(this.mesh);
+        this.currentType = null;
+        this.mat = null;
+    }
+
+    spawn(x, y, type, level) {
+        this.active = true;
+        this.dead = false;
+        this.x = x; 
+        this.y = y; 
+        this.type = type; 
+        this.level = level; 
+        this.attackCooldown = 0;
+        
         let hpMod = 1, dmgMod = 1, spdMod = 1, color = 0x666666, size = 12;
         
-        // --- ASSEGNAZIONE BASE DELLE STATISTICHE ---
         if (type === 'goblin') { color = 0x33FF00; size = 10; spdMod = 1.8; hpMod = 0.5; dmgMod = 1.2; this.aggroRange = 500; this.attackRange = 40; } 
         else if (type === 'orc') { color = 0x8c564b; size = 18; spdMod = 0.8; hpMod = 1.6; dmgMod = 2.5; this.aggroRange = 450; this.attackRange = 55; } 
         else if (type === 'skeleton_archer') { color = 0xaaaaaa; size = 14; spdMod = 1.1; hpMod = 0.4; dmgMod = 1.5; this.aggroRange = 700; this.attackRange = 400; } 
@@ -2677,19 +2711,12 @@ class Enemy extends Entity {
         else if (type === 'crystal') { color = 0xff00ff; size = 12; this.aggroRange = 0; this.speed = 0; hpMod = 0.001; }
         else if (type === 'boss') { color = 0x550000; size = 35; }
         
-        // --- LOGICA ELITE (AGGIUNTA) ---
         this.isElite = false;
-        // Escludiamo boss, crystal (totem) e leaper (farfalle)
         if (type !== 'boss' && type !== 'crystal' && type !== 'leaper') {
-            if (Math.random() < 0.05) { // 5% di probabilità
-                this.isElite = true;
-                size *= 1.5;     // 50% più grande
-                hpMod *= 3.0;    // 3x Vita
-                dmgMod *= 1.5;   // 50% in più di danni
-                spdMod *= 1.2;   // 20% più veloce
+            if (Math.random() < 0.05) { 
+                this.isElite = true; size *= 1.5; hpMod *= 3.0; dmgMod *= 1.5; spdMod *= 1.2; 
             }
         }
-        // ------------------------------
 
         this.radius = size; 
         this.stats.maxHp = type === 'crystal' ? 1 : Math.floor(32 * hpMod * (1 + level * 0.3) * Game.difficultyMult); 
@@ -2700,38 +2727,43 @@ class Enemy extends Entity {
         let diffSpeedMod = Game.difficultyMult < 1.0 ? 0.8 : (Game.difficultyMult > 1.0 ? 1.15 : 1.0); 
         this.baseSpeed = 100 * spdMod * Math.min(3.2, 1 + (level * 0.05)) * diffSpeedMod; 
         this.speed = this.baseSpeed;
-        
-        // Se è Elite, dà il triplo dell'esperienza
         this.xpValue = Math.floor(20 * hpMod * level) * (this.isElite ? 3 : 1); 
         
         this.infected = false; this.slowedTimer = 0; this.fireDebuffTimer = 0;
         this.aggroRangeSq = this.aggroRange * this.aggroRange; this.attackRangeSq = this.attackRange * this.attackRange;
         
-        // Colore Materiale (Diamo agli elite un leggero bagliore per distinguerli)
-        this.mat = type === 'crystal' ? new THREE.MeshPhongMaterial({color: 0x000000, emissive: color}) : new THREE.MeshStandardMaterial({
-            color: color, 
-            roughness: AppSettings.isUltraPC ? 0.4 : 0.7, 
-            metalness: AppSettings.isUltraPC ? 0.6 : (!AppSettings.isLow ? 0.2 : 0.0)
-        }); 
-        
-        if (this.isElite) {
-            this.mat.emissive.setHex(0x440000); // Un'aura rossastra scura
+        // RECICLO MODELLO 3D SE IL TIPO E' CAMBIATO
+        if (this.currentType !== type) {
+            while(this.mesh.children.length > 0){ this.mesh.remove(this.mesh.children[0]); }
+            if (this.mat) this.mat.dispose();
+
+            this.mat = type === 'crystal' ? new THREE.MeshPhongMaterial({color: 0x000000, emissive: color}) : new THREE.MeshStandardMaterial({
+                color: color, roughness: AppSettings.isUltraPC ? 0.4 : 0.7, metalness: AppSettings.isUltraPC ? 0.6 : (!AppSettings.isLow ? 0.2 : 0.0)
+            }); 
+            if (this.isElite) this.mat.emissive.setHex(0x440000);
+
+            let modelData = ModelFactory.buildEnemy(type, size, this.mat);
+            this.mesh.add(modelData.group); 
+            this.modelParts = modelData.parts;
+            this.currentType = type;
+
+            this.flashMats = [];
+            if (type !== 'crystal') { this.mesh.traverse(c => { if(c.isMesh && c.material === this.mat) this.flashMats.push(c.material); }); }
+        } else {
+            if (this.isElite) this.mat.emissive.setHex(0x440000);
+            else this.mat.emissive.setHex(0x000000);
         }
 
-        let modelData = ModelFactory.buildEnemy(type, size, this.mat);
-        this.mesh = modelData.group; this.modelParts = modelData.parts;
-        this.mesh.position.set(x, 0, y); Game.scene.add(this.mesh); 
-        if (type !== 'crystal') { this.mesh.traverse(c => { if(c.isMesh && c.material === this.mat) this.flashMats.push(c.material); }); }
+        this.mesh.position.set(x, 0, y); 
+        this.mesh.visible = true;
         
-        // Testo galleggiante alla nascita
         if (this.isElite) {
-            setTimeout(() => { 
-                if(!this.dead) Game.getFloatingText().spawn(this.x, this.y + 20, "ELITE", '#ff3300', 35, true); 
-            }, 100);
+            setTimeout(() => { if(!this.dead && this.active) Game.getFloatingText().spawn(this.x, this.y + 20, "ELITE", '#ff3300', 35, true); }, 100);
         }
     }
     update(dt) {
         
+        if (!this.active || this.dead) return; // <--- Aggiunto !this.active
         if(this.dead) return; this.updateFlash(dt);
         if (this.type === 'mage' || this.type === 'pyromancer') { this.mesh.rotation.y += dt; this.mesh.position.y = Game.animFloat; if(this.modelParts.crystals) this.modelParts.crystals.rotation.y += dt*2; }
         if (this.type === 'goblin') { this.mesh.rotation.x += dt * 15; this.mesh.rotation.y += dt * 10; }
@@ -2863,7 +2895,7 @@ class Enemy extends Entity {
             decal.userData.baseScale = AppSettings.isUltraPC ? 1.5 : 1.0; 
             decal.userData.active = true; decal.visible = true; Game.bloodDecalIndex = (Game.bloodDecalIndex + 1) % Game.bloodDecals.length;
         }
-        if(this.mat) this.mat.dispose(); Game.scene.remove(this.mesh);
+        this.active = false; this.mesh.visible = false;
         if (this.infected) {
             Game.addTrauma(0.3);
             for(let i=0; i<3; i++) { let p = Game.getProjectile(); p.spawn(this.x, this.y, (Math.PI*2/3)*i, 600, Game.player.stats.maxDmg * 2.5 * Game.player.modifiers.dmgMult, 'player', 'homing_arrow'); p.canInfect = false; }
@@ -2904,7 +2936,9 @@ class Enemy extends Entity {
 
 class BossEnemy extends Enemy {
     constructor(x, y, level) {
-        super(x, y, 'boss', level); this.isBoss = true; this.radius = 35; this.aggroRange = 2000; this.attackRange = 600; 
+        super(); // Richiama il costruttore vuoto del pool
+        this.spawn(x, y, 'boss', level); // Crea il boss
+        this.isBoss = true; this.radius = 35; this.aggroRange = 2000; this.attackRange = 600;
         this.spawnMinionTimer = 2.0; this.hazardTimer = 4.0; 
         
         let hpScale = level >= 10 ? (level/5) * 1.0 : (level/5) * 0.5;
@@ -3257,7 +3291,23 @@ class FloatingText {
 
 function clearScene() {
     if (Game.map) Game.scene.remove(Game.map.mapGroup);
-    for(let i=0, len=Game.enemies.length; i<len; i++) { if(Game.enemies[i].mat) Game.enemies[i].mat.dispose(); Game.scene.remove(Game.enemies[i].mesh); }
+    
+    // I boss e altri nemici rimasti attivi vengono spenti
+    for(let i=0, len=Game.enemies.length; i<len; i++) { 
+        let e = Game.enemies[i];
+        if(e.isBoss) {
+            if (e.mat) e.mat.dispose(); 
+            Game.scene.remove(e.mesh);
+        }
+    }
+    
+    // Disattiva e nascondi tutto il pool dei nemici, senza cancellarlo dalla memoria
+    if (Game.enemyPool) {
+        for(let i=0; i<Game.enemyPool.length; i++) { 
+            Game.enemyPool[i].active = false; 
+            Game.enemyPool[i].mesh.visible = false; 
+        }
+    }
     for(let i=0, len=Game.projectiles.length; i<len; i++) { Game.projectiles[i].active = false; Game.projectiles[i].group.visible = false; }
     for(let i=0, len=Game.hazards.length; i<len; i++) { Game.hazards[i].active = false; Game.hazards[i].group.visible = false; }
     for(let i=0, len=Game.particles.length; i<len; i++) { Game.particles[i].active = false; Game.particles[i].mesh.visible = false; }

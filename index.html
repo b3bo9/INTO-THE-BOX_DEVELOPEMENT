@@ -2963,9 +2963,28 @@ class Enemy extends Entity {
         }
         
        if (this.isElite) {
-            Game.getFloatingText().spawn(this.x, this.y, "ELITE SCONFITTO", '#ffaa00', 30, true);
-        }
-    }
+            Game.getFloatingText().spawn(this.x, this.y, "ELITE SCONFITTO", '#ffaa00', 30, true);
+            
+            // --- NUOVO: DROP RELIQUIA A SORPRESA DAGLI ELITE ---
+            // 5% di probabilità di ottenere una reliquia diretta
+            if (Math.random() < 0.5) { 
+                // Genera una singola reliquia basata sulle probabilità di rarità
+                let dropRelic = RelicSystem.getChoices()[0]; 
+                
+                // La applica direttamente al giocatore
+                dropRelic.apply(Game.player);
+                Game.player.relics.push(dropRelic);
+                
+                // Effetti visivi e sonori epici
+                Game.getFloatingText().spawn(this.x, this.y + 30, "RELIQUIA TROVATA: " + dropRelic.name.toUpperCase(), '#fbbf24', 45, true);
+                AudioEngine.playLevelUp(); 
+                
+                let pCount = AppSettings.isLow ? 10 : 40;
+                for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteLevel, 'spark');
+            }
+            // ---------------------------------------------------
+        }
+    }
 }
 
 class BossEnemy extends Enemy {

@@ -233,6 +233,14 @@
                     </h3>
                     <p class="text-gray-400 relative z-10">Scatta (<span id="info-dodge-btn" class="text-white bg-white/10 px-1.5 py-0.5 rounded border border-white/20 shadow-inner font-bold uppercase text-[10px]"></span>) verso un nemico all'ultimo istante. <span class="text-white font-bold">Ricarica lo scatto</span> instantaneamente e <span class="text-amber-400 font-bold drop-shadow-[0_0_2px_#fbbf24]">aumenta la combo</span>!</p>
                 </div>
+                <!-- Scudo Cinetico -->
+                <div class="bg-gradient-to-r from-blue-900/20 to-black/40 p-4 rounded-xl border border-blue-700/30 shadow-[inset_0_0_15px_rgba(59,130,246,0.05)] relative">
+                    <div class="absolute -right-2 -top-2 opacity-10 text-blue-500 text-5xl pointer-events-none"><i class="fa-solid fa-shield-halved"></i></div>
+                    <h3 class="text-blue-400 font-black mb-2 uppercase flex items-center gap-1.5 text-xs sm:text-sm tracking-wide drop-shadow-[0_0_5px_rgba(59,130,246,0.5)]">
+                        <i class="fa-solid fa-shield-halved"></i> Scudo Cinetico
+                    </h3>
+                    <p class="text-gray-400 relative z-10">Attiva una barriera (<span id="info-shield-btn" class="text-white bg-white/10 px-1.5 py-0.5 rounded border border-white/20 shadow-inner font-bold uppercase text-[10px]"></span>) per <span class="text-white font-bold">1.5 secondi</span>. Distrugge i proiettili nemici al contatto, ma <span class="text-red-400 font-bold drop-shadow-[0_0_2px_#ef4444]">non blocca</span> attacchi fisici o ambientali. Richiede 8s per ricaricarsi.</p>
+                </div>
             </div>
             
             <!-- TASTO CHIUSURA -->
@@ -2334,7 +2342,27 @@ class Player extends Entity {
     update(dt) {
         if (this.dead) return; this.updateFlash(dt);
         this.modelParts.halo.rotation.z += dt; this.modelParts.staffGem.rotation.y += dt;
+        if (this.activeShieldCooldown > 0) this.activeShieldCooldown -= dt;
         
+        if (this.activeShieldTimer > 0) {
+            this.activeShieldTimer -= dt;
+            this.shieldMesh.rotation.y += dt * 5;
+            this.shieldMesh.rotation.z += dt * 3;
+            
+            if (this.activeShieldTimer <= 0) {
+                this.shieldMesh.visible = false;
+                this.activeShieldCooldown = 8.0; // Inizio del Cooldown
+                
+                if (this.modifiers.explosiveShield && this.shieldAbsorbed > 0) {
+                    let dmg = this.stats.maxDmg * 2.5 + (this.stats.maxDmg * 2.0 * this.shieldAbsorbed);
+                    let radius = 60 + (this.shieldAbsorbed * 15);
+                    Game.getHazard().spawn(this.x, this.y, radius, 0.5, dmg, 0x00DDFF, 'crystal_fire');
+                    Game.addTrauma(0.5 + (this.shieldAbsorbed * 0.2));
+                    AudioEngine.playShoot('explosive_arrow');
+                    Game.getFloatingText().spawn(this.x, this.y, `RILASCIO! (${this.shieldAbsorbed})`, '#00DDFF', 40, true);
+                }
+            }
+        }
         this.modifiers.timeSinceLastHit += dt;
         if (this.modifiers.shieldActive && this.modifiers.shieldConsumed && this.modifiers.timeSinceLastHit >= 15.0) {
             this.modifiers.shieldConsumed = false;
@@ -2590,28 +2618,7 @@ class Enemy extends Entity {
         if (type !== 'crystal') { this.mesh.traverse(c => { if(c.isMesh && c.material === this.mat) this.flashMats.push(c.material); }); }
     }
     update(dt) {
-        if (this.activeShieldCooldown > 0) this.activeShieldCooldown -= dt;
         
-        if (this.activeShieldTimer > 0) {
-            this.activeShieldTimer -= dt;
-            this.shieldMesh.rotation.y += dt * 5;
-            this.shieldMesh.rotation.z += dt * 3;
-            
-            if (this.activeShieldTimer <= 0) {
-                this.shieldMesh.visible = false;
-                this.activeShieldCooldown = 8.0; // Inizio del Cooldown
-                
-                // Logica della Reliquia: Aegis Esplosiva
-                if (this.modifiers.explosiveShield && this.shieldAbsorbed > 0) {
-                    let dmg = this.stats.maxDmg * 2.5 + (this.stats.maxDmg * 2.0 * this.shieldAbsorbed);
-                    let radius = 60 + (this.shieldAbsorbed * 15);
-                    Game.getHazard().spawn(this.x, this.y, radius, 0.5, dmg, 0x00DDFF, 'crystal_fire');
-                    Game.addTrauma(0.5 + (this.shieldAbsorbed * 0.2));
-                    AudioEngine.playShoot('explosive_arrow');
-                    Game.getFloatingText().spawn(this.x, this.y, `RILASCIO! (${this.shieldAbsorbed})`, '#00DDFF', 40, true);
-                }
-            }
-        }
         if(this.dead) return; this.updateFlash(dt);
         if (this.type === 'mage' || this.type === 'pyromancer') { this.mesh.rotation.y += dt; this.mesh.position.y = Game.animFloat; if(this.modelParts.crystals) this.modelParts.crystals.rotation.y += dt*2; }
         if (this.type === 'goblin') { this.mesh.rotation.x += dt * 15; this.mesh.rotation.y += dt * 10; }
@@ -2989,8 +2996,11 @@ class Projectile {
                     }
                 }
             }
-        } else {
-            let pRadCheck = (this.radius + Game.player.radius) * (this.radius + Game.player.radius);
+       } else {
+            // Se lo scudo è attivo, aumentiamo il raggio d'impatto affinché il proiettile venga distrutto sul bordo esterno visivo
+            let effectivePlayerRadius = (Game.player.activeShieldTimer > 0 && this.type !== 'fire_shape') ? Game.player.radius + 15 : Game.player.radius;
+            let pRadCheck = (this.radius + effectivePlayerRadius) * (this.radius + effectivePlayerRadius);
+            
             if (MathUtils.distanceSq(this, Game.player) < pRadCheck) {
                 // CONTROLLO SCUDO ATTIVO
                 if (Game.player.activeShieldTimer > 0 && this.type !== 'fire_shape') {
@@ -3214,11 +3224,15 @@ window.onload = () => {
         // Se è smartphone, scrivi "Tasto Scatto" nel manuale
         let dodgeBtn = document.getElementById('info-dodge-btn');
         if(dodgeBtn) dodgeBtn.innerText = "Tasto Scatto";
+        let shieldBtn = document.getElementById('info-shield-btn');
+        if(shieldBtn) shieldBtn.innerText = "Tasto Scudo";
     } else { 
         if (pcControls) { pcControls.classList.remove('hidden'); pcControls.classList.add('hidden', 'lg:flex'); }
         // Se è PC, scrivi "Spazio" nel manuale
         let dodgeBtn = document.getElementById('info-dodge-btn');
         if(dodgeBtn) dodgeBtn.innerText = "Spazio";
+        let shieldBtn = document.getElementById('info-shield-btn');
+        if(shieldBtn) shieldBtn.innerText = "Shift";
     }
     
    const handleInit = () => {

@@ -3045,7 +3045,8 @@ class Projectile {
                 if (Game.player.activeShieldTimer > 0 && this.type !== 'fire_shape') {
                     Game.player.shieldAbsorbed++;
                     Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'spark');
-                    AudioEngine.playHit('enemy'); 
+                    AudioEngine.playCollect(); // <-- MODIFICA: Suono della raccolta essenze
+                    Game.addUltimateCharge(5); // <-- MODIFICA: Ricarica la Ultimate del 5% per ogni colpo assorbito
                     
                     // --- LOGICA CURA E FLASH ---
                     let heal = Game.player.stats.maxHp * 0.05; // Cura del 5% per proiettile

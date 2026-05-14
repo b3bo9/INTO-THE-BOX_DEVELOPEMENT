@@ -991,7 +991,7 @@ const RelicSystem = {
         { id: 'l2', name: "Lama del Giudizio", desc: "Danni Raddoppiati a nemici con <30% HP", rarity: "legendary", image: "icona_lama_del_giudizio.png", icon: "fa-gavel", apply: (p) => p.modifiers.executioner = true },
         { id: 'l3', name: "Patto Ascetico", desc: "Ascensione passiva (+2%/s), ma HP Max -30%", rarity: "legendary", image: "icona_patto_ascetico.png", icon: "fa-link", apply: (p) => { p.modifiers.passiveUltCharge = true; p.stats.maxHp = Math.floor(p.stats.maxHp * 0.7); if(p.stats.hp > p.stats.maxHp) p.stats.hp = p.stats.maxHp; } },
         { id: 'l4', name: "Sete di Sangue Eterna", desc: "Curati 5% ogni 10 kill. 0 cure a terra. HP non salgono con livello.", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", icon: "fa-droplet", apply: (p) => { p.modifiers.bloodthirst = true; p.modifiers.noHealDrops = true; p.modifiers.noMaxHpLevelUp = true; } },
-        { id: 'l5', name: "Maestria del Flow", desc: "Bonus combo doppi e decado lento. Danni dimezzano HP attuali.", rarity: "legendary", image: "icona_maestria_del_flow.png", icon: "fa-infinity", apply: (p) => { p.modifiers.flowMastery = true; p.modifiers.comboDecayRate *= 0.5; } }
+        { id: 'l5', name: "Maestria del Flow", desc: "Bonus combo doppi e decado lento. Danni dimezzano HP attuali.", rarity: "legendary", image: "icona_maestria_del_flow.png", icon: "fa-infinity", apply: (p) => { p.modifiers.flowMastery = true; p.modifiers.comboDecayRate *= 0.5; } },
         { id: 'l6', name: "Aegis del Guardiano", desc: "Lo Scudo attivo esplode alla fine. L'area e i danni aumentano per ogni proiettile assorbito.", rarity: "legendary", image: "fa-shieldx.png", icon: "fa-shield", apply: (p) => { p.modifiers.explosiveShield = true; } }
     ],
     getRandomRarity() { let r = Math.random() * 100; if (r <= 55) return 'common'; if (r <= 83) return 'rare'; if (r <= 95) return 'epic'; return 'legendary'; },
@@ -2225,7 +2225,7 @@ class Player extends Entity {
             executioner: false, shieldActive: false, shieldConsumed: false, essenceDurationMult: 1.0, critDmgMult: 3.0,
             comboStep: 1, comboDecayAdd: 0, comboDecayRate: 1.0, keepEssenceOnCombo: false, pickupRadiusMult: 1.0,
             passiveUltCharge: false, noHealDrops: false, noMaxHpLevelUp: false, bloodthirst: false, bloodthirstCount: 0, flowMastery: false,
-            timeSinceLastHit: 0 
+            timeSinceLastHit: 0, 
             explosiveShield: false
         };
         

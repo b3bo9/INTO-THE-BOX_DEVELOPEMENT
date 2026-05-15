@@ -130,7 +130,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 89</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 90</p>
                 </div>
             </div>
         </div>
@@ -2957,7 +2957,23 @@ class Enemy extends Entity {
                 Game.getDebris().spawn(_pos, _quat, _scale, child.geometry, cHex, this.radius, this.isElite);
             }
         });
-        let pCount = AppSettings.isLow ? 2 : (isTouchDevice ? 3 : (AppSettings.isUltraPC ? 30 : 15)); for(let i=0; i< pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
+        // --- INIZIO EFFETTI "JUICY" ---
+        // 1. Micro screen-shake ad ogni uccisione
+        // Game.addTrauma(0.15); 
+        
+        // 2. Flash di energia al centro dell'esplosione
+        Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'nova');
+        
+        // 3. Scintille veloci invece del sangue
+        let energyMat = SharedMat.spriteRed; // Colore base
+        if (this.type === 'goblin' || this.type === 'leaper') energyMat = SharedMat.spriteGreen;
+        else if (this.type === 'mage' || this.type === 'skeleton_archer') energyMat = SharedMat.spriteBlue;
+        
+        let pCount = AppSettings.isLow ? 3 : (isTouchDevice ? 6 : 15); 
+        for(let i=0; i< pCount; i++) {
+            Game.getParticle().spawn(this.x, 20, this.y, energyMat, 'spark');
+        }
+        // --- FINE EFFETTI "JUICY" ---
         
         if (Game.player.modifiers.vampirismMaxHp > 0 && Math.random() < 0.10) { 
             let heal = Game.player.stats.maxHp * Game.player.modifiers.vampirismMaxHp;
@@ -3417,34 +3433,61 @@ class Projectile {
 class Particle {
     constructor() { 
         this.active = false; this.mesh = new THREE.Sprite(SharedMat.spriteWhite); 
-        this.mesh.matrixAutoUpdate = false; // OTTIMIZZAZIONE CPU
+        this.mesh.matrixAutoUpdate = false; 
         this.mesh.visible = false; Game.scene.add(this.mesh); 
     }
     spawn(x, y, z, mat, type='spark', dirAngle=null) {
-        this.active = true; this.life = type === 'flame' ? Math.random()*0.3 + 0.15 : Math.random()*0.3 + 0.2; this.maxLife = this.life; this.type = type;
-        this.baseSize = type === 'blood' ? 12 : (type==='level'? 16 : (type==='flame'? 24 : 10));
-        this.mesh.material = mat; this.mesh.position.set(x, y, z); this.mesh.scale.set(this.baseSize, this.baseSize, 1);
-        let a = dirAngle !== null ? dirAngle + MathUtils.randomRange(-0.4, 0.4) : Math.random() * Math.PI * 2; 
-        let speed = type==='blood' ? Math.random()*150+50 : (type==='flame' ? Math.random()*500+250 : Math.random()*100+50);
-        this.vx = Math.cos(a) * speed; this.vy = type==='trail' ? Math.random()*20 : (type==='flame' ? MathUtils.randomRange(-20, 20) : Math.random()*200+50); this.vz = Math.sin(a) * speed;
-        this.mesh.updateMatrix(); // OTTIMIZZAZIONE
+        this.active = true; 
+        this.type = type;
+        
+        // Impostazioni specifiche in base al tipo
+        if (type === 'nova') {
+            this.life = 0.15; // Dura pochissimo
+            this.baseSize = MathUtils.randomRange(60, 100);
+            this.vx = 0; this.vy = 0; this.vz = 0;
+        } else {
+            this.life = type === 'flame' ? Math.random()*0.3 + 0.15 : Math.random()*0.3 + 0.2; 
+            this.baseSize = type === 'blood' ? 12 : (type==='level'? 16 : (type==='flame'? 24 : 10));
+            let a = dirAngle !== null ? dirAngle + MathUtils.randomRange(-0.4, 0.4) : Math.random() * Math.PI * 2; 
+            let speed = type==='blood' ? Math.random()*150+50 : (type==='flame' ? Math.random()*500+250 : Math.random()*250+100);
+            this.vx = Math.cos(a) * speed; 
+            this.vy = type==='trail' ? Math.random()*20 : (type==='flame' ? MathUtils.randomRange(-20, 20) : Math.random()*200+100); 
+            this.vz = Math.sin(a) * speed;
+        }
+        
+        this.maxLife = this.life; 
+        this.mesh.material = mat; 
+        this.mesh.position.set(x, y, z); 
+        this.mesh.scale.set(this.baseSize, this.baseSize, 1);
+        this.mesh.updateMatrix(); 
         this.mesh.visible = true;
     }
+    
     update(dt) {
         if (!this.active) return;
-        if(this.type === 'blood' || this.type === 'spark') this.vy -= 600 * dt; 
-        if(this.type === 'flame') { 
-            // Attrito basato sul DeltaTime per far viaggiare le particelle esattamente fino a ~170/180 unità
-            this.vx -= this.vx * 2.5 * dt; 
-            this.vz -= this.vz * 2.5 * dt; 
-            this.baseSize += dt * 120; // Il fuoco si allarga man mano che si dissolve
+        
+        if (this.type === 'nova') {
+            // Effetto flash: cresce e poi sparisce usando una sinusoide
+            let pct = this.life / this.maxLife; // Da 1 a 0
+            let currentSize = Math.sin(pct * Math.PI) * this.baseSize;
+            this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
+        } else {
+            if(this.type === 'blood' || this.type === 'spark') this.vy -= 600 * dt; 
+            if(this.type === 'flame') { 
+                this.vx -= this.vx * 2.5 * dt; 
+                this.vz -= this.vz * 2.5 * dt; 
+                this.baseSize += dt * 120; 
+            }
+            this.mesh.position.x += this.vx * dt; this.mesh.position.y += this.vy * dt; this.mesh.position.z += this.vz * dt;
+            if (this.mesh.position.y < 2) { this.mesh.position.y = 2; this.vx *= 0.5; this.vz *= 0.5; this.vy *= -0.3; } 
+            
+            let currentSize = this.baseSize * (this.type === 'flame' ? (this.life / this.maxLife) * 1.5 : (this.life / this.maxLife));
+            this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
         }
-        this.mesh.position.x += this.vx * dt; this.mesh.position.y += this.vy * dt; this.mesh.position.z += this.vz * dt;
-        if (this.mesh.position.y < 2) { this.mesh.position.y = 2; this.vx *= 0.5; this.vz *= 0.5; this.vy *= -0.3; } 
-        let currentSize = this.baseSize * (this.type === 'flame' ? (this.life / this.maxLife) * 1.5 : (this.life / this.maxLife));
-        this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
-        this.mesh.updateMatrix(); // OTTIMIZZAZIONE
-        this.life -= dt; if(this.life <= 0) { this.active = false; this.mesh.visible = false; }
+
+        this.mesh.updateMatrix(); 
+        this.life -= dt; 
+        if(this.life <= 0) { this.active = false; this.mesh.visible = false; }
     }
 }
 class Debris {
@@ -3484,12 +3527,12 @@ class Debris {
         let speed = MathUtils.randomRange(40, 110); 
         this.vx = Math.cos(a) * speed;
         this.vz = Math.sin(a) * speed;
-        this.vy = MathUtils.randomRange(150, 300); // Salto leggero verso l'alto
+        this.vy = MathUtils.randomRange(250, 450); // Salto leggero verso l'alto
         
         // Rotazione fluida
-        this.rx = MathUtils.randomRange(-6, 6);
-        this.ry = MathUtils.randomRange(-6, 6);
-        this.rz = MathUtils.randomRange(-6, 6);
+        this.rx = MathUtils.randomRange(-15, 15);
+        this.ry = MathUtils.randomRange(-15, 15);
+        this.rz = MathUtils.randomRange(-15, 15);
         
         // Durata leggermente variabile per renderlo organico
         this.life = MathUtils.randomRange(0.6, 0.9); 

@@ -2223,18 +2223,19 @@ class GameMap {
                         dummy.updateMatrix(); floorMesh.setMatrixAt(fIdx++, dummy.matrix);
                         if (this.grid[x][y] === 3) {
                             dummy.position.y = TILE_SIZE*0.75; dummy.updateMatrix(); pillarMesh.setMatrixAt(pIdx++, dummy.matrix);
-                        } else if (!isBossFloor && Math.random() < 0.015) { 
-                            let crystal = Game.getEnemy();
-                            crystal.spawn(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 'crystal', 1);
-                            crystal.onDeath = function() {
-                                Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff00ff, 'crystal_fire');
-                                Game.addTrauma(1.5); let pCount = AppSettings.isLow ? 5 : (AppSettings.isUltraPC ? 40 : 20);
-                                for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
-                                AudioEngine.playShoot('explosive_arrow'); 
-                                this.active = false; this.mesh.visible = false;
-                            };
-                            Game.enemies.push(crystal); Game.enemyGrid.insert(crystal);
-                        }
+                       } else if (!isBossFloor && Math.random() < 0.015) { 
+                            let crystal = Game.getEnemy();
+                            crystal.spawn(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 'crystal', 1);
+                            crystal.onDeath = function() {
+                                Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff00ff, 'crystal_fire');
+                                Game.addTrauma(1.5); let pCount = AppSettings.isLow ? 5 : (AppSettings.isUltraPC ? 40 : 20);
+                                for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
+                                AudioEngine.playShoot('explosive_arrow'); 
+                                this.shadowMesh.visible = false; // <-- FIX: Nasconde l'ombra dei cristalli ambientali
+                                this.active = false; this.mesh.visible = false;
+                            };
+                            Game.enemies.push(crystal); Game.enemyGrid.insert(crystal);
+                        }
                     } else { 
                         dummy.position.y = TILE_SIZE*0.75; dummy.updateMatrix(); wallMesh.setMatrixAt(wIdx++, dummy.matrix); 
                     }

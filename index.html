@@ -1102,7 +1102,16 @@ function createGlowTexture() {
     const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64; const ctx = canvas.getContext('2d');
     const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32); grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.1, 'rgba(255,255,255,0.8)'); grad.addColorStop(0.4, 'rgba(255,255,255,0.2)'); grad.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = grad; ctx.fillRect(0,0,64,64); return new THREE.CanvasTexture(canvas);
 }
-
+function createBlobShadowTexture() {
+    const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64; const ctx = canvas.getContext('2d');
+    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32); 
+    grad.addColorStop(0, 'rgba(0,0,0,0.65)'); 
+    grad.addColorStop(0.5, 'rgba(0,0,0,0.3)'); 
+    grad.addColorStop(1, 'rgba(0,0,0,0)'); 
+    ctx.fillStyle = grad; ctx.fillRect(0,0,64,64); 
+    return new THREE.CanvasTexture(canvas);
+}
+const BLOB_SHADOW_TEX = createBlobShadowTexture();
 const BLOOD_TEX = createPatternTexture('blood'); const GLOW_TEX = createGlowTexture();
 const SharedMat = {
     blood: new THREE.MeshStandardMaterial({map: BLOOD_TEX, transparent: true, opacity: 0.85, depthWrite: false, roughness: 0.8}),
@@ -1121,6 +1130,7 @@ const SharedMat = {
     enemyFireball: new THREE.MeshPhongMaterial({color: 0x220000, emissive: 0xff3300, emissiveIntensity: 2.0}), 
     enemyBolt: new THREE.MeshPhongMaterial({color: 0x220022, emissive: 0xaa00ff, emissiveIntensity: 2.0}), 
     fireShape: new THREE.MeshPhongMaterial({color: 0x220000, emissive: 0xff3300, emissiveIntensity: 2.0}),
+    blobShadow: new THREE.MeshBasicMaterial({map: BLOB_SHADOW_TEX, transparent: true, depthWrite: false}),
     
     hazardFirePlane: new THREE.MeshBasicMaterial({color: 0xff3300, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}),
     hazardFireRing: new THREE.MeshBasicMaterial({color: 0xffaa00, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}),
@@ -2260,6 +2270,13 @@ class Entity {
         this.id = Math.random().toString(36).substr(2, 9); this.x = x; this.y = y; this.radius = radius; this.speed = speed;
         this.angle = 0; this.dead = false; this.mesh = new THREE.Group(); this.stats = { hp: 100, maxHp: 100, minDmg: 5, maxDmg: 10 };
         this.flashTimer = 0; this.flashMats = []; 
+        // --- INIZIO FAKE SHADOW ---
+        this.shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), SharedMat.blobShadow);
+        this.shadowMesh.rotation.x = -Math.PI / 2; // La sdraiamo sul pavimento
+        this.shadowMesh.matrixAutoUpdate = false;
+        this.shadowMesh.visible = false;
+        Game.scene.add(this.shadowMesh); // La aggiungiamo alla scena, indipendente dai salti del personaggio
+        // --- FINE FAKE SHADOW ---
     }
     move(dx, dy, dt) {
         let len = Math.sqrt(dx*dx + dy*dy); if (len > 0) { dx /= len; dy /= len; }
@@ -2358,6 +2375,10 @@ class Player extends Entity {
         this.shieldMesh.position.y = 12;
         this.shieldMesh.visible = false;
         this.mesh.add(this.shieldMesh);
+        // Attiva e scala l'ombra per il giocatore
+        this.shadowMesh.scale.set(32, 32, 1);
+        // La mostriamo solo se le ombre reali sono disattivate, per non sovrapporle!
+        this.shadowMesh.visible = !AppSettings.shadowsEnabled;
     }
     collectEssence(type) {
         if (this.overdrive) { 
@@ -2459,7 +2480,9 @@ class Player extends Entity {
             this.activeShieldTimer -= dt;
             this.shieldMesh.rotation.y += dt * 5;
             this.shieldMesh.rotation.z += dt * 3;
-            
+            // Aggiorna la posizione dell'ombra a Y=0.2 (leggermente sopra il pavimento per evitare compenetrazioni)
+           this.shadowMesh.position.set(this.x, 0.2, this.y);
+           this.shadowMesh.updateMatrix();
             // --- GESTIONE FLASH VISIVO ---
             if (this.shieldFlashTimer > 0) {
                 this.shieldFlashTimer -= dt;
@@ -2899,6 +2922,8 @@ class Enemy extends Entity {
 
         this.mesh.position.set(x, 0, y); 
         this.mesh.visible = true;
+        this.shadowMesh.scale.set(size * 2.8, size * 2.8, 1);
+        this.shadowMesh.visible = !AppSettings.shadowsEnabled;
         
         if (this.isElite) {
             setTimeout(() => { if(!this.dead && this.active) Game.getFloatingText().spawn(this.x, this.y + 20, "ELITE", '#ff3300', 35, true); }, 100);
@@ -2939,7 +2964,8 @@ class Enemy extends Entity {
             this.distToTargetSq = dx*dx + dy*dy;
             this.angle = Math.atan2(dy, dx);
             this.isTargetingPlayer = (target === Game.player);
-            
+            this.shadowMesh.position.set(this.x, 0.2, this.y);
+            this.shadowMesh.updateMatrix();
             // Inizializza i vettori di movimento in base all'angolo del bersaglio
             this.moveX = Math.cos(this.angle);
             this.moveY = Math.sin(this.angle);
@@ -3022,7 +3048,7 @@ class Enemy extends Entity {
             this.active = false; this.mesh.visible = false; // <-- CORRETTO PER IL POOLING
             return;
         }
-        
+        this.shadowMesh.visible = false;
         AudioEngine.playEnemyDeath();
         Game.player.gainXp(this.xpValue);
         let cHex = this.mat.color.getHex();
@@ -3720,7 +3746,9 @@ function clearScene() {
         for(let i=0; i<Game.enemyPool.length; i++) { 
             Game.enemyPool[i].active = false; 
             Game.enemyPool[i].mesh.visible = false; 
+            if(Game.enemyPool[i].shadowMesh) Game.enemyPool[i].shadowMesh.visible = false; // <- Aggiungi questo
         }
+    }
     }
     for(let i=0, len=Game.projectiles.length; i<len; i++) { Game.projectiles[i].active = false; Game.projectiles[i].group.visible = false; }
     for(let i=0, len=Game.hazards.length; i<len; i++) { Game.hazards[i].active = false; Game.hazards[i].group.visible = false; }
@@ -3730,7 +3758,10 @@ function clearScene() {
     for(let i=0, len=Game.dashLines.length; i<len; i++) { Game.dashLines[i].active = false; Game.dashLines[i].mesh.visible = false; }
     for(let i=0, len=Game.essences.length; i<len; i++) { Game.essences[i].destroy(); }
     for(let i=0, len=Game.extraLivesDrops.length; i<len; i++) { Game.extraLivesDrops[i].destroy(); }
-    if(Game.player) Game.scene.remove(Game.player.mesh);
+    if(Game.player) {
+        Game.scene.remove(Game.player.mesh);
+        Game.player.shadowMesh.visible = false; // <- Aggiungi questo
+    }
 }
 
 function respawnPlayer() {

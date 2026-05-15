@@ -1542,18 +1542,8 @@ const UI = {
             }
         }
     },
-    triggerComboAnim(combo) {
-        this.els.comboText.innerText = `x${combo} HITS!`;
-        let scale = isTouchDevice ? (1 + Math.min(combo * 0.03, 0.4)) : (1 + Math.min(combo * 0.015, 0.4)); 
-        this.els.comboText.style.transform = `scale(${scale})`;
-        let shadow = "0 0 15px #ffaa00, 0 0 5px #ff0000, 2px 2px 0 #000"; if (!isTouchDevice) shadow = "0 0 30px #ffaa00, 0 0 10px #ff0000, 4px 4px 0 #000";
-        if(combo > 50) shadow = isTouchDevice ? "0 0 20px #ff00ff, 0 0 10px #ff0000, 2px 2px 0 #000" : "0 0 30px #ff00ff, 0 0 10px #ff0000, 4px 4px 0 #000";
-        else if(combo > 20) shadow = isTouchDevice ? "0 0 20px #ff0000, 0 0 10px #ff0000, 2px 2px 0 #000" : "0 0 30px #ff0000, 0 0 10px #ff0000, 4px 4px 0 #000";
-        this.els.comboText.style.textShadow = shadow; setTimeout(() => { this.els.comboText.style.transform = `scale(${1 + Math.min(combo * 0.01, 0.15)})`; }, 50);
-    }
     // Update Scatto Attivo (Dash)
         if (this.els.btnDash) {
-            // Il cooldown massimo tiene conto anche delle reliquie che lo riducono
             let maxDashCd = 1.0 * Game.player.modifiers.dashCooldownMult; 
             let dashCdPct = Game.player.dashCooldown > 0 ? (1 - (Game.player.dashCooldown / maxDashCd)) * 100 : 100;
             
@@ -1569,8 +1559,18 @@ const UI = {
                 this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-gray-500/50 transition-all duration-100 pointer-events-none";
             }
         }
+    },
+    
+    triggerComboAnim(combo) {
+        this.els.comboText.innerText = `x${combo} HITS!`;
+        let scale = isTouchDevice ? (1 + Math.min(combo * 0.03, 0.4)) : (1 + Math.min(combo * 0.015, 0.4)); 
+        this.els.comboText.style.transform = `scale(${scale})`;
+        let shadow = "0 0 15px #ffaa00, 0 0 5px #ff0000, 2px 2px 0 #000"; if (!isTouchDevice) shadow = "0 0 30px #ffaa00, 0 0 10px #ff0000, 4px 4px 0 #000";
+        if(combo > 50) shadow = isTouchDevice ? "0 0 20px #ff00ff, 0 0 10px #ff0000, 2px 2px 0 #000" : "0 0 30px #ff00ff, 0 0 10px #ff0000, 4px 4px 0 #000";
+        else if(combo > 20) shadow = isTouchDevice ? "0 0 20px #ff0000, 0 0 10px #ff0000, 2px 2px 0 #000" : "0 0 30px #ff0000, 0 0 10px #ff0000, 4px 4px 0 #000";
+        this.els.comboText.style.textShadow = shadow; setTimeout(() => { this.els.comboText.style.transform = `scale(${1 + Math.min(combo * 0.01, 0.15)})`; }, 50);
+    }
 };
-
 const Game = {
     scene: null, camera: null, renderer: null, raycaster: new THREE.Raycaster(), uiCanvas: document.getElementById('uiCanvas'), uiCtx: null,
     width: window.innerWidth, height: window.innerHeight, keys: {}, mouse: { x: 0, y: 0, worldX: 0, worldY: 0, leftDown: false },

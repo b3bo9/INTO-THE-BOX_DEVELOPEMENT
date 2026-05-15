@@ -3040,14 +3040,15 @@ class Enemy extends Entity {
         super.takeDamage(amount, source, isCrit); if (Game.player.overdrive && Game.player.essence === 'green' && canInfect) this.infected = true;
     }
     onDeath() {
-        if (this.type === 'crystal') {
-            Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff00ff, 'crystal_fire');
-            Game.addTrauma(1.5); let pCount = AppSettings.isLow ? 5 : (AppSettings.isUltraPC ? 40 : 20);
-            for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
-            AudioEngine.playShoot('explosive_arrow'); 
-            this.active = false; this.mesh.visible = false; // <-- CORRETTO PER IL POOLING
-            return;
-        }
+        if (this.type === 'crystal') {
+            Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff00ff, 'crystal_fire');
+            Game.addTrauma(1.5); let pCount = AppSettings.isLow ? 5 : (AppSettings.isUltraPC ? 40 : 20);
+            for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
+            AudioEngine.playShoot('explosive_arrow'); 
+            this.shadowMesh.visible = false; // <-- FIX: Nascondi l'ombra del cristallo
+            this.active = false; this.mesh.visible = false;
+            return;
+        }
         this.shadowMesh.visible = false;
         AudioEngine.playEnemyDeath();
         Game.player.gainXp(this.xpValue);
@@ -3376,8 +3377,9 @@ class BossEnemy extends Enemy {
     }
     
     onDeath() {
-        AudioEngine.stopBossMusic();
-        AudioEngine.playEnemyDeath();
+        this.shadowMesh.visible = false; // <-- FIX: Nascondi l'ombra del boss
+        AudioEngine.stopBossMusic();
+        AudioEngine.playEnemyDeath();
         Game.player.gainXp(this.xpValue);
         let pCount = AppSettings.isLow ? 10 : (AppSettings.isUltraPC ? 100 : 50); 
         

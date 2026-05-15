@@ -1434,142 +1434,143 @@ const TouchControls = {
 };
 
 const UI = {
-    cache: { hpPct: null, hpText: null, floor: null, enemiesLeft: null, ultActive: null, ultCharge: null, comboOpacity: null, lives: null, level: null, xpPct: null, isBossFloor: false, progressPct: null },
-    els: {},
-    init() { 
-        this.els.hpFill = document.getElementById('ui-hp-fill'); this.els.hpText = document.getElementById('ui-hp-text');
-        this.els.lives = document.getElementById('ui-lives'); this.els.level = document.getElementById('ui-level'); 
-        this.els.xpCircle = document.getElementById('ui-xp-circle');
-        this.els.floor = document.getElementById('ui-floor'); this.els.enemiesLeft = document.getElementById('ui-enemies-left');
-        this.els.enemyLabel = document.getElementById('ui-enemy-label'); 
-        this.els.floorProgress = document.getElementById('ui-floor-progress');
-        this.els.essenceHud = document.getElementById('essence-hud'); this.els.essenceTimer = document.getElementById('essence-timer');
-        this.els.overdriveText = document.getElementById('overdrive-text'); this.els.stacks = [document.getElementById('stack-1'), document.getElementById('stack-2'), document.getElementById('stack-3')];
-        this.els.comboContainer = document.getElementById('combo-container'); this.els.comboText = document.getElementById('combo-text');
-        this.els.comboBar = document.getElementById('combo-bar'); 
-        this.els.btnUlt = document.getElementById('btn-ult');
-        this.els.btnUltFill = document.getElementById('btn-ult-fill');
-        this.els.ultChargeText = document.getElementById('ult-charge-text');
-        this.els.btnShield = document.getElementById('btn-shield');
-        this.els.btnShieldFill = document.getElementById('btn-shield-fill');
-        this.els.btnDash = document.getElementById('btn-dash');
-        this.els.btnDashFill = document.getElementById('btn-dash-fill');
-    },
-    update() {
-        if (!Game.player) return;
-        let hpPct = (Game.player.stats.hp / Game.player.stats.maxHp) * 100; let hpText = `${Math.floor(Game.player.stats.hp)}/${Math.floor(Game.player.stats.maxHp)}`;
-        if (this.cache.hpPct !== hpPct) { this.els.hpFill.style.width = `${hpPct}%`; this.cache.hpPct = hpPct; }
-        if (this.cache.hpText !== hpText) { this.els.hpText.innerText = hpText; this.cache.hpText = hpText; }
-        if (this.cache.lives !== Game.lives) { this.els.lives.innerText = '❤️'.repeat(Math.max(0, Game.lives)); this.cache.lives = Game.lives; }
-        if (this.cache.level !== Game.player.level) { this.els.level.innerText = Game.player.level; this.cache.level = Game.player.level; }
-        
-        let xpPct = (Game.player.xp / Game.player.xpNeeded) * 100; 
-        if (this.cache.xpPct !== xpPct) { this.els.xpCircle.setAttribute('stroke-dasharray', `${xpPct}, 100`); this.cache.xpPct = xpPct; }
-        
-        if (this.cache.isBossFloor !== Game.isBossFloor) { this.els.enemyLabel.innerText = Game.isBossFloor ? "BOSS: " : "DEMONI: "; this.cache.isBossFloor = Game.isBossFloor; }
-        if (this.cache.floor !== Game.floor) { this.els.floor.innerText = Game.floor; this.cache.floor = Game.floor; }
-        
-        let eLeft = Math.max(0, Game.floorMaxKills - Game.floorKills); 
-        if (this.cache.enemiesLeft !== eLeft) { this.els.enemiesLeft.innerText = eLeft; this.cache.enemiesLeft = eLeft; }
-        let progressPct = Game.isBossFloor ? ((Game.floorMaxKills - eLeft) / Game.floorMaxKills) * 100 : Math.min(100, (Game.floorKills / Math.max(1, Game.floorMaxKills - 2)) * 100);
-        if (this.cache.progressPct !== progressPct) { this.els.floorProgress.style.width = `${progressPct}%`; this.cache.progressPct = progressPct; }
-        
-        let hasEssence = Game.player.essenceList.length > 0 || Game.player.overdrive;
-        if (hasEssence) {
-            this.els.essenceHud.classList.remove('opacity-0'); this.els.essenceHud.classList.add('opacity-100');
-            if (Game.player.overdrive) {
-                for(let i=0; i<3; i++) this.els.stacks[i].className = `stack-dot active ${Game.player.essence}`;
-                this.els.overdriveText.classList.remove('hidden'); this.els.overdriveText.innerText = ESSENCE_NAMES[Game.player.essence]; this.els.overdriveText.style.color = '#' + ESSENCE_COLORS[Game.player.essence].toString(16).padStart(6,'0');
-            } else {
-                for(let i=0; i<3; i++) { if (i < Game.player.essenceList.length) this.els.stacks[i].className = `stack-dot active ${Game.player.essenceList[i]}`; else this.els.stacks[i].className = `stack-dot`; }
-                this.els.overdriveText.classList.add('hidden');
-            }
-            let maxTimer = Game.player.overdrive ? (5.0 * Game.player.modifiers.essenceDurationMult) : (8.0 * Game.player.modifiers.essenceDurationMult);
-            this.els.essenceTimer.style.width = `${(Game.player.essenceTimer / maxTimer) * 100}%`;
-        } else { this.els.essenceHud.classList.remove('opacity-100'); this.els.essenceHud.classList.add('opacity-0'); }
+    cache: { hpPct: null, hpText: null, floor: null, enemiesLeft: null, ultActive: null, ultCharge: null, comboOpacity: null, lives: null, level: null, xpPct: null, isBossFloor: false, progressPct: null },
+    els: {},
+    init() { 
+        this.els.hpFill = document.getElementById('ui-hp-fill'); this.els.hpText = document.getElementById('ui-hp-text');
+        this.els.lives = document.getElementById('ui-lives'); this.els.level = document.getElementById('ui-level'); 
+        this.els.xpCircle = document.getElementById('ui-xp-circle');
+        this.els.floor = document.getElementById('ui-floor'); this.els.enemiesLeft = document.getElementById('ui-enemies-left');
+        this.els.enemyLabel = document.getElementById('ui-enemy-label'); 
+        this.els.floorProgress = document.getElementById('ui-floor-progress');
+        this.els.essenceHud = document.getElementById('essence-hud'); this.els.essenceTimer = document.getElementById('essence-timer');
+        this.els.overdriveText = document.getElementById('overdrive-text'); this.els.stacks = [document.getElementById('stack-1'), document.getElementById('stack-2'), document.getElementById('stack-3')];
+        this.els.comboContainer = document.getElementById('combo-container'); this.els.comboText = document.getElementById('combo-text');
+        this.els.comboBar = document.getElementById('combo-bar'); 
+        this.els.btnUlt = document.getElementById('btn-ult');
+        this.els.btnUltFill = document.getElementById('btn-ult-fill');
+        this.els.ultChargeText = document.getElementById('ult-charge-text');
+        this.els.btnShield = document.getElementById('btn-shield');
+        this.els.btnShieldFill = document.getElementById('btn-shield-fill');
+        this.els.btnDash = document.getElementById('btn-dash');
+        this.els.btnDashFill = document.getElementById('btn-dash-fill');
+    },
+    update() {
+        if (!Game.player) return;
+        let hpPct = (Game.player.stats.hp / Game.player.stats.maxHp) * 100; let hpText = `${Math.floor(Game.player.stats.hp)}/${Math.floor(Game.player.stats.maxHp)}`;
+        if (this.cache.hpPct !== hpPct) { this.els.hpFill.style.width = `${hpPct}%`; this.cache.hpPct = hpPct; }
+        if (this.cache.hpText !== hpText) { this.els.hpText.innerText = hpText; this.cache.hpText = hpText; }
+        if (this.cache.lives !== Game.lives) { this.els.lives.innerText = '❤️'.repeat(Math.max(0, Game.lives)); this.cache.lives = Game.lives; }
+        if (this.cache.level !== Game.player.level) { this.els.level.innerText = Game.player.level; this.cache.level = Game.player.level; }
+        
+        let xpPct = (Game.player.xp / Game.player.xpNeeded) * 100; 
+        if (this.cache.xpPct !== xpPct) { this.els.xpCircle.setAttribute('stroke-dasharray', `${xpPct}, 100`); this.cache.xpPct = xpPct; }
+        
+        if (this.cache.isBossFloor !== Game.isBossFloor) { this.els.enemyLabel.innerText = Game.isBossFloor ? "BOSS: " : "DEMONI: "; this.cache.isBossFloor = Game.isBossFloor; }
+        if (this.cache.floor !== Game.floor) { this.els.floor.innerText = Game.floor; this.cache.floor = Game.floor; }
+        
+        let eLeft = Math.max(0, Game.floorMaxKills - Game.floorKills); 
+        if (this.cache.enemiesLeft !== eLeft) { this.els.enemiesLeft.innerText = eLeft; this.cache.enemiesLeft = eLeft; }
+        let progressPct = Game.isBossFloor ? ((Game.floorMaxKills - eLeft) / Game.floorMaxKills) * 100 : Math.min(100, (Game.floorKills / Math.max(1, Game.floorMaxKills - 2)) * 100);
+        if (this.cache.progressPct !== progressPct) { this.els.floorProgress.style.width = `${progressPct}%`; this.cache.progressPct = progressPct; }
+        
+        let hasEssence = Game.player.essenceList.length > 0 || Game.player.overdrive;
+        if (hasEssence) {
+            this.els.essenceHud.classList.remove('opacity-0'); this.els.essenceHud.classList.add('opacity-100');
+            if (Game.player.overdrive) {
+                for(let i=0; i<3; i++) this.els.stacks[i].className = `stack-dot active ${Game.player.essence}`;
+                this.els.overdriveText.classList.remove('hidden'); this.els.overdriveText.innerText = ESSENCE_NAMES[Game.player.essence]; this.els.overdriveText.style.color = '#' + ESSENCE_COLORS[Game.player.essence].toString(16).padStart(6,'0');
+            } else {
+                for(let i=0; i<3; i++) { if (i < Game.player.essenceList.length) this.els.stacks[i].className = `stack-dot active ${Game.player.essenceList[i]}`; else this.els.stacks[i].className = `stack-dot`; }
+                this.els.overdriveText.classList.add('hidden');
+            }
+            let maxTimer = Game.player.overdrive ? (5.0 * Game.player.modifiers.essenceDurationMult) : (8.0 * Game.player.modifiers.essenceDurationMult);
+            this.els.essenceTimer.style.width = `${(Game.player.essenceTimer / maxTimer) * 100}%`;
+        } else { this.els.essenceHud.classList.remove('opacity-100'); this.els.essenceHud.classList.add('opacity-0'); }
 
-        if (Game.ultimateActive) {
-    let uPct = `${(Game.ultimateTimer / (10.0 + Game.player.modifiers.ascensionDurationAdd)) * 100}%`;
-    if(this.cache.ultCharge !== uPct || !this.cache.ultActive) {
-        if(this.els.btnUltFill) { this.els.btnUltFill.style.height = uPct; this.els.btnUltFill.className = "absolute bottom-0 left-0 w-full bg-white transition-all duration-200 pointer-events-none"; }
-        if(this.els.btnUlt) { this.els.btnUlt.classList.add('opacity-100', 'border-cyan-400', 'ult-ready'); this.els.btnUlt.classList.remove('opacity-75', 'border-gray-600'); }
-        if(this.els.ultChargeText) { this.els.ultChargeText.innerText = "ON"; }
-        this.cache.ultCharge = uPct; this.cache.ultActive = true;
-    }
-} else {
-    let uPct = `${Game.ultimateCharge}%`;
-    if (this.cache.ultCharge !== uPct || this.cache.ultActive) {
-        if(this.els.btnUltFill) { this.els.btnUltFill.style.height = uPct; this.els.btnUltFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-200 pointer-events-none"; }
-        
-        if (Game.ultimateCharge >= 100) {
-            if(this.els.btnUlt) { this.els.btnUlt.classList.add('opacity-100', 'border-cyan-300', 'ult-ready'); this.els.btnUlt.classList.remove('opacity-75', 'border-gray-600'); }
-            if(this.els.ultChargeText) { this.els.ultChargeText.innerText = "MAX"; this.els.ultChargeText.classList.add('animate-pulse', 'text-cyan-200'); }
-        } else {
-            if(this.els.btnUlt) { this.els.btnUlt.classList.add('opacity-75', 'border-gray-600'); this.els.btnUlt.classList.remove('opacity-100', 'border-cyan-300', 'ult-ready'); }
-            if(this.els.ultChargeText) { this.els.ultChargeText.innerText = Math.floor(Game.ultimateCharge) + "%"; this.els.ultChargeText.classList.remove('animate-pulse', 'text-cyan-200'); }
-        }
-        this.cache.ultCharge = uPct; this.cache.ultActive = false;
-    }
-}
+        if (Game.ultimateActive) {
+            let uPct = `${(Game.ultimateTimer / (10.0 + Game.player.modifiers.ascensionDurationAdd)) * 100}%`;
+            if(this.cache.ultCharge !== uPct || !this.cache.ultActive) {
+                if(this.els.btnUltFill) { this.els.btnUltFill.style.height = uPct; this.els.btnUltFill.className = "absolute bottom-0 left-0 w-full bg-white transition-all duration-200 pointer-events-none"; }
+                if(this.els.btnUlt) { this.els.btnUlt.classList.add('opacity-100', 'border-cyan-400', 'ult-ready'); this.els.btnUlt.classList.remove('opacity-75', 'border-gray-600'); }
+                if(this.els.ultChargeText) { this.els.ultChargeText.innerText = "ON"; }
+                this.cache.ultCharge = uPct; this.cache.ultActive = true;
+            }
+        } else {
+            let uPct = `${Game.ultimateCharge}%`;
+            if (this.cache.ultCharge !== uPct || this.cache.ultActive) {
+                if(this.els.btnUltFill) { this.els.btnUltFill.style.height = uPct; this.els.btnUltFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-200 pointer-events-none"; }
+                
+                if (Game.ultimateCharge >= 100) {
+                    if(this.els.btnUlt) { this.els.btnUlt.classList.add('opacity-100', 'border-cyan-300', 'ult-ready'); this.els.btnUlt.classList.remove('opacity-75', 'border-gray-600'); }
+                    if(this.els.ultChargeText) { this.els.ultChargeText.innerText = "MAX"; this.els.ultChargeText.classList.add('animate-pulse', 'text-cyan-200'); }
+                } else {
+                    if(this.els.btnUlt) { this.els.btnUlt.classList.add('opacity-75', 'border-gray-600'); this.els.btnUlt.classList.remove('opacity-100', 'border-cyan-300', 'ult-ready'); }
+                    if(this.els.ultChargeText) { this.els.ultChargeText.innerText = Math.floor(Game.ultimateCharge) + "%"; this.els.ultChargeText.classList.remove('animate-pulse', 'text-cyan-200'); }
+                }
+                this.cache.ultCharge = uPct; this.cache.ultActive = false;
+            }
+        }
 
-        let isCombo = Game.combo > 0;
-        if (this.cache.comboOpacity !== isCombo) { 
-            if (isCombo) { this.els.comboContainer.classList.remove('opacity-0'); this.els.comboContainer.classList.add('opacity-100'); } 
-            else { this.els.comboContainer.classList.remove('opacity-100'); this.els.comboContainer.classList.add('opacity-0'); }
-            this.cache.comboOpacity = isCombo; 
-        }
-        if (isCombo) this.els.comboBar.style.width = `${(Game.comboTimer / Game.comboMaxTime) * 100}%`;
+        let isCombo = Game.combo > 0;
+        if (this.cache.comboOpacity !== isCombo) { 
+            if (isCombo) { this.els.comboContainer.classList.remove('opacity-0'); this.els.comboContainer.classList.add('opacity-100'); } 
+            else { this.els.comboContainer.classList.remove('opacity-100'); this.els.comboContainer.classList.add('opacity-0'); }
+            this.cache.comboOpacity = isCombo; 
+        }
+        if (isCombo) this.els.comboBar.style.width = `${(Game.comboTimer / Game.comboMaxTime) * 100}%`;
+        
         // Update Scudo Attivo
-        if (Game.player.activeShieldTimer > 0) {
-            if (this.els.btnShield) {
-                this.els.btnShield.classList.add('border-blue-400', 'opacity-100');
-                this.els.btnShield.classList.remove('border-gray-600', 'opacity-75');
-                this.els.btnShieldFill.style.height = '100%';
-                this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-white transition-all duration-100 pointer-events-none";
-            }
-        } else {
-            if (this.els.btnShield) {
-                let cdPct = Game.player.activeShieldCooldown > 0 ? (1 - (Game.player.activeShieldCooldown / 8.0)) * 100 : 100;
-                this.els.btnShieldFill.style.height = `${cdPct}%`;
-                this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-blue-500/50 transition-all duration-100 pointer-events-none";
-                if (Game.player.activeShieldCooldown <= 0) {
-                    this.els.btnShield.classList.add('border-blue-400', 'opacity-100');
-                    this.els.btnShield.classList.remove('border-gray-600', 'opacity-75');
-                } else {
-                    this.els.btnShield.classList.remove('border-blue-400', 'opacity-100');
-                    this.els.btnShield.classList.add('border-gray-600', 'opacity-75');
-                }
-            }
-        }
-    },
-    // Update Scatto Attivo (Dash)
-        if (this.els.btnDash) {
-            let maxDashCd = 1.0 * Game.player.modifiers.dashCooldownMult; 
-            let dashCdPct = Game.player.dashCooldown > 0 ? (1 - (Game.player.dashCooldown / maxDashCd)) * 100 : 100;
-            
-            this.els.btnDashFill.style.height = `${dashCdPct}%`;
-            
-            if (Game.player.dashCooldown <= 0) {
-                this.els.btnDash.classList.add('border-blue-400', 'opacity-100');
-                this.els.btnDash.classList.remove('border-gray-600', 'opacity-75');
-                this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-blue-500/50 transition-all duration-100 pointer-events-none";
-            } else {
-                this.els.btnDash.classList.remove('border-blue-400', 'opacity-100');
-                this.els.btnDash.classList.add('border-gray-600', 'opacity-75');
-                this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-gray-500/50 transition-all duration-100 pointer-events-none";
-            }
-        }
-    },
-    
-    triggerComboAnim(combo) {
-        this.els.comboText.innerText = `x${combo} HITS!`;
-        let scale = isTouchDevice ? (1 + Math.min(combo * 0.03, 0.4)) : (1 + Math.min(combo * 0.015, 0.4)); 
-        this.els.comboText.style.transform = `scale(${scale})`;
-        let shadow = "0 0 15px #ffaa00, 0 0 5px #ff0000, 2px 2px 0 #000"; if (!isTouchDevice) shadow = "0 0 30px #ffaa00, 0 0 10px #ff0000, 4px 4px 0 #000";
-        if(combo > 50) shadow = isTouchDevice ? "0 0 20px #ff00ff, 0 0 10px #ff0000, 2px 2px 0 #000" : "0 0 30px #ff00ff, 0 0 10px #ff0000, 4px 4px 0 #000";
-        else if(combo > 20) shadow = isTouchDevice ? "0 0 20px #ff0000, 0 0 10px #ff0000, 2px 2px 0 #000" : "0 0 30px #ff0000, 0 0 10px #ff0000, 4px 4px 0 #000";
-        this.els.comboText.style.textShadow = shadow; setTimeout(() => { this.els.comboText.style.transform = `scale(${1 + Math.min(combo * 0.01, 0.15)})`; }, 50);
-    }
+        if (Game.player.activeShieldTimer > 0) {
+            if (this.els.btnShield) {
+                this.els.btnShield.classList.add('border-blue-400', 'opacity-100');
+                this.els.btnShield.classList.remove('border-gray-600', 'opacity-75');
+                this.els.btnShieldFill.style.height = '100%';
+                this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-white transition-all duration-100 pointer-events-none";
+            }
+        } else {
+            if (this.els.btnShield) {
+                let cdPct = Game.player.activeShieldCooldown > 0 ? (1 - (Game.player.activeShieldCooldown / 8.0)) * 100 : 100;
+                this.els.btnShieldFill.style.height = `${cdPct}%`;
+                this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-blue-500/50 transition-all duration-100 pointer-events-none";
+                if (Game.player.activeShieldCooldown <= 0) {
+                    this.els.btnShield.classList.add('border-blue-400', 'opacity-100');
+                    this.els.btnShield.classList.remove('border-gray-600', 'opacity-75');
+                } else {
+                    this.els.btnShield.classList.remove('border-blue-400', 'opacity-100');
+                    this.els.btnShield.classList.add('border-gray-600', 'opacity-75');
+                }
+            }
+        }
+
+        // Update Scatto Attivo (Dash)
+        if (this.els.btnDash) {
+            let maxDashCd = 1.0 * Game.player.modifiers.dashCooldownMult; 
+            let dashCdPct = Game.player.dashCooldown > 0 ? (1 - (Game.player.dashCooldown / maxDashCd)) * 100 : 100;
+            
+            this.els.btnDashFill.style.height = `${dashCdPct}%`;
+            
+            if (Game.player.dashCooldown <= 0) {
+                this.els.btnDash.classList.add('border-blue-400', 'opacity-100');
+                this.els.btnDash.classList.remove('border-gray-600', 'opacity-75');
+                this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-blue-500/50 transition-all duration-100 pointer-events-none";
+            } else {
+                this.els.btnDash.classList.remove('border-blue-400', 'opacity-100');
+                this.els.btnDash.classList.add('border-gray-600', 'opacity-75');
+                this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-gray-500/50 transition-all duration-100 pointer-events-none";
+            }
+        }
+    }, 
+    
+    triggerComboAnim(combo) {
+        this.els.comboText.innerText = `x${combo} HITS!`;
+        let scale = isTouchDevice ? (1 + Math.min(combo * 0.03, 0.4)) : (1 + Math.min(combo * 0.015, 0.4)); 
+        this.els.comboText.style.transform = `scale(${scale})`;
+        let shadow = "0 0 15px #ffaa00, 0 0 5px #ff0000, 2px 2px 0 #000"; if (!isTouchDevice) shadow = "0 0 30px #ffaa00, 0 0 10px #ff0000, 4px 4px 0 #000";
+        if(combo > 50) shadow = isTouchDevice ? "0 0 20px #ff00ff, 0 0 10px #ff0000, 2px 2px 0 #000" : "0 0 30px #ff00ff, 0 0 10px #ff0000, 4px 4px 0 #000";
+        else if(combo > 20) shadow = isTouchDevice ? "0 0 20px #ff0000, 0 0 10px #ff0000, 2px 2px 0 #000" : "0 0 30px #ff0000, 0 0 10px #ff0000, 4px 4px 0 #000";
+        this.els.comboText.style.textShadow = shadow; setTimeout(() => { this.els.comboText.style.transform = `scale(${1 + Math.min(combo * 0.01, 0.15)})`; }, 50);
+    }
 };
 const Game = {
     scene: null, camera: null, renderer: null, raycaster: new THREE.Raycaster(), uiCanvas: document.getElementById('uiCanvas'), uiCtx: null,

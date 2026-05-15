@@ -3746,10 +3746,10 @@ function clearScene() {
         for(let i=0; i<Game.enemyPool.length; i++) { 
             Game.enemyPool[i].active = false; 
             Game.enemyPool[i].mesh.visible = false; 
-            if(Game.enemyPool[i].shadowMesh) Game.enemyPool[i].shadowMesh.visible = false; // <- Aggiungi questo
+            if(Game.enemyPool[i].shadowMesh) Game.enemyPool[i].shadowMesh.visible = false; 
         }
     }
-    }
+    
     for(let i=0, len=Game.projectiles.length; i<len; i++) { Game.projectiles[i].active = false; Game.projectiles[i].group.visible = false; }
     for(let i=0, len=Game.hazards.length; i<len; i++) { Game.hazards[i].active = false; Game.hazards[i].group.visible = false; }
     for(let i=0, len=Game.particles.length; i<len; i++) { Game.particles[i].active = false; Game.particles[i].mesh.visible = false; }
@@ -3758,9 +3758,10 @@ function clearScene() {
     for(let i=0, len=Game.dashLines.length; i<len; i++) { Game.dashLines[i].active = false; Game.dashLines[i].mesh.visible = false; }
     for(let i=0, len=Game.essences.length; i<len; i++) { Game.essences[i].destroy(); }
     for(let i=0, len=Game.extraLivesDrops.length; i<len; i++) { Game.extraLivesDrops[i].destroy(); }
+    
     if(Game.player) {
         Game.scene.remove(Game.player.mesh);
-        Game.player.shadowMesh.visible = false; // <- Aggiungi questo
+        if(Game.player.shadowMesh) Game.player.shadowMesh.visible = false; 
     }
 }
 

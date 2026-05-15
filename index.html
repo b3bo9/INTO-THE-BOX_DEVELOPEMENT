@@ -154,7 +154,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 97</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 98</p>
                 </div>
             </div>
         </div>
@@ -1138,23 +1138,26 @@ function createBlobShadowTexture() {
 const BLOB_SHADOW_TEX = createBlobShadowTexture();
 const BLOOD_TEX = createPatternTexture('blood'); const GLOW_TEX = createGlowTexture();
 const SharedMat = {
-    blood: new THREE.MeshStandardMaterial({map: BLOOD_TEX, transparent: true, opacity: 0.85, depthWrite: false, roughness: 0.8}),
-    spriteLevel: new THREE.SpriteMaterial({color: 0xffffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
-    spriteRed: new THREE.SpriteMaterial({color: ESSENCE_COLORS.red, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
-    spriteBlue: new THREE.SpriteMaterial({color: ESSENCE_COLORS.blue, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
-    spriteGreen: new THREE.SpriteMaterial({color: ESSENCE_COLORS.green, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
-    spriteWhite: new THREE.SpriteMaterial({color: 0xffffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
-    spritePink: new THREE.SpriteMaterial({color: 0xff66bb, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
-    spriteBlood: new THREE.SpriteMaterial({color: 0xaa0000, map: GLOW_TEX, transparent: true, depthWrite: false}),
+    blood: new THREE.MeshStandardMaterial({map: BLOOD_TEX, transparent: true, opacity: 0.85, depthWrite: false, roughness: 0.8}),
     
-    arrow: new THREE.MeshPhongMaterial({color: 0x888888, emissive: 0x444444}),
-    homingArrow: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.green, emissiveIntensity: 2.0}),
-    explosiveArrow: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.red, emissiveIntensity: 2.0}),
-    chainLightning: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.blue, emissiveIntensity: 2.0}),
-    enemyFireball: new THREE.MeshPhongMaterial({color: 0x220000, emissive: 0xff3300, emissiveIntensity: 2.0}), 
-    enemyBolt: new THREE.MeshPhongMaterial({color: 0x220022, emissive: 0xaa00ff, emissiveIntensity: 2.0}), 
-    fireShape: new THREE.MeshPhongMaterial({color: 0x220000, emissive: 0xff3300, emissiveIntensity: 2.0}),
-    blobShadow: new THREE.MeshBasicMaterial({map: BLOB_SHADOW_TEX, transparent: true, depthWrite: false}),
+    // FIX: Aggiunto depthTest: false per evitare il "taglio" sul pavimento e opacity: 0.6 per bilanciare il nuovo Bloom!
+    spriteLevel: new THREE.SpriteMaterial({color: 0xffffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, opacity: 0.6}),
+    spriteRed: new THREE.SpriteMaterial({color: ESSENCE_COLORS.red, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, opacity: 0.6}),
+    spriteBlue: new THREE.SpriteMaterial({color: ESSENCE_COLORS.blue, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, opacity: 0.6}),
+    spriteGreen: new THREE.SpriteMaterial({color: ESSENCE_COLORS.green, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, opacity: 0.6}),
+    spriteWhite: new THREE.SpriteMaterial({color: 0xffffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, opacity: 0.6}),
+    spritePink: new THREE.SpriteMaterial({color: 0xff66bb, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, opacity: 0.6}),
+    
+    spriteBlood: new THREE.SpriteMaterial({color: 0xaa0000, map: GLOW_TEX, transparent: true, depthWrite: false}), // Il sangue rimane inalterato
+    
+    arrow: new THREE.MeshPhongMaterial({color: 0x888888, emissive: 0x444444}),
+    homingArrow: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.green, emissiveIntensity: 2.0}),
+    explosiveArrow: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.red, emissiveIntensity: 2.0}),
+    chainLightning: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.blue, emissiveIntensity: 2.0}),
+    enemyFireball: new THREE.MeshPhongMaterial({color: 0x220000, emissive: 0xff3300, emissiveIntensity: 2.0}), 
+    enemyBolt: new THREE.MeshPhongMaterial({color: 0x220022, emissive: 0xaa00ff, emissiveIntensity: 2.0}), 
+    fireShape: new THREE.MeshPhongMaterial({color: 0x220000, emissive: 0xff3300, emissiveIntensity: 2.0}),
+    blobShadow: new THREE.MeshBasicMaterial({map: BLOB_SHADOW_TEX, transparent: true, depthWrite: false}),
     
     hazardFirePlane: new THREE.MeshBasicMaterial({color: 0xff3300, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}),
     hazardFireRing: new THREE.MeshBasicMaterial({color: 0xffaa00, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}),

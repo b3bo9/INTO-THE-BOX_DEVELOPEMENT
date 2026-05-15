@@ -130,7 +130,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 91</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 92</p>
                 </div>
             </div>
         </div>
@@ -380,7 +380,11 @@
         <div id="joy-right-zone" class="absolute bottom-8 right-8 sm:bottom-12 sm:right-12 landscape:bottom-6 landscape:right-12 w-32 h-32 bg-red-500/10 rounded-full border border-red-500/20 pointer-events-auto touch-none">
             <div id="joy-right-stick" class="absolute top-1/2 left-1/2 w-14 h-14 bg-red-500/50 rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-[0_0_15px_rgba(255,0,0,0.5)] backdrop-blur-sm pointer-events-none transition-transform duration-75"></div>
         </div>
-        <button id="btn-dash" class="absolute bottom-32 right-[8.5rem] landscape:bottom-6 landscape:right-48 w-14 h-14 bg-blue-500/40 backdrop-blur-md rounded-full border border-blue-400 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(0,100,255,0.6)] active:scale-90 active:bg-blue-500/70 transition-all flex items-center justify-center touch-none"><i class="fa-solid fa-bolt text-xl"></i></button>
+       <button id="btn-dash" class="absolute bottom-32 right-[8.5rem] landscape:bottom-6 landscape:right-48 w-14 h-14 bg-black/60 backdrop-blur-md rounded-full border-2 border-gray-600 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(0,0,0,0.8)] opacity-75 transition-all flex items-center justify-center touch-none overflow-hidden group">
+            <div id="btn-dash-fill" class="absolute bottom-0 left-0 w-full bg-blue-500/50 h-0 transition-all duration-100 pointer-events-none"></div>
+            <i class="fa-solid fa-bolt text-2xl relative z-10 drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"></i>
+            <span class="absolute -top-6 text-[10px] text-gray-400 font-bold hidden lg:block tracking-widest whitespace-nowrap">SPAZIO</span>
+        </button>
        
     </div>
 
@@ -1448,6 +1452,8 @@ const UI = {
         this.els.ultChargeText = document.getElementById('ult-charge-text');
         this.els.btnShield = document.getElementById('btn-shield');
         this.els.btnShieldFill = document.getElementById('btn-shield-fill');
+        this.els.btnDash = document.getElementById('btn-dash');
+        this.els.btnDashFill = document.getElementById('btn-dash-fill');
     },
     update() {
         if (!Game.player) return;
@@ -1545,6 +1551,24 @@ const UI = {
         else if(combo > 20) shadow = isTouchDevice ? "0 0 20px #ff0000, 0 0 10px #ff0000, 2px 2px 0 #000" : "0 0 30px #ff0000, 0 0 10px #ff0000, 4px 4px 0 #000";
         this.els.comboText.style.textShadow = shadow; setTimeout(() => { this.els.comboText.style.transform = `scale(${1 + Math.min(combo * 0.01, 0.15)})`; }, 50);
     }
+    // Update Scatto Attivo (Dash)
+        if (this.els.btnDash) {
+            // Il cooldown massimo tiene conto anche delle reliquie che lo riducono
+            let maxDashCd = 1.0 * Game.player.modifiers.dashCooldownMult; 
+            let dashCdPct = Game.player.dashCooldown > 0 ? (1 - (Game.player.dashCooldown / maxDashCd)) * 100 : 100;
+            
+            this.els.btnDashFill.style.height = `${dashCdPct}%`;
+            
+            if (Game.player.dashCooldown <= 0) {
+                this.els.btnDash.classList.add('border-blue-400', 'opacity-100');
+                this.els.btnDash.classList.remove('border-gray-600', 'opacity-75');
+                this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-blue-500/50 transition-all duration-100 pointer-events-none";
+            } else {
+                this.els.btnDash.classList.remove('border-blue-400', 'opacity-100');
+                this.els.btnDash.classList.add('border-gray-600', 'opacity-75');
+                this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-gray-500/50 transition-all duration-100 pointer-events-none";
+            }
+        }
 };
 
 const Game = {

@@ -1832,8 +1832,8 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
     },
     
     update(dt) {
-        for (let i = 0, len = this.debris.length; i < len; i++) if(this.debris[i].active) this.debris[i].update(dt);
         if (this.state !== 'PLAYING') return;
+        for (let i = 0, len = this.debris.length; i < len; i++) if(this.debris[i].active) this.debris[i].update(dt);
         this.frameCount++; this.playTime += dt; 
         
         this.animBounce = Math.sin(this.frameCount * 0.4) * 4;

@@ -2472,8 +2472,13 @@ class Player extends Entity {
         }
         
         if (this.dashCooldown > 0) this.dashCooldown -= dt;
+        
+        // Calcolo rotazione base (mirino)
         if (Game.inputs.right.active) { this.angle = Math.atan2(Game.inputs.right.y, Game.inputs.right.x); } else if (!isTouchDevice || Game.mouse.leftDown) { this.angle = Math.atan2(Game.mouse.worldY - this.y, Game.mouse.worldX - this.x); }
-        this.mesh.rotation.y = -this.angle + Math.PI/2;
+        
+        // ---> MODIFICA ROTAZIONE: Se scatta, il modello si orienta fisicamente verso la direzione dello scatto
+        let displayAngle = this.isDashing ? this.dashAngle : this.angle;
+        this.mesh.rotation.y = -displayAngle + Math.PI/2;
         
         let flowCapMult = this.modifiers.flowMastery ? 2 : 1;
         let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult;
@@ -2483,18 +2488,44 @@ class Player extends Entity {
         let isShooting = Game.mouse.leftDown || Game.inputs.right.active;
         if (this.overdrive && this.essence === 'red' && isShooting && !this.isDashing) this.flamethrower(dt);
         
+        // ---> BLOCCO DI MOVIMENTO E SQUASH & STRETCH
         if (!this.isDashing) {
             let dx = 0, dy = 0;
             if (Game.keys['w']) dy -= 1; if (Game.keys['s']) dy += 1; if (Game.keys['a']) dx -= 1; if (Game.keys['d']) dx += 1;
             if (Game.inputs.left.active) { dx = Game.inputs.left.x; dy = Game.inputs.left.y; }
             if (dx !== 0 || dy !== 0) { this.speed = currentSpeed; this.move(dx, dy, dt); this.mesh.position.y = Game.animBounce * 0.75; } else { this.mesh.position.y = 0; }
+            
+            // Assicuriamoci che la scala torni normale quando non scatta
+            this.mesh.scale.set(1, 1, 1); 
         } else {
             this.dashTimer -= dt;
+            
+            // --- INIZIO SQUASH & STRETCH ---
+            // 0.25 è la durata totale fissa dello scatto che hai impostato in dash()
+            let progress = this.dashTimer / 0.25; 
+            
+            // La curva sale morbida a 1 e torna a 0
+            let stretchCurve = Math.sin(progress * Math.PI); 
+            
+            // L'asse Z è la direzione in cui guarda il modello. Lo allunghiamo dell'80%
+            let stretch = 1.0 + (stretchCurve * 0.8); 
+            // Gli assi X e Y vengono schiacciati del 40% per mantenere il "volume" percepito
+            let squash = 1.0 - (stretchCurve * 0.4);  
+            
+            this.mesh.scale.set(squash, squash, stretch);
+            // --- FINE SQUASH & STRETCH ---
+
             if (this.essence === 'red' && Game.frameCount % 8 === 0) Game.getHazard().spawn(this.x, this.y, 25, 3.0, this.stats.maxDmg * 0.5, ESSENCE_COLORS.red, 'fire');
             if (this.modifiers.fireTrail && Game.frameCount % 5 === 0) Game.getHazard().spawn(this.x, this.y, 20, 1.5, this.stats.maxDmg * 0.8, 0xffaa00, 'fire');
             this.move(Math.cos(this.dashAngle), Math.sin(this.dashAngle), dt * 4.0);
-            if (this.dashTimer <= 0) { this.isDashing = false; if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); Game.addTrauma(0.5); } }
+            
+            if (this.dashTimer <= 0) { 
+                this.isDashing = false; 
+                this.mesh.scale.set(1, 1, 1); // Reset immediato e di sicurezza a fine scatto
+                if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); Game.addTrauma(0.5); } 
+            }
         }
+
         this.attackTimer -= dt;
         if (isShooting && this.attackTimer <= 0 && !this.isDashing && !(this.overdrive && this.essence === 'red')) this.attack();
         if (this.isAttacking) { this.attackSwing += dt * 30; this.modelParts.weaponGroup.rotation.x = -Math.PI/2 + this.attackSwing; if (this.attackSwing > Math.PI) { this.isAttacking = false; this.modelParts.weaponGroup.rotation.x = 0; } }

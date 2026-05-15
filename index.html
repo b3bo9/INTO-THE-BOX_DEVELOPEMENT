@@ -130,7 +130,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 85</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 86</p>
                 </div>
             </div>
         </div>
@@ -2953,31 +2953,27 @@ class Enemy extends Entity {
         AudioEngine.playEnemyDeath();
         Game.player.gainXp(this.xpValue);
         let cHex = this.mat.color.getHex();
+        this.mesh.updateMatrixWorld(true);
 
-// Aggiorna le matrici mondiali prima di smembrare il modello
-this.mesh.updateMatrixWorld(true);
+        const _pos = new THREE.Vector3();
+        const _quat = new THREE.Quaternion();
+        const _scale = new THREE.Vector3();
 
-// Usiamo vettori temporanei per evitare Garbage Collection
-const _pos = new THREE.Vector3();
-const _quat = new THREE.Quaternion();
-const _scale = new THREE.Vector3();
+        this.mesh.traverse((child) => {
+            if (child.isMesh && child.geometry && child.material !== SharedMat.enemyEye) {
+                
+                // SALVA CPU & RIDUCI CONFUSIONE: 
+                // Genera solo il 70% dei frammenti a caso (salta il 30%)
+                if (Math.random() > 0.7) return; 
 
-// Attraversa tutti i sottomesh del nemico (testa, braccia, torso, ecc.)
-this.mesh.traverse((child) => {
-    // Se è un pezzo solido con geometria (esclude i gruppi vuoti o i materiali invisibili)
-    if (child.isMesh && child.geometry) {
-        // Ignoriamo gli occhi rossi o elementi puramente decorativi se vogliamo (opzionale)
-        if (child.material === SharedMat.enemyEye) return;
-
-        // Estrae posizione, rotazione e scala ASSOLUTA nel mondo 3D
-        child.getWorldPosition(_pos);
-        child.getWorldQuaternion(_quat);
-        child.getWorldScale(_scale);
-
-        // Prende un detrito dal pool e gli assegna i dati di questo pezzo esatto
-        Game.getDebris().spawn(_pos, _quat, _scale, child.geometry, cHex, this.isElite);
-    }
-});
+                child.getWorldPosition(_pos);
+                child.getWorldQuaternion(_quat);
+                child.getWorldScale(_scale);
+                
+                // Passiamo "this.radius" per bloccare il gigantismo
+                Game.getDebris().spawn(_pos, _quat, _scale, child.geometry, cHex, this.radius, this.isElite);
+            }
+        });
         let pCount = AppSettings.isLow ? 2 : (isTouchDevice ? 3 : (AppSettings.isUltraPC ? 30 : 15)); for(let i=0; i< pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
         
         if (Game.player.modifiers.vampirismMaxHp > 0 && Math.random() < 0.10) { 
@@ -3489,46 +3485,48 @@ class Particle {
 class Debris {
     constructor() {
         this.active = false;
-        // Il materiale è generico, la geometria verrà sovrascritta dinamicamente
         this.mesh = new THREE.Mesh(SharedGeo.tetrahedron, new THREE.MeshStandardMaterial({roughness: 0.8, metalness: 0.2}));
         this.mesh.matrixAutoUpdate = false; 
         this.mesh.visible = false; 
-        this.mesh.castShadow = true;
+        
+        // SALVA CPU: Disabilitiamo le ombre per i frammenti
+        this.mesh.castShadow = false; 
+        this.mesh.receiveShadow = false;
         Game.scene.add(this.mesh);
     }
     
-    // Nuovo metodo spawn che accetta i dati del pezzo originale
-    spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, isElite = false) {
+    // NOTA: Abbiamo aggiunto 'enemyRadius' ai parametri
+    spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, enemyRadius, isElite = false) {
         this.active = true;
         
-        // Copia la geometria (per riferimento, costo CPU quasi zero)
         this.mesh.geometry = geometry;
         this.mesh.material.color.setHex(colorHex);
         this.mesh.material.emissive.setHex(isElite ? 0x440000 : 0x000000);
         
-        // Applica i trasform globali del pezzo prima che il nemico sparisse
         this.mesh.position.copy(worldPos);
         this.mesh.quaternion.copy(worldQuat);
         
-        // Salviamo la scala base (potrebbe non essere uniforme, es: un braccio è lungo e stretto)
-        this.baseScaleX = scaleVec.x;
-        this.baseScaleY = scaleVec.y;
-        this.baseScaleZ = scaleVec.z;
-        this.mesh.scale.copy(scaleVec);
+        // FIX GIGANTISMO: 
+        // Prendiamo la scala più grande del pezzo, ma le IMPONIAMO un limite 
+        // basato sulla dimensione base del nemico. Così è impossibile che diventi enorme.
+        let maxScale = Math.max(scaleVec.x, scaleVec.y, scaleVec.z);
+        maxScale = Math.min(maxScale, enemyRadius * 1.5); 
         
-        // Genera la fisica dell'esplosione
+        this.baseScale = maxScale;
+        this.mesh.scale.setScalar(this.baseScale); // Forza una scala uniforme per evitare distorsioni
+        
+        // FISICA CONTENUTA ("Crollo" invece di esplosione)
         let a = Math.random() * Math.PI * 2;
-        let speed = MathUtils.randomRange(150, 400);
+        let speed = MathUtils.randomRange(20, 70); // Spinta orizzontale bassissima
         this.vx = Math.cos(a) * speed;
         this.vz = Math.sin(a) * speed;
-        this.vy = MathUtils.randomRange(300, 600); // Spinta in alto
+        this.vy = MathUtils.randomRange(100, 200); // Piccolo balzo verso l'alto
         
-        // Rotazione caotica
-        this.rx = MathUtils.randomRange(-10, 10);
-        this.ry = MathUtils.randomRange(-10, 10);
-        this.rz = MathUtils.randomRange(-10, 10);
+        this.rx = MathUtils.randomRange(-5, 5);
+        this.ry = MathUtils.randomRange(-5, 5);
+        this.rz = MathUtils.randomRange(-5, 5);
         
-        this.life = MathUtils.randomRange(1.0, 2.0);
+        this.life = 1.0; // Durano al massimo 1 secondo
         this.maxLife = this.life;
         this.mesh.visible = true;
         this.mesh.updateMatrix();
@@ -3537,7 +3535,7 @@ class Debris {
     update(dt) {
         if (!this.active) return;
         
-        this.vy -= 1200 * dt; // Gravità
+        this.vy -= 900 * dt; // Gravità forte, cadono subito
         
         this.mesh.position.x += this.vx * dt;
         this.mesh.position.y += this.vy * dt;
@@ -3547,22 +3545,25 @@ class Debris {
         this.mesh.rotation.y += this.ry * dt;
         this.mesh.rotation.z += this.rz * dt;
         
-        // Rimbalzo sul terreno basato grossomodo sulla sua altezza
-        let floorLimit = Math.min(this.baseScaleX, this.baseScaleY) * 0.5;
+        // PAVIMENTO
+        let floorLimit = this.baseScale * 0.4;
         if (this.mesh.position.y < floorLimit) {
             this.mesh.position.y = floorLimit;
-            this.vy *= -0.4;
-            this.vx *= 0.6;
+            this.vy = 0; // Zero rimbalzo
+            this.vx *= 0.6; // Scivolano e si fermano quasi subito
             this.vz *= 0.6;
+            this.rx *= 0.5; // Smettono di ruotare
+            this.ry *= 0.5;
+            this.rz *= 0.5;
         }
         
-        // Riduce le dimensioni fino a scomparire
+        // Rimpicciolimento rapido solo alla fine della loro vita (ultimo 30%)
         let pct = this.life / this.maxLife;
-        this.mesh.scale.set(
-            Math.max(0.01, this.baseScaleX * pct),
-            Math.max(0.01, this.baseScaleY * pct),
-            Math.max(0.01, this.baseScaleZ * pct)
-        );
+        if (pct < 0.3) {
+            let shrink = pct / 0.3; // scala da 1 a 0
+            this.mesh.scale.setScalar(Math.max(0.001, this.baseScale * shrink));
+        }
+        
         this.mesh.updateMatrix();
         
         this.life -= dt;

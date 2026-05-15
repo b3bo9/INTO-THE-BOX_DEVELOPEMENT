@@ -386,6 +386,11 @@
 
     <!-- HUD IN-GAME -->
     <div id="hud" class="absolute inset-0 pointer-events-none hidden z-10">
+        <!-- INIZIO FPS COUNTER -->
+        <div id="fps-counter" class="absolute top-2 right-2 sm:top-4 sm:right-4 bg-black/60 backdrop-blur-md border border-gray-600 font-bold px-2 py-1 rounded-lg text-[10px] sm:text-xs z-50 pointer-events-none shadow-lg">
+            FPS: <span id="fps-value" class="text-green-400">0</span>
+        </div>
+        <!-- FINE FPS COUNTER -->
        <div class="absolute top-3 left-3 sm:top-6 sm:left-6 flex items-start gap-3 pointer-events-none w-full">
             <!-- Cerchio Livello/XP -->
             <div class="relative w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center bg-black/80 rounded-full border-2 border-gray-700 shadow-[0_0_15px_rgba(0,0,0,0.8)] backdrop-blur-md shrink-0">
@@ -1590,7 +1595,7 @@ const Game = {
     _vec2: new THREE.Vector2(), _vec3: new THREE.Vector3(), _plane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), _vec3Screen: new THREE.Vector3(),
     _camTarget: new THREE.Vector3(),
     _particleIdx: 0, _projectileIdx: 0, _hazardIdx: 0, _textIdx: 0, _essenceIdx: 0, _extraLifeIdx: 0, _decoyIdx: 0, _dashLineIdx: 0,
-    lastTime: 0, accumulator: 0, state: 'MENU', floor: 1, floorMaxKills: 0, floorKills: 0, totalKills: 0, frameCount: 0, isBossFloor: false,
+    lastTime: 0, accumulator: 0, state: 'MENU', floor: 1, floorMaxKills: 0, floorKills: 0, totalKills: 0, frameCount: 0, fpsFrames: 0, fpsLastTime: performance.now(),isBossFloor: false,
     lastDrawTime: 0, frameInterval: isTouchDevice ? 1000 / 60 : 0, // <-- NUOVO: Cap 60fps solo su mobile
     hitStop: 0, trauma: 0, combo: 0, comboTimer: 0, comboMaxTime: 5.0, difficultyMult: 1.0, ultimateCharge: 0, ultimateActive: false, ultimateTimer: 0, lives: 3, playTime: 0, bossDefeatedTimer: 0, floorEndTimer: 0, floorEndTriggered: false,
     player: null, map: null, enemyGrid: null, enemies: [], projectiles: [], particles: [], essences: [], extraLivesDrops: [], floatingTexts: [], hazards: [], decoys: [], dashLines: [], bloodDecals: [], bloodDecalIndex: 0, _debrisIdx: 0,
@@ -1793,7 +1798,24 @@ const Game = {
             this.lastDrawTime = timestamp - (elapsed % this.frameInterval);
         }
         // --- FINE CAP FPS ---
-
+// --- INIZIO CALCOLO FPS (AGGIUNGI QUESTO BLOCCO) ---
+        this.fpsFrames++;
+        if (timestamp > this.fpsLastTime + 1000) {
+            let fps = Math.round((this.fpsFrames * 1000) / (timestamp - this.fpsLastTime));
+            let fpsEl = document.getElementById('fps-value');
+            
+            if (fpsEl) {
+                fpsEl.innerText = fps;
+                // Colori dinamici in base alle prestazioni
+                if (fps >= 50) fpsEl.className = "text-green-400";
+                else if (fps >= 30) fpsEl.className = "text-yellow-400";
+                else fpsEl.className = "text-red-500 animate-pulse";
+            }
+            
+            this.fpsLastTime = timestamp;
+            this.fpsFrames = 0;
+        }
+        // --- FINE CALCOLO FPS ---
         if (!this.lastTime) this.lastTime = timestamp; 
         let frameTime = (timestamp - this.lastTime) / 1000; 
         this.lastTime = timestamp;

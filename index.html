@@ -2644,7 +2644,7 @@ class Player extends Entity {
         }
         
         this.isDashing = true; this.dashTimer = 0.25; this.dashAngle = Game.inputs.left.active ? Math.atan2(Game.inputs.left.y, Game.inputs.left.x) : this.angle;
-        this.dashCooldown = perfectDodge ? 0 : 2.0 * this.modifiers.dashCooldownMult; // <-- Metti il tempo che preferisci al posto di 2.0
+        this.dashCooldown = perfectDodge ? 0.5 : 2.0 * this.modifiers.dashCooldownMult; // (mantieni 2.0 o 1.0 a seconda di quello che avevi scelto)
         
         if (this.essence === 'blue') {
             let maxDist = 250; 

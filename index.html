@@ -50,10 +50,10 @@
         @keyframes shimmer { 100% { transform: translateX(100%); } }
         .animate-shimmer { animation: shimmer 1.5s infinite linear; }
 
-       #vignette { 
+      #vignette { 
             position: absolute; inset: 0; 
-            background: radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.95) 120%); 
-            box-shadow: inset 0 0 100px rgba(0,0,0,1); 
+            background: radial-gradient(circle at center, transparent 35%, rgba(0,0,0,0.98) 100%); 
+            box-shadow: inset 0 0 180px rgba(0,0,0,1); 
             z-index: 5; pointer-events: none; 
             mix-blend-mode: multiply; 
             transition: opacity 0.5s; 
@@ -1872,12 +1872,16 @@ const Game = {
         
         let floorColor = 0xffffff; let mutatorText = ""; let camDist = isTouchDevice ? 1000 : 750;
         
-        if (!this.isBossFloor && Math.random() < 0.2) { 
-            let r = Math.random();
-            if (r < 0.33) { this.scene.fog.near = camDist - 200; this.scene.fog.far = camDist + 300; mutatorText = "OSCURITÀ PROFONDA"; floorColor = "#444444"; } 
-            else if (r < 0.66) { this.difficultyMult *= 1.3; mutatorText = "FRENESIA DEI DEMONI"; floorColor = "#FF2244"; } 
-            else { this.player ? this.player.modifiers.healDropMult = 0 : null; mutatorText = "MALEDIZIONE DELLA FAME"; floorColor = "#aa00ff"; }
-        } else { this.scene.fog.near = camDist + 100; this.scene.fog.far = camDist + 1200; }
+        // Impostiamo la visibilità della nebbia sempre costante e pulita
+        this.scene.fog.near = camDist + 100; 
+        this.scene.fog.far = camDist + 1200;
+
+        if (!this.isBossFloor && Math.random() < 0.2) { 
+            let r = Math.random();
+            // Diviso 50/50 tra Frenesia e Fame, addio Oscurità Profonda!
+            if (r < 0.5) { this.difficultyMult *= 1.3; mutatorText = "FRENESIA DEI DEMONI"; floorColor = "#FF2244"; } 
+            else { this.player ? this.player.modifiers.healDropMult = 0 : null; mutatorText = "MALEDIZIONE DELLA FAME"; floorColor = "#aa00ff"; }
+        }
 
         if (this.player && this.player.modifiers.shieldActive) this.player.modifiers.shieldConsumed = false;
 

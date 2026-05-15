@@ -50,17 +50,41 @@
         @keyframes shimmer { 100% { transform: translateX(100%); } }
         .animate-shimmer { animation: shimmer 1.5s infinite linear; }
 
-       #vignette { position: absolute; inset: 0; background: radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.95) 120%); box-shadow: inset 0 0 100px rgba(0,0,0,1); z-index: 5; pointer-events: none; mix-blend-mode: multiply; transition: opacity 0.5s; }
-     
-        @keyframes pulse-blood {
-            0%, 100% { background: radial-gradient(circle at center, transparent 40%, rgba(200, 0, 0, 0.5) 120%); box-shadow: inset 0 0 100px rgba(255, 0, 0, 0.6); }
-            50% { background: radial-gradient(circle at center, transparent 30%, rgba(220, 0, 0, 0.8) 115%); box-shadow: inset 0 0 160px rgba(255, 0, 0, 0.9); }
-        }
-        .vignette-low-hp {
-            animation: pulse-blood 0.8s infinite ease-in-out !important;
-            mix-blend-mode: normal !important;
-            opacity: 1 !important; /* Si assicura che si veda anche se la grafica è al minimo */
-        }
+       #vignette { 
+            position: absolute; inset: 0; 
+            background: radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.95) 120%); 
+            box-shadow: inset 0 0 100px rgba(0,0,0,1); 
+            z-index: 5; pointer-events: none; 
+            mix-blend-mode: multiply; 
+            transition: opacity 0.5s; 
+        }
+
+        /* Questo è il nuovo strato dedicato ESCLUSIVAMENTE al sangue, separato da quello nero */
+        #vignette::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, transparent 30%, rgba(220, 0, 0, 0.8) 115%);
+            box-shadow: inset 0 0 160px rgba(255, 0, 0, 0.9);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .vignette-low-hp {
+            mix-blend-mode: normal !important;
+            opacity: 1 !important; 
+        }
+
+        /* Quando scendi sotto il 30%, facciamo pulsare SOLO l'opacità dello strato rosso */
+        .vignette-low-hp::after {
+            animation: pulse-blood-opacity 0.8s infinite ease-in-out;
+        }
+
+        @keyframes pulse-blood-opacity {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
      
         .relic-card { transition: all 0.2s; cursor: pointer; } .relic-card:hover { transform: scale(1.05) translateY(-5px); } .relic-card:active { transform: scale(0.95); }
         .rarity-common { border-color: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); } .rarity-rare { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
@@ -130,7 +154,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 95</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 96</p>
                 </div>
             </div>
         </div>
@@ -3697,14 +3721,18 @@ class Debris {
         this.mesh.rotation.z += this.rz * dt;
         
         // PAVIMENTO
-        let floorLimit = this.baseScale * 0.3;
-        if (this.mesh.position.y < floorLimit) {
-            this.mesh.position.y = floorLimit;
-            // Mini-rimbalzo e rallentamento
-            this.vy *= -0.3; 
-            this.vx *= 0.5; 
-            this.vz *= 0.5;
-        }
+        let floorLimit = this.baseScale * 0.3;
+        if (this.mesh.position.y < floorLimit) {
+            this.mesh.position.y = floorLimit;
+            // Mini-rimbalzo e rallentamento
+            this.vy *= -0.3; 
+            this.vx *= 0.5; 
+            this.vz *= 0.5;
+            // FIX: Frena violentemente la rotazione (niente più breakdance)
+            this.rx *= 0.5;
+            this.ry *= 0.5;
+            this.rz *= 0.5;
+        }
         
         // --- EFFETTO FLUIDO RITARDATO ---
         // Mantengono la grandezza solida finché la loro vita non scende sotto il 60%, poi evaporano.

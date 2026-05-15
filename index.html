@@ -130,7 +130,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 88</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 89</p>
                 </div>
             </div>
         </div>
@@ -1629,13 +1629,7 @@ const Game = {
         this.essences = Array.from({length: 50}, () => new Essence());
         this.extraLivesDrops = Array.from({length: 10}, () => new ExtraLife());
         this.decoys = Array.from({length: 10}, () => new Decoy());
-        this.dashLines = Array.from({length: 15}, () => new DashLine());
-        this.bloodDecals = []; this.bloodDecalIndex = 0; let bloodMax = isTouchDevice ? 150 : 1000;
-        for(let i=0; i<bloodMax; i++) {
-            let decal = new THREE.Mesh(SharedGeo.bloodPlane, SharedMat.blood); decal.rotation.x = -Math.PI/2; decal.visible = false; decal.userData = { active: false, life: 0 };
-            decal.matrixAutoUpdate = false;
-            this.scene.add(decal); this.bloodDecals.push(decal);
-        }
+        this.dashLines = Array.from({length: 15}, () => new DashLine());     
     },
 
     getDebris() { let d = this.debris[this._debrisIdx]; this._debrisIdx = (this._debrisIdx + 1) % this.debris.length; return d; },
@@ -1919,17 +1913,6 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
             }
         }
 
-        for (let i = 0; i < this.bloodDecals.length; i++) {
-            let d = this.bloodDecals[i];
-            if (d.userData.active) {
-                d.userData.life -= dt; 
-                if (d.userData.life < 1.0) {
-                    d.scale.setScalar(Math.max(0.001, d.userData.life * (d.userData.baseScale || 1.0)));
-                    d.updateMatrix();
-                }
-                if (d.userData.life <= 0) { d.userData.active = false; d.visible = false; }
-            }
-        }
 
         if (this.isBossFloor && this.bossDefeatedTimer > 0) {
             this.bossDefeatedTimer -= dt;
@@ -2992,16 +2975,6 @@ class Enemy extends Entity {
             }
         }
 
-        if (!AppSettings.isLow) {
-            let decal = Game.bloodDecals[Game.bloodDecalIndex]; 
-            decal.position.set(this.x, 1, this.y); 
-            decal.rotation.z = Math.random() * Math.PI; 
-            decal.scale.setScalar(1.0); 
-            decal.updateMatrix(); 
-            decal.userData.life = AppSettings.isUltraPC ? MathUtils.randomRange(4.0, 6.0) : MathUtils.randomRange(2.0, 3.0); 
-            decal.userData.baseScale = AppSettings.isUltraPC ? 1.5 : 1.0; 
-            decal.userData.active = true; decal.visible = true; Game.bloodDecalIndex = (Game.bloodDecalIndex + 1) % Game.bloodDecals.length;
-        }
         this.active = false; this.mesh.visible = false;
         if (this.infected) {
             Game.addTrauma(0.3);
@@ -3283,14 +3256,6 @@ class BossEnemy extends Enemy {
         
         for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 30, this.y, bloodMat, 'blood');
         
-        if (!AppSettings.isLow) {
-            let decal = Game.bloodDecals[Game.bloodDecalIndex]; 
-            decal.position.set(this.x, 1, this.y); 
-            decal.rotation.z = Math.random() * Math.PI;
-            decal.scale.setScalar(AppSettings.isUltraPC ? 6.0 : 4.0); 
-            decal.updateMatrix(); 
-            decal.userData.life = AppSettings.isUltraPC ? 6.0 : 4.0; decal.userData.baseScale = AppSettings.isUltraPC ? 6.0 : 4.0; decal.userData.active = true; decal.visible = true; Game.bloodDecalIndex = (Game.bloodDecalIndex + 1) % Game.bloodDecals.length;
-        }
         
         this.mat.dispose(); Game.scene.remove(this.mesh); Game.addTrauma(2.0); AudioEngine.playShoot('explosive_arrow');
         for(let i=0; i<6; i++) {
@@ -3606,7 +3571,6 @@ function clearScene() {
     for(let i=0, len=Game.hazards.length; i<len; i++) { Game.hazards[i].active = false; Game.hazards[i].group.visible = false; }
     for(let i=0, len=Game.particles.length; i<len; i++) { Game.particles[i].active = false; Game.particles[i].mesh.visible = false; }
     for(let i=0, len=Game.floatingTexts.length; i<len; i++) { Game.floatingTexts[i].active = false; }
-    for(let i=0, len=Game.bloodDecals.length; i<len; i++) { Game.bloodDecals[i].visible = false; Game.bloodDecals[i].userData.active = false; }
     for(let i=0, len=Game.decoys.length; i<len; i++) { Game.decoys[i].destroy(); }
     for(let i=0, len=Game.dashLines.length; i<len; i++) { Game.dashLines[i].active = false; Game.dashLines[i].mesh.visible = false; }
     for(let i=0, len=Game.essences.length; i<len; i++) { Game.essences[i].destroy(); }

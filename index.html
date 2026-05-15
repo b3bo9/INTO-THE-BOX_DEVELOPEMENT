@@ -1840,7 +1840,6 @@ const Game = {
         if (this.ultimateActive) { this.ultimateTimer -= dt; if (this.ultimateTimer <= 0) this.ultimateActive = false; }
 
         this.updateMouseWorld(); this.player.update(dt); this.updateCamera(dt);
-// ---> AGGIUNGI QUESTO BLOCCO SUBITO DOPO <---
         if ((this.player.stats.hp / this.player.stats.maxHp) < 0.30 && !this.player.dead) {
             document.getElementById('vignette').classList.add('vignette-low-hp');
             AudioEngine.setLowHpState(true);
@@ -1895,7 +1894,21 @@ const Game = {
 
                 el.group.rotation.y += dt * 2; el.group.position.y = 12 + this.animFloat; // <-- MODIFICA: altezza base da 15 a 12
                 el.group.updateMatrix();
-                if (MathUtils.distanceSq(this.player, el) < pRadiusSq) { this.lives++; el.destroy(); AudioEngine.playCollect(); this.getFloatingText().spawn(this.player.x, this.player.y, "VITA EXTRA!", '#ffffff', 30, true); }
+                if (MathUtils.distanceSq(this.player, el) < pRadiusSq) { 
+    el.destroy(); 
+    AudioEngine.playCollect(); 
+    
+    // Cap 6 vite max
+    if (this.lives < 6) {
+        this.lives++; 
+        this.getFloatingText().spawn(this.player.x, this.player.y, "VITA EXTRA!", '#ffffff', 30, true); 
+    } else {
+        // Ricompensa se sei al massimo: Cura totale e Carica Ultimate al 100%
+        let healAmount = this.player.stats.maxHp - this.player.stats.hp;
+        this.player.stats.hp = this.player.stats.maxHp;
+        this.getFloatingText().spawn(this.player.x, this.player.y, `MAX VITE! (+${Math.floor(healAmount)} HP)`, '#00DDFF', 25, true);
+    }
+}
             }
         }
 
@@ -2936,15 +2949,19 @@ class Enemy extends Entity {
             Game.getHazard().spawn(this.x, this.y, 40, 3.0, Game.player.stats.maxDmg * Game.player.modifiers.dmgMult, ESSENCE_COLORS.green, 'poison');
         }
         
-        let baseLifeChance = 0.015; 
-        if (Game.difficultyMult >= 1.6) baseLifeChance = 0.005; 
-        else if (Game.difficultyMult >= 1.0) baseLifeChance = 0.01; 
+        let baseLifeChance = 0.008; 
+        if (Game.difficultyMult >= 1.6) baseLifeChance = 0.002; 
+        else if (Game.difficultyMult >= 1.0) baseLifeChance = 0.005; 
         
         let floorDecay = Math.max(0.50, 1.0 - (Game.floor * 0.025));
         
         let lifeChance = baseLifeChance * floorDecay * Game.player.modifiers.healDropMult;
         if (this.isElite) lifeChance *= 2.0; 
-        
+        // Penalità morbida: scatta SOLO se hai più di 3 vite.
+        // Se ne hai 4, la probabilità viene divisa per 1.5. Se ne hai 5, divisa per 2, ecc.
+        if (Game.lives > 3) {
+        lifeChance = lifeChance / (1 + (Game.lives - 3) * 0.5);
+        }
         if (Game.player.modifiers.noHealDrops) lifeChance = 0;
         
         if (Math.random() < lifeChance) { 

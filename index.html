@@ -3354,27 +3354,56 @@ class BossEnemy extends Enemy {
 
 class Projectile {
     constructor() {
-        this.active = false; this.group = new THREE.Group(); this.mesh = new THREE.Mesh(SharedGeo.sphere, SharedMat.arrow);
-        this.group.matrixAutoUpdate = false; this.mesh.matrixAutoUpdate = false; 
-        this.group.add(this.mesh); this.group.visible = false; this.hitEnemies = new Set(); this.updateOffset = Math.floor(Math.random() * 15); Game.scene.add(this.group);
+        this.active = false; 
+        this.group = new THREE.Group(); 
+        this.mesh = new THREE.Mesh(SharedGeo.sphere, SharedMat.arrow);
+        
+        // --- INIZIO FAKE BLOOM ---
+        this.glowSprite = new THREE.Sprite(SharedMat.spriteWhite);
+        this.glowSprite.matrixAutoUpdate = false;
+        this.group.add(this.glowSprite);
+        // --- FINE FAKE BLOOM ---
+
+        this.group.matrixAutoUpdate = false; 
+        this.mesh.matrixAutoUpdate = false; 
+        this.group.add(this.mesh); 
+        this.group.visible = false; 
+        this.hitEnemies = new Set(); 
+        this.updateOffset = Math.floor(Math.random() * 15); 
+        Game.scene.add(this.group);
     }
     spawn(x, y, angle, speed, damage, owner, type, piercing=false) {
         this.active = true; this.group.visible = true; this.x = x; this.y = y; this.angle = angle; this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
         this.damage = damage; this.owner = owner; this.type = type; this.piercing = piercing; this.bounceCount = (type === 'chain_lightning') ? 2 : 0;
         this.hitEnemies.clear(); this.target = null; this.canInfect = true;
         
-        // Il giocatore spara a max 700 unità di distanza. 
-        // I nemici sparano a max 600 unità di distanza (o meno se sono molto lenti).
         this.life = owner === 'player' ? (700 / Math.max(1, speed)) : Math.min(3.0, 600 / Math.max(1, speed));
 
         this.radius = 6; let mat = SharedMat.arrow; let geo = SharedGeo.sphere;
+        let spriteMat = SharedMat.spriteWhite; // Base per il fake bloom
+
         if (type === 'arrow') { mat = SharedMat.arrow; geo = SharedGeo.cone; } 
-        if (type === 'explosive_arrow') { mat = SharedMat.explosiveArrow; this.radius = 16; geo = SharedGeo.icosahedron; }
-        if (type === 'chain_lightning') { mat = SharedMat.chainLightning; this.radius = 10; geo = SharedGeo.icosahedron;}
-        if (type === 'homing_arrow') { mat = SharedMat.homingArrow; this.radius = 8; geo = SharedGeo.cone; }
-        if (type === 'enemy_fireball') { mat = SharedMat.enemyFireball; this.radius = 25; geo = SharedGeo.icosahedron;} 
-        if (type === 'enemy_bolt') { mat = SharedMat.enemyBolt; this.radius = 16; geo = SharedGeo.icosahedron;}
-        if (type === 'fire_shape') { mat = SharedMat.fireShape; this.radius = 20; geo = SharedGeo.icosahedron; }
+        if (type === 'explosive_arrow') { mat = SharedMat.explosiveArrow; this.radius = 16; geo = SharedGeo.icosahedron; spriteMat = SharedMat.spriteRed; }
+        if (type === 'chain_lightning') { mat = SharedMat.chainLightning; this.radius = 10; geo = SharedGeo.icosahedron; spriteMat = SharedMat.spriteBlue; }
+        if (type === 'homing_arrow') { mat = SharedMat.homingArrow; this.radius = 8; geo = SharedGeo.cone; spriteMat = SharedMat.spriteGreen; }
+        if (type === 'enemy_fireball') { mat = SharedMat.enemyFireball; this.radius = 25; geo = SharedGeo.icosahedron; spriteMat = SharedMat.spriteRed; } 
+        if (type === 'enemy_bolt') { mat = SharedMat.enemyBolt; this.radius = 16; geo = SharedGeo.icosahedron; spriteMat = SharedMat.spriteBlue; }
+        if (type === 'fire_shape') { mat = SharedMat.fireShape; this.radius = 20; geo = SharedGeo.icosahedron; spriteMat = SharedMat.spriteRed; }
+
+        // --- APPLICAZIONE FAKE BLOOM ---
+        this.glowSprite.material = spriteMat;
+        // Accendiamo il fake glow SOLO su mobile (su PC abbiamo già il Bloom vero!)
+        if (isTouchDevice && type !== 'arrow') {
+            this.glowSprite.visible = true;
+            // Calcoliamo la grandezza dell'alone (molto più grande del proiettile)
+            let glowScale = this.radius * 4.5;
+            this.glowSprite.scale.set(glowScale, glowScale, 1);
+            this.glowSprite.updateMatrix();
+        } else {
+            this.glowSprite.visible = false;
+        }
+        // --------------------------------
+
         this.mesh.geometry = geo; this.mesh.material = mat; this.group.position.set(x, 15, y);
         if (type === 'arrow' || type === 'homing_arrow') { this.mesh.scale.set(4, 20, 4); this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; } 
         else { this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); }
@@ -3398,60 +3427,54 @@ class Projectile {
                 while (diff < -Math.PI) diff += Math.PI * 2; while (diff > Math.PI) diff -= Math.PI * 2;
                 this.angle += diff * 5.0 * dt; let speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
                 this.vx = Math.cos(this.angle) * speed; this.vy = Math.sin(this.angle) * speed; this.mesh.rotation.y = -this.angle;
-                this.mesh.updateMatrix(); // OTTIMIZZAZIONE
+                this.mesh.updateMatrix(); 
             }
         }
         this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt; this.group.position.set(this.x, 15, this.y);
         if (this.type !== 'arrow' && this.type !== 'homing_arrow') { 
             this.mesh.rotation.x += dt * 5; this.mesh.rotation.y += dt * 5; 
-            this.mesh.updateMatrix(); // OTTIMIZZAZIONE
+            this.mesh.updateMatrix(); 
         }
         
-        this.group.updateMatrix(); // OTTIMIZZAZIONE
+        this.group.updateMatrix(); 
 
         if (this.life <= 0) { this.destroy(); return; }
         if (Game.map.isSolid(this.x, this.y)) { this.destroy(); return; }
 
-    if (this.owner === 'player') {
-            let searchRadius = this.radius + 30; // Buffer per la ricerca spaziale
-            let nearby = Game.enemyGrid.findNearby(this, searchRadius);
+        if (this.owner === 'player') {
+            let searchRadius = this.radius + 30; 
+            let nearby = Game.enemyGrid.findNearby(this, searchRadius);
             
-            for(let i=0, len=nearby.length; i<len; i++) {
-                let e = nearby[i]; 
+            for(let i=0, len=nearby.length; i<len; i++) {
+                let e = nearby[i]; 
                 if (!this.active) return;
                 
-                // Valuta prima se il nemico è già stato colpito (più veloce da scartare)
-                if (!this.hitEnemies.has(e.id)) {
-                    // Calcoliamo la distanza e il raggio SOLO per i bersagli validi
-                    let exactRadSq = (this.radius + e.radius) * (this.radius + e.radius);
+                if (!this.hitEnemies.has(e.id)) {
+                    let exactRadSq = (this.radius + e.radius) * (this.radius + e.radius);
                     
-                    if (MathUtils.distanceSq(this, e) < exactRadSq) {
-                        let critMod = Game.player.modifiers.critChance + Math.min(Game.combo*0.005, 0.5 * (Game.player.modifiers.flowMastery?2:1));
-                        e.takeDamage(this.damage, Game.player, Math.random() < critMod, this.canInfect); 
-                        if(this.type === 'homing_arrow') e.slowedTimer = 2.0; 
+                    if (MathUtils.distanceSq(this, e) < exactRadSq) {
+                        let critMod = Game.player.modifiers.critChance + Math.min(Game.combo*0.005, 0.5 * (Game.player.modifiers.flowMastery?2:1));
+                        e.takeDamage(this.damage, Game.player, Math.random() < critMod, this.canInfect); 
+                        if(this.type === 'homing_arrow') e.slowedTimer = 2.0; 
                         this.handleHit(e);
-                    }
-                }
-            }
-       } else {
-            // Se lo scudo è attivo, aumentiamo il raggio d'impatto affinché il proiettile venga distrutto sul bordo esterno visivo
+                    }
+                }
+            }
+       } else {
             let effectivePlayerRadius = (Game.player.activeShieldTimer > 0 && this.type !== 'fire_shape') ? Game.player.radius + 15 : Game.player.radius;
             let pRadCheck = (this.radius + effectivePlayerRadius) * (this.radius + effectivePlayerRadius);
             
             if (MathUtils.distanceSq(this, Game.player) < pRadCheck) {
-                // CONTROLLO SCUDO ATTIVO
                 if (Game.player.activeShieldTimer > 0 && this.type !== 'fire_shape') {
                     Game.player.shieldAbsorbed++;
                     Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'spark');
-                    AudioEngine.playCollect(); // <-- MODIFICA: Suono della raccolta essenze
-                    Game.addUltimateCharge(5); // <-- MODIFICA: Ricarica la Ultimate del 5% per ogni colpo assorbito
+                    AudioEngine.playCollect(); 
+                    Game.addUltimateCharge(5); 
                     
-                    // --- LOGICA CURA E FLASH ---
-                    let heal = Game.player.stats.maxHp * 0.05; // Cura del 5% per proiettile
+                    let heal = Game.player.stats.maxHp * 0.05; 
                     Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + heal);
                     Game.getFloatingText().spawn(Game.player.x, Game.player.y + 10, `+${Math.floor(heal)}`, '#00DDFF', 22, true);
-                    Game.player.shieldFlashTimer = 0.15; // Innesca il lampo visivo
-                    // ---------------------------
+                    Game.player.shieldFlashTimer = 0.15; 
                     
                     this.handleHit(null);
                 } else {
@@ -3460,7 +3483,7 @@ class Projectile {
                 }
             }
         }
-        if (this.life <= 0) this.destroy();
+        if (this.life <= 0) this.destroy();
         if(this.active && this.type !== 'arrow' && (Game.frameCount + this.updateOffset) % (isTouchDevice?6:3) === 0) {
             let pMat = SharedMat.spriteWhite;
             if (this.type === 'explosive_arrow' || this.type === 'enemy_fireball' || this.type === 'fire_shape') pMat = SharedMat.spriteRed;
@@ -3497,7 +3520,6 @@ class Projectile {
         }
     }
 }
-
 class Particle {
     constructor() { 
         this.active = false; this.mesh = new THREE.Sprite(SharedMat.spriteWhite); 

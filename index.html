@@ -440,7 +440,7 @@
         </button>
       <!-- Tasto Scudo (Sopra il Dash) -->
         <button id="btn-shield" onclick="if(Game.state === 'PLAYING') Game.player.activateShield();" class="absolute bottom-[12.5rem] right-[8.5rem] landscape:bottom-[6.5rem] landscape:right-48 w-14 h-14 bg-black/60 backdrop-blur-md rounded-full border-2 border-gray-600 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(0,0,0,0.8)] opacity-75 transition-all flex items-center justify-center touch-none overflow-hidden group">
-            <div id="btn-shield-fill" class="absolute bottom-0 left-0 w-full bg-blue-500/50 h-0 transition-all duration-200 pointer-events-none"></div>
+            <div id="btn-shield-fill" class="absolute bottom-0 left-0 w-full bg-cyan-500/50 h-0 transition-all duration-200 pointer-events-none"></div>
             <i class="fa-solid fa-shield text-2xl relative z-10 drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"></i>
             <span class="absolute -top-6 text-[10px] text-gray-400 font-bold hidden lg:block tracking-widest whitespace-nowrap">SHIFT</span>
         </button>
@@ -1521,31 +1521,37 @@ const UI = {
         if (isCombo) this.els.comboBar.style.width = `${(Game.comboTimer / Game.comboMaxTime) * 100}%`;
         
         // Update Scudo Attivo
-        if (Game.player.activeShieldTimer > 0) {
-            if (this.els.btnShield) {
-                this.els.btnShield.classList.add('border-blue-400', 'opacity-100');
-                this.els.btnShield.classList.remove('border-gray-600', 'opacity-75');
-                this.els.btnShieldFill.style.height = '100%';
-                this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-white transition-all duration-100 pointer-events-none";
-            }
-        } else {
-            if (this.els.btnShield) {
-                let cdPct = Game.player.activeShieldCooldown > 0 ? (1 - (Game.player.activeShieldCooldown / 8.0)) * 100 : 100;
-                this.els.btnShieldFill.style.height = `${cdPct}%`;
-                this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-blue-500/50 transition-all duration-100 pointer-events-none";
-                if (Game.player.activeShieldCooldown <= 0) {
-                    this.els.btnShield.classList.add('border-blue-400', 'opacity-100');
-                    this.els.btnShield.classList.remove('border-gray-600', 'opacity-75');
-                } else {
-                    this.els.btnShield.classList.remove('border-blue-400', 'opacity-100');
-                    this.els.btnShield.classList.add('border-gray-600', 'opacity-75');
-                }
-            }
-        }
+        if (Game.player.activeShieldTimer > 0) {
+            if (this.els.btnShield) {
+                // Aggiunge bordo ciano, opacità piena e il Glow ciano
+                this.els.btnShield.classList.add('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]');
+                // Rimuove bordo grigio, opacità ridotta e l'ombra nera di base
+                this.els.btnShield.classList.remove('border-gray-600', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]');
+                this.els.btnShieldFill.style.height = '100%';
+                this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-white transition-all duration-100 pointer-events-none";
+            }
+        } else {
+            if (this.els.btnShield) {
+                let cdPct = Game.player.activeShieldCooldown > 0 ? (1 - (Game.player.activeShieldCooldown / 8.0)) * 100 : 100;
+                this.els.btnShieldFill.style.height = `${cdPct}%`;
+                // Colore di riempimento ciano durante la ricarica
+                this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-100 pointer-events-none";
+                
+                if (Game.player.activeShieldCooldown <= 0) {
+                    // PRONTO: Aggiunge Glow e Ciano
+                    this.els.btnShield.classList.add('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]');
+                    this.els.btnShield.classList.remove('border-gray-600', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]');
+                } else {
+                    // IN RICARICA: Rimuove Glow e Ciano, torna grigio con ombra nera
+                    this.els.btnShield.classList.remove('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]');
+                    this.els.btnShield.classList.add('border-gray-600', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]');
+                }
+            }
+        }
 
        // Update Scatto Attivo (Dash)
 if (this.els.btnDash) {
-    let maxDashCd = 1.0 * Game.player.modifiers.dashCooldownMult; 
+    let maxDashCd = 2.0 * Game.player.modifiers.dashCooldownMult; 
     let dashCdPct = Game.player.dashCooldown > 0 ? (1 - (Game.player.dashCooldown / maxDashCd)) * 100 : 100;
     
     this.els.btnDashFill.style.height = `${dashCdPct}%`;
@@ -2638,7 +2644,7 @@ class Player extends Entity {
         }
         
         this.isDashing = true; this.dashTimer = 0.25; this.dashAngle = Game.inputs.left.active ? Math.atan2(Game.inputs.left.y, Game.inputs.left.x) : this.angle;
-        this.dashCooldown = perfectDodge ? 0 : 1.0 * this.modifiers.dashCooldownMult;
+        this.dashCooldown = perfectDodge ? 0 : 2.0 * this.modifiers.dashCooldownMult; // <-- Metti il tempo che preferisci al posto di 2.0
         
         if (this.essence === 'blue') {
             let maxDist = 250; 

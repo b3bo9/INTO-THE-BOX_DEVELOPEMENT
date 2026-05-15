@@ -1139,16 +1139,13 @@ const BLOB_SHADOW_TEX = createBlobShadowTexture();
 const BLOOD_TEX = createPatternTexture('blood'); const GLOW_TEX = createGlowTexture();
 const SharedMat = {
     blood: new THREE.MeshStandardMaterial({map: BLOOD_TEX, transparent: true, opacity: 0.85, depthWrite: false, roughness: 0.8}),
-    
-    // FIX: Aggiunto depthTest: false per evitare il "taglio" sul pavimento e opacity: 0.6 per bilanciare il nuovo Bloom!
-    spriteLevel: new THREE.SpriteMaterial({color: 0xffffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, opacity: 0.6}),
-    spriteRed: new THREE.SpriteMaterial({color: ESSENCE_COLORS.red, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, opacity: 0.6}),
-    spriteBlue: new THREE.SpriteMaterial({color: ESSENCE_COLORS.blue, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, opacity: 0.6}),
-    spriteGreen: new THREE.SpriteMaterial({color: ESSENCE_COLORS.green, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, opacity: 0.6}),
-    spriteWhite: new THREE.SpriteMaterial({color: 0xffffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, opacity: 0.6}),
-    spritePink: new THREE.SpriteMaterial({color: 0xff66bb, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, opacity: 0.6}),
-    
-    spriteBlood: new THREE.SpriteMaterial({color: 0xaa0000, map: GLOW_TEX, transparent: true, depthWrite: false}), // Il sangue rimane inalterato
+    spriteLevel: new THREE.SpriteMaterial({color: 0xffffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
+    spriteRed: new THREE.SpriteMaterial({color: ESSENCE_COLORS.red, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
+    spriteBlue: new THREE.SpriteMaterial({color: ESSENCE_COLORS.blue, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
+    spriteGreen: new THREE.SpriteMaterial({color: ESSENCE_COLORS.green, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
+    spriteWhite: new THREE.SpriteMaterial({color: 0xffffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
+    spritePink: new THREE.SpriteMaterial({color: 0xff66bb, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
+    spriteBlood: new THREE.SpriteMaterial({color: 0xaa0000, map: GLOW_TEX, transparent: true, depthWrite: false}),
     
     arrow: new THREE.MeshPhongMaterial({color: 0x888888, emissive: 0x444444}),
     homingArrow: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.green, emissiveIntensity: 2.0}),
@@ -1279,26 +1276,21 @@ class DashLine {
 class Essence {
     constructor() {
         this.active = false; this.type = 'red'; this.group = new THREE.Group();
-        this.coreMat = new THREE.MeshBasicMaterial({color: 0x000000});
-        // MODIFICA: Scala del core ridotta da 12 a 9
+        // Usiamo un materiale emissivo: sarà il vero Bloom a farlo brillare nello spazio 3D!
+        this.coreMat = new THREE.MeshPhongMaterial({color: 0x000000, emissiveIntensity: 2.0});
         let core = new THREE.Mesh(SharedGeo.icosahedron, this.coreMat); core.scale.setScalar(9);
         this.haloMat = new THREE.MeshBasicMaterial({wireframe: true, transparent: true, opacity: 0.9});
-        // MODIFICA: Scala dell'halo ridotta da 18 a 13.5
-        let halo = new THREE.Mesh(SharedGeo.icosahedron, this.haloMat); halo.scale.setScalar(10.5); // <-- Halo poligonale ridotto
-        // MODIFICA: Scala del glow ridotta da 60 a 45
-        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(30, 30, 1); // <-- Texture luminosa ridotta
-        this.group.matrixAutoUpdate = false; 
+        let halo = new THREE.Mesh(SharedGeo.icosahedron, this.haloMat); halo.scale.setScalar(10.5); 
+        this.group.matrixAutoUpdate = false; 
         core.matrixAutoUpdate = false; core.updateMatrix();
         halo.matrixAutoUpdate = false; halo.updateMatrix();
-        this.glow.matrixAutoUpdate = false; this.glow.updateMatrix();
-        this.group.add(core); this.group.add(halo); this.group.add(this.glow); this.group.visible = false; Game.scene.add(this.group);
+        this.group.add(core); this.group.add(halo); this.group.visible = false; Game.scene.add(this.group);
     }
     spawn(x, y, type) {
-        this.active = true; this.x = x; this.y = y; this.type = type; let color = ESSENCE_COLORS[type]; 
+        this.active = true; this.x = x; this.y = y; this.type = type; let color = ESSENCE_COLORS[type]; 
         this.life = 15.0;
-        this.coreMat.color.setHex(color); this.haloMat.color.setHex(color);
-        if(type === 'red') this.glow.material = SharedMat.spriteRed; else if(type === 'blue') this.glow.material = SharedMat.spriteBlue; else this.glow.material = SharedMat.spriteGreen;
-        // MODIFICA: Altezza di spawn abbassata da 15 a 12 per adattarsi alle nuove dimensioni
+        // Assegniamo il colore direttamente all'emissione luminosa
+        this.coreMat.emissive.setHex(color); this.haloMat.color.setHex(color);
         this.group.position.set(x, 12, y); this.group.updateMatrix(); this.group.visible = true;
     }
     destroy() { this.active = false; this.group.visible = false; }
@@ -1307,17 +1299,13 @@ class Essence {
 class ExtraLife {
     constructor() {
         this.active = false; this.group = new THREE.Group();
+        // Il materiale è già emissivo al 200%, ci penserà il Bloom!
         this.mat = new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0xffffff, roughness: 0.1, metalness: 0.5, emissiveIntensity: 2.0});
-        // MODIFICA: Scala del cuore ridotta da 8 a 6
         let core = new THREE.Mesh(SharedGeo.heart, this.mat); core.scale.setScalar(6);
-        // MODIFICA: Scala del glow ridotta da 60 a 45
-        this.glow = new THREE.Sprite(SharedMat.spriteWhite); this.glow.scale.set(30, 30, 1); // <-- Texture luminosa ridotta
-        this.group.matrixAutoUpdate = false; 
+        this.group.matrixAutoUpdate = false; 
         core.matrixAutoUpdate = false; core.updateMatrix();
-        this.glow.matrixAutoUpdate = false; this.glow.updateMatrix();
-        this.group.add(core); this.group.add(this.glow); this.group.visible = false; Game.scene.add(this.group);
+        this.group.add(core); this.group.visible = false; Game.scene.add(this.group);
     }
-    // MODIFICA: Altezza di spawn abbassata da 15 a 12
     spawn(x, y) { this.active = true; this.x = x; this.y = y; this.life = 15.0; this.group.position.set(x, 12, y); this.group.updateMatrix(); this.group.visible = true; }
     destroy() { this.active = false; this.group.visible = false; }
 }
@@ -3427,63 +3415,40 @@ class BossEnemy extends Enemy {
 }
 
 class Projectile {
-    constructor() {
-        this.active = false; 
-        this.group = new THREE.Group(); 
-        this.mesh = new THREE.Mesh(SharedGeo.sphere, SharedMat.arrow);
-        
-        // --- INIZIO FAKE BLOOM ---
-        this.glowSprite = new THREE.Sprite(SharedMat.spriteWhite);
-        this.glowSprite.matrixAutoUpdate = false;
-        this.group.add(this.glowSprite);
-        // --- FINE FAKE BLOOM ---
+    constructor() {
+        this.active = false; 
+        this.group = new THREE.Group(); 
+        this.mesh = new THREE.Mesh(SharedGeo.sphere, SharedMat.arrow);
+        this.group.matrixAutoUpdate = false; 
+        this.mesh.matrixAutoUpdate = false; 
+        this.group.add(this.mesh); 
+        this.group.visible = false; 
+        this.hitEnemies = new Set(); 
+        this.updateOffset = Math.floor(Math.random() * 15); 
+        Game.scene.add(this.group);
+    }
+    spawn(x, y, angle, speed, damage, owner, type, piercing=false) {
+        this.active = true; this.group.visible = true; this.x = x; this.y = y; this.angle = angle; this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+        this.damage = damage; this.owner = owner; this.type = type; this.piercing = piercing; this.bounceCount = (type === 'chain_lightning') ? 2 : 0;
+        this.hitEnemies.clear(); this.target = null; this.canInfect = true;
+        
+        this.life = owner === 'player' ? (700 / Math.max(1, speed)) : Math.min(3.0, 600 / Math.max(1, speed));
+        this.radius = 6; let mat = SharedMat.arrow; let geo = SharedGeo.sphere;
 
-        this.group.matrixAutoUpdate = false; 
-        this.mesh.matrixAutoUpdate = false; 
-        this.group.add(this.mesh); 
-        this.group.visible = false; 
-        this.hitEnemies = new Set(); 
-        this.updateOffset = Math.floor(Math.random() * 15); 
-        Game.scene.add(this.group);
-    }
-    spawn(x, y, angle, speed, damage, owner, type, piercing=false) {
-        this.active = true; this.group.visible = true; this.x = x; this.y = y; this.angle = angle; this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
-        this.damage = damage; this.owner = owner; this.type = type; this.piercing = piercing; this.bounceCount = (type === 'chain_lightning') ? 2 : 0;
-        this.hitEnemies.clear(); this.target = null; this.canInfect = true;
-        
-        this.life = owner === 'player' ? (700 / Math.max(1, speed)) : Math.min(3.0, 600 / Math.max(1, speed));
+        if (type === 'arrow') { mat = SharedMat.arrow; geo = SharedGeo.cone; } 
+        if (type === 'explosive_arrow') { mat = SharedMat.explosiveArrow; this.radius = 16; geo = SharedGeo.icosahedron; }
+        if (type === 'chain_lightning') { mat = SharedMat.chainLightning; this.radius = 10; geo = SharedGeo.icosahedron; }
+        if (type === 'homing_arrow') { mat = SharedMat.homingArrow; this.radius = 8; geo = SharedGeo.cone; }
+        if (type === 'enemy_fireball') { mat = SharedMat.enemyFireball; this.radius = 25; geo = SharedGeo.icosahedron; } 
+        if (type === 'enemy_bolt') { mat = SharedMat.enemyBolt; this.radius = 16; geo = SharedGeo.icosahedron; }
+        if (type === 'fire_shape') { mat = SharedMat.fireShape; this.radius = 20; geo = SharedGeo.icosahedron; }
 
-        this.radius = 6; let mat = SharedMat.arrow; let geo = SharedGeo.sphere;
-        let spriteMat = SharedMat.spriteWhite; // Base per il fake bloom
-
-        if (type === 'arrow') { mat = SharedMat.arrow; geo = SharedGeo.cone; } 
-        if (type === 'explosive_arrow') { mat = SharedMat.explosiveArrow; this.radius = 16; geo = SharedGeo.icosahedron; spriteMat = SharedMat.spriteRed; }
-        if (type === 'chain_lightning') { mat = SharedMat.chainLightning; this.radius = 10; geo = SharedGeo.icosahedron; spriteMat = SharedMat.spriteBlue; }
-        if (type === 'homing_arrow') { mat = SharedMat.homingArrow; this.radius = 8; geo = SharedGeo.cone; spriteMat = SharedMat.spriteGreen; }
-        if (type === 'enemy_fireball') { mat = SharedMat.enemyFireball; this.radius = 25; geo = SharedGeo.icosahedron; spriteMat = SharedMat.spriteRed; } 
-        if (type === 'enemy_bolt') { mat = SharedMat.enemyBolt; this.radius = 16; geo = SharedGeo.icosahedron; spriteMat = SharedMat.spriteBlue; }
-        if (type === 'fire_shape') { mat = SharedMat.fireShape; this.radius = 20; geo = SharedGeo.icosahedron; spriteMat = SharedMat.spriteRed; }
-
-        // --- APPLICAZIONE FAKE BLOOM ---
-        this.glowSprite.material = spriteMat;
-        // Accendiamo il fake glow SOLO su mobile (su PC abbiamo già il Bloom vero!)
-        if (isTouchDevice && type !== 'arrow') {
-            this.glowSprite.visible = true;
-            // Calcoliamo la grandezza dell'alone (molto più grande del proiettile)
-            let glowScale = this.radius * 4.5;
-            this.glowSprite.scale.set(glowScale, glowScale, 1);
-            this.glowSprite.updateMatrix();
-        } else {
-            this.glowSprite.visible = false;
-        }
-        // --------------------------------
-
-        this.mesh.geometry = geo; this.mesh.material = mat; this.group.position.set(x, 15, y);
-        if (type === 'arrow' || type === 'homing_arrow') { this.mesh.scale.set(4, 20, 4); this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; } 
-        else { this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); }
-        
-        this.mesh.updateMatrix(); this.group.updateMatrix(); 
-    }
+        this.mesh.geometry = geo; this.mesh.material = mat; this.group.position.set(x, 15, y);
+        if (type === 'arrow' || type === 'homing_arrow') { this.mesh.scale.set(4, 20, 4); this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; } 
+        else { this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); }
+        
+        this.mesh.updateMatrix(); this.group.updateMatrix(); 
+    }
     update(dt) {
         if (!this.active) return;
         if (this.type === 'homing_arrow') {

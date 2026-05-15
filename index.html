@@ -130,7 +130,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 93</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 94</p>
                 </div>
             </div>
         </div>
@@ -1618,7 +1618,7 @@ const Game = {
         this.scene = new THREE.Scene(); this.scene.fog = new THREE.Fog(0x050508, 400, 1800); 
         this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 1, 3000);
         
-        const pixelRatio = isTouchDevice ? 1.0 : (AppSettings.isUltra ? Math.min(window.devicePixelRatio, 2.0) : Math.min(window.devicePixelRatio, 1.5));
+        const pixelRatio = isTouchDevice ? 0.75 : (AppSettings.isUltra ? Math.min(window.devicePixelRatio, 2.0) : Math.min(window.devicePixelRatio, 1.5));
         
         this.renderer = new THREE.WebGLRenderer({ antialias: !isTouchDevice, alpha: false, powerPreference: "high-performance" });
         this.renderer.setPixelRatio(pixelRatio); this.renderer.setSize(this.width, this.height);
@@ -1650,8 +1650,11 @@ const Game = {
         this.bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(this.width / 2, this.height / 2), initialStrength, initialRadius, 0.35);
         this.bloomPass.threshold = 0.35;
         this.composer = new THREE.EffectComposer(this.renderer);
-        this.composer.addPass(renderScene); this.composer.addPass(this.bloomPass);
-
+        this.composer.addPass(renderScene); 
+        // Aggiungi il Bloom SOLO se NON è un dispositivo touch
+        if (!isTouchDevice) {
+            this.composer.addPass(this.bloomPass);
+        }
         this.uiCtx = this.uiCanvas.getContext('2d'); this.resize(); window.addEventListener('resize', () => this.resize());
         this.setupInputs(); this.initPools(); requestAnimationFrame(this.loop.bind(this));
     },
@@ -2109,7 +2112,26 @@ class GameMap {
         this.width = w; this.height = h; this.grid = [];
         for(let x=0; x<w; x++) { this.grid[x] = []; for(let y=0; y<h; y++) this.grid[x][y] = 1; }
         this.mapGroup = new THREE.Group();
-        this.floorMat = null; this.wallMat = null;
+        // PAVIMENTO DINAMICO
+        this.floorMat = isTouchDevice 
+            ? new THREE.MeshPhongMaterial({ map: floorTex, shininess: 5 }) // Leggerissimo su mobile
+            : new THREE.MeshStandardMaterial({ // Realistico su PC
+                map: floorTex, 
+                roughness: AppSettings.isUltraPC ? 0.65 : 0.9, 
+                metalness: AppSettings.isUltraPC ? 0.25 : 0.1, 
+                bumpMap: isHighQ ? floorTex : null, 
+                bumpScale: AppSettings.isUltraPC ? 3.0 : 1.5 
+            });
+        // MURI DINAMICI
+        this.wallMat = isTouchDevice
+            ? new THREE.MeshPhongMaterial({ map: wallTex, shininess: 10 }) // Leggerissimo su mobile
+            : new THREE.MeshStandardMaterial({ // Realistico su PC
+                map: wallTex, 
+                roughness: AppSettings.isUltraPC ? 0.5 : 0.8, 
+                metalness: AppSettings.isUltraPC ? 0.5 : 0.3, 
+                bumpMap: isHighQ ? wallTex : null, 
+                bumpScale: AppSettings.isUltraPC ? 4.0 : 2.0 
+            });
     }
     generate(isBossFloor = false) {
         const rooms = []; const numRooms = 15; 

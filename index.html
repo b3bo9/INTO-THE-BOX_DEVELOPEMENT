@@ -93,9 +93,14 @@
 </head>
 <body class="text-white selection:bg-red-900">
 
-    <div id="initScreen" class="absolute inset-0 bg-black z-[300] flex items-center justify-center cursor-pointer pointer-events-auto bg-cover bg-center bg-no-repeat" style="background-image: url('bg.png');">
+   <div id="initScreen" class="absolute inset-0 bg-black z-[300] flex items-center justify-center cursor-pointer bg-cover bg-center bg-no-repeat" style="background-image: url('bg.png'); pointer-events: none;">
         <div class="absolute inset-0 bg-black/60"></div>
-        <h1 class="text-[8vw] sm:text-4xl font-extrabold text-red-700 tracking-widest animate-pulse text-center px-4 drop-shadow-[0_0_15px_rgba(220,38,38,0.8)] z-10 whitespace-nowrap">Tocca per Entrare</h1>
+        
+        <!-- Testo di caricamento (Visibile all'inizio) -->
+        <h1 id="loadingText" class="text-[6vw] sm:text-3xl font-bold text-gray-400 z-10 whitespace-nowrap tracking-widest">CARICAMENTO... <span id="loadingProgress" class="text-white">0</span>%</h1>
+        
+        <!-- Pulsante di avvio (Nascosto all'inizio) -->
+        <h1 id="startText" class="hidden text-[8vw] sm:text-4xl font-extrabold text-red-700 tracking-widest animate-pulse text-center px-4 drop-shadow-[0_0_15px_rgba(220,38,38,0.8)] z-10 whitespace-nowrap">Tocca per Entrare</h1>
     </div>
 
   <!-- MAIN MENU -->
@@ -2273,21 +2278,17 @@ class GameMap {
         const isHighQ = !AppSettings.isLow && !isTouchDevice; 
         const wallTex = createPatternTexture('wall');
         
-       const texLoader = new THREE.TextureLoader();
+       // Peschiamo le texture GIÀ CARICATE dalla VRAM
+        const texDirt = Preloader.textures.dirt;
+        const texGrass = Preloader.textures.grass;
+        const texRock = Preloader.textures.rock;
+        const texWall = Preloader.textures.wall;
         
-        // Chiediamo alla scheda video il valore massimo supportato per la massima nitidezza
+        // Applichiamo i filtri (Basta farlo una volta, ma farlo qui è totalmente sicuro)
         const maxAnisotropy = Game.renderer.capabilities.getMaxAnisotropy();
-        
-        const texDirt = texLoader.load('dirt.jpg');
-        texDirt.anisotropy = maxAnisotropy; // Applica il filtro AAA
-        
-        const texGrass = texLoader.load('grass.jpg');
+        texDirt.anisotropy = maxAnisotropy;
         texGrass.anisotropy = maxAnisotropy;
-        
-        const texRock = texLoader.load('rock.jpg');
         texRock.anisotropy = maxAnisotropy;
-
-        const texWall = texLoader.load('wall.jpg');
         texWall.anisotropy = maxAnisotropy;
         
         // FIX STIRAMENTO: I muri sono alti 1.5 volte la loro larghezza.
@@ -2307,6 +2308,7 @@ class GameMap {
         const tintDirt = 0x332b22;  // Marrone scurissimo
         const tintGrass = 0x223322; // Verde palude scurissimo
         const tintRock = 0x333344;  // Grigio-bluastro scuro (alza il contrasto con il sangue e il fuoco)
+        const tintWall = 0x252530;  // Grigio notte per i muri
 
         // 1. Terra di base
         const matDirt = new MapMaterialClass({ 
@@ -4088,30 +4090,50 @@ function hideHighScores() { AudioEngine.playClick(); document.getElementById('hi
 
 // Sistema invisibile per forzare il download delle immagini in cache
 const Preloader = {
-    preloadAll() {
+    manager: new THREE.LoadingManager(),
+    textures: {}, // Salveremo qui le texture 3D
+    init() {
+        const loadingText = document.getElementById('loadingText');
+        const loadingProgress = document.getElementById('loadingProgress');
+        const startText = document.getElementById('startText');
+        const initScreen = document.getElementById('initScreen');
+
+        // Quando il LoadingManager fa progressi, aggiorniamo la %
+        this.manager.onProgress = (url, itemsLoaded, itemsTotal) => {
+            loadingProgress.innerText = Math.floor((itemsLoaded / itemsTotal) * 100);
+        };
+
+        // Quando ha finito TUTTO, sblocchiamo il gioco
+        this.manager.onLoad = () => {
+            loadingText.classList.add('hidden');
+            startText.classList.remove('hidden');
+            initScreen.style.pointerEvents = 'auto'; // Riattiviamo il click
+        };
+
+        // 1. Carichiamo le Texture 3D passando il manager
+        const texLoader = new THREE.TextureLoader(this.manager);
+        this.textures.dirt = texLoader.load('dirt.jpg');
+        this.textures.grass = texLoader.load('grass.jpg');
+        this.textures.rock = texLoader.load('rock.jpg');
+        this.textures.wall = texLoader.load('wall.jpg');
+
+        // 2. Carichiamo le immagini UI (non bloccanti)
         const imagesToLoad = ['bg.png', 'bg_morte.png', 'bg_box.png', 'bg_piano.png'];
-        // Trova e precarica in automatico tutte le immagini delle reliquie
-        RelicSystem.allRelics.forEach(relic => {
-            if (relic.image) imagesToLoad.push(relic.image);
-        });
-        
+        RelicSystem.allRelics.forEach(r => { if(r.image) imagesToLoad.push(r.image); });
         imagesToLoad.forEach(src => {
             const img = new Image();
             img.src = src;
         });
 
-        // Preload Audio: usa fetch per forzare il salvataggio nella cache del browser senza intaccare le prestazioni
-        fetch('The_Iron_Pulse.mp3').catch(e => console.warn('Audio prefetch saltato', e));
-        fetch('Gameplay.mp3').catch(e => console.warn('Audio prefetch saltato', e));
-        fetch('Boss.mp3').catch(e => console.warn('Audio prefetch saltato', e));
-        fetch('Vittoria_piano.mp3').catch(e => console.warn('Audio prefetch saltato', e));
-        fetch('Caduto.mp3').catch(e => console.warn('Audio prefetch saltato', e));
-        fetch('RIP.mp3').catch(e => console.warn('Audio prefetch saltato', e));
+        // 3. Audio (non bloccante)
+        ['The_Iron_Pulse.mp3', 'Gameplay.mp3', 'Boss.mp3', 'Vittoria_Piano.mp3', 'Caduto.mp3', 'RIP.mp3'].forEach(src => {
+            fetch(src).catch(e => {});
+        });
     }
 };
 
 window.onload = () => {
-    Preloader.preloadAll(); // Avvia il download silente delle immagini
+    Preloader.init(); // Avvia il LoadingManager globale
     ScoreManager.init(); Game.init();
     const initScreen = document.getElementById('initScreen'); const mainMenu = document.getElementById('mainMenu');
     

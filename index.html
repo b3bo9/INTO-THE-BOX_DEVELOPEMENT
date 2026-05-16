@@ -1724,7 +1724,8 @@ const Game = {
         this.renderer.shadowMap.enabled = AppSettings.shadowsEnabled; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(this.renderer.domElement);
         
-        const ambientLight = new THREE.AmbientLight(0x222233, 1.0); this.scene.add(ambientLight);
+        / Luce globale quasi inesistente (notte fonda), esalta la luce del giocatore
+        const ambientLight = new THREE.AmbientLight(0x0a0a15, 0.3); this.scene.add(ambientLight);
         
         this.dirLight = new THREE.DirectionalLight(0x6677aa, 1.5); 
         this.dirLight.position.set(-500, 1000, -500); 
@@ -2282,19 +2283,24 @@ class GameMap {
 
        const alphaTex = createOrganicAlphaMap();
 
+       // Tinte scure per spegnere la luminosità dei JPG e dare un look "Dark Fantasy"
+        const tintDirt = 0x332b22;  // Marrone scurissimo
+        const tintGrass = 0x223322; // Verde palude scurissimo
+        const tintRock = 0x333344;  // Grigio-bluastro scuro (alza il contrasto con il sangue e il fuoco)
+
         // 1. Terra di base
         const matDirt = new MapMaterialClass({ 
-            map: texDirt, roughness: 0.9, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5, shininess: 2 
+            map: texDirt, color: tintDirt, roughness: 0.9, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5, shininess: 2 
         });
         
-        // 2. Erba e Roccia: Usiamo SOLO alphaTest. Niente transparent, niente polygonOffset.
+        // 2. Erba e Roccia
         const matGrass = new MapMaterialClass({ 
-            map: texGrass, roughness: 1.0, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, shininess: 0,
+            map: texGrass, color: tintGrass, roughness: 1.0, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, shininess: 0,
             alphaMap: alphaTex, alphaTest: 0.5 
         });
         
         const matRock = new MapMaterialClass({ 
-            map: texRock, roughness: 0.6, metalness: 0.2, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, shininess: 10,
+            map: texRock, color: tintRock, roughness: 0.6, metalness: 0.2, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, shininess: 10,
             alphaMap: alphaTex, alphaTest: 0.5 
         });
 

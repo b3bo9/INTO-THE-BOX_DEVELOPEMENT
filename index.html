@@ -1724,7 +1724,7 @@ const Game = {
         this.renderer.shadowMap.enabled = AppSettings.shadowsEnabled; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(this.renderer.domElement);
         
-        / Luce globale quasi inesistente (notte fonda), esalta la luce del giocatore
+        // Luce globale quasi inesistente (notte fonda), esalta la luce del giocatore
         const ambientLight = new THREE.AmbientLight(0x0a0a15, 0.3); this.scene.add(ambientLight);
         
         this.dirLight = new THREE.DirectionalLight(0x6677aa, 1.5); 

@@ -1107,38 +1107,28 @@ function createOrganicAlphaMap() {
     canvas.width = 256; canvas.height = 256; 
     const ctx = canvas.getContext('2d');
     
-    let imgData = ctx.createImageData(256, 256);
-    let data = imgData.data;
+    // Sfondo nero (trasparente)
+    ctx.fillStyle = '#000000'; 
+    ctx.fillRect(0, 0, 256, 256);
     
-    // FIX PUNTINI 1: Riduciamo la griglia da 64 a 24.
-    // Ora i granelli di "sfumatura" saranno veri e propri sassi/zolle molto più larghi
-    const gridSize = 24; 
-    const noiseGrid = new Float32Array(gridSize * gridSize);
-    for(let i = 0; i < noiseGrid.length; i++) {
-        noiseGrid[i] = Math.random();
+    // Disegniamo una forma ondulata al centro
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    for (let angle = 0; angle < Math.PI * 2; angle += 0.1) {
+        // Il raggio oscilla dolcemente per non fare un cerchio perfetto
+        let radius = 100 + Math.sin(angle * 5) * 15 + Math.cos(angle * 3) * 10;
+        let x = 128 + Math.cos(angle) * radius;
+        let y = 128 + Math.sin(angle) * radius;
+        if (angle === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
     }
+    ctx.closePath();
     
-    for(let x=0; x<256; x++) {
-        for(let y=0; y<256; y++) {
-            let dx = (x - 128) / 128;
-            let dy = (y - 128) / 128;
-            
-            let dist = Math.sqrt(dx*dx + dy*dy) + (Math.sin(x*0.05)*0.15) + (Math.cos(y*0.05)*0.15);
-            let solid = 1.0 - dist; 
-            
-            let nx = Math.floor((x / 256) * gridSize);
-            let ny = Math.floor((y / 256) * gridSize);
-            let noise = noiseGrid[ny * gridSize + nx];
-            
-            // FIX PUNTINI 2: Soglia abbassata da 0.25 a 0.15 per mantenere i bordi più compatti
-            let val = (solid * 1.5 - noise > 0.15) ? 255 : 0;
-            
-            let i = (y * 256 + x) * 4;
-            data[i] = data[i+1] = data[i+2] = val;
-            data[i+3] = 255;
-        }
-    }
-    ctx.putImageData(imgData, 0, 0);
+    // Sfumiamo IL BORDO (niente granelli, solo un gradiente morbidissimo)
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 20; 
+    ctx.fill();
+    ctx.fill(); // Riempiamo due volte per garantire che il centro sia solidissimo (non slavato)
     
     let tex = new THREE.CanvasTexture(canvas);
     tex.magFilter = THREE.LinearFilter; 
@@ -2299,20 +2289,24 @@ class GameMap {
             map: texDirt, color: tintDirt, roughness: 0.9, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5, shininess: 2 
         });
         
-        // 2. Erba e Roccia
+       // 2. Erba e Roccia: Trasparenza morbida, ma con depthWrite: false per evitare bug visivi
         const matGrass = new MapMaterialClass({ 
             map: texGrass, color: tintGrass, roughness: 1.0, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, shininess: 0,
-            alphaMap: alphaTex, alphaTest: 0.2 
+            alphaMap: alphaTex, transparent: true, depthWrite: false 
         });
         
         const matRock = new MapMaterialClass({ 
             map: texRock, color: tintRock, roughness: 0.6, metalness: 0.2, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, shininess: 10,
-            alphaMap: alphaTex, alphaTest: 0.2 
+            alphaMap: alphaTex, transparent: true, depthWrite: false 
         });
 
         const meshDirt = new THREE.InstancedMesh(floorGeo, matDirt, floorCount);
         const meshGrass = new THREE.InstancedMesh(floorGeo, matGrass, floorCount);
         const meshRock = new THREE.InstancedMesh(floorGeo, matRock, floorCount);
+        // GARANTISCE CHE LA SFUMATURA FUNZIONI: Terra prima, Erba seconda, Roccia terza.
+        meshDirt.renderOrder = 0;
+        meshGrass.renderOrder = 1;
+        meshRock.renderOrder = 2;
         
         const wallGeo = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
         this.wallMat = new MapMaterialClass({ 

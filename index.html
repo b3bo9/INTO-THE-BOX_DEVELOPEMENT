@@ -1315,9 +1315,21 @@ class ExtraLife {
         this.group.matrixAutoUpdate = false; 
         core.matrixAutoUpdate = false; core.updateMatrix();
         this.group.add(core); this.group.visible = false; Game.scene.add(this.group);
+        this.groundGlow = new THREE.Mesh(new THREE.PlaneGeometry(35, 35), new THREE.MeshBasicMaterial({map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
+        this.groundGlow.rotation.x = -Math.PI / 2;
+        this.groundGlow.visible = false;
+        Game.scene.add(this.groundGlow);
     }
-    spawn(x, y) { this.active = true; this.x = x; this.y = y; this.life = 15.0; this.group.position.set(x, 12, y); this.group.updateMatrix(); this.group.visible = true; }
-    destroy() { this.active = false; this.group.visible = false; }
+    spawn(x, y) { 
+        this.active = true; this.x = x; this.y = y; this.life = 15.0; 
+        this.group.position.set(x, 12, y); this.group.updateMatrix(); this.group.visible = true; 
+        if (isTouchDevice) {
+            this.groundGlow.material.color.setHex(0xffffff); // Alone bianco puro
+            this.groundGlow.position.set(x, 0.2, y);
+            this.groundGlow.visible = true;
+        }
+    }
+    destroy() { this.active = false; this.group.visible = false; this.groundGlow.visible = false; }
 }
 
 class Hazard {
@@ -1732,15 +1744,18 @@ const Game = {
     resetCombo() { this.combo = 0; this.comboTimer = 0; },
     addUltimateCharge(amount) { if (!this.ultimateActive) this.ultimateCharge = Math.min(100, this.ultimateCharge + amount); },
 
-    activateUltimate() {
-        if (this.ultimateCharge >= 100 && !this.ultimateActive) {
-            this.ultimateCharge = 0; this.ultimateActive = true; this.ultimateTimer = 10.0 + this.player.modifiers.ascensionDurationAdd; 
-            this.addTrauma(1.0); this.hitStop = 0.3; AudioEngine.playUltimate();
-            this.getFloatingText().spawn(this.player.x, this.player.y, "ASCENSIONE!", '#00DDFF', 40, true);
-            let pCount = AppSettings.isLow ? 4 : (isTouchDevice ? 10 : (AppSettings.isUltraPC ? 60 : 30));
-            for(let i=0; i<pCount; i++) this.getParticle().spawn(this.player.x, 20, this.player.y, SharedMat.spriteBlue, 'trail');
-        }
-    },
+   activateUltimate() {
+        if (this.ultimateCharge >= 100 && !this.ultimateActive) {
+            this.ultimateCharge = 0; this.ultimateActive = true; this.ultimateTimer = 10.0 + this.player.modifiers.ascensionDurationAdd; 
+            this.addTrauma(1.0); this.hitStop = 0.3; AudioEngine.playUltimate();
+            this.getFloatingText().spawn(this.player.x, this.player.y, "ASCENSIONE!", '#00DDFF', 40, true);
+            let pCount = AppSettings.isLow ? 4 : (isTouchDevice ? 10 : (AppSettings.isUltraPC ? 60 : 30));
+            for(let i=0; i<pCount; i++) this.getParticle().spawn(this.player.x, 20, this.player.y, SharedMat.spriteBlue, 'trail');
+            
+            // Forza l'aggiornamento visivo del giocatore per far esplodere la luce azzurra!
+            if (this.player) this.player.updateAppearance();
+        }
+    },
 
     addTrauma(amount) { this.trauma = Math.min(this.trauma + amount, 1.0); },
     snapCamera() {

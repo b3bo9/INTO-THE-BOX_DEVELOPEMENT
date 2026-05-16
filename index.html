@@ -1111,31 +1111,36 @@ function createOrganicAlphaMap() {
     ctx.fillStyle = '#000000'; 
     ctx.fillRect(0, 0, 256, 256);
     
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = '#ffffff';
-    ctx.shadowBlur = 18; // Sfocatura morbida per i bordi
+    // Creiamo una sfumatura morbidissima dal centro verso i bordi estremi
+    const grad = ctx.createRadialGradient(128, 128, 20, 128, 128, 120);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 1)');      // Centro solidissimo
+    grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.5)');  // Metà semi-trasparente
+    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');      // Bordo invisibile
     
-    // 1. Corpo centrale solido
+    ctx.fillStyle = grad;
+    
+    // Disegniamo una forma organica ondulata invece di un cerchio
     ctx.beginPath();
-    ctx.arc(128, 128, 65, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // 2. Disegniamo ~15 "protuberanze" sfalsate per creare l'irregolarità organica
-    for(let i=0; i<15; i++) {
-        let angle = (Math.PI * 2 / 15) * i + (Math.random() * 0.5);
-        let dist = 40 + Math.random() * 45; // Distanza dal centro imprevedibile
-        let radius = 20 + Math.random() * 30; // Grandezza della sporgenza variabile
-        
-        ctx.beginPath();
-        ctx.arc(128 + Math.cos(angle) * dist, 128 + Math.sin(angle) * dist, radius, 0, Math.PI * 2);
-        ctx.fill();
+    for (let angle = 0; angle < Math.PI * 2; angle += 0.2) {
+        let radius = 110 + Math.sin(angle * 5) * 15 + Math.cos(angle * 3) * 10;
+        let x = 128 + Math.cos(angle) * radius;
+        let y = 128 + Math.sin(angle) * radius;
+        if (angle === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
     }
-    
-    // 3. Secondo riempimento centrale per assicurarci che l'interno non sia slavato
-    ctx.shadowBlur = 0;
-    ctx.beginPath();
-    ctx.arc(128, 128, 80, 0, Math.PI * 2);
+    ctx.closePath();
     ctx.fill();
+    
+    // Aggiungiamo un leggerissimo rumore per evitare i cerchi concentrici visibili (Banding)
+    let imgData = ctx.getImageData(0, 0, 256, 256);
+    let data = imgData.data;
+    for(let i = 0; i < data.length; i += 4) {
+        let noise = (Math.random() - 0.5) * 20; 
+        data[i] = Math.max(0, Math.min(255, data[i] + noise));
+        data[i+1] = Math.max(0, Math.min(255, data[i+1] + noise));
+        data[i+2] = Math.max(0, Math.min(255, data[i+2] + noise));
+    }
+    ctx.putImageData(imgData, 0, 0);
     
     let tex = new THREE.CanvasTexture(canvas);
     tex.magFilter = THREE.LinearFilter; 
@@ -2357,10 +2362,14 @@ class GameMap {
                         let noise = (Math.sin(x * 0.3) + Math.cos(y * 0.3)) / 2; 
                         let r = Math.random() * 0.4 + (noise * 0.6 + 0.5); 
                         
-                        // 2. SOVRAPPONI ERBA E ROCCIA (EFFETTO SCATTER)
+                      // 2. SOVRAPPONI ERBA O ROCCIA
                         if (r > 0.35) {
-                            dummy.scale.set(1.5, 1, 1.5); 
+                            // FIX FUSIONE: Scala enorme (2.4) per far accavallare e sfumare dolcemente le mattonelle
+                            dummy.scale.set(2.4, 1, 2.4); 
+                            
+                            // Ruotiamo casualmente la macchia per variare i pattern
                             dummy.rotation.y = Math.random() * Math.PI * 2;
+                            dummy.position.y = 0;
                             
                             if (r < 0.70) {
                                 // FIX MOBILE: Solleviamo fisicamente l'erba

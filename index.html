@@ -154,7 +154,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 99</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 100</p>
                 </div>
             </div>
         </div>
@@ -1148,6 +1148,8 @@ const SharedMat = {
     spriteBlood: new THREE.SpriteMaterial({color: 0xaa0000, map: GLOW_TEX, transparent: true, depthWrite: false}),
     
     arrow: new THREE.MeshPhongMaterial({color: 0x888888, emissive: 0x444444}),
+    playerArrow: new THREE.MeshPhongMaterial({color: 0x000000, emissive: 0xffff00, emissiveIntensity: 2.0}),
+    spriteYellow: new THREE.SpriteMaterial({color: 0xffff00, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
     homingArrow: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.green, emissiveIntensity: 2.0}),
     explosiveArrow: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.red, emissiveIntensity: 2.0}),
     chainLightning: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.blue, emissiveIntensity: 2.0}),
@@ -2383,7 +2385,7 @@ class Player extends Entity {
             shieldDurationAdd: 0
         };
         
-        this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}), new THREE.MeshPhongMaterial({color: 0x00ffff, emissive: 0x00ffff}));
+        this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}), new THREE.MeshPhongMaterial({color: 0xffff00, emissive: 0xffff00}));
         this.mesh = this.modelParts.group; this.staffGemMat = this.modelParts.staffGem.material;
         
         this.light = new THREE.PointLight(0xffffff, 1.0, 600); this.light.position.y = 40; 
@@ -2482,7 +2484,7 @@ class Player extends Entity {
         let pCount = AppSettings.isLow ? 4 : (isTouchDevice ? 10 : (AppSettings.isUltraPC ? 60 : 30)); for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, mat, 'trail');
     }
     updateAppearance() {
-        let colorHex = 0x222222; let lColor = 0xffffff; let gemColor = 0x00ffff;
+        let colorHex = 0x222222; let lColor = 0xffffff; let gemColor = 0xffff00;
         let isUltra = AppSettings.isUltraPC;
         if (this.essence) { colorHex = ESSENCE_COLORS[this.essence]; lColor = ESSENCE_COLORS[this.essence]; gemColor = ESSENCE_COLORS[this.essence]; }
         this.modelParts.body.material.color.setHex(colorHex); this.light.color.setHex(lColor);
@@ -2701,7 +2703,7 @@ class Player extends Entity {
         this.attackTimer = 1 / (this.baseAttackSpeed * spdMult); this.isAttacking = true; this.attackSwing = 0;
         let critChance = this.modifiers.critChance + Math.min(Game.combo * 0.005, 0.5 * flowCapMult); let isCrit = Math.random() < critChance;
         let baseDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * (1 + Math.min(Game.combo * 0.04, 2.0 * flowCapMult)) * this.modifiers.dmgMult; if (Game.ultimateActive) baseDmg *= 2.0; if (isCrit) baseDmg *= this.modifiers.critDmgMult;
-        let projType = 'arrow'; if (this.essence === 'red') projType = 'explosive_arrow'; if (this.essence === 'blue') projType = 'chain_lightning'; if (this.essence === 'green') projType = 'homing_arrow';
+        let projType = 'player_arrow'; if (this.essence === 'red') projType = 'explosive_arrow'; if (this.essence === 'blue') projType = 'chain_lightning'; if (this.essence === 'green') projType = 'homing_arrow';
         let piercing = (this.overdrive && this.essence === 'blue'); AudioEngine.playShoot(projType, isCrit);
         
         // Calcola la velocità: 500 per il rosso, 1000 per tutti gli altri
@@ -3448,6 +3450,7 @@ class Projectile {
         this.radius = 6; let mat = SharedMat.arrow; let geo = SharedGeo.sphere;
 
         if (type === 'arrow') { mat = SharedMat.arrow; geo = SharedGeo.cone; } 
+        if (type === 'player_arrow') { mat = SharedMat.playerArrow; geo = SharedGeo.cone; } 
         if (type === 'explosive_arrow') { mat = SharedMat.explosiveArrow; this.radius = 16; geo = SharedGeo.icosahedron; }
         if (type === 'chain_lightning') { mat = SharedMat.chainLightning; this.radius = 10; geo = SharedGeo.icosahedron; }
         if (type === 'homing_arrow') { mat = SharedMat.homingArrow; this.radius = 8; geo = SharedGeo.cone; }
@@ -3461,8 +3464,9 @@ class Projectile {
         
         this.mesh.updateMatrix(); this.group.updateMatrix(); 
         if (isTouchDevice && type !== 'arrow') {
-            let colorHex = 0xffffff;
-            if (type === 'explosive_arrow' || type === 'enemy_fireball' || type === 'fire_shape') colorHex = 0xff3300;
+            let colorHex = 0xffffff;
+            if (type === 'player_arrow') colorHex = 0xffff00;
+            if (type === 'explosive_arrow' || type === 'enemy_fireball' || type === 'fire_shape') colorHex = 0xff3300;
             if (type === 'chain_lightning' || type === 'enemy_bolt') colorHex = 0x00aaff;
             if (type === 'homing_arrow') colorHex = 0x33ff00;
             this.groundGlow.material.color.setHex(colorHex);
@@ -3497,8 +3501,8 @@ class Projectile {
         if (this.groundGlow.visible) {
             this.groundGlow.position.set(this.x, 0.2, this.y);
         }
-        if (this.type !== 'arrow' && this.type !== 'homing_arrow') {
-            this.mesh.rotation.x += dt * 5; this.mesh.rotation.y += dt * 5; 
+       if (this.type !== 'arrow' && this.type !== 'player_arrow' && this.type !== 'homing_arrow') {
+            this.mesh.rotation.x += dt * 5; this.mesh.rotation.y += dt * 5;
             this.mesh.updateMatrix(); 
         }
         
@@ -3551,7 +3555,8 @@ class Projectile {
         }
         if (this.life <= 0) this.destroy();
         if(this.active && this.type !== 'arrow' && (Game.frameCount + this.updateOffset) % (isTouchDevice?6:3) === 0) {
-            let pMat = SharedMat.spriteWhite;
+            let pMat = SharedMat.spriteWhite;
+            if (this.type === 'player_arrow') pMat = SharedMat.spriteYellow;
             if (this.type === 'explosive_arrow' || this.type === 'enemy_fireball' || this.type === 'fire_shape') pMat = SharedMat.spriteRed;
             if (this.type === 'chain_lightning' || this.type === 'enemy_bolt') pMat = SharedMat.spriteBlue;
             if (this.type === 'homing_arrow') pMat = SharedMat.spriteGreen;
@@ -3575,7 +3580,8 @@ class Projectile {
     destroy() {
         this.groundGlow.visible = false;
         this.active = false; this.group.visible = false; let pMat = SharedMat.spriteWhite;
-        if (this.type === 'explosive_arrow' || this.type === 'enemy_fireball' || this.type === 'fire_shape') pMat = SharedMat.spriteRed;
+        if (this.type === 'player_arrow') pMat = SharedMat.spriteYellow;
+        if (this.type === 'explosive_arrow' || this.type === 'enemy_fireball' || this.type === 'fire_shape') pMat = SharedMat.spriteRed;
         if (this.type === 'chain_lightning' || this.type === 'enemy_bolt') pMat = SharedMat.spriteBlue;
         if (this.type === 'homing_arrow') pMat = SharedMat.spriteGreen;
         let count = AppSettings.isLow ? 1 : (isTouchDevice ? 2 : (AppSettings.isUltraPC ? 12 : 6));

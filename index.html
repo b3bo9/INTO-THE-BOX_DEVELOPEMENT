@@ -2286,6 +2286,15 @@ class GameMap {
         
         const texRock = texLoader.load('rock.jpg');
         texRock.anisotropy = maxAnisotropy;
+
+        const texWall = texLoader.load('wall.jpg');
+        texWall.anisotropy = maxAnisotropy;
+        
+        // FIX STIRAMENTO: I muri sono alti 1.5 volte la loro larghezza.
+        // Diciamo alla texture di ripetersi invece di allungarsi rovinosamente!
+        texWall.wrapS = THREE.RepeatWrapping;
+        texWall.wrapT = THREE.RepeatWrapping;
+        texWall.repeat.set(1, 1.5);
         
         const floorGeo = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE); floorGeo.rotateX(-Math.PI/2);
         
@@ -2326,12 +2335,13 @@ class GameMap {
         
         const wallGeo = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
         this.wallMat = new MapMaterialClass({ 
-            map: wallTex, 
-            roughness: AppSettings.isUltraPC ? 0.5 : 0.8, 
-            metalness: AppSettings.isUltraPC ? 0.5 : 0.3, 
-            bumpMap: isHighQ ? wallTex : null, 
-            bumpScale: AppSettings.isUltraPC ? 4.0 : 2.0,
-            shininess: 10 // Ignorato dal PC (Standard), usato solo su Mobile (Phong)
+            map: texWall,         // Usa il JPG
+            color: tintWall,      // Applica la tinta oscura
+            roughness: 0.8,       // La pietra vera è molto ruvida (evita l'effetto plastica)
+            metalness: 0.1,       // Abbassiamo il metallo per farla sembrare roccia solida
+            bumpMap: isHighQ ? texWall : null, 
+            bumpScale: 3.0,       // Esalta il rilievo 3D della texture
+            shininess: 5          // Per i dispositivi mobile
         });
         // --- FINE GESTIONE MATERIALI OTTIMIZZATI ---
 

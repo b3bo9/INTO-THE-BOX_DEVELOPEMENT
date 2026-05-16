@@ -1107,29 +1107,31 @@ function createOrganicAlphaMap() {
     canvas.width = 128; canvas.height = 128; 
     const ctx = canvas.getContext('2d');
     
+    // Sfondo invisibile
     ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, 128, 128);
     
-    // Cerchio bianco più largo per coprire bene la mattonella
-    let grad = ctx.createRadialGradient(64, 64, 25, 64, 64, 64);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = grad; ctx.fillRect(0, 0, 128, 128);
+    // Disegniamo 4-5 cerchi sovrapposti e sfalsati per creare una forma irregolare
+    ctx.fillStyle = '#ffffff';
+    for(let i=0; i<5; i++) {
+        ctx.beginPath();
+        let cx = 64 + (Math.random() - 0.5) * 40;
+        let cy = 64 + (Math.random() - 0.5) * 40;
+        let r = 30 + Math.random() * 25;
+        ctx.arc(cx, cy, r, 0, Math.PI*2);
+        ctx.fill();
+    }
     
+    // Erodi i bordi violentemente per fonderli col terreno
     let imgData = ctx.getImageData(0, 0, 128, 128);
     let data = imgData.data;
-    
-    // Applichiamo un noise ad altissimo contrasto per creare bordi secchi e rotti
     for(let i = 0; i < data.length; i += 4) {
-        let noise = (Math.random() - 0.5) * 200; // Rumore molto forte
+        let noise = (Math.random() - 0.5) * 180; 
         let val = data[i] + noise;
-        // Forza i pixel a essere o neri o bianchi (niente sfumature)
-        val = val > 128 ? 255 : 0; 
-        data[i] = data[i+1] = data[i+2] = val;
+        data[i] = data[i+1] = data[i+2] = val > 128 ? 255 : 0;
     }
     ctx.putImageData(imgData, 0, 0);
     
     let tex = new THREE.CanvasTexture(canvas);
-    // Evitiamo che la GPU applichi filtri sfuocati alla nostra maschera netta
     tex.magFilter = THREE.NearestFilter; 
     tex.minFilter = THREE.NearestFilter;
     return tex;
@@ -2265,22 +2267,23 @@ class GameMap {
         // Selettore automatico del materiale
         const MapMaterialClass = isTouchDevice ? THREE.MeshPhongMaterial : THREE.MeshStandardMaterial;
 
-        const alphaTex = createOrganicAlphaMap();
+       const alphaTex = createOrganicAlphaMap();
 
-        // La Terra rimane uguale
         const matDirt = new MapMaterialClass({ 
             map: texDirt, roughness: 0.9, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5, shininess: 2 
         });
         
-        // IL SEGRETO È QUI: Rimuoviamo "transparent" e "depthWrite" e usiamo "alphaTest: 0.5"
+        // FIX SFARFALLIO: polygonOffset spinge il rendering in primo piano
         const matGrass = new MapMaterialClass({ 
             map: texGrass, roughness: 1.0, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, shininess: 0,
-            alphaMap: alphaTex, alphaTest: 0.5 
+            alphaMap: alphaTex, alphaTest: 0.5,
+            polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 
         });
         
         const matRock = new MapMaterialClass({ 
             map: texRock, roughness: 0.6, metalness: 0.2, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, shininess: 10,
-            alphaMap: alphaTex, alphaTest: 0.5 
+            alphaMap: alphaTex, alphaTest: 0.5,
+            polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 
         });
 
         const meshDirt = new THREE.InstancedMesh(floorGeo, matDirt, floorCount);
@@ -2318,27 +2321,33 @@ class GameMap {
                         // 1. PIAZZA SEMPRE LA TERRA COME BASE
                         dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, 0, y * TILE_SIZE + TILE_SIZE / 2);
                         dummy.scale.set(1, 1, 1);
+                        dummy.rotation.set(0, 0, 0); // Assicura che la terra non sia ruotata
                         dummy.updateMatrix(); 
                         meshDirt.setMatrixAt(idxDirt++, dummy.matrix);
                         
                         let noise = (Math.sin(x * 0.3) + Math.cos(y * 0.3)) / 2; 
                         let r = Math.random() * 0.4 + (noise * 0.6 + 0.5); 
                         
-                        // 2. EVENTUALMENTE SOVRAPPONI ERBA O ROCCIA SFUMATA E ALLARGATA
+                        // 2. SOVRAPPONI ERBA O ROCCIA
                         if (r > 0.35) {
-                            dummy.scale.set(1.25, 1, 1.25); 
+                            dummy.scale.set(1.4, 1, 1.4); 
+                            
+                            // FIX CERCHI: Ruotiamo casualmente la macchia per nascondere le ripetizioni
+                            dummy.rotation.y = Math.random() * Math.PI * 2;
+                            // Tutte a quota 0, lo sfarfallio è gestito dal polygonOffset!
+                            dummy.position.y = 0; 
                             
                             if (r < 0.70) {
-                                dummy.position.y = 0.05; 
                                 dummy.updateMatrix();
                                 meshGrass.setMatrixAt(idxGrass++, dummy.matrix);
                             } else {
-                                dummy.position.y = 0.1; 
                                 dummy.updateMatrix();
                                 meshRock.setMatrixAt(idxRock++, dummy.matrix);
                             }
                             
-                            dummy.scale.set(1, 1, 1); // Reset essenziale per i pilastri
+                            // Reset essenziale per evitare che i muri/pilastri escano storti
+                            dummy.scale.set(1, 1, 1); 
+                            dummy.rotation.set(0, 0, 0); 
                         }
 
                         if (this.grid[x][y] === 3) {

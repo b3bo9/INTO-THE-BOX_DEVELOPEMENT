@@ -1106,14 +1106,27 @@ const SharedGeo = {
 function createPatternTexture(type) {
     const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256; const ctx = canvas.getContext('2d');
     if (type === 'floor') {
-        ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, 256, 256);
-        for(let i=0; i<150; i++) {
-            ctx.fillStyle = Math.random() > 0.5 ? '#111' : '#080808';
-            ctx.fillRect(Math.random()*256, Math.random()*256, Math.random()*15+5, Math.random()*15+5);
+        // Sfondo di base scuro
+        ctx.fillStyle = '#050508'; ctx.fillRect(0, 0, 256, 256);
+        
+        // Gradiente per dare l'illusione di profondità/rilievo alla mattonella
+        let grad = ctx.createLinearGradient(0, 0, 256, 256);
+        grad.addColorStop(0, '#1a1a24'); 
+        grad.addColorStop(1, '#0a0a0f');
+        ctx.fillStyle = grad; 
+        ctx.fillRect(4, 4, 248, 248); // Lascia una fuga nera di 4px ai bordi
+
+        // Dettagli procedurali (graffi e porosità della pietra)
+        for(let i=0; i<80; i++) {
+            ctx.fillStyle = Math.random() > 0.5 ? '#222230' : '#000000';
+            ctx.globalAlpha = Math.random() * 0.5 + 0.1;
+            ctx.fillRect(Math.random()*256, Math.random()*256, Math.random()*15+2, Math.random()*4+1);
         }
-        ctx.strokeStyle = '#000'; ctx.lineWidth = 4;
-        ctx.strokeRect(0, 0, 128, 128); ctx.strokeRect(128, 0, 128, 128);
-        ctx.strokeRect(0, 128, 128, 128); ctx.strokeRect(128, 128, 128, 128);
+        ctx.globalAlpha = 1.0;
+
+        // Bordo interno per effetto "bevel" (smussatura)
+        ctx.strokeStyle = '#2a2a35'; ctx.lineWidth = 2;
+        ctx.strokeRect(4, 4, 248, 248);
     } else if (type === 'wall') {
         ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, 256, 256); ctx.fillStyle = '#111111';
         for(let i=0; i<8; i++) { let y = i*32; let offset = (i%2)*32; ctx.fillRect(offset+2, y+2, 60, 28); ctx.fillRect(offset+66, y+2, 60, 28); ctx.fillRect(offset+130, y+2, 60, 28); ctx.fillRect(offset+194, y+2, 60, 28); if(offset > 0) ctx.fillRect(-30, y+2, 60, 28); }
@@ -1667,7 +1680,7 @@ const Game = {
 
     init() {
         UI.init(); TouchControls.init(); const container = document.getElementById('game-container');
-        this.scene = new THREE.Scene(); this.scene.fog = new THREE.Fog(0x050508, 400, 1800); 
+        this.scene = new THREE.Scene(); this.scene.fog = new THREE.FogExp2(0x050508, 0.0009);
         this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 1, 3000);
         
         const pixelRatio = isTouchDevice ? 0.75 : (AppSettings.isUltra ? Math.min(window.devicePixelRatio, 2.0) : Math.min(window.devicePixelRatio, 1.5));
@@ -1889,8 +1902,8 @@ const Game = {
         let floorColor = 0xffffff; let mutatorText = ""; let camDist = isTouchDevice ? 1000 : 750;
         
         // Impostiamo la visibilità della nebbia sempre costante e pulita
-        this.scene.fog.near = camDist + 100; 
-        this.scene.fog.far = camDist + 1200;
+        // this.scene.fog.near = camDist + 100; 
+        // this.scene.fog.far = camDist + 1200;
 
         if (!this.isBossFloor && Math.random() < 0.2) { 
             let r = Math.random();
@@ -2256,7 +2269,7 @@ class GameMap {
         const pillarMesh = new THREE.InstancedMesh(pillarGeo, this.wallMat, pillarCount);
 
         floorMesh.receiveShadow = true; wallMesh.castShadow = true; wallMesh.receiveShadow = false; pillarMesh.castShadow = true; pillarMesh.receiveShadow = true;
-
+        let colorObj = new THREE.Color();
         let dummy = new THREE.Object3D(); let fIdx = 0, wIdx = 0, pIdx = 0;
         for(let x = -PADDING; x < this.width + PADDING; x++) {
             for(let y = -PADDING; y < this.height + PADDING; y++) {
@@ -2264,7 +2277,12 @@ class GameMap {
                 
                 if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
                     if (this.grid[x][y] === 2 || this.grid[x][y] === 3) {
-                        dummy.updateMatrix(); floorMesh.setMatrixAt(fIdx++, dummy.matrix);
+                        dummy.updateMatrix(); 
+                        floorMesh.setMatrixAt(fIdx, dummy.matrix);
+                        let shade = MathUtils.randomRange(0.7, 1.0);
+                        colorObj.setRGB(shade * 0.9, shade * 0.95, shade); 
+                        floorMesh.setColorAt(fIdx, colorObj);
+                        fIdx++;
                         if (this.grid[x][y] === 3) {
                             dummy.position.y = TILE_SIZE*0.75; dummy.updateMatrix(); pillarMesh.setMatrixAt(pIdx++, dummy.matrix);
                       } else if (!isBossFloor && Math.random() < 0.015) { 
@@ -2280,6 +2298,7 @@ class GameMap {
                 }
             }
         }
+        if (floorMesh.instanceColor) floorMesh.instanceColor.needsUpdate = true;
         this.mapGroup.add(floorMesh); this.mapGroup.add(wallMesh); if(pillarCount>0) this.mapGroup.add(pillarMesh); Game.scene.add(this.mapGroup);
     }
     isAdjacentToFloor(x,y) {

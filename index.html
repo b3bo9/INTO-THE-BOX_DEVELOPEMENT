@@ -3485,7 +3485,13 @@ class Projectile {
                 this.groundGlow.scale.set(this.radius * 4, this.radius * 4, 1);
                 this.groundGlow.rotation.z = 0;
             }
-            this.groundGlow.position.set(x, 0.2, y);
+            // Se è una freccia, attacchiamo l'alone al modello (y=14.5) come fosse un'Aura.
+            // Se è una palla di fuoco, lasciamo la luce sul pavimento (y=0.2).
+            if (type === 'player_arrow' || type === 'homing_arrow') {
+                this.groundGlow.position.set(x, 14.5, y);
+            } else {
+                this.groundGlow.position.set(x, 0.2, y);
+            }
             this.groundGlow.visible = true;
         } else {
             this.groundGlow.visible = false;
@@ -3513,8 +3519,12 @@ class Projectile {
         }
        this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt; this.group.position.set(this.x, 15, this.y);
         if (this.groundGlow.visible) {
-            this.groundGlow.position.set(this.x, 0.2, this.y);
-            if (this.type === 'homing_arrow') this.groundGlow.rotation.z = -this.angle;
+            if (this.type === 'player_arrow' || this.type === 'homing_arrow') {
+                this.groundGlow.position.set(this.x, 14.5, this.y);
+                this.groundGlow.rotation.z = -this.angle; // Ruota l'alone in direzione del volo
+            } else {
+                this.groundGlow.position.set(this.x, 0.2, this.y);
+            }
         }
        if (this.type !== 'arrow' && this.type !== 'player_arrow' && this.type !== 'homing_arrow') {
             this.mesh.rotation.x += dt * 5; this.mesh.rotation.y += dt * 5;

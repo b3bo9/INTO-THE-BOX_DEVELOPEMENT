@@ -2348,12 +2348,21 @@ class GameMap {
         // --- FINE GESTIONE MATERIALI OTTIMIZZATI ---
 
         const wallMesh = new THREE.InstancedMesh(wallGeo, this.wallMat, wallCount);
-        const pillarGeo = new THREE.CylinderGeometry(15, 15, TILE_SIZE*1.5, 8);
-        const pillarMesh = new THREE.InstancedMesh(pillarGeo, this.wallMat, pillarCount);
+        // Creiamo le tre parti del pilastro gotico
+        const baseGeo = new THREE.BoxGeometry(35, 15, 35);
+        const shaftGeo = new THREE.CylinderGeometry(12, 14, TILE_SIZE * 1.5, 8);
+        const capGeo = new THREE.CylinderGeometry(20, 12, 10, 4);
+
+        // Creiamo 3 InstancedMesh per il pilastro
+        const pillarBaseMesh = new THREE.InstancedMesh(baseGeo, this.wallMat, pillarCount);
+        const pillarShaftMesh = new THREE.InstancedMesh(shaftGeo, this.wallMat, pillarCount);
+        const pillarCapMesh = new THREE.InstancedMesh(capGeo, this.wallMat, pillarCount);
 
         meshDirt.receiveShadow = true; meshGrass.receiveShadow = true; meshRock.receiveShadow = true;
         wallMesh.castShadow = true; wallMesh.receiveShadow = false; 
-        pillarMesh.castShadow = true; pillarMesh.receiveShadow = true;
+        pillarBaseMesh.castShadow = true; pillarBaseMesh.receiveShadow = true;
+        pillarShaftMesh.castShadow = true; pillarShaftMesh.receiveShadow = true;
+        pillarCapMesh.castShadow = true; pillarCapMesh.receiveShadow = true;
 
         let dummy = new THREE.Object3D(); 
         let idxDirt = 0, idxGrass = 0, idxRock = 0, wIdx = 0, pIdx = 0;
@@ -2401,7 +2410,47 @@ class GameMap {
                         }
 
                         if (this.grid[x][y] === 3) {
-                            dummy.position.y = TILE_SIZE*0.75; dummy.updateMatrix(); pillarMesh.setMatrixAt(pIdx++, dummy.matrix);
+                            let px = x * TILE_SIZE + TILE_SIZE / 2;
+                            let pz = y * TILE_SIZE + TILE_SIZE / 2;
+                            let isBroken = Math.random() < 0.15; // 15% di probabilità di rovina
+
+                            // 1. PIAZZA LA BASE (sempre intatta)
+                            dummy.position.set(px, 7.5, pz); 
+                            dummy.scale.set(1, 1, 1);
+                            dummy.rotation.set(0, 0, 0);
+                            dummy.updateMatrix();
+                            pillarBaseMesh.setMatrixAt(pIdx, dummy.matrix);
+
+                            // 2. PIAZZA IL FUSTO
+                            if (isBroken) {
+                                dummy.scale.set(1, MathUtils.randomRange(0.2, 0.6), 1);
+                                dummy.rotation.z = MathUtils.randomRange(-0.1, 0.1);
+                                dummy.rotation.x = MathUtils.randomRange(-0.1, 0.1);
+                                dummy.position.y = 15 + (TILE_SIZE * 1.5 * dummy.scale.y) / 2; 
+                            } else {
+                                dummy.position.set(px, TILE_SIZE * 0.75, pz);
+                            }
+                            dummy.updateMatrix();
+                            pillarShaftMesh.setMatrixAt(pIdx, dummy.matrix);
+
+                            // 3. PIAZZA IL CAPITELLO (solo se intero)
+                            if (!isBroken) {
+                                dummy.scale.set(1, 1, 1);
+                                dummy.rotation.set(0, Math.PI / 4, 0); 
+                                dummy.position.set(px, TILE_SIZE * 1.5 + 5, pz); 
+                                dummy.updateMatrix();
+                                pillarCapMesh.setMatrixAt(pIdx, dummy.matrix);
+                            } else {
+                                dummy.scale.set(0, 0, 0); // Nascondilo se rotto
+                                dummy.updateMatrix();
+                                pillarCapMesh.setMatrixAt(pIdx, dummy.matrix);
+                            }
+
+                            // Ripristina per altri calcoli
+                            dummy.scale.set(1, 1, 1);
+                            dummy.rotation.set(0, 0, 0);
+                            
+                            pIdx++;
                         } else if (!isBossFloor && Math.random() < 0.015) {
                             let crystal = Game.getEnemy();
                             crystal.spawn(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 'crystal', 1);
@@ -2421,7 +2470,11 @@ class GameMap {
 
         this.mapGroup.add(meshDirt, meshGrass, meshRock); 
         this.mapGroup.add(wallMesh); 
-        if(pillarCount>0) this.mapGroup.add(pillarMesh); 
+        
+        // Aggiungiamo i 3 componenti dei pilastri
+        if(pillarCount > 0) {
+            this.mapGroup.add(pillarBaseMesh, pillarShaftMesh, pillarCapMesh);
+        }
         
         Game.scene.add(this.mapGroup);
     }

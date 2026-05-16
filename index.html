@@ -2507,9 +2507,17 @@ class Player extends Entity {
             // --- GESTIONE FLASH VISIVO ---
             if (this.shieldFlashTimer > 0) {
                 this.shieldFlashTimer -= dt;
-                this.shieldMesh.material.opacity = 1.0; 
-                this.shieldMesh.material.color.setHex(0xffffff); // Diventa bianco accecante
-                this.shieldMesh.scale.set(26, 26, 26); // Si espande per l'impatto
+                
+                // Calcola il progresso del timer da 1.0 a 0.0 (poiché dura 0.15 secondi)
+                let pulse = this.shieldFlashTimer / 0.15;
+                
+                // L'opacità sfuma morbidamente
+                this.shieldMesh.material.opacity = 0.6 + (0.4 * pulse); 
+                this.shieldMesh.material.color.setHex(0xffffff); 
+                
+                // Espansione fluida "a molla": salta a 36 e si restringe fino a 24
+                let s = 24 + (12 * pulse); 
+                this.shieldMesh.scale.set(s, s, s); 
             } else {
                 this.shieldMesh.material.opacity = 0.6;
                 this.shieldMesh.material.color.setHex(0x00DDFF); // Torna azzurro

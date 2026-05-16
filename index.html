@@ -3563,12 +3563,21 @@ class Projectile {
         if (this.life <= 0) this.destroy();
         if(this.active && this.type !== 'arrow' && (Game.frameCount + this.updateOffset) % (isTouchDevice?6:3) === 0) {
             let pMat = SharedMat.spriteWhite;
-            if (this.type === 'player_arrow') pMat = SharedMat.spriteYellow;
-            if (this.type === 'explosive_arrow' || this.type === 'enemy_fireball' || this.type === 'fire_shape') pMat = SharedMat.spriteRed;
-            if (this.type === 'chain_lightning' || this.type === 'enemy_bolt') pMat = SharedMat.spriteBlue;
-            if (this.type === 'homing_arrow') pMat = SharedMat.spriteGreen;
-            Game.getParticle().spawn(this.x, 15, this.y, pMat, 'trail');
-        }
+            let pType = 'trail'; // Fisica standard (fumo che sale)
+
+            if (this.type === 'player_arrow') pMat = SharedMat.spriteYellow;
+            if (this.type === 'explosive_arrow' || this.type === 'enemy_fireball' || this.type === 'fire_shape') pMat = SharedMat.spriteRed;
+            if (this.type === 'homing_arrow') pMat = SharedMat.spriteGreen;
+
+            // --- SCIA ELETTRICA AZZURRINA ---
+            if (this.type === 'chain_lightning' || this.type === 'enemy_bolt') {
+                // Alterniamo particelle azzurre e bianche a costo CPU zero (tramite il modulo dei frame)
+                pMat = (Game.frameCount % 2 === 0) ? SharedMat.spriteBlue : SharedMat.spriteWhite;
+                pType = 'spark'; // Usiamo le scintille: sono più sottili e cadono verso il basso come scariche elettriche
+            }
+
+            Game.getParticle().spawn(this.x, 15, this.y, pMat, pType);
+        }
     }
     handleHit(target) {
         if (target) this.hitEnemies.add(target.id);

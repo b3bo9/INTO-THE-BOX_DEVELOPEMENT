@@ -2497,15 +2497,14 @@ class Player extends Entity {
         if (this.dead) return; this.updateFlash(dt);
         this.modelParts.halo.rotation.z += dt; this.modelParts.staffGem.rotation.y += dt;
         if (this.activeShieldCooldown > 0) this.activeShieldCooldown -= dt;
-        
-        if (this.activeShieldTimer > 0) {
-            this.activeShieldTimer -= dt;
-            this.shieldMesh.rotation.y += dt * 5;
-            this.shieldMesh.rotation.z += dt * 3;
-            // Aggiorna la posizione dell'ombra a Y=0.2 (leggermente sopra il pavimento per evitare compenetrazioni)
-           this.shadowMesh.position.set(this.x, 0.2, this.y);
-           this.shadowMesh.updateMatrix();
-            // --- GESTIONE FLASH VISIVO ---
+        this.shadowMesh.position.set(this.x, 0.2, this.y);
+        this.shadowMesh.updateMatrix();
+
+        if (this.activeShieldTimer > 0) {
+            this.activeShieldTimer -= dt;
+            this.shieldMesh.rotation.y += dt * 5;
+            this.shieldMesh.rotation.z += dt * 3;
+            // --- GESTIONE FLASH VISIVO ---
             if (this.shieldFlashTimer > 0) {
                 this.shieldFlashTimer -= dt;
                 this.shieldMesh.material.opacity = 1.0; 
@@ -3782,7 +3781,7 @@ function clearScene() {
         }
     }
     
-    for(let i=0, len=Game.projectiles.length; i<len; i++) { Game.projectiles[i].active = false; Game.projectiles[i].group.visible = false; }
+    for(let i=0, len=Game.projectiles.length; i<len; i++) { Game.projectiles[i].active = false; Game.projectiles[i].group.visible = false; if (Game.projectiles[i].groundGlow) Game.projectiles[i].groundGlow.visible = false; }
     for(let i=0, len=Game.hazards.length; i<len; i++) { Game.hazards[i].active = false; Game.hazards[i].group.visible = false; }
     for(let i=0, len=Game.particles.length; i<len; i++) { Game.particles[i].active = false; Game.particles[i].mesh.visible = false; }
     for(let i=0, len=Game.floatingTexts.length; i<len; i++) { Game.floatingTexts[i].active = false; }

@@ -2966,7 +2966,11 @@ class Enemy extends Entity {
 
         this.mesh.position.set(x, 0, y); 
         this.mesh.visible = true;
+        
+        // FIX: Allinea l'ombra alle coordinate attuali immediatamente allo spawn
+        this.shadowMesh.position.set(x, 0.2, y);
         this.shadowMesh.scale.set(size * 2.8, size * 2.8, 1);
+        this.shadowMesh.updateMatrix();
         this.shadowMesh.visible = !AppSettings.shadowsEnabled;
         
         if (this.isElite) {

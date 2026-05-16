@@ -154,7 +154,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 98</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 99</p>
                 </div>
             </div>
         </div>
@@ -1285,16 +1285,24 @@ class Essence {
         core.matrixAutoUpdate = false; core.updateMatrix();
         halo.matrixAutoUpdate = false; halo.updateMatrix();
         this.group.add(core); this.group.add(halo); this.group.visible = false; Game.scene.add(this.group);
-    }
+        this.groundGlow = new THREE.Mesh(new THREE.PlaneGeometry(35, 35), new THREE.MeshBasicMaterial({map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
+        this.groundGlow.rotation.x = -Math.PI / 2;
+        this.groundGlow.visible = false;
+        Game.scene.add(this.groundGlow);
+    }
     spawn(x, y, type) {
         this.active = true; this.x = x; this.y = y; this.type = type; let color = ESSENCE_COLORS[type]; 
         this.life = 15.0;
         // Assegniamo il colore direttamente all'emissione luminosa
         this.coreMat.emissive.setHex(color); this.haloMat.color.setHex(color);
-        this.group.position.set(x, 12, y); this.group.updateMatrix(); this.group.visible = true;
-    }
-    destroy() { this.active = false; this.group.visible = false; }
-}
+        this.group.position.set(x, 12, y); this.group.updateMatrix(); this.group.visible = true;
+        if (isTouchDevice) {
+            this.groundGlow.material.color.setHex(color);
+            this.groundGlow.position.set(x, 0.2, y);
+            this.groundGlow.visible = true;
+        }
+    }
+    destroy() { this.active = false; this.group.visible = false; this.groundGlow.visible = false; }
 
 class ExtraLife {
     constructor() {
@@ -3423,10 +3431,14 @@ class Projectile {
         this.mesh.matrixAutoUpdate = false; 
         this.group.add(this.mesh); 
         this.group.visible = false; 
-        this.hitEnemies = new Set(); 
-        this.updateOffset = Math.floor(Math.random() * 15); 
-        Game.scene.add(this.group);
-    }
+       this.hitEnemies = new Set(); 
+        this.updateOffset = Math.floor(Math.random() * 15); 
+        Game.scene.add(this.group);
+        this.groundGlow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
+        this.groundGlow.rotation.x = -Math.PI / 2;
+        this.groundGlow.visible = false;
+        Game.scene.add(this.groundGlow);
+    }
     spawn(x, y, angle, speed, damage, owner, type, piercing=false) {
         this.active = true; this.group.visible = true; this.x = x; this.y = y; this.angle = angle; this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
         this.damage = damage; this.owner = owner; this.type = type; this.piercing = piercing; this.bounceCount = (type === 'chain_lightning') ? 2 : 0;
@@ -3446,9 +3458,21 @@ class Projectile {
         this.mesh.geometry = geo; this.mesh.material = mat; this.group.position.set(x, 15, y);
         if (type === 'arrow' || type === 'homing_arrow') { this.mesh.scale.set(4, 20, 4); this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; } 
         else { this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); }
-        
-        this.mesh.updateMatrix(); this.group.updateMatrix(); 
-    }
+        
+        this.mesh.updateMatrix(); this.group.updateMatrix(); 
+        if (isTouchDevice && type !== 'arrow') {
+            let colorHex = 0xffffff;
+            if (type === 'explosive_arrow' || type === 'enemy_fireball' || type === 'fire_shape') colorHex = 0xff3300;
+            if (type === 'chain_lightning' || type === 'enemy_bolt') colorHex = 0x00aaff;
+            if (type === 'homing_arrow') colorHex = 0x33ff00;
+            this.groundGlow.material.color.setHex(colorHex);
+            this.groundGlow.scale.set(this.radius * 4, this.radius * 4, 1);
+            this.groundGlow.position.set(x, 0.2, y);
+            this.groundGlow.visible = true;
+        } else {
+            this.groundGlow.visible = false;
+        }
+    }
     update(dt) {
         if (!this.active) return;
         if (this.type === 'homing_arrow') {
@@ -3470,7 +3494,10 @@ class Projectile {
             }
         }
         this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt; this.group.position.set(this.x, 15, this.y);
-        if (this.type !== 'arrow' && this.type !== 'homing_arrow') { 
+        if (this.groundGlow.visible) {
+            this.groundGlow.position.set(this.x, 0.2, this.y);
+        }
+        if (this.type !== 'arrow' && this.type !== 'homing_arrow') {
             this.mesh.rotation.x += dt * 5; this.mesh.rotation.y += dt * 5; 
             this.mesh.updateMatrix(); 
         }
@@ -3546,6 +3573,7 @@ class Projectile {
         if (!this.piercing) this.destroy();
     }
     destroy() {
+        this.groundGlow.visible = false;
         this.active = false; this.group.visible = false; let pMat = SharedMat.spriteWhite;
         if (this.type === 'explosive_arrow' || this.type === 'enemy_fireball' || this.type === 'fire_shape') pMat = SharedMat.spriteRed;
         if (this.type === 'chain_lightning' || this.type === 'enemy_bolt') pMat = SharedMat.spriteBlue;

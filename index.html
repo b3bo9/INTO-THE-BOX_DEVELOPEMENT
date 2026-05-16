@@ -2222,23 +2222,25 @@ class GameMap {
 
         // --- INIZIO GESTIONE MATERIALI OTTIMIZZATI ---
         const isHighQ = !AppSettings.isLow && !isTouchDevice; 
-        const floorTex = createPatternTexture('floor'); 
         const wallTex = createPatternTexture('wall');
+        
+        const texLoader = new THREE.TextureLoader();
+        const texDirt = texLoader.load('dirt.jpg');
+        const texGrass = texLoader.load('grass.jpg');
+        const texRock = texLoader.load('rock.jpg');
         
         const floorGeo = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE); floorGeo.rotateX(-Math.PI/2);
         
         // Selettore automatico del materiale
         const MapMaterialClass = isTouchDevice ? THREE.MeshPhongMaterial : THREE.MeshStandardMaterial;
 
-        this.floorMat = new MapMaterialClass({ 
-            map: floorTex, 
-            roughness: AppSettings.isUltraPC ? 0.65 : 0.9, 
-            metalness: AppSettings.isUltraPC ? 0.25 : 0.1, 
-            bumpMap: isHighQ ? floorTex : null, 
-            bumpScale: AppSettings.isUltraPC ? 3.0 : 1.5,
-            shininess: 5 // Ignorato dal PC (Standard), usato solo su Mobile (Phong)
-        });
-        const floorMesh = new THREE.InstancedMesh(floorGeo, this.floorMat, floorCount); 
+        const matDirt = new MapMaterialClass({ map: texDirt, roughness: 0.9, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5, shininess: 2 });
+        const matGrass = new MapMaterialClass({ map: texGrass, roughness: 1.0, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, shininess: 0 });
+        const matRock = new MapMaterialClass({ map: texRock, roughness: 0.6, metalness: 0.2, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, shininess: 10 });
+
+        const meshDirt = new THREE.InstancedMesh(floorGeo, matDirt, floorCount);
+        const meshGrass = new THREE.InstancedMesh(floorGeo, matGrass, floorCount);
+        const meshRock = new THREE.InstancedMesh(floorGeo, matRock, floorCount);
         
         const wallGeo = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
         this.wallMat = new MapMaterialClass({ 
@@ -2255,19 +2257,35 @@ class GameMap {
         const pillarGeo = new THREE.CylinderGeometry(15, 15, TILE_SIZE*1.5, 8);
         const pillarMesh = new THREE.InstancedMesh(pillarGeo, this.wallMat, pillarCount);
 
-        floorMesh.receiveShadow = true; wallMesh.castShadow = true; wallMesh.receiveShadow = false; pillarMesh.castShadow = true; pillarMesh.receiveShadow = true;
+        meshDirt.receiveShadow = true; meshGrass.receiveShadow = true; meshRock.receiveShadow = true;
+        wallMesh.castShadow = true; wallMesh.receiveShadow = false; 
+        pillarMesh.castShadow = true; pillarMesh.receiveShadow = true;
 
-        let dummy = new THREE.Object3D(); let fIdx = 0, wIdx = 0, pIdx = 0;
+        let dummy = new THREE.Object3D(); 
+        let idxDirt = 0, idxGrass = 0, idxRock = 0, wIdx = 0, pIdx = 0;
         for(let x = -PADDING; x < this.width + PADDING; x++) {
             for(let y = -PADDING; y < this.height + PADDING; y++) {
                 dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, 0, y * TILE_SIZE + TILE_SIZE / 2);
                 
                 if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
                     if (this.grid[x][y] === 2 || this.grid[x][y] === 3) {
-                        dummy.updateMatrix(); floorMesh.setMatrixAt(fIdx++, dummy.matrix);
+                        dummy.updateMatrix(); 
+                        
+                        // Formula per creare "macchie" naturali di terreno
+                        let noise = (Math.sin(x * 0.3) + Math.cos(y * 0.3)) / 2; 
+                        let r = Math.random() * 0.4 + (noise * 0.6 + 0.5); 
+                        
+                        if (r < 0.35) {
+                            meshDirt.setMatrixAt(idxDirt++, dummy.matrix);
+                        } else if (r < 0.70) {
+                            meshGrass.setMatrixAt(idxGrass++, dummy.matrix);
+                        } else {
+                            meshRock.setMatrixAt(idxRock++, dummy.matrix);
+                        }
+
                         if (this.grid[x][y] === 3) {
                             dummy.position.y = TILE_SIZE*0.75; dummy.updateMatrix(); pillarMesh.setMatrixAt(pIdx++, dummy.matrix);
-                      } else if (!isBossFloor && Math.random() < 0.015) { 
+                        } else if (!isBossFloor && Math.random() < 0.015) {
                             let crystal = Game.getEnemy();
                             crystal.spawn(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 'crystal', 1);
                             Game.enemies.push(crystal); Game.enemyGrid.insert(crystal);
@@ -2280,7 +2298,15 @@ class GameMap {
                 }
             }
         }
-        this.mapGroup.add(floorMesh); this.mapGroup.add(wallMesh); if(pillarCount>0) this.mapGroup.add(pillarMesh); Game.scene.add(this.mapGroup);
+        meshDirt.count = idxDirt;
+        meshGrass.count = idxGrass;
+        meshRock.count = idxRock;
+
+        this.mapGroup.add(meshDirt, meshGrass, meshRock); 
+        this.mapGroup.add(wallMesh); 
+        if(pillarCount>0) this.mapGroup.add(pillarMesh); 
+        
+        Game.scene.add(this.mapGroup);
     }
     isAdjacentToFloor(x,y) {
         if(x>0 && this.grid[x-1][y]===2) return true; if(x<this.width-1 && this.grid[x+1][y]===2) return true;

@@ -3466,7 +3466,7 @@ class Projectile {
         if (type === 'fire_shape') { mat = SharedMat.fireShape; this.radius = 20; geo = SharedGeo.icosahedron; }
 
         this.mesh.geometry = geo; this.mesh.material = mat; this.group.position.set(x, 15, y);
-        if (type === 'arrow' || type === 'homing_arrow') { this.mesh.scale.set(4, 20, 4); this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; } 
+       if (type === 'arrow' || type === 'player_arrow' || type === 'homing_arrow') { this.mesh.scale.set(4, 20, 4); this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; }
         else { this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); }
         
         this.mesh.updateMatrix(); this.group.updateMatrix(); 
@@ -3477,9 +3477,16 @@ class Projectile {
             if (type === 'chain_lightning' || type === 'enemy_bolt') colorHex = 0x00aaff;
             if (type === 'homing_arrow') colorHex = 0x33ff00;
             this.groundGlow.material.color.setHex(colorHex);
-            this.groundGlow.scale.set(this.radius * 4, this.radius * 4, 1);
-            this.groundGlow.position.set(x, 0.2, y);
-            this.groundGlow.visible = true;
+            if (type === 'player_arrow' || type === 'homing_arrow') {
+                // Allunghiamo il bagliore per farlo sembrare un raggio di luce veloce
+                this.groundGlow.scale.set(this.radius * 7, this.radius * 1.5, 1);
+                this.groundGlow.rotation.z = -angle;
+            } else {
+                this.groundGlow.scale.set(this.radius * 4, this.radius * 4, 1);
+                this.groundGlow.rotation.z = 0;
+            }
+            this.groundGlow.position.set(x, 0.2, y);
+            this.groundGlow.visible = true;
         } else {
             this.groundGlow.visible = false;
         }
@@ -3504,10 +3511,11 @@ class Projectile {
                 this.mesh.updateMatrix(); 
             }
         }
-        this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt; this.group.position.set(this.x, 15, this.y);
-        if (this.groundGlow.visible) {
-            this.groundGlow.position.set(this.x, 0.2, this.y);
-        }
+       this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt; this.group.position.set(this.x, 15, this.y);
+        if (this.groundGlow.visible) {
+            this.groundGlow.position.set(this.x, 0.2, this.y);
+            if (this.type === 'homing_arrow') this.groundGlow.rotation.z = -this.angle;
+        }
        if (this.type !== 'arrow' && this.type !== 'player_arrow' && this.type !== 'homing_arrow') {
             this.mesh.rotation.x += dt * 5; this.mesh.rotation.y += dt * 5;
             this.mesh.updateMatrix(); 
@@ -3576,7 +3584,12 @@ class Projectile {
                 pType = 'spark'; // Usiamo le scintille: sono più sottili e cadono verso il basso come scariche elettriche
             }
 
-            Game.getParticle().spawn(this.x, 15, this.y, pMat, pType);
+            let p = Game.getParticle();
+            p.spawn(this.x, 15, this.y, pMat, pType);
+            if (this.type === 'player_arrow' || this.type === 'homing_arrow') {
+                p.baseSize = 4; // Rende la scia molto più sottile ed elegante
+                p.mesh.scale.set(4, 4, 1);
+            }
         }
     }
     handleHit(target) {

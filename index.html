@@ -2251,74 +2251,66 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
 const InteractiveGrassSystem = {
     uniforms: {
         uInteractorPos: { value: new THREE.Vector3(0, -1000, 0) },
-        uInteractRadius: { value: 35.0 }, // Raggio entro cui l'erba si piega
-        uTime: { value: 0 } // Per un leggero effetto vento
+        uInteractRadius: { value: 35.0 },
+        uTime: { value: 0 }
     },
     geo: null,
     mat: null,
     
     init() {
         if (this.geo) return;
-        // Creiamo un filo d'erba poligonale (una piramide a 3 facce)
         this.geo = new THREE.ConeGeometry(3, 14, 3);
-        // FONDAMENTALE: Spostiamo il pivot in basso. Così quando ruota o si piega, la base resta ancorata al suolo!
         this.geo.translate(0, 7, 0); 
 
-        // Materiale base con ombre piatte per il look low-poly
         this.mat = new THREE.MeshPhongMaterial({
-            color: 0x2d4c1e, // Verde scuro che si sposa col look del gioco
+            color: 0x2d4c1e,
             emissive: 0x112200,
             flatShading: true,
             shininess: 0
         });
 
-        // "Hackeriamo" il Vertex Shader prima che venga compilato per aggiungere la fisica
         this.mat.onBeforeCompile = (shader) => {
             shader.uniforms.uInteractorPos = this.uniforms.uInteractorPos;
             shader.uniforms.uInteractRadius = this.uniforms.uInteractRadius;
             shader.uniforms.uTime = this.uniforms.uTime;
 
-            // Inseriamo le variabili
             shader.vertexShader = `
                 uniform vec3 uInteractorPos;
                 uniform float uInteractRadius;
                 uniform float uTime;
             ` + shader.vertexShader;
 
-            // Applichiamo la deformazione
+            // Deformazione applicata DOPO le rotazioni delle singole istanze
             shader.vertexShader = shader.vertexShader.replace(
-                '#include <begin_vertex>',
+                '#include <project_vertex>',
                 `
-                #include <begin_vertex>
-                
-                // Ricaviamo la posizione nel mondo di questo vertice
-                vec4 worldPos = instanceMatrix * vec4(position, 1.0);
-                
-                // Un fattore da 0 (base) a 1 (punta). Vogliamo piegare solo la punta!
+                vec4 mvPosition = vec4( transformed, 1.0 );
+                #ifdef USE_INSTANCING
+                    mvPosition = instanceMatrix * mvPosition;
+                #endif
+
                 float heightFactor = max(0.0, position.y / 14.0);
-                
-                // 1. Leggero vento procedurale
+                vec3 wPos = mvPosition.xyz;
+
                 vec3 wind = vec3(
-                    sin(uTime * 3.0 + worldPos.x * 0.05) * 1.5,
+                    sin(uTime * 3.0 + wPos.x * 0.05) * 1.5,
                     0.0,
-                    cos(uTime * 2.5 + worldPos.z * 0.05) * 1.5
+                    cos(uTime * 2.5 + wPos.z * 0.05) * 1.5
                 ) * heightFactor;
 
-                // 2. Interazione fisica col giocatore
-                vec3 dir = worldPos.xyz - uInteractorPos;
-                dir.y = 0.0; // Ignoriamo l'altezza, la spinta è solo orizzontale
+                vec3 dir = wPos - uInteractorPos;
+                dir.y = 0.0; 
                 float dist = length(dir);
-                
-                // Calcoliamo la forza della spinta (1 se al centro, 0 se ai bordi del raggio)
                 float pushForce = max(0.0, uInteractRadius - dist) / uInteractRadius;
-                // Curva esponenziale per un rimbalzo più scattante
                 pushForce = pow(pushForce, 2.0); 
 
-                // Spingiamo i vertici alti lontano dal giocatore
                 vec3 interaction = normalize(dir + vec3(0.001)) * pushForce * 20.0 * heightFactor;
 
-                // Applichiamo vento e spinta
-                transformed += wind + interaction;
+                // Deformazione globale
+                mvPosition.xyz += wind + interaction;
+
+                mvPosition = modelViewMatrix * mvPosition;
+                gl_Position = projectionMatrix * mvPosition;
                 `
             );
         };
@@ -2334,7 +2326,13 @@ class GameMap {
     }
     generate(isBossFloor = false) {
         InteractiveGrassSystem.init();
-        const rooms = []; const numRooms = 15; 
+        const rooms = []; const numRooms = 15;
+        const maxGrassClusters = floorCount * 5; 
+const interactiveGrassMesh = new THREE.InstancedMesh(InteractiveGrassSystem.geo, InteractiveGrassSystem.mat, maxGrassClusters);
+interactiveGrassMesh.receiveShadow = true;
+interactiveGrassMesh.castShadow = !isTouchDevice;
+interactiveGrassMesh.frustumCulled = false; // <--- FONDAMENTALE! Evita che sparisca
+let idxInteractiveGrass = 0;
         for(let i=0; i<numRooms; i++) {
             let rw = MathUtils.randomInt(5, 10), rh = MathUtils.randomInt(5, 10);
             let rx = MathUtils.randomInt(1, this.width - rw - 1), ry = MathUtils.randomInt(1, this.height - rh - 1);
@@ -2588,6 +2586,8 @@ let idxInteractiveGrass = 0;
         meshGrass.count = idxGrass;
         meshRock.count = idxRock;
         interactiveGrassMesh.count = idxInteractiveGrass;
+        // <--- FONDAMENTALE! Manda i dati alla GPU
+interactiveGrassMesh.instanceMatrix.needsUpdate = true;
 if (idxInteractiveGrass > 0) {
     this.mapGroup.add(interactiveGrassMesh);
 }

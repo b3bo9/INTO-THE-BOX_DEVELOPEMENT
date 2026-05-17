@@ -2280,8 +2280,9 @@ const InteractiveGrassSystem = {
     
     init() {
         if (this.geo) return;
-        this.geo = new THREE.ConeGeometry(3.5, 15, 3);
-        this.geo.translate(0, 7.5, 0); 
+        // ALTEZZA LEGGERMENTE AUMENTATA (da 15 a 18)
+        this.geo = new THREE.ConeGeometry(3.5, 18, 3);
+        this.geo.translate(0, 9, 0); // Pivot spostato a metà altezza
         this.geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 999999);
 
         this.mat = new THREE.MeshLambertMaterial({
@@ -2305,23 +2306,21 @@ const InteractiveGrassSystem = {
             shader.vertexShader = shader.vertexShader.replace(
                 '#include <project_vertex>',
                 `
-                // 1. Calcoliamo le coordinate assolute nello spazio 3D del mondo
                 vec4 worldPos = vec4( transformed, 1.0 );
                 #ifdef USE_INSTANCING
                     worldPos = instanceMatrix * worldPos;
                 #endif
                 worldPos = modelMatrix * worldPos; 
 
-                // 2. Troviamo le coordinate del "perno" (la base alla radice del filo d'erba)
                 vec4 basePos4 = vec4( 0.0, 0.0, 0.0, 1.0 );
                 #ifdef USE_INSTANCING
                     basePos4 = instanceMatrix * basePos4;
                 #endif
                 vec3 basePos = (modelMatrix * basePos4).xyz;
 
-                float heightFactor = max(0.0, position.y / 15.0);
+                // Calcolo normalizzato su 18.0
+                float heightFactor = max(0.0, position.y / 18.0);
 
-                // 3. Calcolo del vento base (Brezza)
                 vec2 windDir = vec2(
                     sin(uTime * 2.0 + basePos.x * 0.05) * 1.5,
                     cos(uTime * 1.5 + basePos.z * 0.05) * 1.5
@@ -2329,7 +2328,6 @@ const InteractiveGrassSystem = {
 
                 vec2 interactDir = vec2(0.0);
                 
-                // 4. Somma vettoriale di tutte le scie d'aria
                 for(int i = 0; i < MAX_WIND; i++) {
                     if (i >= uWindCount) break;
                     
@@ -2343,16 +2341,18 @@ const InteractiveGrassSystem = {
                     if(dist < radius && dist > 0.001) {
                         float falloff = 1.0 - smoothstep(0.0, radius, dist);
                         float pushForce = pow(falloff, 3.0);
-                        float wobble = 1.0 + sin(dist * 0.08 - uTime * 12.0) * 0.6 * falloff;
                         
-                        interactDir += normalize(dir) * (pushForce * wobble) * 38.0 * intensity;
+                        // Swoosh bilanciato per l'erba più alta
+                        float wobble = 1.0 + sin(dist * 0.08 - uTime * 12.0) * 0.65 * falloff;
+                        
+                        // Moltiplicatore spinta aumentato a 45.0 per compensare l'altezza
+                        interactDir += normalize(dir) * (pushForce * wobble) * 45.0 * intensity;
                     }
                 }
 
                 vec2 totalForce = windDir + interactDir;
                 float forceMag = length(totalForce);
                 
-                // 5. TROVIAMO L'ASSE DI ROTAZIONE (Perpendicolare alla forza)
                 vec3 axis = vec3(-totalForce.y, 0.0, totalForce.x);
                 if (forceMag > 0.001) {
                     axis = normalize(axis);
@@ -2360,21 +2360,18 @@ const InteractiveGrassSystem = {
                     axis = vec3(1.0, 0.0, 0.0);
                 }
                 
-                // 6. CALCOLO ANGOLO (Si ferma a 1.4 radianti, cioè 80 gradi, per non entrare sottoterra)
-                float maxAngle = min(forceMag * 0.04, 1.4); 
-                float currentAngle = maxAngle * heightFactor; // Curvatura progressiva dal basso verso l'alto
+                // Rotazione massima leggermente aumentata (da 1.4 a 1.5)
+                float maxAngle = min(forceMag * 0.04, 1.5); 
+                float currentAngle = maxAngle * heightFactor; 
                 
-                // 7. FORMULA DI RODRIGUES: Esegue una VERA rotazione 3D del vertice!
-                // Niente più stiramenti. Il cono mantiene proporzioni e volumi intatti.
                 float c = cos(currentAngle);
                 float s = sin(currentAngle);
-                vec3 v = worldPos.xyz - basePos; // Vettore dalla radice al punto in cui siamo
+                vec3 v = worldPos.xyz - basePos; 
                 
                 vec3 cross_axis_v = cross(axis, v);
                 float dot_axis_v = dot(axis, v);
                 vec3 bentVector = v * c + cross_axis_v * s + axis * dot_axis_v * (1.0 - c);
                 
-                // 8. Riassegna la posizione calcolata alla fotocamera
                 vec4 finalWorldPos = vec4(basePos + bentVector, 1.0);
                 vec4 mvPosition = viewMatrix * finalWorldPos;
                 gl_Position = projectionMatrix * mvPosition;
@@ -2424,8 +2421,9 @@ class GameMap {
             }
         }
 
-        // 2. ALLOCHIAMO LA MEMORIA PER L'ERBA
-        const maxGrassClusters = floorCount * (isTouchDevice ? 40 : 100); 
+       // 2. ALLOCHIAMO LA MEMORIA PER L'ERBA
+        // Moltiplicatore molto aumentato per reggere la nuova enorme densità focale
+        const maxGrassClusters = floorCount * (isTouchDevice ? 60 : 130); 
         const interactiveGrassMesh = new THREE.InstancedMesh(InteractiveGrassSystem.geo, InteractiveGrassSystem.mat, maxGrassClusters);
         interactiveGrassMesh.receiveShadow = true;
         interactiveGrassMesh.castShadow = !isTouchDevice; 
@@ -2520,21 +2518,25 @@ class GameMap {
                                 dummy.updateMatrix();
                                 meshGrass.setMatrixAt(idxGrass++, dummy.matrix);
                                 
-                                // PIAZZA L'ERBA 3D A "ZONE"
-                                if (noiseSafe > 0.5) { 
-                                    let intensity = (noiseSafe - 0.5) / 0.5; 
+                                // PIAZZA L'ERBA 3D A "ZONE" (Radure estremamente fitte, ma più circoscritte)
+                                // Alzato da 0.50 a 0.55 per ridurre l'area globale e isolare le radure
+                                if (noiseSafe > 0.55) { 
+                                    let intensity = (noiseSafe - 0.55) / 0.45; 
                                     
-                                    let baseMax = isTouchDevice ? 60 : 150;
+                                    // Aumentata drasticamente la massa di fili al centro!
+                                    let baseMax = isTouchDevice ? 80 : 200;
                                     let maxBlades = MathUtils.randomInt(baseMax - 40, baseMax);
                                     let numBlades = Math.floor(maxBlades * Math.pow(intensity, 1.2)); 
                                     
                                     for (let g = 0; g < numBlades; g++) {
-                                        let gx = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-32, 32);
-                                        let gz = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-32, 32);
+                                        // Raggio ristretto (da 32 a 28) per ammassarli di più al centro
+                                        let gx = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-28, 28);
+                                        let gz = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-28, 28);
                                         dummy.position.set(gx, 0.2, gz);
                                         
                                         let sizeMod = 0.5 + (intensity * 0.7); 
-                                        let scaleG = MathUtils.randomRange(0.8, 1.4) * sizeMod;
+                                        // Leggero aumento nella scala visiva superiore
+                                        let scaleG = MathUtils.randomRange(0.8, 1.5) * sizeMod;
                                         dummy.scale.set(scaleG, scaleG, scaleG);
                                         
                                         dummy.rotation.set(

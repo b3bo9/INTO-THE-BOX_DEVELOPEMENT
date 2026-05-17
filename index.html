@@ -2005,11 +2005,10 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         let windCount = 0;
 
         if (this.player && !this.player.dead) {
-            // Nota: passiamo 1.0 come Y (intensità fissa al 100%)
-            windSources[windCount].lerp(new THREE.Vector3(this.player.x, 1.0, this.player.y), 0.08);
+            // FIX "EFFETTO CALAMITA": Niente più ritardo (lerp). Il vento è esattamente sul giocatore.
+            windSources[windCount].set(this.player.x, 1.0, this.player.y);
             windCount++;
         }
-
         for(let i=0; i<this.projectiles.length; i++) {
             let p = this.projectiles[i];
             // Processa sia quelli attivi, sia le scie fantasma in dissolvenza
@@ -3867,18 +3866,15 @@ class Projectile {
         // --- INIZIO FISICA DEL VENTO ---
         if (!this.active) {
             if (this.windIntensity > 0) {
-                // Inerzia fluida: l'aria continua a scivolare in avanti anche dopo lo scoppio
-                this.windX += this.vx * 0.3 * dt;
-                this.windZ += this.vy * 0.3 * dt;
-                // Svanisce molto dolcemente
-                this.windIntensity -= dt * 1.25; 
+                // Il vento si dissipa sul posto dopo l'esplosione, senza trascinarsi in avanti
+                this.windIntensity -= dt * 1.5; 
             }
             return;
         }
 
-        // Il vento segue il proiettile con un leggero ritardo aerodinamico
-        this.windX += (this.x - this.windX) * 12.0 * dt;
-        this.windZ += (this.y - this.windZ) * 12.0 * dt;
+        // FIX "EFFETTO CALAMITA": L'aria è ora perfettamente ancorata al proiettile
+        this.windX = this.x;
+        this.windZ = this.y;
         this.windIntensity = 1.0;
         // --- FINE FISICA DEL VENTO ---
 

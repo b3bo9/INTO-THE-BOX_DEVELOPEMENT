@@ -2271,7 +2271,7 @@ const MAX_WIND = 15; // Gestisce Giocatore + 14 Proiettili simultaneamente
 
 const InteractiveGrassSystem = {
     uniforms: {
-        uWindSources: { value: Array(MAX_WIND).fill(null).map(() => new THREE.Vector3(0, -1000, 0)) },
+        uWindSources: { value: Array(MAX_WIND).fill(null).map(() => new THREE.Vector3(0, 0, 0)) },
         uWindCount: { value: 0 },
         uTime: { value: 0 }
     },
@@ -2280,13 +2280,14 @@ const InteractiveGrassSystem = {
     
     init() {
         if (this.geo) return;
-        this.geo = new THREE.ConeGeometry(3.5, 20, 3);
-        this.geo.translate(0, 10, 0); 
+        this.geo = new THREE.ConeGeometry(3.5, 15, 3);
+        this.geo.translate(0, 7.5, 0); 
         this.geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 999999);
 
+        // Verde foresta scuro, visibile ma non "radioattivo"
         this.mat = new THREE.MeshLambertMaterial({
-            color: 0x111c11,      
-            emissive: 0x030603,   
+            color: 0x223a18,      
+            emissive: 0x050c04,   
             flatShading: true
         });
 
@@ -2310,7 +2311,7 @@ const InteractiveGrassSystem = {
                     mvPosition = instanceMatrix * mvPosition;
                 #endif
 
-                float heightFactor = max(0.0, position.y / 20.0);
+                float heightFactor = max(0.0, position.y / 15.0);
                 vec3 wPos = mvPosition.xyz;
 
                 vec3 wind = vec3(
@@ -2332,7 +2333,8 @@ const InteractiveGrassSystem = {
                     
                     float radius = 180.0;
                     if(dist < radius) {
-                        float falloff = max(0.0, 1.0 - (dist / radius));
+                        // FIX: Smoothstep a prova di crash
+                        float falloff = 1.0 - smoothstep(0.0, radius, dist);
                         float pushForce = pow(falloff, 3.0);
                         
                         float wobble = 1.0 + sin(dist * 0.08 - uTime * 12.0) * 0.6 * falloff;
@@ -2343,17 +2345,12 @@ const InteractiveGrassSystem = {
 
                 vec3 totalDisp = wind + interaction;
                 
-                // --- FIX ALLUNGAMENTO (COMPENSAZIONE ALTEZZA) ---
-                // Calcoliamo di quanto si sta spostando in orizzontale
+                // FIX COMPENSAZIONE LUNGHEZZA: Ricalibrato sull'altezza 15.0
                 float horizLength = length(totalDisp.xz);
-                // Limitiamo la piegatura poco prima dell'altezza massima (19.5 su 20) per non farla 'spezzare'
-                horizLength = min(horizLength, 19.5);
-                // Teorema di Pitagora: se l'ipotenusa è l'altezza originale (20) e il cateto basso è horizLength, 
-                // calcoliamo di quanto l'erba deve "abbassarsi" per mantenere la sua lunghezza invariata.
-                float drop = 20.0 - sqrt(400.0 - horizLength * horizLength);
+                horizLength = min(horizLength, 14.5);
+                float drop = 15.0 - sqrt(225.0 - horizLength * horizLength);
                 
                 totalDisp.y -= drop * heightFactor; 
-                // ------------------------------------------------
 
                 mvPosition.xyz += totalDisp;
                 mvPosition = modelViewMatrix * mvPosition;
@@ -2404,7 +2401,7 @@ class GameMap {
         }
 
         // 2. ORA CHE floorCount ESISTE, INIZIALIZZIAMO L'ERBA
-        const maxGrassClusters = floorCount * 60; 
+       const maxGrassClusters = floorCount * (isTouchDevice ? 40 : 100);
         const interactiveGrassMesh = new THREE.InstancedMesh(InteractiveGrassSystem.geo, InteractiveGrassSystem.mat, maxGrassClusters);
         interactiveGrassMesh.receiveShadow = true;
         interactiveGrassMesh.castShadow = !isTouchDevice; // Ombre dell'erba solo su PC per le prestazioni
@@ -2497,25 +2494,20 @@ class GameMap {
                                 dummy.updateMatrix();
                                 meshGrass.setMatrixAt(idxGrass++, dummy.matrix);
                                 
-                             // PIAZZA L'ERBA 3D A "ZONE" (Centri fittissimi e bordi sfumati)
-                                if (noise > 0.15) { // Lasciamo più spazio vuoto per il fango
+                            // PIAZZA L'ERBA 3D A "ZONE"
+                                // Abbassato a 0.5 per garantire molta erba visibile nella mappa
+                                if (noiseSafe > 0.5) { 
+                                    let intensity = (noiseSafe - 0.5) / 0.5; 
                                     
-                                    // Calcoliamo l'intensità della zona: 1.0 al centro della macchia, 0.0 ai bordi
-                                    let intensity = (noise - 0.15) / 0.85; 
-                                    
-                                    // Nei punti centrali arriviamo fino a 150 fili per mattonella (prato fittissimo)
-                                    let maxBlades = MathUtils.randomInt(100, 150);
+                                    let baseMax = isTouchDevice ? 60 : 150;
+                                    let maxBlades = MathUtils.randomInt(baseMax - 40, baseMax);
                                     let numBlades = Math.floor(maxBlades * Math.pow(intensity, 1.2)); 
                                     
                                     for (let g = 0; g < numBlades; g++) {
-                                        // Li spargiamo su tutta la mattonella in modo omogeneo
                                         let gx = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-32, 32);
                                         let gz = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-32, 32);
                                         dummy.position.set(gx, 0.2, gz);
                                         
-                                        // IL TRUCCO DELLA SFUMATURA: 
-                                        // Al centro della zona l'erba è grande (sizeMod alto), 
-                                        // verso i bordi diventa piccolissima fondendosi con il terreno.
                                         let sizeMod = 0.5 + (intensity * 0.7); 
                                         let scaleG = MathUtils.randomRange(0.8, 1.4) * sizeMod;
                                         dummy.scale.set(scaleG, scaleG, scaleG);

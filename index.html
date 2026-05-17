@@ -2404,7 +2404,7 @@ class GameMap {
         }
 
         // 2. ORA CHE floorCount ESISTE, INIZIALIZZIAMO L'ERBA
-        const maxGrassClusters = floorCount * 30; 
+        const maxGrassClusters = floorCount * 60; 
         const interactiveGrassMesh = new THREE.InstancedMesh(InteractiveGrassSystem.geo, InteractiveGrassSystem.mat, maxGrassClusters);
         interactiveGrassMesh.receiveShadow = true;
         interactiveGrassMesh.castShadow = !isTouchDevice; // Ombre dell'erba solo su PC per le prestazioni
@@ -2497,25 +2497,27 @@ class GameMap {
                                 dummy.updateMatrix();
                                 meshGrass.setMatrixAt(idxGrass++, dummy.matrix);
                                 
-                             // PIAZZA L'ERBA 3D A "ZONE" (Radure folte al centro e sfumate ai bordi)
-                                if (noise > 0.1) { // Tagliamo i bordi estremi per farla sparire del tutto
+                             // PIAZZA L'ERBA 3D A "ZONE" (Centri fittissimi e bordi sfumati)
+                                if (noise > 0.15) { // Lasciamo più spazio vuoto per il fango
                                     
-                                    // Aumentiamo drasticamente la densità base per i centri
-                                    let baseDensity = MathUtils.randomInt(35, 60);
+                                    // Calcoliamo l'intensità della zona: 1.0 al centro della macchia, 0.0 ai bordi
+                                    let intensity = (noise - 0.15) / 0.85; 
                                     
-                                    // Curva esponenziale (alla 1.5): mantiene il centro densissimo, 
-                                    // ma fa crollare velocemente il numero di ciuffi man mano che ci si avvicina ai bordi
-                                    let fade = Math.pow(noise, 1.5); 
-                                    let density = Math.floor(baseDensity * fade); 
+                                    // Nei punti centrali arriviamo fino a 150 fili per mattonella (prato fittissimo)
+                                    let maxBlades = MathUtils.randomInt(100, 150);
+                                    let numBlades = Math.floor(maxBlades * Math.pow(intensity, 1.2)); 
                                     
-                                    for (let g = 0; g < density; g++) {
-                                        // Spargiamo sulla mattonella in modo omogeneo
+                                    for (let g = 0; g < numBlades; g++) {
+                                        // Li spargiamo su tutta la mattonella in modo omogeneo
                                         let gx = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-32, 32);
                                         let gz = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-32, 32);
                                         dummy.position.set(gx, 0.2, gz);
                                         
-                                        // Variamo un po' le altezze per dare naturalezza
-                                        let scaleG = MathUtils.randomRange(0.7, 1.4);
+                                        // IL TRUCCO DELLA SFUMATURA: 
+                                        // Al centro della zona l'erba è grande (sizeMod alto), 
+                                        // verso i bordi diventa piccolissima fondendosi con il terreno.
+                                        let sizeMod = 0.5 + (intensity * 0.7); 
+                                        let scaleG = MathUtils.randomRange(0.8, 1.4) * sizeMod;
                                         dummy.scale.set(scaleG, scaleG, scaleG);
                                         
                                         dummy.rotation.set(

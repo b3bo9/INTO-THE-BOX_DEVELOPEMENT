@@ -2279,9 +2279,8 @@ const InteractiveGrassSystem = {
     
     init() {
         if (this.geo) return;
-        // ALTEZZA LEGGERMENTE AUMENTATA (da 15 a 18)
         this.geo = new THREE.ConeGeometry(3.5, 18, 3);
-        this.geo.translate(0, 9, 0); // Pivot spostato a metà altezza
+        this.geo.translate(0, 9, 0); 
         this.geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 999999);
 
         this.mat = new THREE.MeshLambertMaterial({
@@ -2317,7 +2316,6 @@ const InteractiveGrassSystem = {
                 #endif
                 vec3 basePos = (modelMatrix * basePos4).xyz;
 
-                // Calcolo normalizzato su 18.0
                 float heightFactor = max(0.0, position.y / 18.0);
 
                 vec2 windDir = vec2(
@@ -2333,6 +2331,7 @@ const InteractiveGrassSystem = {
                     vec3 windData = uWindSources[i];
                     float intensity = windData.y; 
                     
+                    // 'dir' calcola la direzione DAL giocatore ALLA base dell'erba
                     vec2 dir = basePos.xz - vec2(windData.x, windData.z);
                     float dist = length(dir);
                     
@@ -2340,11 +2339,8 @@ const InteractiveGrassSystem = {
                     if(dist < radius && dist > 0.001) {
                         float falloff = 1.0 - smoothstep(0.0, radius, dist);
                         float pushForce = pow(falloff, 3.0);
-                        
-                        // Swoosh bilanciato per l'erba più alta
                         float wobble = 1.0 + sin(dist * 0.08 - uTime * 12.0) * 0.65 * falloff;
                         
-                        // Moltiplicatore spinta aumentato a 45.0 per compensare l'altezza
                         interactDir += normalize(dir) * (pushForce * wobble) * 45.0 * intensity;
                     }
                 }
@@ -2352,14 +2348,17 @@ const InteractiveGrassSystem = {
                 vec2 totalForce = windDir + interactDir;
                 float forceMag = length(totalForce);
                 
-                vec3 axis = vec3(-totalForce.y, 0.0, totalForce.x);
+                // FIX "EFFETTO CALAMITA": 
+                // Ho invertito i segni qui. Ora l'asse calcola la rotazione nella direzione GIUSTA,
+                // piegando l'erba ALLONTANANDOLA dalla sorgente di forza e non viceversa.
+                vec3 axis = vec3(totalForce.y, 0.0, -totalForce.x);
+                
                 if (forceMag > 0.001) {
                     axis = normalize(axis);
                 } else {
                     axis = vec3(1.0, 0.0, 0.0);
                 }
                 
-                // Rotazione massima leggermente aumentata (da 1.4 a 1.5)
                 float maxAngle = min(forceMag * 0.04, 1.5); 
                 float currentAngle = maxAngle * heightFactor; 
                 

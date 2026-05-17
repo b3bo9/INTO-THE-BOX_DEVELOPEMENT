@@ -2271,7 +2271,7 @@ const MAX_WIND = 15; // Gestisce Giocatore + 14 Proiettili simultaneamente
 
 const InteractiveGrassSystem = {
     uniforms: {
-        uWindSources: { value: Array(MAX_WIND).fill(null).map(() => new THREE.Vector3(0, 0, 0)) },
+        uWindSources: { value: Array(MAX_WIND).fill(null).map(() => new THREE.Vector3(0, -1000, 0)) },
         uWindCount: { value: 0 },
         uTime: { value: 0 }
     },
@@ -2325,18 +2325,22 @@ const InteractiveGrassSystem = {
                     if (i >= uWindCount) break;
                     
                     vec3 windData = uWindSources[i];
-                    float intensity = windData.y; // <--- HACK: Usiamo l'asse Y per passare l'intensità della scia!
+                    float intensity = windData.y; 
                     
                     vec3 dir = wPos - vec3(windData.x, 0.0, windData.z);
                     float dist = length(dir);
                     
-                    float radius = 45.0;
+                    // Raggio ENORME (180) per catturare l'erba prima e rilasciarla molto dopo
+                    float radius = 180.0;
                     if(dist < radius) {
-                        float pushForce = smoothstep(radius, 0.0, dist);
-                        float wobble = 1.0 + sin(dist * 0.3 - uTime * 15.0) * 0.3 * pushForce;
+                        // Curva cubica: fortissima al centro (dist=0), ma sfuma in modo lunghissimo e lento
+                        float falloff = max(0.0, 1.0 - (dist / radius));
+                        float pushForce = pow(falloff, 3.0);
                         
-                        // Moltiplichiamo tutto per l'intensità (che scenderà a zero quando il proiettile svanisce)
-                        interaction += normalize(dir + vec3(0.001)) * (pushForce * wobble) * 35.0 * heightFactor * intensity;
+                        // Un'onda sinuosa e rilassata che simula il contraccolpo dell'aria (swoosh)
+                        float wobble = 1.0 + sin(dist * 0.08 - uTime * 12.0) * 0.6 * falloff;
+                        
+                        interaction += normalize(dir + vec3(0.001)) * (pushForce * wobble) * 38.0 * heightFactor * intensity;
                     }
                 }
 
@@ -3825,20 +3829,22 @@ class Projectile {
     update(dt) {
         // --- INIZIO FISICA DEL VENTO ---
         if (!this.active) {
-            // "FANTASMA" DEL VENTO: continua a muovere e dissolvere l'aria anche dopo la distruzione
             if (this.windIntensity > 0) {
-                this.windX += (this.x - this.windX) * 8.0 * dt;
-                this.windZ += (this.y - this.windZ) * 8.0 * dt;
-                this.windIntensity -= dt * 2.0; // Svanisce dolcemente in 0.5 secondi
+                // Inerzia fluida: l'aria continua a scivolare in avanti anche dopo lo scoppio
+                this.windX += this.vx * 0.3 * dt;
+                this.windZ += this.vy * 0.3 * dt;
+                // Svanisce molto dolcemente
+                this.windIntensity -= dt * 1.25; 
             }
-            return; // Ferma il resto dell'aggiornamento
+            return;
         }
 
-        // I proiettili velocissimi lasciano la scia indietro grazie a questo "ritardo" elastico (15.0)
-        this.windX += (this.x - this.windX) * 15.0 * dt;
-        this.windZ += (this.y - this.windZ) * 15.0 * dt;
+        // Il vento segue il proiettile con un leggero ritardo aerodinamico
+        this.windX += (this.x - this.windX) * 12.0 * dt;
+        this.windZ += (this.y - this.windZ) * 12.0 * dt;
         this.windIntensity = 1.0;
         // --- FINE FISICA DEL VENTO ---
+
         if (this.type === 'homing_arrow') {
             if (!this.target || this.target.dead || (Game.frameCount + this.updateOffset) % 15 === 0) {
                 let closest = null; let minDistSq = 400*400;

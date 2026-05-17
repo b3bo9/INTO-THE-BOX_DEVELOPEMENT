@@ -2280,9 +2280,8 @@ const InteractiveGrassSystem = {
     
     init() {
         if (this.geo) return;
-        // DIMENSIONI RIDOTTE: Fili d'erba più corti e sottili
-        this.geo = new THREE.ConeGeometry(2.5, 15, 3);
-        this.geo.translate(0, 7.5, 0); 
+        this.geo = new THREE.ConeGeometry(3.5, 20, 3);
+        this.geo.translate(0, 10, 0); 
         this.geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 999999);
 
         this.mat = new THREE.MeshLambertMaterial({
@@ -2311,8 +2310,7 @@ const InteractiveGrassSystem = {
                     mvPosition = instanceMatrix * mvPosition;
                 #endif
 
-                // Aggiornato a 15.0 per matchare la nuova geometria
-                float heightFactor = max(0.0, position.y / 15.0);
+                float heightFactor = max(0.0, position.y / 20.0);
                 vec3 wPos = mvPosition.xyz;
 
                 vec3 wind = vec3(
@@ -2343,7 +2341,21 @@ const InteractiveGrassSystem = {
                     }
                 }
 
-                mvPosition.xyz += wind + interaction;
+                vec3 totalDisp = wind + interaction;
+                
+                // --- FIX ALLUNGAMENTO (COMPENSAZIONE ALTEZZA) ---
+                // Calcoliamo di quanto si sta spostando in orizzontale
+                float horizLength = length(totalDisp.xz);
+                // Limitiamo la piegatura poco prima dell'altezza massima (19.5 su 20) per non farla 'spezzare'
+                horizLength = min(horizLength, 19.5);
+                // Teorema di Pitagora: se l'ipotenusa è l'altezza originale (20) e il cateto basso è horizLength, 
+                // calcoliamo di quanto l'erba deve "abbassarsi" per mantenere la sua lunghezza invariata.
+                float drop = 20.0 - sqrt(400.0 - horizLength * horizLength);
+                
+                totalDisp.y -= drop * heightFactor; 
+                // ------------------------------------------------
+
+                mvPosition.xyz += totalDisp;
                 mvPosition = modelViewMatrix * mvPosition;
                 gl_Position = projectionMatrix * mvPosition;
                 `
@@ -2485,41 +2497,39 @@ class GameMap {
                                 dummy.updateMatrix();
                                 meshGrass.setMatrixAt(idxGrass++, dummy.matrix);
                                 
-                                // PIAZZA L'ERBA 3D (Cespugli frequenti e molto voluminosi)
-                                // Probabilità alzata al 50%: le zone in terra avranno spesso l'erba
-                                if (Math.random() > 0.50) { 
-                                    let clusters = MathUtils.randomInt(1, 3); // 1-3 cespugli per tile
-                                    for (let c = 0; c < clusters; c++) {
-                                        // Centro del cespuglio sparso sulla mattonella
-                                        let clusterCenterX = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-22, 22);
-                                        let clusterCenterZ = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-22, 22);
+                              // PIAZZA L'ERBA 3D A "ZONE" (Radure continue)
+                                // Sfruttiamo il 'noise' della mappa. 'noise' è alto al centro di una zona erbosa, 
+                                // e scende dolcemente verso lo 0 ai bordi.
+                                if (noise > 0.05) { // Compare solo se siamo in una zona "verde" abbastanza marcata
+                                    
+                                    // La densità dipende da quanto siamo nel centro della radura!
+                                    // Moltiplicato per 2.0 per accentuare la differenza tra centro e bordi
+                                    let baseDensity = MathUtils.randomInt(10, 25);
+                                    let density = Math.floor(baseDensity * (noise * 2.0)); 
+                                    
+                                    for (let g = 0; g < density; g++) {
+                                        // Li spargiamo su TUTTA la mattonella (-30 a 30) per creare un prato continuo, non a cespuglietti!
+                                        let gx = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-30, 30);
+                                        let gz = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-30, 30);
+                                        dummy.position.set(gx, 0.2, gz);
                                         
-                                        // Cespuglio ESTREMAMENTE folto: dai 25 ai 40 fili d'erba concentrati!
-                                        let numBlades = MathUtils.randomInt(25, 40); 
-                                        for (let g = 0; g < numBlades; g++) {
-                                            // Stretti, ma con un po' di respiro (raggio -7, 7) per creare volume
-                                            let gx = clusterCenterX + MathUtils.randomRange(-7, 7);
-                                            let gz = clusterCenterZ + MathUtils.randomRange(-7, 7);
-                                            dummy.position.set(gx, 0.2, gz);
-                                            
-                                            // Grande varietà nelle altezze per dare un look organico
-                                            let scaleG = MathUtils.randomRange(0.6, 1.4);
-                                            dummy.scale.set(scaleG, scaleG, scaleG);
-                                            
-                                            // Piegatura casuale verso l'esterno per arrotondare il cespuglio
-                                            dummy.rotation.set(
-                                                MathUtils.randomRange(-0.4, 0.4), 
-                                                Math.random() * Math.PI * 2, 
-                                                MathUtils.randomRange(-0.4, 0.4)
-                                            );
-                                            dummy.updateMatrix();
-                                            
-                                            if (idxInteractiveGrass < maxGrassClusters) {
-                                                interactiveGrassMesh.setMatrixAt(idxInteractiveGrass++, dummy.matrix);
-                                            }
+                                        // Piccola variazione per dare un aspetto naturale
+                                        let scaleG = MathUtils.randomRange(0.7, 1.3);
+                                        dummy.scale.set(scaleG, scaleG, scaleG);
+                                        
+                                        dummy.rotation.set(
+                                            MathUtils.randomRange(-0.2, 0.2), 
+                                            Math.random() * Math.PI * 2, 
+                                            MathUtils.randomRange(-0.2, 0.2)
+                                        );
+                                        dummy.updateMatrix();
+                                        
+                                        if (idxInteractiveGrass < maxGrassClusters) {
+                                            interactiveGrassMesh.setMatrixAt(idxInteractiveGrass++, dummy.matrix);
                                         }
                                     }
                                 }
+                               
                             } else {
                                 dummy.position.y = 0.4; 
                                 dummy.updateMatrix();

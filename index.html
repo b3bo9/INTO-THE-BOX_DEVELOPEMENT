@@ -2262,9 +2262,15 @@ const InteractiveGrassSystem = {
         this.geo = new THREE.ConeGeometry(3, 14, 3);
         this.geo.translate(0, 7, 0); 
 
+        // FIX CULLING: Forziamo la Bounding Sphere della geometria all'infinito.
+        // Questo impedisce a Three.js (e alla telecamera delle ombre) di farla sparire all'improvviso.
+        this.geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 999999);
+
+        // FIX RADIOATTIVITÀ: Rimuoviamo emissive e specular, e usiamo un verde molto cupo
         this.mat = new THREE.MeshPhongMaterial({
-            color: 0x2d4c1e,
-            emissive: 0x112200,
+            color: 0x162b14,      // Verde palude scuro per abbinarsi alla texture a terra
+            emissive: 0x000000,   // Zero emissione = il filtro Bloom la ignora
+            specular: 0x000000,   // Nessun riflesso luminoso anomalo
             flatShading: true,
             shininess: 0
         });

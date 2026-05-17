@@ -2324,15 +2324,10 @@ class GameMap {
         this.floorMat = null; 
         this.wallMat = null;
     }
-    generate(isBossFloor = false) {
+  generate(isBossFloor = false) {
         InteractiveGrassSystem.init();
-        const rooms = []; const numRooms = 15;
-        const maxGrassClusters = floorCount * 5; 
-const interactiveGrassMesh = new THREE.InstancedMesh(InteractiveGrassSystem.geo, InteractiveGrassSystem.mat, maxGrassClusters);
-interactiveGrassMesh.receiveShadow = true;
-interactiveGrassMesh.castShadow = !isTouchDevice;
-interactiveGrassMesh.frustumCulled = false; // <--- FONDAMENTALE! Evita che sparisca
-let idxInteractiveGrass = 0;
+        const rooms = []; const numRooms = 15; 
+        
         for(let i=0; i<numRooms; i++) {
             let rw = MathUtils.randomInt(5, 10), rh = MathUtils.randomInt(5, 10);
             let rx = MathUtils.randomInt(1, this.width - rw - 1), ry = MathUtils.randomInt(1, this.height - rh - 1);
@@ -2349,12 +2344,8 @@ let idxInteractiveGrass = 0;
 
         let floorCount = 0, wallCount = 0, pillarCount = 0;
         const PADDING = 8;
-        // Alloca spazio sufficiente per l'erba (diciamo massimo 5 ciuffi per ogni tile di terra)
-const maxGrassClusters = floorCount * 5; 
-const interactiveGrassMesh = new THREE.InstancedMesh(InteractiveGrassSystem.geo, InteractiveGrassSystem.mat, maxGrassClusters);
-interactiveGrassMesh.receiveShadow = true;
-interactiveGrassMesh.castShadow = !isTouchDevice; // Ombre dell'erba solo su PC per le prestazioni
-let idxInteractiveGrass = 0;
+        
+        // 1. CONTIAMO I BLOCCHI
         for(let x = -PADDING; x < this.width + PADDING; x++) {
             for(let y = -PADDING; y < this.height + PADDING; y++) {
                 if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
@@ -2365,86 +2356,60 @@ let idxInteractiveGrass = 0;
             }
         }
 
+        // 2. ORA CHE floorCount ESISTE, INIZIALIZZIAMO L'ERBA
+        const maxGrassClusters = floorCount * 5; 
+        const interactiveGrassMesh = new THREE.InstancedMesh(InteractiveGrassSystem.geo, InteractiveGrassSystem.mat, maxGrassClusters);
+        interactiveGrassMesh.receiveShadow = true;
+        interactiveGrassMesh.castShadow = !isTouchDevice; // Ombre dell'erba solo su PC per le prestazioni
+        interactiveGrassMesh.frustumCulled = false; // <--- FONDAMENTALE! Evita che sparisca
+        let idxInteractiveGrass = 0;
+
         // --- INIZIO GESTIONE MATERIALI OTTIMIZZATI ---
         const isHighQ = !AppSettings.isLow && !isTouchDevice; 
         const wallTex = createPatternTexture('wall');
         
-       // Peschiamo le texture GIÀ CARICATE dalla VRAM
         const texDirt = Preloader.textures.dirt;
         const texGrass = Preloader.textures.grass;
         const texRock = Preloader.textures.rock;
         const texWall = Preloader.textures.wall;
         
-        // Applichiamo i filtri (Basta farlo una volta, ma farlo qui è totalmente sicuro)
         const maxAnisotropy = Game.renderer.capabilities.getMaxAnisotropy();
-        texDirt.anisotropy = maxAnisotropy;
-        texGrass.anisotropy = maxAnisotropy;
-        texRock.anisotropy = maxAnisotropy;
-        texWall.anisotropy = maxAnisotropy;
-        
-        // FIX STIRAMENTO: I muri sono alti 1.5 volte la loro larghezza.
-        // Diciamo alla texture di ripetersi invece di allungarsi rovinosamente!
-        texWall.wrapS = THREE.RepeatWrapping;
-        texWall.wrapT = THREE.RepeatWrapping;
-        texWall.repeat.set(1, 1.5);
+        if(texDirt) texDirt.anisotropy = maxAnisotropy;
+        if(texGrass) texGrass.anisotropy = maxAnisotropy;
+        if(texRock) texRock.anisotropy = maxAnisotropy;
+        if(texWall) {
+            texWall.anisotropy = maxAnisotropy;
+            texWall.wrapS = THREE.RepeatWrapping;
+            texWall.wrapT = THREE.RepeatWrapping;
+            texWall.repeat.set(1, 1.5);
+        }
         
         const floorGeo = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE); floorGeo.rotateX(-Math.PI/2);
-        
-        // Selettore automatico del materiale
         const MapMaterialClass = isTouchDevice ? THREE.MeshPhongMaterial : THREE.MeshStandardMaterial;
+        const alphaTex = createOrganicAlphaMap();
 
-       const alphaTex = createOrganicAlphaMap();
+        const tintDirt = 0x332b22;  
+        const tintGrass = 0x223322; 
+        const tintRock = 0x333344;  
+        const tintWall = 0x252530;  
 
-       // Tinte scure per spegnere la luminosità dei JPG e dare un look "Dark Fantasy"
-        const tintDirt = 0x332b22;  // Marrone scurissimo
-        const tintGrass = 0x223322; // Verde palude scurissimo
-        const tintRock = 0x333344;  // Grigio-bluastro scuro (alza il contrasto con il sangue e il fuoco)
-        const tintWall = 0x252530;  // Grigio notte per i muri
-
-        // 1. Terra di base
-        const matDirt = new MapMaterialClass({ 
-            map: texDirt, color: tintDirt, roughness: 0.9, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5, shininess: 2 
-        });
-        
-       // 2. Erba e Roccia: Trasparenza morbida, ma con depthWrite: false per evitare bug visivi
-        const matGrass = new MapMaterialClass({ 
-            map: texGrass, color: tintGrass, roughness: 1.0, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, shininess: 0,
-            alphaMap: alphaTex, transparent: true, depthWrite: false 
-        });
-        
-        const matRock = new MapMaterialClass({ 
-            map: texRock, color: tintRock, roughness: 0.6, metalness: 0.2, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, shininess: 10,
-            alphaMap: alphaTex, transparent: true, depthWrite: false 
-        });
+        const matDirt = new MapMaterialClass({ map: texDirt, color: tintDirt, roughness: 0.9, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5, shininess: 2 });
+        const matGrass = new MapMaterialClass({ map: texGrass, color: tintGrass, roughness: 1.0, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, shininess: 0, alphaMap: alphaTex, transparent: true, depthWrite: false });
+        const matRock = new MapMaterialClass({ map: texRock, color: tintRock, roughness: 0.6, metalness: 0.2, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, shininess: 10, alphaMap: alphaTex, transparent: true, depthWrite: false });
 
         const meshDirt = new THREE.InstancedMesh(floorGeo, matDirt, floorCount);
         const meshGrass = new THREE.InstancedMesh(floorGeo, matGrass, floorCount);
         const meshRock = new THREE.InstancedMesh(floorGeo, matRock, floorCount);
-        // FIX: Usando valori NEGATIVI, il pavimento viene disegnato per primo!
-        // Così magie, particelle e trappole (che hanno renderOrder 0) verranno disegnate correttamente SOPRA.
-        meshDirt.renderOrder = -3;
-        meshGrass.renderOrder = -2;
-        meshRock.renderOrder = -1;
+        meshDirt.renderOrder = -3; meshGrass.renderOrder = -2; meshRock.renderOrder = -1;
         
         const wallGeo = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
-        this.wallMat = new MapMaterialClass({ 
-            map: texWall,         // Usa il JPG
-            color: tintWall,      // Applica la tinta oscura
-            roughness: 0.8,       // La pietra vera è molto ruvida (evita l'effetto plastica)
-            metalness: 0.1,       // Abbassiamo il metallo per farla sembrare roccia solida
-            bumpMap: isHighQ ? texWall : null, 
-            bumpScale: 3.0,       // Esalta il rilievo 3D della texture
-            shininess: 5          // Per i dispositivi mobile
-        });
-        // --- FINE GESTIONE MATERIALI OTTIMIZZATI ---
+        this.wallMat = new MapMaterialClass({ map: texWall, color: tintWall, roughness: 0.8, metalness: 0.1, bumpMap: isHighQ ? texWall : null, bumpScale: 3.0, shininess: 5 });
 
         const wallMesh = new THREE.InstancedMesh(wallGeo, this.wallMat, wallCount);
-        // Creiamo le tre parti del pilastro gotico
         const baseGeo = new THREE.BoxGeometry(35, 15, 35);
         const shaftGeo = new THREE.CylinderGeometry(12, 14, TILE_SIZE * 1.5, 8);
         const capGeo = new THREE.CylinderGeometry(20, 12, 10, 4);
 
-        // Creiamo 3 InstancedMesh per il pilastro
         const pillarBaseMesh = new THREE.InstancedMesh(baseGeo, this.wallMat, pillarCount);
         const pillarShaftMesh = new THREE.InstancedMesh(shaftGeo, this.wallMat, pillarCount);
         const pillarCapMesh = new THREE.InstancedMesh(capGeo, this.wallMat, pillarCount);
@@ -2457,6 +2422,8 @@ let idxInteractiveGrass = 0;
 
         let dummy = new THREE.Object3D(); 
         let idxDirt = 0, idxGrass = 0, idxRock = 0, wIdx = 0, pIdx = 0;
+        
+        // 3. SECONDO LOOP: PIAZZIAMO EFFETTIVAMENTE GLI ELEMENTI
         for(let x = -PADDING; x < this.width + PADDING; x++) {
             for(let y = -PADDING; y < this.height + PADDING; y++) {
                 dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, 0, y * TILE_SIZE + TILE_SIZE / 2);
@@ -2464,7 +2431,6 @@ let idxInteractiveGrass = 0;
                 if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
                   if (this.grid[x][y] === 2 || this.grid[x][y] === 3) {
                         
-                        // 1. PIAZZA SEMPRE LA TERRA COME BASE
                         dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, 0, y * TILE_SIZE + TILE_SIZE / 2);
                         dummy.scale.set(1, 1, 1);
                         dummy.rotation.set(0, 0, 0); 
@@ -2474,106 +2440,72 @@ let idxInteractiveGrass = 0;
                         let noise = (Math.sin(x * 0.3) + Math.cos(y * 0.3)) / 2; 
                         let r = Math.random() * 0.4 + (noise * 0.6 + 0.5); 
                         
-                      // 2. SOVRAPPONI ERBA O ROCCIA
                         if (r > 0.35) {
-                            // FIX FUSIONE: Scala enorme (2.4) per far accavallare e sfumare dolcemente le mattonelle
                             dummy.scale.set(2.4, 1, 2.4); 
-                            
-                            // Ruotiamo casualmente la macchia per variare i pattern
                             dummy.rotation.y = Math.random() * Math.PI * 2;
                             dummy.position.y = 0;
                             
                             if (r < 0.70) {
-                                // FIX MOBILE: Solleviamo fisicamente l'erba
                                 dummy.position.y = 0.2; 
                                 dummy.updateMatrix();
                                 meshGrass.setMatrixAt(idxGrass++, dummy.matrix);
-                                // --- NUOVO: PIAZZA I CIUFFI D'ERBA 3D ---
-    // Aggiungiamo erba 3D solo a circa il 40% delle chiazze d'erba per non sovraffollare
-    if (Math.random() > 0.6) {
-        let numClusters = MathUtils.randomInt(3, 6); // 3-6 ciuffi per tile
-        for (let g = 0; g < numClusters; g++) {
-            // Posizione sparsa a caso dentro la tile (TILE_SIZE è 64)
-            let gx = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-25, 25);
-            let gz = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-25, 25);
-            
-            dummy.position.set(gx, 0.2, gz);
-            
-            // Grandezza e rotazione casuale
-            let scaleG = MathUtils.randomRange(0.6, 1.3);
-            dummy.scale.set(scaleG, scaleG, scaleG);
-            
-            // L'erba poligonale è piegata in direzioni casuali
-            dummy.rotation.set(
-                MathUtils.randomRange(-0.2, 0.2), 
-                Math.random() * Math.PI * 2, 
-                MathUtils.randomRange(-0.2, 0.2)
-            );
-            
-            dummy.updateMatrix();
-            interactiveGrassMesh.setMatrixAt(idxInteractiveGrass++, dummy.matrix);
-        }
-    }
-    // ----------------------------------------
+                                
+                                // PIAZZA L'ERBA 3D
+                                if (Math.random() > 0.6) {
+                                    let numClusters = MathUtils.randomInt(3, 6);
+                                    for (let g = 0; g < numClusters; g++) {
+                                        let gx = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-25, 25);
+                                        let gz = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-25, 25);
+                                        dummy.position.set(gx, 0.2, gz);
+                                        let scaleG = MathUtils.randomRange(0.6, 1.3);
+                                        dummy.scale.set(scaleG, scaleG, scaleG);
+                                        dummy.rotation.set(
+                                            MathUtils.randomRange(-0.2, 0.2), 
+                                            Math.random() * Math.PI * 2, 
+                                            MathUtils.randomRange(-0.2, 0.2)
+                                        );
+                                        dummy.updateMatrix();
+                                        interactiveGrassMesh.setMatrixAt(idxInteractiveGrass++, dummy.matrix);
+                                    }
+                                }
                             } else {
-                                // FIX MOBILE: Solleviamo fisicamente la roccia ancora di più
                                 dummy.position.y = 0.4; 
                                 dummy.updateMatrix();
                                 meshRock.setMatrixAt(idxRock++, dummy.matrix);
                             }
-                            
-                            // Reset essenziale
                             dummy.scale.set(1, 1, 1); 
                             dummy.rotation.set(0, 0, 0); 
                         }
 
                         if (this.grid[x][y] === 3) {
-                            let px = x * TILE_SIZE + TILE_SIZE / 2;
-                            let pz = y * TILE_SIZE + TILE_SIZE / 2;
-                            let isBroken = Math.random() < 0.15; // 15% di probabilità di rovina
+                            let px = x * TILE_SIZE + TILE_SIZE / 2; let pz = y * TILE_SIZE + TILE_SIZE / 2;
+                            let isBroken = Math.random() < 0.15; 
+                            dummy.position.set(px, 7.5, pz); dummy.scale.set(1, 1, 1); dummy.rotation.set(0, 0, 0);
+                            dummy.updateMatrix(); pillarBaseMesh.setMatrixAt(pIdx, dummy.matrix);
 
-                            // 1. PIAZZA LA BASE (sempre intatta)
-                            dummy.position.set(px, 7.5, pz); 
-                            dummy.scale.set(1, 1, 1);
-                            dummy.rotation.set(0, 0, 0);
-                            dummy.updateMatrix();
-                            pillarBaseMesh.setMatrixAt(pIdx, dummy.matrix);
-
-                            // 2. PIAZZA IL FUSTO
                             if (isBroken) {
                                 dummy.scale.set(1, MathUtils.randomRange(0.2, 0.6), 1);
-                                dummy.rotation.z = MathUtils.randomRange(-0.1, 0.1);
-                                dummy.rotation.x = MathUtils.randomRange(-0.1, 0.1);
+                                dummy.rotation.z = MathUtils.randomRange(-0.1, 0.1); dummy.rotation.x = MathUtils.randomRange(-0.1, 0.1);
                                 dummy.position.y = 15 + (TILE_SIZE * 1.5 * dummy.scale.y) / 2; 
                             } else {
                                 dummy.position.set(px, TILE_SIZE * 0.75, pz);
                             }
-                            dummy.updateMatrix();
-                            pillarShaftMesh.setMatrixAt(pIdx, dummy.matrix);
+                            dummy.updateMatrix(); pillarShaftMesh.setMatrixAt(pIdx, dummy.matrix);
 
-                            // 3. PIAZZA IL CAPITELLO (solo se intero)
                             if (!isBroken) {
-                                dummy.scale.set(1, 1, 1);
-                                dummy.rotation.set(0, Math.PI / 4, 0); 
+                                dummy.scale.set(1, 1, 1); dummy.rotation.set(0, Math.PI / 4, 0); 
                                 dummy.position.set(px, TILE_SIZE * 1.5 + 5, pz); 
-                                dummy.updateMatrix();
-                                pillarCapMesh.setMatrixAt(pIdx, dummy.matrix);
+                                dummy.updateMatrix(); pillarCapMesh.setMatrixAt(pIdx, dummy.matrix);
                             } else {
-                                dummy.scale.set(0, 0, 0); // Nascondilo se rotto
-                                dummy.updateMatrix();
-                                pillarCapMesh.setMatrixAt(pIdx, dummy.matrix);
+                                dummy.scale.set(0, 0, 0); dummy.updateMatrix(); pillarCapMesh.setMatrixAt(pIdx, dummy.matrix);
                             }
-
-                            // Ripristina per altri calcoli
-                            dummy.scale.set(1, 1, 1);
-                            dummy.rotation.set(0, 0, 0);
-                            
+                            dummy.scale.set(1, 1, 1); dummy.rotation.set(0, 0, 0); 
                             pIdx++;
                         } else if (!isBossFloor && Math.random() < 0.015) {
-                            let crystal = Game.getEnemy();
-                            crystal.spawn(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 'crystal', 1);
-                            Game.enemies.push(crystal); Game.enemyGrid.insert(crystal);
-                        }
+                            let crystal = Game.getEnemy();
+                            crystal.spawn(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 'crystal', 1);
+                            Game.enemies.push(crystal); Game.enemyGrid.insert(crystal);
+                        }
                     } else { 
                         dummy.position.y = TILE_SIZE*0.75; dummy.updateMatrix(); wallMesh.setMatrixAt(wIdx++, dummy.matrix); 
                     }
@@ -2582,20 +2514,22 @@ let idxInteractiveGrass = 0;
                 }
             }
         }
+        
         meshDirt.count = idxDirt;
         meshGrass.count = idxGrass;
         meshRock.count = idxRock;
         interactiveGrassMesh.count = idxInteractiveGrass;
-        // <--- FONDAMENTALE! Manda i dati alla GPU
-interactiveGrassMesh.instanceMatrix.needsUpdate = true;
-if (idxInteractiveGrass > 0) {
-    this.mapGroup.add(interactiveGrassMesh);
-}
+        
+        // Manda i dati dell'erba alla scheda video
+        interactiveGrassMesh.instanceMatrix.needsUpdate = true;
+        
+        if (idxInteractiveGrass > 0) {
+            this.mapGroup.add(interactiveGrassMesh);
+        }
 
         this.mapGroup.add(meshDirt, meshGrass, meshRock); 
         this.mapGroup.add(wallMesh); 
         
-        // Aggiungiamo i 3 componenti dei pilastri
         if(pillarCount > 0) {
             this.mapGroup.add(pillarBaseMesh, pillarShaftMesh, pillarCapMesh);
         }

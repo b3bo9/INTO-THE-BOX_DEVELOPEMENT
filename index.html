@@ -2062,7 +2062,6 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
             }
         }
         
-        for (let i = 0, len = this.projectiles.length; i < len; i++) if(this.projectiles[i].active) this.projectiles[i].update(dt);
         for (let i = 0, len = this.hazards.length; i < len; i++) if(this.hazards[i].active) this.hazards[i].update(dt);
         for (let i = 0, len = this.decoys.length; i < len; i++) if(this.decoys[i].active) this.decoys[i].update(dt);
         for (let i = 0, len = this.dashLines.length; i < len; i++) if(this.dashLines[i].active) this.dashLines[i].update(dt);
@@ -3750,70 +3749,78 @@ class BossEnemy extends Enemy {
 }
 
 class Projectile {
-    constructor() {
-        this.active = false; 
-        this.group = new THREE.Group(); 
-        this.mesh = new THREE.Mesh(SharedGeo.sphere, SharedMat.arrow);
-        this.group.matrixAutoUpdate = false; 
-        this.mesh.matrixAutoUpdate = false; 
-        this.group.add(this.mesh); 
-        this.group.visible = false; 
-       this.hitEnemies = new Set(); 
+    constructor() {
+        this.active = false; 
+        this.group = new THREE.Group(); 
+        this.mesh = new THREE.Mesh(SharedGeo.sphere, SharedMat.arrow);
+        this.group.matrixAutoUpdate = false; 
+        this.mesh.matrixAutoUpdate = false; 
+        this.group.add(this.mesh); 
+        this.group.visible = false; 
+        this.hitEnemies = new Set(); 
         this.updateOffset = Math.floor(Math.random() * 15); 
         Game.scene.add(this.group);
         this.groundGlow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
         this.groundGlow.rotation.x = -Math.PI / 2;
         this.groundGlow.visible = false;
         Game.scene.add(this.groundGlow);
+
+        // --- VARIABILI VENTO AGGIUNTE ---
+        this.windX = 0;
+        this.windZ = 0;
+        this.windIntensity = 0;
     }
-    spawn(x, y, angle, speed, damage, owner, type, piercing=false) {
-        this.active = true; this.group.visible = true; this.x = x; this.y = y; this.angle = angle; this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
-        this.damage = damage; this.owner = owner; this.type = type; this.piercing = piercing; this.bounceCount = (type === 'chain_lightning') ? 2 : 0;
-        this.hitEnemies.clear(); this.target = null; this.canInfect = true;
-        
-        this.life = owner === 'player' ? (700 / Math.max(1, speed)) : Math.min(3.0, 600 / Math.max(1, speed));
-        this.radius = 6; let mat = SharedMat.arrow; let geo = SharedGeo.sphere;
+    
+    spawn(x, y, angle, speed, damage, owner, type, piercing=false) {
+        this.active = true; this.group.visible = true; this.x = x; this.y = y; this.angle = angle; this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+        this.damage = damage; this.owner = owner; this.type = type; this.piercing = piercing; this.bounceCount = (type === 'chain_lightning') ? 2 : 0;
+        this.hitEnemies.clear(); this.target = null; this.canInfect = true;
+        
+        this.life = owner === 'player' ? (700 / Math.max(1, speed)) : Math.min(3.0, 600 / Math.max(1, speed));
+        this.radius = 6; let mat = SharedMat.arrow; let geo = SharedGeo.sphere;
 
-        if (type === 'arrow') { mat = SharedMat.arrow; geo = SharedGeo.cone; } 
-        if (type === 'player_arrow') { mat = SharedMat.playerArrow; geo = SharedGeo.cone; } 
-        if (type === 'explosive_arrow') { mat = SharedMat.explosiveArrow; this.radius = 16; geo = SharedGeo.icosahedron; }
-        if (type === 'chain_lightning') { mat = SharedMat.chainLightning; this.radius = 10; geo = SharedGeo.icosahedron; }
-        if (type === 'homing_arrow') { mat = SharedMat.homingArrow; this.radius = 8; geo = SharedGeo.cone; }
-        if (type === 'enemy_fireball') { mat = SharedMat.enemyFireball; this.radius = 25; geo = SharedGeo.icosahedron; } 
-        if (type === 'enemy_bolt') { mat = SharedMat.enemyBolt; this.radius = 16; geo = SharedGeo.icosahedron; }
-        if (type === 'fire_shape') { mat = SharedMat.fireShape; this.radius = 20; geo = SharedGeo.icosahedron; }
+        if (type === 'arrow') { mat = SharedMat.arrow; geo = SharedGeo.cone; } 
+        if (type === 'player_arrow') { mat = SharedMat.playerArrow; geo = SharedGeo.cone; } 
+        if (type === 'explosive_arrow') { mat = SharedMat.explosiveArrow; this.radius = 16; geo = SharedGeo.icosahedron; }
+        if (type === 'chain_lightning') { mat = SharedMat.chainLightning; this.radius = 10; geo = SharedGeo.icosahedron; }
+        if (type === 'homing_arrow') { mat = SharedMat.homingArrow; this.radius = 8; geo = SharedGeo.cone; }
+        if (type === 'enemy_fireball') { mat = SharedMat.enemyFireball; this.radius = 25; geo = SharedGeo.icosahedron; } 
+        if (type === 'enemy_bolt') { mat = SharedMat.enemyBolt; this.radius = 16; geo = SharedGeo.icosahedron; }
+        if (type === 'fire_shape') { mat = SharedMat.fireShape; this.radius = 20; geo = SharedGeo.icosahedron; }
 
-        this.mesh.geometry = geo; this.mesh.material = mat; this.group.position.set(x, 15, y);
-       if (type === 'arrow' || type === 'player_arrow' || type === 'homing_arrow') { this.mesh.scale.set(4, 20, 4); this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; }
-        else { this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); }
+        this.mesh.geometry = geo; this.mesh.material = mat; this.group.position.set(x, 15, y);
+        if (type === 'arrow' || type === 'player_arrow' || type === 'homing_arrow') { this.mesh.scale.set(4, 20, 4); this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; }
+        else { this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); }
         
         this.mesh.updateMatrix(); this.group.updateMatrix(); 
         if (isTouchDevice && type !== 'arrow') {
-            let colorHex = 0xffffff;
-            if (type === 'player_arrow') colorHex = 0xffff00;
-            if (type === 'explosive_arrow' || type === 'enemy_fireball' || type === 'fire_shape') colorHex = 0xff3300;
+            let colorHex = 0xffffff;
+            if (type === 'player_arrow') colorHex = 0xffff00;
+            if (type === 'explosive_arrow' || type === 'enemy_fireball' || type === 'fire_shape') colorHex = 0xff3300;
             if (type === 'chain_lightning' || type === 'enemy_bolt') colorHex = 0x00aaff;
             if (type === 'homing_arrow') colorHex = 0x33ff00;
             this.groundGlow.material.color.setHex(colorHex);
-            if (type === 'player_arrow' || type === 'homing_arrow') {
-                // Allunghiamo il bagliore per farlo sembrare un raggio di luce veloce
-                this.groundGlow.scale.set(this.radius * 7, this.radius * 1.5, 1);
-                this.groundGlow.rotation.z = -angle;
-            } else {
-                this.groundGlow.scale.set(this.radius * 4, this.radius * 4, 1);
-                this.groundGlow.rotation.z = 0;
-            }
-            // Se è una freccia, attacchiamo l'alone al modello (y=14.5) come fosse un'Aura.
-            // Se è una palla di fuoco, lasciamo la luce sul pavimento (y=0.2).
-            if (type === 'player_arrow' || type === 'homing_arrow') {
-                this.groundGlow.position.set(x, 14.5, y);
-            } else {
-                this.groundGlow.position.set(x, 0.2, y);
-            }
-            this.groundGlow.visible = true;
+            if (type === 'player_arrow' || type === 'homing_arrow') {
+                this.groundGlow.scale.set(this.radius * 7, this.radius * 1.5, 1);
+                this.groundGlow.rotation.z = -angle;
+            } else {
+                this.groundGlow.scale.set(this.radius * 4, this.radius * 4, 1);
+                this.groundGlow.rotation.z = 0;
+            }
+            if (type === 'player_arrow' || type === 'homing_arrow') {
+                this.groundGlow.position.set(x, 14.5, y);
+            } else {
+                this.groundGlow.position.set(x, 0.2, y);
+            }
+            this.groundGlow.visible = true;
         } else {
             this.groundGlow.visible = false;
         }
+
+        // --- VARIABILI VENTO RESETTATE ALLO SPAWN ---
+        this.windX = x;
+        this.windZ = y;
+        this.windIntensity = 1.0;
     }
     update(dt) {
         // --- INIZIO FISICA DEL VENTO ---

@@ -2314,11 +2314,12 @@ const InteractiveGrassSystem = {
                 float heightFactor = max(0.0, position.y / 15.0);
                 vec3 wPos = mvPosition.xyz;
 
+                // Calcoliamo la forza MASSIMA sulla punta (senza moltiplicare per heightFactor)
                 vec3 wind = vec3(
                     sin(uTime * 2.0 + wPos.x * 0.05) * 1.5,
                     0.0,
                     cos(uTime * 1.5 + wPos.z * 0.05) * 1.5
-                ) * heightFactor;
+                );
 
                 vec3 interaction = vec3(0.0);
                 
@@ -2333,26 +2334,30 @@ const InteractiveGrassSystem = {
                     
                     float radius = 180.0;
                     if(dist < radius) {
-                        // FIX: Smoothstep a prova di crash
                         float falloff = 1.0 - smoothstep(0.0, radius, dist);
                         float pushForce = pow(falloff, 3.0);
                         
                         float wobble = 1.0 + sin(dist * 0.08 - uTime * 12.0) * 0.6 * falloff;
                         
-                        interaction += normalize(dir + vec3(0.001)) * (pushForce * wobble) * 38.0 * heightFactor * intensity;
+                        // Sommiamo la forza pura
+                        interaction += normalize(dir + vec3(0.001)) * (pushForce * wobble) * 38.0 * intensity;
                     }
                 }
 
-                vec3 totalDisp = wind + interaction;
+                // Uniamo vento e interazione per ottenere lo spostamento totale della PUNTA
+                vec3 maxDisp = wind + interaction;
                 
-                // FIX COMPENSAZIONE LUNGHEZZA: Ricalibrato sull'altezza 15.0
-                float horizLength = length(totalDisp.xz);
-                horizLength = min(horizLength, 14.5);
-                float drop = 15.0 - sqrt(225.0 - horizLength * horizLength);
+                // Calcoliamo la spinta orizzontale e la limitiamo per sicurezza
+                float maxHoriz = length(maxDisp.xz);
+                maxHoriz = min(maxHoriz, 14.5);
                 
-                totalDisp.y -= drop * heightFactor; 
+                // Pitagora per trovare di quanto deve abbassarsi la punta (ipotenusa 15)
+                float drop = 15.0 - sqrt(225.0 - maxHoriz * maxHoriz);
+                maxDisp.y -= drop;
 
-                mvPosition.xyz += totalDisp;
+                // FIX: Applichiamo lo spostamento calcolato uniformemente in base all'altezza del vertice!
+                mvPosition.xyz += maxDisp * heightFactor;
+
                 mvPosition = modelViewMatrix * mvPosition;
                 gl_Position = projectionMatrix * mvPosition;
                 `

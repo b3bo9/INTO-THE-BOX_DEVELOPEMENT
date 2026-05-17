@@ -2284,7 +2284,6 @@ const InteractiveGrassSystem = {
         this.geo.translate(0, 7.5, 0); 
         this.geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 999999);
 
-        // Verde foresta scuro, visibile ma non "radioattivo"
         this.mat = new THREE.MeshLambertMaterial({
             color: 0x223a18,      
             emissive: 0x050c04,   
@@ -2306,59 +2305,78 @@ const InteractiveGrassSystem = {
             shader.vertexShader = shader.vertexShader.replace(
                 '#include <project_vertex>',
                 `
-                vec4 mvPosition = vec4( transformed, 1.0 );
+                // 1. Calcoliamo le coordinate assolute nello spazio 3D del mondo
+                vec4 worldPos = vec4( transformed, 1.0 );
                 #ifdef USE_INSTANCING
-                    mvPosition = instanceMatrix * mvPosition;
+                    worldPos = instanceMatrix * worldPos;
                 #endif
+                worldPos = modelMatrix * worldPos; 
+
+                // 2. Troviamo le coordinate del "perno" (la base alla radice del filo d'erba)
+                vec4 basePos4 = vec4( 0.0, 0.0, 0.0, 1.0 );
+                #ifdef USE_INSTANCING
+                    basePos4 = instanceMatrix * basePos4;
+                #endif
+                vec3 basePos = (modelMatrix * basePos4).xyz;
 
                 float heightFactor = max(0.0, position.y / 15.0);
-                vec3 wPos = mvPosition.xyz;
 
-                // Calcoliamo la forza MASSIMA sulla punta (senza moltiplicare per heightFactor)
-                vec3 wind = vec3(
-                    sin(uTime * 2.0 + wPos.x * 0.05) * 1.5,
-                    0.0,
-                    cos(uTime * 1.5 + wPos.z * 0.05) * 1.5
+                // 3. Calcolo del vento base (Brezza)
+                vec2 windDir = vec2(
+                    sin(uTime * 2.0 + basePos.x * 0.05) * 1.5,
+                    cos(uTime * 1.5 + basePos.z * 0.05) * 1.5
                 );
 
-                vec3 interaction = vec3(0.0);
+                vec2 interactDir = vec2(0.0);
                 
+                // 4. Somma vettoriale di tutte le scie d'aria
                 for(int i = 0; i < MAX_WIND; i++) {
                     if (i >= uWindCount) break;
                     
                     vec3 windData = uWindSources[i];
                     float intensity = windData.y; 
                     
-                    vec3 dir = wPos - vec3(windData.x, 0.0, windData.z);
+                    vec2 dir = basePos.xz - vec2(windData.x, windData.z);
                     float dist = length(dir);
                     
                     float radius = 180.0;
-                    if(dist < radius) {
+                    if(dist < radius && dist > 0.001) {
                         float falloff = 1.0 - smoothstep(0.0, radius, dist);
                         float pushForce = pow(falloff, 3.0);
-                        
                         float wobble = 1.0 + sin(dist * 0.08 - uTime * 12.0) * 0.6 * falloff;
                         
-                        // Sommiamo la forza pura
-                        interaction += normalize(dir + vec3(0.001)) * (pushForce * wobble) * 38.0 * intensity;
+                        interactDir += normalize(dir) * (pushForce * wobble) * 38.0 * intensity;
                     }
                 }
 
-                // Uniamo vento e interazione per ottenere lo spostamento totale della PUNTA
-                vec3 maxDisp = wind + interaction;
+                vec2 totalForce = windDir + interactDir;
+                float forceMag = length(totalForce);
                 
-                // Calcoliamo la spinta orizzontale e la limitiamo per sicurezza
-                float maxHoriz = length(maxDisp.xz);
-                maxHoriz = min(maxHoriz, 14.5);
+                // 5. TROVIAMO L'ASSE DI ROTAZIONE (Perpendicolare alla forza)
+                vec3 axis = vec3(-totalForce.y, 0.0, totalForce.x);
+                if (forceMag > 0.001) {
+                    axis = normalize(axis);
+                } else {
+                    axis = vec3(1.0, 0.0, 0.0);
+                }
                 
-                // Pitagora per trovare di quanto deve abbassarsi la punta (ipotenusa 15)
-                float drop = 15.0 - sqrt(225.0 - maxHoriz * maxHoriz);
-                maxDisp.y -= drop;
-
-                // FIX: Applichiamo lo spostamento calcolato uniformemente in base all'altezza del vertice!
-                mvPosition.xyz += maxDisp * heightFactor;
-
-                mvPosition = modelViewMatrix * mvPosition;
+                // 6. CALCOLO ANGOLO (Si ferma a 1.4 radianti, cioè 80 gradi, per non entrare sottoterra)
+                float maxAngle = min(forceMag * 0.04, 1.4); 
+                float currentAngle = maxAngle * heightFactor; // Curvatura progressiva dal basso verso l'alto
+                
+                // 7. FORMULA DI RODRIGUES: Esegue una VERA rotazione 3D del vertice!
+                // Niente più stiramenti. Il cono mantiene proporzioni e volumi intatti.
+                float c = cos(currentAngle);
+                float s = sin(currentAngle);
+                vec3 v = worldPos.xyz - basePos; // Vettore dalla radice al punto in cui siamo
+                
+                vec3 cross_axis_v = cross(axis, v);
+                float dot_axis_v = dot(axis, v);
+                vec3 bentVector = v * c + cross_axis_v * s + axis * dot_axis_v * (1.0 - c);
+                
+                // 8. Riassegna la posizione calcolata alla fotocamera
+                vec4 finalWorldPos = vec4(basePos + bentVector, 1.0);
+                vec4 mvPosition = viewMatrix * finalWorldPos;
                 gl_Position = projectionMatrix * mvPosition;
                 `
             );

@@ -2644,10 +2644,18 @@ class GameMap {
         const tintRock = 0x333344;  
         const tintWall = 0x252530;  
 
+        // 1. Materiali Corretti (Senza shininess)
         const matDirt = new MapMaterialClass({ map: texDirt, color: tintDirt, roughness: 0.9, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5 });
         const matGrass = new MapMaterialClass({ map: texGrass, color: tintGrass, roughness: 1.0, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, alphaMap: alphaTex, transparent: true, depthWrite: false });
         const matRock = new MapMaterialClass({ map: texRock, color: tintRock, roughness: 0.6, metalness: 0.2, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, alphaMap: alphaTex, transparent: true, depthWrite: false });
 
+        // 2. ECCO LE RIGHE MANCANTI CHE AVEVO CANCELLATO!
+        const meshDirt = new THREE.InstancedMesh(floorGeo, matDirt, floorCount);
+        const meshGrass = new THREE.InstancedMesh(floorGeo, matGrass, floorCount);
+        const meshRock = new THREE.InstancedMesh(floorGeo, matRock, floorCount);
+        meshDirt.renderOrder = -3; meshGrass.renderOrder = -2; meshRock.renderOrder = -1;
+
+        // 3. Muri e Colonne
         const wallGeo = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
         this.wallMat = new MapMaterialClass({ map: texWall, color: tintWall, roughness: 0.8, metalness: 0.1, bumpMap: isHighQ ? texWall : null, bumpScale: 3.0 });
 

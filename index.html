@@ -86,7 +86,18 @@
             0%, 100% { opacity: 0.3; }
             50% { opacity: 1; }
         }
-     
+     /* --- NUOVO: Nebbia Volumetrica Parallasse 2D --- */
+        #mist {
+            position: absolute; inset: 0; z-index: 4; pointer-events: none;
+            /* Fumo generato matematicamente via SVG senza scaricare immagini */
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.015' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.25'/%3E%3C/svg%3E");
+            mix-blend-mode: screen; opacity: 0.4;
+            animation: mist-drift 60s linear infinite;
+        }
+        @keyframes mist-drift { 
+            from { transform: scale(1.5) translate(0, 0); } 
+            to { transform: scale(1.5) translate(-10%, -10%); } 
+        }
         .relic-card { transition: all 0.2s; cursor: pointer; } .relic-card:hover { transform: scale(1.05) translateY(-5px); } .relic-card:active { transform: scale(0.95); }
         .rarity-common { border-color: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); } .rarity-rare { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
         .rarity-epic { border-color: #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.6); } .rarity-legendary { border-color: #fbbf24; box-shadow: 0 0 30px rgba(251, 191, 36, 0.8); }
@@ -400,6 +411,7 @@
     <!-- CONTAINER 3D -->
     <div id="game-container"></div>
     <canvas id="uiCanvas"></canvas>
+    <div id="mist"></div>
     <div id="vignette"></div>
 
     <!-- CONTROLLI MOBILE -->
@@ -1197,7 +1209,8 @@ const SharedMat = {
     spriteGreen: new THREE.SpriteMaterial({color: ESSENCE_COLORS.green, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
     spriteWhite: new THREE.SpriteMaterial({color: 0xffffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
     spritePink: new THREE.SpriteMaterial({color: 0xff66bb, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
-    spriteBlood: new THREE.SpriteMaterial({color: 0xaa0000, map: GLOW_TEX, transparent: true, depthWrite: false}),
+   spriteBlood: new THREE.SpriteMaterial({color: 0xaa0000, map: GLOW_TEX, transparent: true, depthWrite: false}),
+    spriteDust: new THREE.SpriteMaterial({color: 0x2a1e16, map: GLOW_TEX, transparent: true, opacity: 0.6, depthWrite: false}),
     
     arrow: new THREE.MeshPhongMaterial({color: 0x888888, emissive: 0x444444}),
     playerArrow: new THREE.MeshPhongMaterial({color: 0x000000, emissive: 0xffff00, emissiveIntensity: 2.0}),
@@ -3282,13 +3295,32 @@ let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 6 : 12);
         let isShooting = Game.mouse.leftDown || Game.inputs.right.active;
         if (this.overdrive && this.essence === 'red' && isShooting && !this.isDashing) this.flamethrower(dt);
         
-        // ---> BLOCCO DI MOVIMENTO E SQUASH & STRETCH
+        // ---> BLOCCO DI MOVIMENTO, POLVERE E PENDOLO
         if (!this.isDashing) {
             let dx = 0, dy = 0;
             if (Game.keys['w']) dy -= 1; if (Game.keys['s']) dy += 1; if (Game.keys['a']) dx -= 1; if (Game.keys['d']) dx += 1;
             if (Game.inputs.left.active) { dx = Game.inputs.left.x; dy = Game.inputs.left.y; }
-            if (dx !== 0 || dy !== 0) { this.speed = currentSpeed; this.move(dx, dy, dt); this.mesh.position.y = Game.animBounce * 0.75; } else { this.mesh.position.y = 0; }
             
+            let isMoving = (dx !== 0 || dy !== 0);
+            
+            if (isMoving) { 
+                this.speed = currentSpeed; 
+                this.move(dx, dy, dt); 
+                this.mesh.position.y = Game.animBounce * 0.75; 
+                
+                // --- NUOVO: Sbuffo di polvere al suolo (ogni 6 frame se cammina)
+                if (Game.frameCount % 6 === 0) Game.getParticle().spawn(this.x, 2, this.y, SharedMat.spriteDust, 'dust');
+            } else { 
+                this.mesh.position.y = 0; 
+            }
+            
+            // --- NUOVO: Pendolo Fisico della Lanterna ---
+            let swingSpeed = isMoving ? 12 : 3; // Oscilla veloce se corri, lento se respiri fermo
+            let swingAmount = isMoving ? 4 : 1; 
+            this.light.position.x = Math.sin(Game.playTime * swingSpeed) * swingAmount;
+            this.light.position.z = Math.cos(Game.playTime * (swingSpeed * 0.8)) * swingAmount;
+            // --------------------------------------------
+
             // Assicuriamoci che la scala torni normale quando non scatta
             this.mesh.scale.set(1, 1, 1); 
         } else {
@@ -4389,12 +4421,18 @@ class Particle {
             this.life = 0.15;
             this.baseSize = MathUtils.randomRange(60, 100);
             this.vx = 0; this.vy = 0; this.vz = 0;
-        } else if (type === 'ambient') { // --- NUOVO: Spore/Lucciole
-            this.life = MathUtils.randomRange(2.0, 4.5); // Vivono a lungo
-            this.baseSize = MathUtils.randomRange(4, 9); // Piccole e delicate
+       } else if (type === 'ambient') { // --- NUOVO: Spore/Lucciole
+            this.life = MathUtils.randomRange(2.0, 4.5); 
+            this.baseSize = MathUtils.randomRange(4, 9); 
             this.vx = MathUtils.randomRange(-10, 10);
-            this.vy = MathUtils.randomRange(-18, -6); // Salgono piano piano
+            this.vy = MathUtils.randomRange(-18, -6); 
             this.vz = MathUtils.randomRange(-10, 10);
+        } else if (type === 'dust') { // --- NUOVO: Polvere al calpestio
+            this.life = MathUtils.randomRange(0.4, 0.6);
+            this.baseSize = MathUtils.randomRange(15, 25);
+            this.vx = MathUtils.randomRange(-15, 15);
+            this.vy = MathUtils.randomRange(5, 15); // Si alza leggermente dal suolo
+            this.vz = MathUtils.randomRange(-15, 15);
         } else {
             this.life = type === 'flame' ? Math.random()*0.3 + 0.15 : Math.random()*0.3 + 0.2; 
             this.baseSize = type === 'blood' ? 12 : (type==='level'? 16 : (type==='flame'? 24 : 10));
@@ -4436,6 +4474,14 @@ class Particle {
             
             let currentSize = this.baseSize * fade * pulse;
             this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
+        } else if (this.type === 'dust') { // --- NUOVO: Espansione Polvere
+            this.mesh.position.x += this.vx * dt; 
+            this.mesh.position.y += this.vy * dt; 
+            this.mesh.position.z += this.vz * dt;
+            let pct = this.life / this.maxLife;
+            let currentSize = this.baseSize * (2.0 - pct); // Si espande svanendo
+            this.mesh.scale.set(currentSize, currentSize, 1);
+            this.mesh.material.opacity = pct * 0.6; // Si dissolve dolcemente
         } else {
             if(this.type === 'blood' || this.type === 'spark') this.vy -= 600 * dt; 
             if(this.type === 'flame') { 

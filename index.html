@@ -3376,17 +3376,20 @@ let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 6 : 12);
             } 
         }
 
-        // --- NUOVO: Sfarfallio Organico (Light Flicker) ---
-        // Calcoliamo la luce base a seconda di quanti potenziamenti hai attivo
+        // --- NUOVO: Sfarfallio Organico (Light Flicker) POTENZIATO ---
+        // Calcoliamo la luce base a seconda di quanti potenziamenti hai attivi
         let baseInt = Game.ultimateActive ? 4.0 : (this.overdrive ? 3.5 : (this.essence ? 2.5 : 1.8));
         
-        // Creiamo il rumore: un mix tra ronzio matematico continuo (sin) e scoppiettio caotico (random)
-        let flicker = Math.sin(Game.playTime * 28) * 0.05 + Math.random() * 0.08;
+        // Creiamo il rumore: onda lenta (respiro) + onda veloce (ronzio) + scoppiettio caotico
+        let flicker = (Math.sin(Game.playTime * 12) * 0.15) + (Math.sin(Game.playTime * 35) * 0.15) + (Math.random() * 0.25);
         
-        // Applichiamo la luce instabile alla PointLight e al Fake Bloom dello smartphone
+        // Applichiamo la luce instabile alla PointLight
         this.light.intensity = baseInt + flicker;
-        this.fakeBloom.material.opacity = (this.overdrive ? 1.0 : 0.6) + (flicker * 0.8);
-        // --------------------------------------------------
+        
+        // Facciamo pulsare violentemente anche l'alone visivo (Fake Bloom)
+        let baseOpacity = this.overdrive ? 1.0 : (this.essence ? 0.8 : 0.5);
+        this.fakeBloom.material.opacity = Math.max(0.1, Math.min(1.0, baseOpacity + (flicker * 0.6)));
+        // -------------------------------------------------------------
     }
     
    flamethrower(dt) {

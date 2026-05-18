@@ -3505,22 +3505,8 @@ class Enemy extends Entity {
         if (this.state === 'leaping') {
             this.leapTimer += dt; let progress = this.leapTimer / this.leapDuration;
             if (progress >= 1) {
-                this.state = 'walk'; 
-                this.mesh.position.y = 0; 
-                this.mesh.rotation.x = 0; 
-                Game.addTrauma(this.bossElement === 'blue' ? 0.5 : 1.5);
-                AudioEngine.playShoot(this.bossElement === 'blue' ? 'chain_lightning' : 'explosive_arrow');
-                
-                // --- NUOVO: Sassi che schizzano via per l'impatto pesante ---
-                if (this.bossElement !== 'blue') { 
-                    let dCount = AppSettings.isLow ? 4 : (isTouchDevice ? 8 : 15);
-                    let pVec = new THREE.Vector3(this.x, 2, this.y); let pQuat = new THREE.Quaternion(); let pScale = new THREE.Vector3(4, 4, 4);
-                    for(let d=0; d<dCount; d++) Game.getDebris().spawn(pVec, pQuat, pScale, SharedGeo.rockDebris, 0x4a3b2c, 15, false);
-                }
-
-                if (MathUtils.distanceSq(this, Game.player) < 160*160) {
-                    Game.player.takeDamage(this.stats.maxDmg * (this.bossElement === 'blue' ? 0.8 : 1.0), this); 
-                } else { 
+                this.state = 'walk'; this.mesh.position.y = 0; this.mesh.rotation.x = 0; if (MathUtils.distanceSq(this, Game.player) < 70*70) Game.player.takeDamage(this.stats.maxDmg * 1.5, this); Game.addTrauma(0.3); 
+            } else { 
                 let currentHeight = Math.sin(progress * Math.PI) * 120; 
                 this.push(Math.cos(this.leapAngle), Math.sin(this.leapAngle), 300 * dt); 
                 this.mesh.position.set(this.x, currentHeight, this.y); 

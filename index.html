@@ -3769,7 +3769,7 @@ class Enemy extends Entity {
             this.active = false; this.mesh.visible = false;
             return;
         }
-        }
+      
         this.shadowMesh.visible = false;
         AudioEngine.playEnemyDeath();
         Game.player.gainXp(this.xpValue);

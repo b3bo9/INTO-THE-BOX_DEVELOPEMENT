@@ -2680,6 +2680,13 @@ class GameMap {
         const matGrass = new MapMaterialClass({ map: texGrass, color: tintGrass, roughness: 0.7, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, alphaMap: alphaTex, transparent: true, depthWrite: false });
         const matRock = new MapMaterialClass({ map: texRock, color: tintRock, roughness: 0.4, metalness: 0.3, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, alphaMap: alphaTex, transparent: true, depthWrite: false });
 
+      
+        const meshDirt = new THREE.InstancedMesh(floorGeo, matDirt, floorCount);
+        const meshGrass = new THREE.InstancedMesh(floorGeo, matGrass, floorCount);
+        const meshRock = new THREE.InstancedMesh(floorGeo, matRock, floorCount);
+        meshDirt.renderOrder = -3; meshGrass.renderOrder = -2; meshRock.renderOrder = -1;
+       
+
         const wallGeo = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
         this.wallMat = new MapMaterialClass({ map: texWall, color: tintWall, roughness: 0.5, metalness: 0.2, bumpMap: isHighQ ? texWall : null, bumpScale: 3.0 });
 

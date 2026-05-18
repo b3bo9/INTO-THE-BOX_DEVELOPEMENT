@@ -4470,6 +4470,21 @@ const Preloader = {
             initScreen.style.pointerEvents = 'auto'; // Riattiviamo il click
         };
 
+        // Se un'immagine fallisce, lo notifichiamo ma non fermiamo tutto
+        this.manager.onError = (url) => {
+            console.warn("Impossibile caricare:", url, "- Verrà usato un colore di base.");
+        };
+
+        // FALLBACK DI SICUREZZA: Sblocca sempre il gioco dopo 3 secondi
+        // Previene il blocco se si apre il gioco senza un server locale (file://)
+        setTimeout(() => {
+            if (loadingText.classList.contains('hidden')) return; // Se è già sbloccato, ignora
+            console.warn("Forzatura avvio: Texture mancanti o bloccate dal browser.");
+            loadingText.classList.add('hidden');
+            startText.classList.remove('hidden');
+            initScreen.style.pointerEvents = 'auto';
+        }, 3000);
+
         // 1. Carichiamo le Texture 3D passando il manager
         const texLoader = new THREE.TextureLoader(this.manager);
         this.textures.dirt = texLoader.load('dirt.jpg');

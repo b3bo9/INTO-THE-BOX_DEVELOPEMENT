@@ -1184,11 +1184,16 @@ function createPatternTexture(type) {
     } else if (type === 'blood') {
         let grad = ctx.createRadialGradient(128,128,0,128,128,128); grad.addColorStop(0, 'rgba(200,0,0,0.8)'); grad.addColorStop(0.5, 'rgba(100,0,0,0.5)'); grad.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = grad; ctx.fillRect(0,0,256,256);
     }
-    const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
+    const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    tex.encoding = THREE.sRGBEncoding; // <--- AGGIUNGI QUESTA RIGA (FONDAMENTALE)
+    return tex;
 }
 function createGlowTexture() {
     const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64; const ctx = canvas.getContext('2d');
-    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32); grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.1, 'rgba(255,255,255,0.8)'); grad.addColorStop(0.4, 'rgba(255,255,255,0.2)'); grad.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = grad; ctx.fillRect(0,0,64,64); return new THREE.CanvasTexture(canvas);
+    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32); grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.1, 'rgba(255,255,255,0.8)'); grad.addColorStop(0.4, 'rgba(255,255,255,0.2)'); grad.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = grad; ctx.fillRect(0,0,64,64);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.encoding = THREE.sRGBEncoding; // <--- MANCAVA QUESTO
+    return tex;
 }
 function createBlobShadowTexture() {
     const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64; const ctx = canvas.getContext('2d');
@@ -1197,7 +1202,9 @@ function createBlobShadowTexture() {
     grad.addColorStop(0.5, 'rgba(0,0,0,0.3)'); 
     grad.addColorStop(1, 'rgba(0,0,0,0)'); 
     ctx.fillStyle = grad; ctx.fillRect(0,0,64,64); 
-    return new THREE.CanvasTexture(canvas);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.encoding = THREE.sRGBEncoding; // <--- MANCAVA QUESTO
+    return tex;
 }
 const BLOB_SHADOW_TEX = createBlobShadowTexture();
 const BLOOD_TEX = createPatternTexture('blood'); const GLOW_TEX = createGlowTexture();
@@ -1747,7 +1754,7 @@ const Game = {
     // Rimuovi la riga 'precision: "mediump"' per farlo tornare al default "highp"
 });
         this.renderer.setPixelRatio(pixelRatio); this.renderer.setSize(this.width, this.height);
-        this.renderer.outputEncoding = THREE.sRGBEncoding; this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.25;
+        this.renderer.outputEncoding = THREE.sRGBEncoding; this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 0.85;
         this.renderer.shadowMap.enabled = AppSettings.shadowsEnabled; 
 this.renderer.shadowMap.type = isTouchDevice ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
         container.appendChild(this.renderer.domElement);
@@ -1755,7 +1762,7 @@ this.renderer.shadowMap.type = isTouchDevice ? THREE.PCFShadowMap : THREE.PCFSof
         // Luce globale quasi inesistente (notte fonda), esalta la luce del giocatore
        // Luce ambientale nerissima (le ombre diventano abissi)
        // Luce ambientale azzurrata notturna (impedisce lo schermo nero assoluto)
-        const ambientLight = new THREE.AmbientLight(0x0e1420, 0.35); this.scene.add(ambientLight);
+        const ambientLight = new THREE.AmbientLight(0x0e1420, 0.15); this.scene.add(ambientLight);
         
         // Luce direzionale (Luna) che genera i riflessi speculari sulle texture
         this.dirLight = new THREE.DirectionalLight(0x556688, 1.5);
@@ -2730,9 +2737,23 @@ class GameMap {
         const tintRock = 0x4a4a5a;  // Grigio ardesia visibile
         const tintWall = 0x2a2a35;  // Muri leggermente schiariti per non affogare nel nero
 
-        const matDirt = new MapMaterialClass({ map: texDirt, color: tintDirt, roughness: 0.6, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5 });
-        const matGrass = new MapMaterialClass({ map: texGrass, color: tintGrass, roughness: 0.7, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, alphaMap: alphaTex, transparent: true, depthWrite: false });
-        const matRock = new MapMaterialClass({ map: texRock, color: tintRock, roughness: 0.4, metalness: 0.3, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, alphaMap: alphaTex, transparent: true, depthWrite: false });
+const matDirt = new MapMaterialClass({ 
+    map: texDirt, color: tintDirt, 
+    shininess: 5, roughness: 0.6, // <--- Mettili entrambi!
+    bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5 
+});
+       const matGrass = new MapMaterialClass({ 
+    map: texGrass, color: tintGrass, 
+    shininess: 2, roughness: 0.7, // <--- Mettili entrambi!
+    bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, 
+    alphaMap: alphaTex, transparent: true, depthWrite: false 
+});
+  const matRock = new MapMaterialClass({ 
+    map: texRock, color: tintRock, 
+    shininess: 40, roughness: 0.4, metalness: 0.3, // <--- Mettili tutti!
+    bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, 
+    alphaMap: alphaTex, transparent: true, depthWrite: false 
+});
 
       
         const meshDirt = new THREE.InstancedMesh(floorGeo, matDirt, floorCount);
@@ -2742,7 +2763,11 @@ class GameMap {
        
 
         const wallGeo = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
-        this.wallMat = new MapMaterialClass({ map: texWall, color: tintWall, roughness: 0.5, metalness: 0.2, bumpMap: isHighQ ? texWall : null, bumpScale: 3.0 });
+      this.wallMat = new MapMaterialClass({ 
+    map: texWall, color: tintWall, 
+    shininess: 15, roughness: 0.5, metalness: 0.2, // <--- Mettili tutti!
+    bumpMap: isHighQ ? texWall : null, bumpScale: 3.0 
+});
 
         const wallMesh = new THREE.InstancedMesh(wallGeo, this.wallMat, wallCount);
         const baseGeo = new THREE.BoxGeometry(35, 15, 35);

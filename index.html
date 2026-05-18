@@ -2508,7 +2508,7 @@ class GameMap {
 
         // --- 2.5 ALLOCHIAMO I DETRITI (Ossa, Sassi spigolosi) ---
         const maxDebris = floorCount * (isTouchDevice ? 8 : 20);
-        const geoDebris = new THREE.TetrahedronGeometry(1.5, 0); // Bassissimo peso CPU
+        const geoDebris = new THREE.TetrahedronGeometry(8, 0); // Bassissimo peso CPU
         const matDebris = new THREE.MeshLambertMaterial({ color: 0x3a3a3a, emissive: 0x050505, flatShading: true });
         const meshDebris = new THREE.InstancedMesh(geoDebris, matDebris, maxDebris);
         meshDebris.receiveShadow = true;

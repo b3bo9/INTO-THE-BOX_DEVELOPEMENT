@@ -2467,7 +2467,7 @@ function createDarkTreeGeometry() {
 
         // Geometria del ramo corrente (meno segmenti per i rami piccoli = ottime performance)
         const radialSegments = depth === 3 ? 5 : 4; 
-        const geo = new THREE.CylinderGeometry(radiusTip, radiusBase, length, radialSegments, 3, false);
+        const geo = new THREE.CylinderGeometry(radiusTip, radiusBase, length, radialSegments, 3, true);
         
         // Sposta il pivot alla base del cilindro
         geo.translate(0, length / 2, 0);

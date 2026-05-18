@@ -2487,7 +2487,7 @@ function createDarkTreeGeometry() {
                 }
             }
 
-            // Rotazione sicura contro i vettori opposti (NaN prevention)
+            // Rotazione sicura contro i vettori opposti
             const axis = new THREE.Vector3(0, 1, 0);
             const quaternion = new THREE.Quaternion();
             if (direction.y < -0.999) {
@@ -2496,10 +2496,13 @@ function createDarkTreeGeometry() {
                 quaternion.setFromUnitVectors(axis, direction);
             }
             
-            geo.applyQuaternion(quaternion);
+            // ---> LA CORREZIONE CRITICA È QUI <---
+            // Creiamo una matrice di rotazione dal quaternione e la applichiamo alla geometria
+            const rotationMatrix = new THREE.Matrix4().makeRotationFromQuaternion(quaternion);
+            geo.applyMatrix4(rotationMatrix);
+            // ------------------------------------
+
             geo.translate(startPoint.x, startPoint.y, startPoint.z);
-            
-            // Sicurezza Merge: Rimuoviamo i gruppi interni che mandano in crisi BufferGeometryUtils
             geo.clearGroups();
 
             geometries.push(geo);
@@ -2532,18 +2535,14 @@ function createDarkTreeGeometry() {
 
         buildBranch(startPos, startDir, 22, 1.8, 1.2, 3); 
 
-        // Uniamo le geometrie dicendo esplicitamente di ignorare i gruppi
         let merged = THREE.BufferGeometryUtils.mergeBufferGeometries(geometries, false);
         if (!merged) throw new Error("Il Merge delle geometrie ha restituito null.");
         
-        // Calcoliamo le ombre in un colpo solo alla fine
         merged.computeVertexNormals(); 
         return merged;
         
     } catch(e) {
         console.warn("Costruzione albero frattale fallita. È stato attivato l'albero di emergenza.", e);
-        
-        // GEOMETRIA DI EMERGENZA (Impossibile da far crashare)
         let safeGeo = new THREE.ConeGeometry(2, 20, 5);
         safeGeo.translate(0, 10, 0);
         return safeGeo;

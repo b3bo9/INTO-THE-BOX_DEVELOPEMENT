@@ -2645,7 +2645,7 @@ class GameMap {
                         let noiseSafe = (noiseRaw + 1.0) / 2.0; 
                         let r = Math.random() * 0.4 + (noiseRaw * 0.6 + 0.5); 
                         
-                       // 3A. TERRA SCURA (r <= 0.35) - Niente Erba
+                      // 3A. TERRA SCURA E ALBERI (r <= 0.35)
                         if (r <= 0.35) {
                             // C'è il 10% di probabilità che spunti un albero contorto
                             if (Math.random() < 0.10 && idxTree < maxTrees) {
@@ -2661,7 +2661,7 @@ class GameMap {
                                 dummy.updateMatrix();
                                 meshTrees.setMatrixAt(idxTree++, dummy.matrix);
                             } 
-                            // Altrimenti, probabilità di piazzare dei detriti
+                            // Altrimenti, probabilità di piazzare dei detriti (sassi)
                             else if (Math.random() > 0.60) {
                                 let numDebris = MathUtils.randomInt(1, 3);
                                 for (let d = 0; d < numDebris; d++) {
@@ -2671,6 +2671,7 @@ class GameMap {
                                     // Sprofondati per farli sembrare sassi incastrati
                                     dummy.position.set(dx, 1.5, dz);
                                     
+                                    // Proporzioni più omogenee per sembrare tondi
                                     let s = MathUtils.randomRange(0.8, 1.6);
                                     dummy.scale.set(s, s * MathUtils.randomRange(0.6, 1.2), s);
                                     

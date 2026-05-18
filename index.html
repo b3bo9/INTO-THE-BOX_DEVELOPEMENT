@@ -2671,15 +2671,10 @@ class GameMap {
         const MapMaterialClass = THREE.MeshStandardMaterial;
         const alphaTex = createOrganicAlphaMap();
 
-        const tintDirt = 0x2a1e16;  // Fango più scuro e caldo (marrone profondo)
-        const tintGrass = 0x162418; // Verde palude, più saturo ma scuro
-        const tintRock = 0x20202a;  // Roccia color ossidiana con riflesso bluastro
-        const tintWall = 0x111116;  // Muri nettamente neri 
-
         const tintDirt = 0x3d2f25;  
         const tintGrass = 0x223525; 
         const tintRock = 0x303040;  
-        const tintWall = 0x1c1c24;  
+        const tintWall = 0x1c1c24;
 
         const matDirt = new MapMaterialClass({ map: texDirt, color: tintDirt, roughness: 0.6, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5 });
         const matGrass = new MapMaterialClass({ map: texGrass, color: tintGrass, roughness: 0.7, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, alphaMap: alphaTex, transparent: true, depthWrite: false });
@@ -3130,7 +3125,8 @@ class Player extends Entity {
             this.light.intensity = 4.0; // Massima visibilità in modalità Ultimate
             this.staffGemMat.emissive.setHex(0xffffff); 
         }
-        }
+    }
+
     update(dt) {
         if (this.dead) return; this.updateFlash(dt);
         this.modelParts.halo.rotation.z += dt; this.modelParts.staffGem.rotation.y += dt;

@@ -3314,12 +3314,20 @@ let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 6 : 12);
                 this.mesh.position.y = 0; 
             }
             
-            // --- NUOVO: Pendolo Fisico della Lanterna ---
+            // --- NUOVO: Pendolo Fisico della Lanterna (VISIBILE) ---
             let swingSpeed = isMoving ? 12 : 3; // Oscilla veloce se corri, lento se respiri fermo
-            let swingAmount = isMoving ? 4 : 1; 
-            this.light.position.x = Math.sin(Game.playTime * swingSpeed) * swingAmount;
-            this.light.position.z = Math.cos(Game.playTime * (swingSpeed * 0.8)) * swingAmount;
-            // --------------------------------------------
+            let swingAmount = isMoving ? 3 : 0.8; 
+            let swingY = isMoving ? Math.abs(Math.sin(Game.playTime * swingSpeed)) * 2.5 : 0;
+            
+            // 1. Dondoliamo fisicamente il modello 3D dell'arma (tilt e sussulto)
+            this.modelParts.weaponGroup.position.x = 12 + Math.sin(Game.playTime * swingSpeed) * swingAmount;
+            this.modelParts.weaponGroup.position.y = 16 + swingY;
+            this.modelParts.weaponGroup.rotation.z = Math.sin(Game.playTime * swingSpeed) * (isMoving ? 0.2 : 0.05);
+
+            // 2. Allineiamo la luce magica per farla viaggiare assieme all'arma
+            this.light.position.x = this.modelParts.weaponGroup.position.x;
+            this.light.position.y = this.modelParts.weaponGroup.position.y + 10;
+            // --------------------------------------------------------
 
             // Assicuriamoci che la scala torni normale quando non scatta
             this.mesh.scale.set(1, 1, 1); 

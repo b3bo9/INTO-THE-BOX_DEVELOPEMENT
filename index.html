@@ -1734,9 +1734,10 @@ const Game = {
         container.appendChild(this.renderer.domElement);
         
         // Luce globale quasi inesistente (notte fonda), esalta la luce del giocatore
-        const ambientLight = new THREE.AmbientLight(0x0a0a15, 0.3); this.scene.add(ambientLight);
-        
-        this.dirLight = new THREE.DirectionalLight(0x6677aa, 1.5); 
+       // Luce ambientale nerissima (le ombre diventano abissi)
+const ambientLight = new THREE.AmbientLight(0x030305, 0.15); this.scene.add(ambientLight);
+// Luce lunare pallida, fredda e tagliente
+this.dirLight = new THREE.DirectionalLight(0x445577, 1.8); 
         this.dirLight.position.set(-500, 1000, -500); 
         this.dirLight.castShadow = true; 
         this.dirLight.shadow.camera.top = 1000; 
@@ -2069,7 +2070,7 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
                     if (noiseSafe > 0.45) {
                         let p = this.getParticle();
                         // 50% Gialle (Lucciole classiche), 50% Verdi (Spore silvane)
-                        let magicMat = Math.random() > 0.5 ? SharedMat.spriteYellow : SharedMat.spriteGreen;
+                       let magicMat = Math.random() > 0.3 ? SharedMat.spriteWhite : SharedMat.spriteRed;
                         // Spawna leggermente in basso così sembra che salgano dai fili d'erba
                         p.spawn(px, MathUtils.randomRange(2, 10), pz, magicMat, 'ambient');
                     }
@@ -2639,10 +2640,10 @@ class GameMap {
         const MapMaterialClass = isTouchDevice ? THREE.MeshPhongMaterial : THREE.MeshStandardMaterial;
         const alphaTex = createOrganicAlphaMap();
 
-        const tintDirt = 0x332b22;  
-        const tintGrass = 0x223322; 
-        const tintRock = 0x333344;  
-        const tintWall = 0x252530;  
+        const tintDirt = 0x1f1814;  // Fango marcito
+const tintGrass = 0x141c15; // Erba morta/corrotta, molto più scura
+const tintRock = 0x1a1a22;  // Roccia color ossidiana
+const tintWall = 0x0f0f13;  // Muri neri come la pece  
 
         // 1. Materiali Corretti (Senza shininess)
         const matDirt = new MapMaterialClass({ map: texDirt, color: tintDirt, roughness: 0.9, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5 });
@@ -4260,7 +4261,7 @@ class Particle {
             this.life = MathUtils.randomRange(2.0, 4.5); // Vivono a lungo
             this.baseSize = MathUtils.randomRange(4, 9); // Piccole e delicate
             this.vx = MathUtils.randomRange(-10, 10);
-            this.vy = MathUtils.randomRange(4, 12); // Salgono piano piano
+            this.vy = MathUtils.randomRange(-18, -6); // Salgono piano piano
             this.vz = MathUtils.randomRange(-10, 10);
         } else {
             this.life = type === 'flame' ? Math.random()*0.3 + 0.15 : Math.random()*0.3 + 0.2; 

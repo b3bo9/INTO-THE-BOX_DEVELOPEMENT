@@ -13,6 +13,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
 
     <style>
         * { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
@@ -2457,6 +2458,48 @@ const InteractiveGrassSystem = {
         };
     }
 };
+    function createDarkTreeGeometry() {
+    const geometries = [];
+
+    // Tronco principale (Cilindro che si stringe)
+    const trunkGeo = new THREE.CylinderGeometry(0.5, 2.5, 25, 5, 4, false);
+    trunkGeo.translate(0, 12.5, 0);
+    
+    // Distorsione del tronco per renderlo "storto e oscuro"
+    const pos = trunkGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        let y = pos.getY(i);
+        if (y > 3) { // Curva la parte alta del tronco
+            pos.setX(i, pos.getX(i) + Math.sin(y * 0.3) * 1.5);
+            pos.setZ(i, pos.getZ(i) + Math.cos(y * 0.2) * 1.5);
+        }
+    }
+    geometries.push(trunkGeo);
+
+    // Rami acuminati (Coni allungati)
+    const numBranches = MathUtils.randomInt(4, 7);
+    for (let i = 0; i < numBranches; i++) {
+        const branchGeo = new THREE.ConeGeometry(0.8, 15, 4);
+        const height = MathUtils.randomRange(10, 20); // Altezza sul tronco
+        const angle = (Math.PI * 2 / numBranches) * i + MathUtils.randomRange(-0.5, 0.5);
+        
+        // Inclina il ramo verso l'esterno e verso l'alto
+        branchGeo.rotateX(Math.PI / 2 + MathUtils.randomRange(0.2, 0.6));
+        branchGeo.rotateY(angle);
+        
+        // Posizionalo sul tronco
+        branchGeo.translate(
+            Math.cos(angle) * 1.5 + Math.sin(height * 0.3) * 1.5, 
+            height, 
+            Math.sin(angle) * 1.5 + Math.cos(height * 0.2) * 1.5
+        );
+        
+        geometries.push(branchGeo);
+    }
+
+    // Unisce tronco e rami in una SINGOLA geometria per ottimizzare le draw calls
+    return THREE.BufferGeometryUtils.mergeBufferGeometries(geometries);
+}
 class GameMap {
     constructor(w, h) {
         this.width = w; this.height = h; this.grid = [];
@@ -2515,6 +2558,16 @@ class GameMap {
         meshDebris.castShadow = !isTouchDevice;
         meshDebris.frustumCulled = false;
         let idxDebris = 0;
+      // --- 2.6 ALLOCHIAMO GLI ALBERI ---
+        const maxTrees = floorCount * (isTouchDevice ? 1 : 2); // Numero stimato massimo di alberi
+        const geoTree = createDarkTreeGeometry();
+        // Colore marrone scuro, quasi nero, aspro e senza riflessi
+        const matTree = new THREE.MeshLambertMaterial({ color: 0x161311, emissive: 0x050403, flatShading: true });
+        const meshTrees = new THREE.InstancedMesh(geoTree, matTree, maxTrees);
+        meshTrees.receiveShadow = true;
+        meshTrees.castShadow = !isTouchDevice;
+        meshTrees.frustumCulled = false;
+        let idxTree = 0;
 
         // --- INIZIO GESTIONE MATERIALI OTTIMIZZATI ---
         const isHighQ = !AppSettings.isLow && !isTouchDevice; 
@@ -2592,9 +2645,24 @@ class GameMap {
                         let noiseSafe = (noiseRaw + 1.0) / 2.0; 
                         let r = Math.random() * 0.4 + (noiseRaw * 0.6 + 0.5); 
                         
-                        // 3A. DETRITI NELLA TERRA SCURA (r <= 0.35)
+                       // 3A. TERRA SCURA (r <= 0.35) - Niente Erba
                         if (r <= 0.35) {
-                            if (Math.random() > 0.60) {
+                            // C'è il 10% di probabilità che spunti un albero contorto
+                            if (Math.random() < 0.10 && idxTree < maxTrees) {
+                                let tx = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-15, 15);
+                                let tz = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-15, 15);
+                                dummy.position.set(tx, 0, tz); // Base a livello terra
+                                
+                                // Variazione di scala: alcuni alberi più piccoli, altri più grandi
+                                let s = MathUtils.randomRange(0.7, 1.4);
+                                dummy.scale.set(s, s, s);
+                                
+                                dummy.rotation.set(0, Math.random() * Math.PI * 2, 0); // Rotazione casuale sull'asse Y
+                                dummy.updateMatrix();
+                                meshTrees.setMatrixAt(idxTree++, dummy.matrix);
+                            } 
+                            // Altrimenti, probabilità di piazzare dei detriti
+                            else if (Math.random() > 0.60) {
                                 let numDebris = MathUtils.randomInt(1, 3);
                                 for (let d = 0; d < numDebris; d++) {
                                     let dx = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-28, 28);
@@ -2603,7 +2671,6 @@ class GameMap {
                                     // Sprofondati per farli sembrare sassi incastrati
                                     dummy.position.set(dx, 1.5, dz);
                                     
-                                    // Proporzioni più omogenee per sembrare tondi
                                     let s = MathUtils.randomRange(0.8, 1.6);
                                     dummy.scale.set(s, s * MathUtils.randomRange(0.6, 1.2), s);
                                     
@@ -2615,7 +2682,7 @@ class GameMap {
                                     }
                                 }
                             }
-                        } 
+                        }
                         // 3B. MANTELLO ERBOSO (0.35 < r < 0.70)
                         else if (r < 0.70) {
                             dummy.scale.set(2.4, 1, 2.4); 
@@ -2714,6 +2781,10 @@ class GameMap {
         interactiveGrassMesh.count = idxInteractiveGrass;
         meshDebris.count = idxDebris;
         meshDebris.instanceMatrix.needsUpdate = true;
+        meshTrees.count = idxTree; // Quanti alberi abbiamo piazzato realmente
+        meshTrees.instanceMatrix.needsUpdate = true; // Comunica i cambiamenti alla GPU
+        
+        if (idxTree > 0) this.mapGroup.add(meshTrees); // Aggiungi alla mappa
         
         if (idxDebris > 0) this.mapGroup.add(meshDebris);
         

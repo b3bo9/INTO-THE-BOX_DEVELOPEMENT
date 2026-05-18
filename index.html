@@ -2513,6 +2513,7 @@ class GameMap {
         const meshDebris = new THREE.InstancedMesh(geoDebris, matDebris, maxDebris);
         meshDebris.receiveShadow = true;
         meshDebris.castShadow = !isTouchDevice;
+        meshDebris.frustumCulled = false;
         let idxDebris = 0;
 
         // --- INIZIO GESTIONE MATERIALI OTTIMIZZATI ---
@@ -2709,6 +2710,8 @@ class GameMap {
         meshRock.count = idxRock;
         interactiveGrassMesh.count = idxInteractiveGrass;
         meshDebris.count = idxDebris;
+        meshDebris.instanceMatrix.needsUpdate = true;
+        
         if (idxDebris > 0) this.mapGroup.add(meshDebris);
         
         interactiveGrassMesh.instanceMatrix.needsUpdate = true; 

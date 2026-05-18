@@ -2676,12 +2676,11 @@ class GameMap {
         const tintRock = 0x20202a;  // Roccia color ossidiana con riflesso bluastro
         const tintWall = 0x111116;  // Muri nettamente neri 
 
-        const tintDirt = 0x3d2f25;  // Fango scuro ma visibile, marrone bruciato
-        const tintGrass = 0x223525; // Verde palude cupo, ma distinguibile
-        const tintRock = 0x303040;  // Roccia color ardesia
-        const tintWall = 0x1c1c24;  // Muri scuri, ma non pece nera
+        const tintDirt = 0x3d2f25;  
+        const tintGrass = 0x223525; 
+        const tintRock = 0x303040;  
+        const tintWall = 0x1c1c24;  
 
-        // Abbiamo abbassato roughness e aggiunto metalness dove serve per creare micro-riflessi visibili
         const matDirt = new MapMaterialClass({ map: texDirt, color: tintDirt, roughness: 0.6, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5 });
         const matGrass = new MapMaterialClass({ map: texGrass, color: tintGrass, roughness: 0.7, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, alphaMap: alphaTex, transparent: true, depthWrite: false });
         const matRock = new MapMaterialClass({ map: texRock, color: tintRock, roughness: 0.4, metalness: 0.3, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, alphaMap: alphaTex, transparent: true, depthWrite: false });
@@ -3131,6 +3130,7 @@ class Player extends Entity {
             this.light.intensity = 4.0; // Massima visibilità in modalità Ultimate
             this.staffGemMat.emissive.setHex(0xffffff); 
         }
+        }
     update(dt) {
         if (this.dead) return; this.updateFlash(dt);
         this.modelParts.halo.rotation.z += dt; this.modelParts.staffGem.rotation.y += dt;
@@ -3190,7 +3190,6 @@ class Player extends Entity {
 let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 6 : 12);
                     let pVec = new THREE.Vector3(this.x, 2, this.y); let pQuat = new THREE.Quaternion(); let pScale = new THREE.Vector3(3, 3, 3);
                     for(let d=0; d<dCount; d++) Game.getDebris().spawn(pVec, pQuat, pScale, SharedGeo.rockDebris, 0x4a3b2c, 10, false);
-
                     Game.addTrauma(Math.min(1.0, 0.5 + (this.shieldAbsorbed * 0.1))); // Cap al tremore schermo
                     AudioEngine.playShoot('chain_lightning'); // Suono più "elettrico/energetico"
                     Game.getFloatingText().spawn(this.x, this.y, `RILASCIO! (${this.shieldAbsorbed})`, '#00DDFF', 40, true);

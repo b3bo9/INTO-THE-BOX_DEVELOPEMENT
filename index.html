@@ -2458,45 +2458,86 @@ const InteractiveGrassSystem = {
         };
     }
 };
-    function createDarkTreeGeometry() {
+   function createDarkTreeGeometry() {
     const geometries = [];
 
-    // Tronco principale (Più grande e spesso)
-    const trunkGeo = new THREE.CylinderGeometry(1.0, 3.5, 30, 6, 6, false);
-    trunkGeo.translate(0, 15, 0);
-    
-    // Distorsione del tronco per renderlo "storto e oscuro"
-    const pos = trunkGeo.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-        let y = pos.getY(i);
-        if (y > 5) { // Curva la parte alta del tronco
-            pos.setX(i, pos.getX(i) + Math.sin(y * 0.2) * 2.0);
-            pos.setZ(i, pos.getZ(i) + Math.cos(y * 0.15) * 2.0);
+    // Funzione ricorsiva per generare rami in stile frattale
+    function buildBranch(startPoint, direction, length, radiusBase, radiusTip, depth) {
+        if (depth <= 0) return;
+
+        // Geometria del ramo corrente (meno segmenti per i rami piccoli = ottime performance)
+        const radialSegments = depth === 3 ? 5 : 4; 
+        const geo = new THREE.CylinderGeometry(radiusTip, radiusBase, length, radialSegments, 3, false);
+        
+        // Sposta il pivot alla base del cilindro
+        geo.translate(0, length / 2, 0);
+
+        // Distorsione procedurale (il ramo è storto, rugoso e innaturale)
+        const pos = geo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            let ly = pos.getY(i); // Altezza locale sul ramo
+            let hRatio = ly / length; 
+            if (hRatio > 0.1) {
+                let offset = Math.sin(hRatio * Math.PI) * (1.5 / depth);
+                // Distorce in direzioni opposte a caso
+                pos.setX(i, pos.getX(i) + offset * (Math.random() > 0.5 ? 1 : -0.5));
+                pos.setZ(i, pos.getZ(i) + offset * (Math.random() > 0.5 ? -1 : 0.5));
+            }
+        }
+
+        // Applica rotazione verso la direzione calcolata
+        const axis = new THREE.Vector3(0, 1, 0);
+        const quaternion = new THREE.Quaternion().setFromUnitVectors(axis, direction);
+        geo.applyQuaternion(quaternion);
+        
+        // Sposta il ramo alla fine del ramo genitore
+        geo.translate(startPoint.x, startPoint.y, startPoint.z);
+        geo.computeVertexNormals(); // Ricalcola le luci per evitare "buchi neri"
+        geometries.push(geo);
+
+        // Se non siamo all'ultimo livello, ramifichiamo!
+        if (depth > 1) {
+            // Calcola dove finisce questo ramo nel mondo 3D
+            const endPoint = startPoint.clone().add(direction.clone().multiplyScalar(length));
+            
+            // Il tronco principale (depth 3) si divide sempre in 2 o 3, i rami secondari in 2
+            const numBranches = depth === 3 ? MathUtils.randomInt(2, 3) : 2;
+            
+            for (let i = 0; i < numBranches; i++) {
+                const branchDir = direction.clone();
+                
+                // Più il ramo è piccolo, più si apre lateralmente (chioma contorta)
+                const spread = 0.6 + (3 - depth) * 0.4; 
+                
+                // Calcolo raggiera per evitare che i rami si compenetrino
+                const angle = (Math.PI * 2 / numBranches) * i + MathUtils.randomRange(-0.5, 0.5);
+                branchDir.x += Math.cos(angle) * spread;
+                branchDir.z += Math.sin(angle) * spread;
+                branchDir.y += MathUtils.randomRange(0.2, 0.6); // Tendono sempre un po' verso il cielo
+                branchDir.normalize();
+
+                // Il nuovo ramo è più corto e stretto
+                const newLength = length * MathUtils.randomRange(0.65, 0.85);
+                const newRadiusBase = radiusTip * 0.9;
+                
+                // L'ultimo livello (depth === 2) avrà la punta a raggio 0 (acuminato!)
+                const newRadiusTip = depth === 2 ? 0 : radiusTip * 0.45; 
+                
+                // Richiamo la funzione per il nuovo ramo
+                buildBranch(endPoint, branchDir, newLength, newRadiusBase, newRadiusTip, depth - 1);
+            }
         }
     }
-    // FONDAMENTALE: Ricalcola la luce sui vertici spostati!
-    trunkGeo.computeVertexNormals();
-    geometries.push(trunkGeo);
 
-    // Rami acuminati (Coni allungati)
-    const numBranches = MathUtils.randomInt(5, 9); // Più rami
-    for (let i = 0; i < numBranches; i++) {
-        const branchGeo = new THREE.ConeGeometry(1.2, 20, 5);
-        const height = MathUtils.randomRange(10, 25); 
-        const angle = (Math.PI * 2 / numBranches) * i + MathUtils.randomRange(-0.5, 0.5);
-        
-        branchGeo.rotateX(Math.PI / 2 + MathUtils.randomRange(0.2, 0.6));
-        branchGeo.rotateY(angle);
-        
-        branchGeo.translate(
-            Math.cos(angle) * 2.5 + Math.sin(height * 0.2) * 2.0, 
-            height, 
-            Math.sin(angle) * 2.5 + Math.cos(height * 0.15) * 2.0
-        );
-        
-        geometries.push(branchGeo);
-    }
+    // Parametri Iniziali dell'Albero
+    const startPos = new THREE.Vector3(0, 0, 0);
+    const startDir = new THREE.Vector3(MathUtils.randomRange(-0.15, 0.15), 1, MathUtils.randomRange(-0.15, 0.15)).normalize();
 
+    // Albero a 3 Strati: Tronco (3) -> Biforcazione Maggiore (2) -> Spini Finali (1)
+    // baseLength: 22, radiusBase: 1.8, radiusTip: 1.2
+    buildBranch(startPos, startDir, 22, 1.8, 1.2, 3); 
+
+    // Unisce l'intera struttura frattale in un singolo blocco super ottimizzato
     return THREE.BufferGeometryUtils.mergeBufferGeometries(geometries);
 }
 class GameMap {
@@ -2557,11 +2598,11 @@ class GameMap {
         meshDebris.castShadow = !isTouchDevice;
         meshDebris.frustumCulled = false;
         let idxDebris = 0;
-      // --- 2.6 ALLOCHIAMO GLI ALBERI ---
+     // --- 2.6 ALLOCHIAMO GLI ALBERI ---
         const maxTrees = floorCount * (isTouchDevice ? 1 : 2); 
         const geoTree = createDarkTreeGeometry();
-        // Colore marrone bosco morto, con un leggero alone
-        const matTree = new THREE.MeshLambertMaterial({ color: 0x3d2817, emissive: 0x0a0502, flatShading: true });
+        // NERO CENERE PECE: Si stagliano duramente contro la nebbia, molto "Silenzio degli Innocenti"
+        const matTree = new THREE.MeshLambertMaterial({ color: 0x0a0807, emissive: 0x020101, flatShading: true });
         const meshTrees = new THREE.InstancedMesh(geoTree, matTree, maxTrees);
         meshTrees.receiveShadow = true;
         meshTrees.castShadow = !isTouchDevice;

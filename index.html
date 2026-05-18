@@ -1735,9 +1735,11 @@ const Game = {
         
         // Luce globale quasi inesistente (notte fonda), esalta la luce del giocatore
        // Luce ambientale nerissima (le ombre diventano abissi)
-const ambientLight = new THREE.AmbientLight(0x030305, 0.15); this.scene.add(ambientLight);
-// Luce lunare pallida, fredda e tagliente
-        this.dirLight = new THREE.DirectionalLight(0x445577, 1.8); 
+       // Luce ambientale azzurrata notturna (impedisce lo schermo nero assoluto)
+        const ambientLight = new THREE.AmbientLight(0x0e1420, 0.35); this.scene.add(ambientLight);
+        
+        // Luce direzionale (Luna) che genera i riflessi speculari sulle texture
+        this.dirLight = new THREE.DirectionalLight(0x556688, 1.5);
         this.dirLight.position.set(-500, 1000, -500); 
         this.dirLight.castShadow = true; 
         this.dirLight.shadow.camera.top = 1000; 
@@ -2674,20 +2676,18 @@ class GameMap {
         const tintRock = 0x20202a;  // Roccia color ossidiana con riflesso bluastro
         const tintWall = 0x111116;  // Muri nettamente neri 
 
-        // 1. Materiali Corretti (Senza shininess)
-        const matDirt = new MapMaterialClass({ map: texDirt, color: tintDirt, roughness: 0.9, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5 });
-        const matGrass = new MapMaterialClass({ map: texGrass, color: tintGrass, roughness: 1.0, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, alphaMap: alphaTex, transparent: true, depthWrite: false });
-        const matRock = new MapMaterialClass({ map: texRock, color: tintRock, roughness: 0.6, metalness: 0.2, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, alphaMap: alphaTex, transparent: true, depthWrite: false });
+        const tintDirt = 0x3d2f25;  // Fango scuro ma visibile, marrone bruciato
+        const tintGrass = 0x223525; // Verde palude cupo, ma distinguibile
+        const tintRock = 0x303040;  // Roccia color ardesia
+        const tintWall = 0x1c1c24;  // Muri scuri, ma non pece nera
 
-        // 2. ECCO LE RIGHE MANCANTI CHE AVEVO CANCELLATO!
-        const meshDirt = new THREE.InstancedMesh(floorGeo, matDirt, floorCount);
-        const meshGrass = new THREE.InstancedMesh(floorGeo, matGrass, floorCount);
-        const meshRock = new THREE.InstancedMesh(floorGeo, matRock, floorCount);
-        meshDirt.renderOrder = -3; meshGrass.renderOrder = -2; meshRock.renderOrder = -1;
+        // Abbiamo abbassato roughness e aggiunto metalness dove serve per creare micro-riflessi visibili
+        const matDirt = new MapMaterialClass({ map: texDirt, color: tintDirt, roughness: 0.6, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5 });
+        const matGrass = new MapMaterialClass({ map: texGrass, color: tintGrass, roughness: 0.7, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, alphaMap: alphaTex, transparent: true, depthWrite: false });
+        const matRock = new MapMaterialClass({ map: texRock, color: tintRock, roughness: 0.4, metalness: 0.3, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, alphaMap: alphaTex, transparent: true, depthWrite: false });
 
-        // 3. Muri e Colonne
         const wallGeo = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
-        this.wallMat = new MapMaterialClass({ map: texWall, color: tintWall, roughness: 0.8, metalness: 0.1, bumpMap: isHighQ ? texWall : null, bumpScale: 3.0 });
+        this.wallMat = new MapMaterialClass({ map: texWall, color: tintWall, roughness: 0.5, metalness: 0.2, bumpMap: isHighQ ? texWall : null, bumpScale: 3.0 });
 
         const wallMesh = new THREE.InstancedMesh(wallGeo, this.wallMat, wallCount);
         const baseGeo = new THREE.BoxGeometry(35, 15, 35);
@@ -3012,7 +3012,8 @@ class Player extends Entity {
         this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}), new THREE.MeshPhongMaterial({color: 0xffff00, emissive: 0xffff00}));
         this.mesh = this.modelParts.group; this.staffGemMat = this.modelParts.staffGem.material;
         
-        this.light = new THREE.PointLight(0xffffff, 1.0, 600); this.light.position.y = 40; 
+        // Luce molto più potente e con un raggio più ampio per svelare i dettagli del terreno
+        this.light = new THREE.PointLight(0xffffff, 2.2, 750); this.light.position.y = 45;
         
         this.mesh.add(this.light); this.mesh.position.set(this.x, 0, this.y); Game.scene.add(this.mesh);
         this.mesh.traverse(c => { if(c.material && c.material.emissive && c !== this.modelParts.staffGem) this.flashMats.push(c.material); });
@@ -3113,10 +3114,23 @@ class Player extends Entity {
         if (this.essence) { colorHex = ESSENCE_COLORS[this.essence]; lColor = ESSENCE_COLORS[this.essence]; gemColor = ESSENCE_COLORS[this.essence]; }
         this.modelParts.body.material.color.setHex(colorHex); this.light.color.setHex(lColor);
         this.staffGemMat.color.setHex(gemColor); this.staffGemMat.emissive.setHex(gemColor);
-        if (this.overdrive) { this.light.intensity = isUltra ? 1.5 : 2.5; this.modelParts.body.material.emissive.setHex(colorHex); this.modelParts.body.material.emissiveIntensity = 1.0; } 
-        else { this.light.intensity = this.essence ? (isUltra ? 1.2 : 1.8) : (isUltra ? 0.8 : 1.2); this.modelParts.body.material.emissive.setHex(0x000000); }
-        if (Game.ultimateActive) { this.modelParts.body.material.emissive.setHex(0x00DDFF); this.modelParts.body.material.emissiveIntensity = 2.0; this.light.color.setHex(0x00DDFF); this.light.intensity = isUltra ? 2.2 : 3.5; this.staffGemMat.emissive.setHex(0xffffff); }
-    }
+        
+        if (this.overdrive) { 
+            this.light.intensity = 3.5; // Bagliore fortissimo durante l'overdrive
+            this.modelParts.body.material.emissive.setHex(colorHex); 
+            this.modelParts.body.material.emissiveIntensity = 1.0; 
+        } else { 
+            // Intensità base calibrata per vedere bene il terreno circostante
+            this.light.intensity = this.essence ? 2.5 : 1.8; 
+            this.modelParts.body.material.emissive.setHex(0x000000); 
+        }
+        if (Game.ultimateActive) { 
+            this.modelParts.body.material.emissive.setHex(0x00DDFF); 
+            this.modelParts.body.material.emissiveIntensity = 2.0; 
+            this.light.color.setHex(0x00DDFF); 
+            this.light.intensity = 4.0; // Massima visibilità in modalità Ultimate
+            this.staffGemMat.emissive.setHex(0xffffff); 
+        }
     update(dt) {
         if (this.dead) return; this.updateFlash(dt);
         this.modelParts.halo.rotation.z += dt; this.modelParts.staffGem.rotation.y += dt;

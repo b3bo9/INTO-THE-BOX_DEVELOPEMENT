@@ -2508,7 +2508,7 @@ class GameMap {
 
         // --- 2.5 ALLOCHIAMO I DETRITI (Ossa, Sassi spigolosi) ---
         const maxDebris = floorCount * (isTouchDevice ? 8 : 20);
-        const geoDebris = new THREE.TetrahedronGeometry(8, 0); // Bassissimo peso CPU
+        const geoDebris = new THREE.TetrahedronGeometry(3, 0); // Bassissimo peso CPU
         const matDebris = new THREE.MeshLambertMaterial({ color: 0x3a3a3a, emissive: 0x050505, flatShading: true });
         const meshDebris = new THREE.InstancedMesh(geoDebris, matDebris, maxDebris);
         meshDebris.receiveShadow = true;
@@ -2592,8 +2592,9 @@ class GameMap {
                         let noiseRaw = (Math.sin(x * 0.3) + Math.cos(y * 0.3)) / 2.0; 
                         let noiseSafe = (noiseRaw + 1.0) / 2.0; 
                         
-                        let r = Math.random() * 0.4 + (noiseRaw * 0.6 + 0.5); 
+                       let r = Math.random() * 0.4 + (noiseRaw * 0.6 + 0.5); 
                         
+                        // ZONA ERBA (r > 0.35)
                         if (r > 0.35) {
                             dummy.scale.set(2.4, 1, 2.4); 
                             dummy.rotation.y = Math.random() * Math.PI * 2;
@@ -2613,7 +2614,6 @@ class GameMap {
                                     let numBlades = Math.floor(maxBlades * Math.pow(intensity, 1.1)); 
                                     
                                     for (let g = 0; g < numBlades; g++) {
-                                        // ... [LASCIA INTATTO TUTTO IL LOOP DELL'ERBA] ...
                                         let gx = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-32, 32);
                                         let gz = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-32, 32);
                                         dummy.position.set(gx, 0.2, gz);
@@ -2633,31 +2633,34 @@ class GameMap {
                                             interactiveGrassMesh.setMatrixAt(idxInteractiveGrass++, dummy.matrix);
                                         }
                                     }
-                                } else {
-                                    // PIAZZA I DETRITI (Zone aride)
-                                    // Probabilità del 35% di trovare dei resti in un tile senza erba
-                                    if (Math.random() > 0.65) {
-                                        let numDebris = MathUtils.randomInt(1, 3);
-                                        for (let d = 0; d < numDebris; d++) {
-                                            let dx = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-28, 28);
-                                            let dz = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-28, 28);
-                                            
-                                            // Sprofondati leggermente nel terreno per sembrare sepolti
-                                            dummy.position.set(dx, 0.3, dz);
-                                            
-                                            // Alcuni piccolissimi (sassi), altri allungati e storti (ossa o scarti)
-                                            let s = MathUtils.randomRange(0.6, 1.8);
-                                            dummy.scale.set(s, s * MathUtils.randomRange(0.4, 2.5), s);
-                                            
-                                            dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-                                            dummy.updateMatrix();
-                                            
-                                            if (idxDebris < maxDebris) {
-                                                meshDebris.setMatrixAt(idxDebris++, dummy.matrix);
-                                            }
-                                        }
+                                } 
+                            }
+                        } 
+                        // ZONA TERRA PURA (r <= 0.35)
+                        else {
+                            // PIAZZA I DETRITI (Massi e montagnole di terra)
+                            // Aumentiamo la probabilità (40% di trovarne in ogni blocco di terra)
+                            if (Math.random() > 0.60) {
+                                let numDebris = MathUtils.randomInt(1, 3);
+                                for (let d = 0; d < numDebris; d++) {
+                                    let dx = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-28, 28);
+                                    let dz = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-28, 28);
+                                    
+                                    // Sprofondati per farli sembrare rocce incastrate nel terreno
+                                    dummy.position.set(dx, 3, dz);
+                                    
+                                    let s = MathUtils.randomRange(0.6, 1.8);
+                                    dummy.scale.set(s, s * MathUtils.randomRange(0.4, 2.5), s);
+                                    
+                                    dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                                    dummy.updateMatrix();
+                                    
+                                    if (idxDebris < maxDebris) {
+                                        meshDebris.setMatrixAt(idxDebris++, dummy.matrix);
                                     }
                                 }
+                            }
+                        }
                             } else {
                                 dummy.position.y = 0.4; 
                                 dummy.updateMatrix();

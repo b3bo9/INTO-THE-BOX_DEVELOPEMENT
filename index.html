@@ -160,7 +160,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 101</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 102</p>
                 </div>
             </div>
         </div>
@@ -2084,8 +2084,8 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
                         let p = this.getParticle();
                         // 50% Gialle (Lucciole classiche), 50% Verdi (Spore silvane)
                        let magicMat = Math.random() > 0.3 ? SharedMat.spriteWhite : SharedMat.spriteRed;
-                        // Spawna leggermente in basso così sembra che salgano dai fili d'erba
-                        p.spawn(px, MathUtils.randomRange(2, 10), pz, magicMat, 'ambient');
+                        // SPAWNA NEL CIELO: La cenere piove dall'alto verso il basso!
+                        p.spawn(px, MathUtils.randomRange(100, 180), pz, magicMat, 'ambient');
                     }
                 }
             }

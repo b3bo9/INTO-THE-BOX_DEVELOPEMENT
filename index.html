@@ -2465,7 +2465,7 @@ class GameMap {
         this.wallMat = null;
     }
     
-   generate(isBossFloor = false) {
+  generate(isBossFloor = false) {
         InteractiveGrassSystem.init();
         const rooms = []; const numRooms = 15; 
         
@@ -2505,10 +2505,10 @@ class GameMap {
         interactiveGrassMesh.frustumCulled = false; 
         let idxInteractiveGrass = 0;
 
-        // --- 2.5 ALLOCHIAMO I DETRITI ---
+        // --- 2.5 ALLOCHIAMO I DETRITI (Ora sono Sassi tondi e scuri) ---
         const maxDebris = floorCount * (isTouchDevice ? 8 : 20);
-        const geoDebris = new THREE.TetrahedronGeometry(3, 0);
-        const matDebris = new THREE.MeshLambertMaterial({ color: 0x4a3b2c, emissive: 0x0a0705, flatShading: true });
+        const geoDebris = new THREE.DodecahedronGeometry(2.5, 0); // Geometria pseudo-sferica (sasso low-poly)
+        const matDebris = new THREE.MeshLambertMaterial({ color: 0x282018, emissive: 0x050403, flatShading: true }); // Marrone scuro terra
         const meshDebris = new THREE.InstancedMesh(geoDebris, matDebris, maxDebris);
         meshDebris.receiveShadow = true;
         meshDebris.castShadow = !isTouchDevice;
@@ -2598,11 +2598,17 @@ class GameMap {
                                 for (let d = 0; d < numDebris; d++) {
                                     let dx = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-28, 28);
                                     let dz = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-28, 28);
-                                    dummy.position.set(dx, 3, dz);
-                                    let s = MathUtils.randomRange(0.6, 1.8);
-                                    dummy.scale.set(s, s * MathUtils.randomRange(0.4, 2.5), s);
+                                    
+                                    // Sprofondati per farli sembrare sassi incastrati
+                                    dummy.position.set(dx, 1.5, dz);
+                                    
+                                    // Proporzioni più omogenee per sembrare tondi
+                                    let s = MathUtils.randomRange(0.8, 1.6);
+                                    dummy.scale.set(s, s * MathUtils.randomRange(0.6, 1.2), s);
+                                    
                                     dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
                                     dummy.updateMatrix();
+                                    
                                     if (idxDebris < maxDebris) {
                                         meshDebris.setMatrixAt(idxDebris++, dummy.matrix);
                                     }

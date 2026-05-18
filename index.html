@@ -2459,82 +2459,95 @@ const InteractiveGrassSystem = {
     }
 };
 function createDarkTreeGeometry() {
-    const geometries = [];
+    try {
+        const geometries = [];
 
-    // Funzione ricorsiva per generare rami in stile frattale
-    function buildBranch(startPoint, direction, length, radiusBase, radiusTip, depth) {
-        if (depth <= 0) return;
+        function buildBranch(startPoint, direction, length, radiusBase, radiusTip, depth) {
+            if (depth <= 0) return;
 
-        // Geometria del ramo corrente
-        const radialSegments = depth === 3 ? 5 : 4; 
-        
-        // FIX 1: openEnded settato su TRUE. Nessun "tappo" difettoso!
-        const geo = new THREE.CylinderGeometry(radiusTip, radiusBase, length, radialSegments, 3, true);
-        
-        // Sposta il pivot alla base del cilindro
-        geo.translate(0, length / 2, 0);
-
-        // Distorsione procedurale 
-        const pos = geo.attributes.position;
-        for (let i = 0; i < pos.count; i++) {
-            let ly = pos.getY(i); // Altezza locale sul ramo
-            let hRatio = ly / length; 
-            if (hRatio > 0.1) {
-                let offset = Math.sin(hRatio * Math.PI) * (1.5 / depth);
-                
-                // Pseudo-random basato sull'altezza per evitare strappi
-                let twistX = Math.sin(ly * 12.9898) > 0 ? 1 : -0.5;
-                let twistZ = Math.cos(ly * 78.233) > 0 ? -1 : 0.5;
-                
-                pos.setX(i, pos.getX(i) + offset * twistX);
-                pos.setZ(i, pos.getZ(i) + offset * twistZ);
-            }
-        }
-
-        // Applica rotazione verso la direzione calcolata
-        const axis = new THREE.Vector3(0, 1, 0);
-        const quaternion = new THREE.Quaternion().setFromUnitVectors(axis, direction);
-        geo.applyQuaternion(quaternion);
-        
-        // Sposta il ramo alla fine del ramo genitore
-        geo.translate(startPoint.x, startPoint.y, startPoint.z);
-        geo.computeVertexNormals(); 
-        geometries.push(geo);
-
-        // Ramificazione
-        if (depth > 1) {
-            const endPoint = startPoint.clone().add(direction.clone().multiplyScalar(length));
-            const numBranches = depth === 3 ? MathUtils.randomInt(2, 3) : 2;
+            const radialSegments = depth === 3 ? 5 : 4; 
             
-            for (let i = 0; i < numBranches; i++) {
-                const branchDir = direction.clone();
-                const spread = 0.6 + (3 - depth) * 0.4; 
-                
-                const angle = (Math.PI * 2 / numBranches) * i + MathUtils.randomRange(-0.5, 0.5);
-                branchDir.x += Math.cos(angle) * spread;
-                branchDir.z += Math.sin(angle) * spread;
-                branchDir.y += MathUtils.randomRange(0.2, 0.6); 
-                branchDir.normalize();
+            // Sicurezza: Impediamo al raggio di scendere matematicamente a zero
+            radiusTip = Math.max(0.01, radiusTip);
+            radiusBase = Math.max(0.01, radiusBase);
 
-                const newLength = length * MathUtils.randomRange(0.65, 0.85);
-                const newRadiusBase = radiusTip * 0.9;
+            const geo = new THREE.CylinderGeometry(radiusTip, radiusBase, length, radialSegments, 3, true);
+            geo.translate(0, length / 2, 0);
+
+            const pos = geo.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                let ly = pos.getY(i); 
+                let hRatio = ly / length; 
+                if (hRatio > 0.1) {
+                    let offset = Math.sin(hRatio * Math.PI) * (1.5 / depth);
+                    let twistX = Math.sin(ly * 12.9898) > 0 ? 1 : -0.5;
+                    let twistZ = Math.cos(ly * 78.233) > 0 ? -1 : 0.5;
+                    pos.setX(i, pos.getX(i) + offset * twistX);
+                    pos.setZ(i, pos.getZ(i) + offset * twistZ);
+                }
+            }
+
+            // Rotazione sicura contro i vettori opposti (NaN prevention)
+            const axis = new THREE.Vector3(0, 1, 0);
+            const quaternion = new THREE.Quaternion();
+            if (direction.y < -0.999) {
+                quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI);
+            } else {
+                quaternion.setFromUnitVectors(axis, direction);
+            }
+            
+            geo.applyQuaternion(quaternion);
+            geo.translate(startPoint.x, startPoint.y, startPoint.z);
+            
+            // Sicurezza Merge: Rimuoviamo i gruppi interni che mandano in crisi BufferGeometryUtils
+            geo.clearGroups();
+
+            geometries.push(geo);
+
+            if (depth > 1) {
+                const endPoint = startPoint.clone().add(direction.clone().multiplyScalar(length));
+                const numBranches = depth === 3 ? MathUtils.randomInt(2, 3) : 2;
                 
-                // FIX 2: Usiamo 0.01 invece di 0 netto. Visivamente è invisibile, ma impedisce i collassi matematici.
-                const newRadiusTip = depth === 2 ? 0.01 : radiusTip * 0.45; 
-                
-                buildBranch(endPoint, branchDir, newLength, newRadiusBase, newRadiusTip, depth - 1);
+                for (let i = 0; i < numBranches; i++) {
+                    const branchDir = direction.clone();
+                    const spread = 0.6 + (3 - depth) * 0.4; 
+                    
+                    const angle = (Math.PI * 2 / numBranches) * i + MathUtils.randomRange(-0.5, 0.5);
+                    branchDir.x += Math.cos(angle) * spread;
+                    branchDir.z += Math.sin(angle) * spread;
+                    branchDir.y += MathUtils.randomRange(0.2, 0.6); 
+                    branchDir.normalize();
+
+                    const newLength = length * MathUtils.randomRange(0.65, 0.85);
+                    const newRadiusBase = radiusTip * 0.9;
+                    const newRadiusTip = depth === 2 ? 0.01 : radiusTip * 0.45; 
+                    
+                    buildBranch(endPoint, branchDir, newLength, newRadiusBase, newRadiusTip, depth - 1);
+                }
             }
         }
+
+        const startPos = new THREE.Vector3(0, 0, 0);
+        const startDir = new THREE.Vector3(MathUtils.randomRange(-0.15, 0.15), 1, MathUtils.randomRange(-0.15, 0.15)).normalize();
+
+        buildBranch(startPos, startDir, 22, 1.8, 1.2, 3); 
+
+        // Uniamo le geometrie dicendo esplicitamente di ignorare i gruppi
+        let merged = THREE.BufferGeometryUtils.mergeBufferGeometries(geometries, false);
+        if (!merged) throw new Error("Il Merge delle geometrie ha restituito null.");
+        
+        // Calcoliamo le ombre in un colpo solo alla fine
+        merged.computeVertexNormals(); 
+        return merged;
+        
+    } catch(e) {
+        console.warn("Costruzione albero frattale fallita. È stato attivato l'albero di emergenza.", e);
+        
+        // GEOMETRIA DI EMERGENZA (Impossibile da far crashare)
+        let safeGeo = new THREE.ConeGeometry(2, 20, 5);
+        safeGeo.translate(0, 10, 0);
+        return safeGeo;
     }
-
-    // Parametri Iniziali dell'Albero
-    const startPos = new THREE.Vector3(0, 0, 0);
-    const startDir = new THREE.Vector3(MathUtils.randomRange(-0.15, 0.15), 1, MathUtils.randomRange(-0.15, 0.15)).normalize();
-
-    // Albero a 3 Strati: Tronco (3) -> Biforcazione Maggiore (2) -> Spini Finali (1)
-    buildBranch(startPos, startDir, 22, 1.8, 1.2, 3); 
-
-    return THREE.BufferGeometryUtils.mergeBufferGeometries(geometries);
 }
 
 class GameMap {

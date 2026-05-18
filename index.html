@@ -1740,11 +1740,11 @@ const Game = {
         
         const pixelRatio = isTouchDevice ? 0.75 : (AppSettings.isUltra ? Math.min(window.devicePixelRatio, 2.0) : Math.min(window.devicePixelRatio, 1.5));
         
-        this.renderer = new THREE.WebGLRenderer({ 
+       this.renderer = new THREE.WebGLRenderer({ 
     antialias: !isTouchDevice, 
     alpha: false, 
-    powerPreference: isTouchDevice ? "default" : "high-performance",
-    precision: isTouchDevice ? "mediump" : "highp" 
+    powerPreference: "high-performance" 
+    // Rimuovi la riga 'precision: "mediump"' per farlo tornare al default "highp"
 });
         this.renderer.setPixelRatio(pixelRatio); this.renderer.setSize(this.width, this.height);
         this.renderer.outputEncoding = THREE.sRGBEncoding; this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.25;
@@ -2722,7 +2722,7 @@ class GameMap {
         }
         
         const floorGeo = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE); floorGeo.rotateX(-Math.PI/2);
-        const MapMaterialClass = isTouchDevice ? THREE.MeshLambertMaterial : THREE.MeshStandardMaterial;
+        const MapMaterialClass = isTouchDevice ? THREE.MeshPhongMaterial : THREE.MeshStandardMaterial;
         const alphaTex = createOrganicAlphaMap();
 
         const tintDirt = 0x5a4638;  // Marrone fango medio, leggibile

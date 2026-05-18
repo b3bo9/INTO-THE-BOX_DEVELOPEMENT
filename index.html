@@ -2474,16 +2474,23 @@ function createDarkTreeGeometry() {
 
         // Distorsione procedurale (il ramo è storto, rugoso e innaturale)
         const pos = geo.attributes.position;
-        for (let i = 0; i < pos.count; i++) {
-            let ly = pos.getY(i); // Altezza locale sul ramo
-            let hRatio = ly / length; 
-            if (hRatio > 0.1) {
-                let offset = Math.sin(hRatio * Math.PI) * (1.5 / depth);
-                // Distorce in direzioni opposte a caso
-                pos.setX(i, pos.getX(i) + offset * (Math.random() > 0.5 ? 1 : -0.5));
-                pos.setZ(i, pos.getZ(i) + offset * (Math.random() > 0.5 ? -1 : 0.5));
-            }
-        }
+for (let i = 0; i < pos.count; i++) {
+    let ly = pos.getY(i); // Altezza locale sul ramo
+    let hRatio = ly / length;
+    
+    if (hRatio > 0.1) {
+        // Calcola l'ampiezza della piegatura
+        let offset = Math.sin(hRatio * Math.PI) * (1.5 / depth);
+        
+        // Creiamo una direzione pseudo-casuale ma COSTANTE per tutti i vertici alla stessa altezza
+        // Usiamo un seno basato su 'ly' moltiplicato per un numero primo per simulare il caos
+        let twistX = Math.sin(ly * 12.9898) > 0 ? 1 : -0.5;
+        let twistZ = Math.cos(ly * 78.233) > 0 ? -1 : 0.5;
+        
+        pos.setX(i, pos.getX(i) + offset * twistX);
+        pos.setZ(i, pos.getZ(i) + offset * twistZ);
+    }
+}
 
         // Applica rotazione verso la direzione calcolata
         const axis = new THREE.Vector3(0, 1, 0);
@@ -2818,25 +2825,19 @@ class GameMap {
         interactiveGrassMesh.count = idxInteractiveGrass;
         meshDebris.count = idxDebris;
         meshDebris.instanceMatrix.needsUpdate = true;
-        meshTrees.count = idxTree; // Quanti alberi abbiamo piazzato realmente
-        meshTrees.instanceMatrix.needsUpdate = true; // Comunica i cambiamenti alla GPU
+        meshTrees.count = idxTree; 
+        meshTrees.instanceMatrix.needsUpdate = true; 
         
-        if (idxTree > 0) this.mapGroup.add(meshTrees); // Aggiungi alla mappa
-        
+        if (idxTree > 0) this.mapGroup.add(meshTrees); 
         if (idxDebris > 0) this.mapGroup.add(meshDebris);
         
         interactiveGrassMesh.instanceMatrix.needsUpdate = true; 
-        
-        if (idxInteractiveGrass > 0) {
-            this.mapGroup.add(interactiveGrassMesh);
-        }
+        if (idxInteractiveGrass > 0) this.mapGroup.add(interactiveGrassMesh);
 
         this.mapGroup.add(meshDirt, meshGrass, meshRock); 
         this.mapGroup.add(wallMesh); 
         
-        if(pillarCount > 0) {
-            this.mapGroup.add(pillarBaseMesh, pillarShaftMesh, pillarCapMesh);
-        }
+        if(pillarCount > 0) this.mapGroup.add(pillarBaseMesh, pillarShaftMesh, pillarCapMesh);
         
         Game.scene.add(this.mapGroup);
     }

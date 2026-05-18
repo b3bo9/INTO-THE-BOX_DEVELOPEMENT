@@ -2465,29 +2465,31 @@ function createDarkTreeGeometry() {
     function buildBranch(startPoint, direction, length, radiusBase, radiusTip, depth) {
         if (depth <= 0) return;
 
-        // Geometria del ramo corrente (meno segmenti per i rami piccoli = ottime performance)
+        // Geometria del ramo corrente
         const radialSegments = depth === 3 ? 5 : 4; 
+        
+        // FIX 1: openEnded settato su TRUE. Nessun "tappo" difettoso!
         const geo = new THREE.CylinderGeometry(radiusTip, radiusBase, length, radialSegments, 3, true);
         
         // Sposta il pivot alla base del cilindro
         geo.translate(0, length / 2, 0);
 
-        // Distorsione procedurale (il ramo è storto, rugoso e innaturale)
-      const pos = geo.attributes.position;
-for (let i = 0; i < pos.count; i++) {
-    let ly = pos.getY(i); // Altezza locale sul ramo
-    let hRatio = ly / length; 
-    if (hRatio > 0.1) {
-        let offset = Math.sin(hRatio * Math.PI) * (1.5 / depth);
-        
-        // Pseudo-random basato sull'altezza: i vertici sullo stesso anello subiscono la stessa torsione
-        let twistX = Math.sin(ly * 12.9898) > 0 ? 1 : -0.5;
-        let twistZ = Math.cos(ly * 78.233) > 0 ? -1 : 0.5;
-        
-        pos.setX(i, pos.getX(i) + offset * twistX);
-        pos.setZ(i, pos.getZ(i) + offset * twistZ);
-    }
-}
+        // Distorsione procedurale 
+        const pos = geo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            let ly = pos.getY(i); // Altezza locale sul ramo
+            let hRatio = ly / length; 
+            if (hRatio > 0.1) {
+                let offset = Math.sin(hRatio * Math.PI) * (1.5 / depth);
+                
+                // Pseudo-random basato sull'altezza per evitare strappi
+                let twistX = Math.sin(ly * 12.9898) > 0 ? 1 : -0.5;
+                let twistZ = Math.cos(ly * 78.233) > 0 ? -1 : 0.5;
+                
+                pos.setX(i, pos.getX(i) + offset * twistX);
+                pos.setZ(i, pos.getZ(i) + offset * twistZ);
+            }
+        }
 
         // Applica rotazione verso la direzione calcolata
         const axis = new THREE.Vector3(0, 1, 0);
@@ -2496,38 +2498,30 @@ for (let i = 0; i < pos.count; i++) {
         
         // Sposta il ramo alla fine del ramo genitore
         geo.translate(startPoint.x, startPoint.y, startPoint.z);
-        geo.computeVertexNormals(); // Ricalcola le luci per evitare "buchi neri"
+        geo.computeVertexNormals(); 
         geometries.push(geo);
 
-        // Se non siamo all'ultimo livello, ramifichiamo!
+        // Ramificazione
         if (depth > 1) {
-            // Calcola dove finisce questo ramo nel mondo 3D
             const endPoint = startPoint.clone().add(direction.clone().multiplyScalar(length));
-            
-            // Il tronco principale (depth 3) si divide sempre in 2 o 3, i rami secondari in 2
             const numBranches = depth === 3 ? MathUtils.randomInt(2, 3) : 2;
             
             for (let i = 0; i < numBranches; i++) {
                 const branchDir = direction.clone();
-                
-                // Più il ramo è piccolo, più si apre lateralmente (chioma contorta)
                 const spread = 0.6 + (3 - depth) * 0.4; 
                 
-                // Calcolo raggiera per evitare che i rami si compenetrino
                 const angle = (Math.PI * 2 / numBranches) * i + MathUtils.randomRange(-0.5, 0.5);
                 branchDir.x += Math.cos(angle) * spread;
                 branchDir.z += Math.sin(angle) * spread;
-                branchDir.y += MathUtils.randomRange(0.2, 0.6); // Tendono sempre un po' verso il cielo
+                branchDir.y += MathUtils.randomRange(0.2, 0.6); 
                 branchDir.normalize();
 
-                // Il nuovo ramo è più corto e stretto
                 const newLength = length * MathUtils.randomRange(0.65, 0.85);
                 const newRadiusBase = radiusTip * 0.9;
                 
-                // L'ultimo livello (depth === 2) avrà la punta a raggio 0 (acuminato!)
-                const newRadiusTip = depth === 2 ? 0 : radiusTip * 0.45; 
+                // FIX 2: Usiamo 0.01 invece di 0 netto. Visivamente è invisibile, ma impedisce i collassi matematici.
+                const newRadiusTip = depth === 2 ? 0.01 : radiusTip * 0.45; 
                 
-                // Richiamo la funzione per il nuovo ramo
                 buildBranch(endPoint, branchDir, newLength, newRadiusBase, newRadiusTip, depth - 1);
             }
         }
@@ -2540,7 +2534,6 @@ for (let i = 0; i < pos.count; i++) {
     // Albero a 3 Strati: Tronco (3) -> Biforcazione Maggiore (2) -> Spini Finali (1)
     buildBranch(startPos, startDir, 22, 1.8, 1.2, 3); 
 
-    // Unisce l'intera struttura frattale in un singolo blocco super ottimizzato
     return THREE.BufferGeometryUtils.mergeBufferGeometries(geometries);
 }
 

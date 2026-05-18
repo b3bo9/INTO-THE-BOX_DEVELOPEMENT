@@ -1737,7 +1737,7 @@ const Game = {
        // Luce ambientale nerissima (le ombre diventano abissi)
 const ambientLight = new THREE.AmbientLight(0x030305, 0.15); this.scene.add(ambientLight);
 // Luce lunare pallida, fredda e tagliente
-this.dirLight = new THREE.DirectionalLight(0x445577, 1.8); 
+        this.dirLight = new THREE.DirectionalLight(0x445577, 1.8); 
         this.dirLight.position.set(-500, 1000, -500); 
         this.dirLight.castShadow = true; 
         this.dirLight.shadow.camera.top = 1000; 
@@ -1746,8 +1746,19 @@ this.dirLight = new THREE.DirectionalLight(0x445577, 1.8);
         this.dirLight.shadow.camera.right = 1000;
         this.dirLight.shadow.camera.near = 100; 
         this.dirLight.shadow.camera.far = 3000; 
-        this.dirLight.shadow.mapSize.width = 2048; 
-        this.dirLight.shadow.mapSize.height = 2048;
+        
+        // OTTIMIZZAZIONE OMBRE: Map Size dinamico e Blur (Bias)
+        if (AppSettings.isUltraPC) {
+            this.dirLight.shadow.mapSize.width = 2048; 
+            this.dirLight.shadow.mapSize.height = 2048;
+            this.dirLight.shadow.bias = -0.0005; // Rimuove gli artefatti (shadow acne)
+            this.dirLight.shadow.normalBias = 0.02; 
+        } else {
+            // Su "Bilanciata" o su Smartphone, dimezziamo la mappa per raddoppiare gli FPS
+            this.dirLight.shadow.mapSize.width = 1024; 
+            this.dirLight.shadow.mapSize.height = 1024;
+            this.dirLight.shadow.bias = -0.001; 
+        }
         this.scene.add(this.dirLight);
         this.scene.add(this.dirLight.target);
 
@@ -2595,25 +2606,33 @@ class GameMap {
         interactiveGrassMesh.frustumCulled = false; 
         let idxInteractiveGrass = 0;
 
-        // --- 2.5 ALLOCHIAMO I DETRITI ---
+       // --- 2.5 ALLOCHIAMO I DETRITI ---
         const maxDebris = floorCount * (isTouchDevice ? 8 : 20);
         const geoDebris = new THREE.DodecahedronGeometry(2.5, 0);
         const matDebris = new THREE.MeshStandardMaterial({ color: 0x282018, emissive: 0x050403, roughness: 0.9 }); 
         const meshDebris = new THREE.InstancedMesh(geoDebris, matDebris, maxDebris);
         meshDebris.receiveShadow = true;
-        meshDebris.castShadow = !isTouchDevice;
+        // Le piccole pietre fanno ombra solo su Ultra (per massime prestazioni)
+        meshDebris.castShadow = AppSettings.isUltraPC; 
         meshDebris.frustumCulled = false;
         let idxDebris = 0;
         
         // --- 2.6 ALLOCHIAMO GLI ALBERI ---
         const maxTrees = floorCount * (isTouchDevice ? 1 : 2); 
         const geoTree = createDarkTreeGeometry();
-        // NERO CENERE PECE
-       const matTree = new THREE.MeshStandardMaterial({ color: 0x0a0807, emissive: 0x020101, roughness: 0.9 });
+        const matTree = new THREE.MeshStandardMaterial({ color: 0x0a0807, emissive: 0x020101, roughness: 0.9 });
         const meshTrees = new THREE.InstancedMesh(geoTree, matTree, maxTrees);
         meshTrees.receiveShadow = true;
-        meshTrees.castShadow = !isTouchDevice;
+        meshTrees.castShadow = AppSettings.shadowsEnabled; 
         meshTrees.frustumCulled = false;
+        
+        // --- NUOVO: FAKE SHADOWS PER GLI ALBERI ---
+        const treeShadowGeo = new THREE.PlaneGeometry(1, 1);
+        treeShadowGeo.rotateX(-Math.PI / 2); // La sdraiamo a terra
+        const meshTreeShadows = new THREE.InstancedMesh(treeShadowGeo, SharedMat.blobShadow, maxTrees);
+        meshTreeShadows.frustumCulled = false;
+        // ------------------------------------------
+
         let idxTree = 0;
 
         // --- INIZIO GESTIONE MATERIALI OTTIMIZZATI ---
@@ -2705,19 +2724,30 @@ class GameMap {
                         let noiseSafe = (noiseRaw + 1.0) / 2.0; 
                         let r = Math.random() * 0.4 + (noiseRaw * 0.6 + 0.5); 
                         
-                      // 3A. TERRA SCURA E ALBERI (r <= 0.35)
+                     // 3A. TERRA SCURA E ALBERI (r <= 0.35)
                         if (r <= 0.35) {
                             if (Math.random() < 0.08 && idxTree < maxTrees) {
                                 let tx = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-15, 15);
                                 let tz = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-15, 15);
-                                dummy.position.set(tx, 0, tz); // Base a livello terra
                                 
+                                // 1. Piazziamo l'albero 3D
+                                dummy.position.set(tx, 0, tz); 
                                 let s = MathUtils.randomRange(2.0, 3.5);
                                 dummy.scale.set(s, s * MathUtils.randomRange(1.1, 1.5), s);
-                                
                                 dummy.rotation.set(0, Math.random() * Math.PI * 2, 0); 
                                 dummy.updateMatrix();
-                                meshTrees.setMatrixAt(idxTree++, dummy.matrix);
+                                meshTrees.setMatrixAt(idxTree, dummy.matrix);
+
+                                // 2. Piazziamo l'Ombra Fake
+                                // La alziamo leggermente (0.3) per non compenetrare il terreno
+                                dummy.position.set(tx, 0.3, tz); 
+                                // Scaliamo l'ombra per farla larga circa quanto i rami
+                                dummy.scale.set(s * 12, s * 12, 1); 
+                                dummy.rotation.set(0, 0, 0); // La geometria è già ruotata piatta
+                                dummy.updateMatrix();
+                                meshTreeShadows.setMatrixAt(idxTree, dummy.matrix);
+
+                                idxTree++;
                             } 
                             else if (Math.random() > 0.50) {
                                 let numDebris = MathUtils.randomInt(1, 3);
@@ -2839,8 +2869,16 @@ class GameMap {
         meshDebris.instanceMatrix.needsUpdate = true;
         meshTrees.count = idxTree; 
         meshTrees.instanceMatrix.needsUpdate = true; 
+        meshTreeShadows.count = idxTree;
+        meshTreeShadows.instanceMatrix.needsUpdate = true;
         
-        if (idxTree > 0) this.mapGroup.add(meshTrees); 
+        if (idxTree > 0) {
+            this.mapGroup.add(meshTrees);
+            // Se le ombre reali sono spente (es. su Smartphone), accendiamo quelle Fake!
+            if (!AppSettings.shadowsEnabled) {
+                this.mapGroup.add(meshTreeShadows);
+            }
+        }
         if (idxDebris > 0) this.mapGroup.add(meshDebris);
         
         interactiveGrassMesh.instanceMatrix.needsUpdate = true; 

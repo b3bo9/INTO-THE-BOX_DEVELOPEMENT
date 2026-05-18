@@ -2473,17 +2473,14 @@ function createDarkTreeGeometry() {
         geo.translate(0, length / 2, 0);
 
         // Distorsione procedurale (il ramo è storto, rugoso e innaturale)
-        const pos = geo.attributes.position;
+      const pos = geo.attributes.position;
 for (let i = 0; i < pos.count; i++) {
     let ly = pos.getY(i); // Altezza locale sul ramo
-    let hRatio = ly / length;
-    
+    let hRatio = ly / length; 
     if (hRatio > 0.1) {
-        // Calcola l'ampiezza della piegatura
         let offset = Math.sin(hRatio * Math.PI) * (1.5 / depth);
         
-        // Creiamo una direzione pseudo-casuale ma COSTANTE per tutti i vertici alla stessa altezza
-        // Usiamo un seno basato su 'ly' moltiplicato per un numero primo per simulare il caos
+        // Pseudo-random basato sull'altezza: i vertici sullo stesso anello subiscono la stessa torsione
         let twistX = Math.sin(ly * 12.9898) > 0 ? 1 : -0.5;
         let twistZ = Math.cos(ly * 78.233) > 0 ? -1 : 0.5;
         
@@ -3127,7 +3124,6 @@ let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 6 : 12);
                     let pVec = new THREE.Vector3(this.x, 2, this.y); let pQuat = new THREE.Quaternion(); let pScale = new THREE.Vector3(3, 3, 3);
                     for(let d=0; d<dCount; d++) Game.getDebris().spawn(pVec, pQuat, pScale, SharedGeo.rockDebris, 0x4a3b2c, 10, false);
 
-                    Game.addTrauma(Math.min(1.0, 0.5 + (this.shieldAbsorbed * 0.1))); // Cap al tremore schermo
                     Game.addTrauma(Math.min(1.0, 0.5 + (this.shieldAbsorbed * 0.1))); // Cap al tremore schermo
                     AudioEngine.playShoot('chain_lightning'); // Suono più "elettrico/energetico"
                     Game.getFloatingText().spawn(this.x, this.y, `RILASCIO! (${this.shieldAbsorbed})`, '#00DDFF', 40, true);

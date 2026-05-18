@@ -2465,7 +2465,7 @@ class GameMap {
         this.wallMat = null;
     }
     
-    generate(isBossFloor = false) {
+   generate(isBossFloor = false) {
         InteractiveGrassSystem.init();
         const rooms = []; const numRooms = 15; 
         
@@ -2497,8 +2497,7 @@ class GameMap {
             }
         }
 
-      // 2. ALLOCHIAMO LA MEMORIA PER L'ERBA
-        // Moltiplicatore ulteriormente aumentato per coprire zone più vaste e più dense
+        // 2. ALLOCHIAMO LA MEMORIA PER L'ERBA
         const maxGrassClusters = floorCount * (isTouchDevice ? 90 : 250); 
         const interactiveGrassMesh = new THREE.InstancedMesh(InteractiveGrassSystem.geo, InteractiveGrassSystem.mat, maxGrassClusters);
         interactiveGrassMesh.receiveShadow = true;
@@ -2506,10 +2505,10 @@ class GameMap {
         interactiveGrassMesh.frustumCulled = false; 
         let idxInteractiveGrass = 0;
 
-        // --- 2.5 ALLOCHIAMO I DETRITI (Ossa, Sassi spigolosi) ---
+        // --- 2.5 ALLOCHIAMO I DETRITI ---
         const maxDebris = floorCount * (isTouchDevice ? 8 : 20);
-        const geoDebris = new THREE.TetrahedronGeometry(3, 0); // Bassissimo peso CPU
-        const matDebris = new THREE.MeshLambertMaterial({ color: 0x3a3a3a, emissive: 0x050505, flatShading: true });
+        const geoDebris = new THREE.TetrahedronGeometry(3, 0);
+        const matDebris = new THREE.MeshLambertMaterial({ color: 0x4a3b2c, emissive: 0x0a0705, flatShading: true }); // COLORE MARRONE AGGIORNATO
         const meshDebris = new THREE.InstancedMesh(geoDebris, matDebris, maxDebris);
         meshDebris.receiveShadow = true;
         meshDebris.castShadow = !isTouchDevice;
@@ -2581,7 +2580,7 @@ class GameMap {
                 dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, 0, y * TILE_SIZE + TILE_SIZE / 2);
                 
                 if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
-                  if (this.grid[x][y] === 2 || this.grid[x][y] === 3) {
+                    if (this.grid[x][y] === 2 || this.grid[x][y] === 3) {
                         
                         dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, 0, y * TILE_SIZE + TILE_SIZE / 2);
                         dummy.scale.set(1, 1, 1);
@@ -2591,8 +2590,7 @@ class GameMap {
                         
                         let noiseRaw = (Math.sin(x * 0.3) + Math.cos(y * 0.3)) / 2.0; 
                         let noiseSafe = (noiseRaw + 1.0) / 2.0; 
-                        
-                       let r = Math.random() * 0.4 + (noiseRaw * 0.6 + 0.5); 
+                        let r = Math.random() * 0.4 + (noiseRaw * 0.6 + 0.5); 
                         
                         // ZONA ERBA (r > 0.35)
                         if (r > 0.35) {
@@ -2605,7 +2603,7 @@ class GameMap {
                                 dummy.updateMatrix();
                                 meshGrass.setMatrixAt(idxGrass++, dummy.matrix);
                                 
-                               // PIAZZA L'ERBA 3D A "ZONE" 
+                                // PIAZZA L'ERBA 3D A "ZONE" 
                                 if (noiseSafe > 0.45) { 
                                     let intensity = (noiseSafe - 0.45) / 0.55; 
                                     
@@ -2639,7 +2637,6 @@ class GameMap {
                         // ZONA TERRA PURA (r <= 0.35)
                         else {
                             // PIAZZA I DETRITI (Massi e montagnole di terra)
-                            // Aumentiamo la probabilità (40% di trovarne in ogni blocco di terra)
                             if (Math.random() > 0.60) {
                                 let numDebris = MathUtils.randomInt(1, 3);
                                 for (let d = 0; d < numDebris; d++) {
@@ -2661,49 +2658,47 @@ class GameMap {
                                 }
                             }
                         }
-                            } else {
-                                dummy.position.y = 0.4; 
-                                dummy.updateMatrix();
-                                meshRock.setMatrixAt(idxRock++, dummy.matrix);
-                            }
-                            dummy.scale.set(1, 1, 1); 
-                            dummy.rotation.set(0, 0, 0); 
-                        }
-
-                        if (this.grid[x][y] === 3) {
-                            let px = x * TILE_SIZE + TILE_SIZE / 2; let pz = y * TILE_SIZE + TILE_SIZE / 2;
-                            let isBroken = Math.random() < 0.15; 
-                            dummy.position.set(px, 7.5, pz); dummy.scale.set(1, 1, 1); dummy.rotation.set(0, 0, 0);
-                            dummy.updateMatrix(); pillarBaseMesh.setMatrixAt(pIdx, dummy.matrix);
-
-                            if (isBroken) {
-                                dummy.scale.set(1, MathUtils.randomRange(0.2, 0.6), 1);
-                                dummy.rotation.z = MathUtils.randomRange(-0.1, 0.1); dummy.rotation.x = MathUtils.randomRange(-0.1, 0.1);
-                                dummy.position.y = 15 + (TILE_SIZE * 1.5 * dummy.scale.y) / 2; 
-                            } else {
-                                dummy.position.set(px, TILE_SIZE * 0.75, pz);
-                            }
-                            dummy.updateMatrix(); pillarShaftMesh.setMatrixAt(pIdx, dummy.matrix);
-
-                            if (!isBroken) {
-                                dummy.scale.set(1, 1, 1); dummy.rotation.set(0, Math.PI / 4, 0); 
-                                dummy.position.set(px, TILE_SIZE * 1.5 + 5, pz); 
-                                dummy.updateMatrix(); pillarCapMesh.setMatrixAt(pIdx, dummy.matrix);
-                            } else {
-                                dummy.scale.set(0, 0, 0); dummy.updateMatrix(); pillarCapMesh.setMatrixAt(pIdx, dummy.matrix);
-                            }
-                            dummy.scale.set(1, 1, 1); dummy.rotation.set(0, 0, 0); 
-                            pIdx++;
-                        } else if (!isBossFloor && Math.random() < 0.015) {
-                            let crystal = Game.getEnemy();
-                            crystal.spawn(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 'crystal', 1);
-                            Game.enemies.push(crystal); Game.enemyGrid.insert(crystal);
-                        }
                     } else { 
-                        dummy.position.y = TILE_SIZE*0.75; dummy.updateMatrix(); wallMesh.setMatrixAt(wIdx++, dummy.matrix); 
+                        dummy.position.y = 0.4; 
+                        dummy.updateMatrix();
+                        meshRock.setMatrixAt(idxRock++, dummy.matrix);
                     }
+                    dummy.scale.set(1, 1, 1); 
+                    dummy.rotation.set(0, 0, 0); 
                 } else {
                     dummy.position.y = TILE_SIZE*0.75; dummy.updateMatrix(); wallMesh.setMatrixAt(wIdx++, dummy.matrix);
+                }
+
+                if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+                    if (this.grid[x][y] === 3) {
+                        let px = x * TILE_SIZE + TILE_SIZE / 2; let pz = y * TILE_SIZE + TILE_SIZE / 2;
+                        let isBroken = Math.random() < 0.15; 
+                        dummy.position.set(px, 7.5, pz); dummy.scale.set(1, 1, 1); dummy.rotation.set(0, 0, 0);
+                        dummy.updateMatrix(); pillarBaseMesh.setMatrixAt(pIdx, dummy.matrix);
+
+                        if (isBroken) {
+                            dummy.scale.set(1, MathUtils.randomRange(0.2, 0.6), 1);
+                            dummy.rotation.z = MathUtils.randomRange(-0.1, 0.1); dummy.rotation.x = MathUtils.randomRange(-0.1, 0.1);
+                            dummy.position.y = 15 + (TILE_SIZE * 1.5 * dummy.scale.y) / 2; 
+                        } else {
+                            dummy.position.set(px, TILE_SIZE * 0.75, pz);
+                        }
+                        dummy.updateMatrix(); pillarShaftMesh.setMatrixAt(pIdx, dummy.matrix);
+
+                        if (!isBroken) {
+                            dummy.scale.set(1, 1, 1); dummy.rotation.set(0, Math.PI / 4, 0); 
+                            dummy.position.set(px, TILE_SIZE * 1.5 + 5, pz); 
+                            dummy.updateMatrix(); pillarCapMesh.setMatrixAt(pIdx, dummy.matrix);
+                        } else {
+                            dummy.scale.set(0, 0, 0); dummy.updateMatrix(); pillarCapMesh.setMatrixAt(pIdx, dummy.matrix);
+                        }
+                        dummy.scale.set(1, 1, 1); dummy.rotation.set(0, 0, 0); 
+                        pIdx++;
+                    } else if (!isBossFloor && Math.random() < 0.015 && this.grid[x][y] !== 1) {
+                        let crystal = Game.getEnemy();
+                        crystal.spawn(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 'crystal', 1);
+                        Game.enemies.push(crystal); Game.enemyGrid.insert(crystal);
+                    }
                 }
             }
         }
@@ -2725,15 +2720,6 @@ class GameMap {
 
         this.mapGroup.add(meshDirt, meshGrass, meshRock); 
         this.mapGroup.add(wallMesh);
-        
-        interactiveGrassMesh.instanceMatrix.needsUpdate = true; 
-        
-        if (idxInteractiveGrass > 0) {
-            this.mapGroup.add(interactiveGrassMesh);
-        }
-
-        this.mapGroup.add(meshDirt, meshGrass, meshRock); 
-        this.mapGroup.add(wallMesh); 
         
         if(pillarCount > 0) {
             this.mapGroup.add(pillarBaseMesh, pillarShaftMesh, pillarCapMesh);

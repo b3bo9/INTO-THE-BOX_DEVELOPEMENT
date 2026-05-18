@@ -2644,17 +2644,18 @@ class GameMap {
                         let noiseSafe = (noiseRaw + 1.0) / 2.0; 
                         let r = Math.random() * 0.4 + (noiseRaw * 0.6 + 0.5); 
                         
-                      // 3A. TERRA SCURA E ALBERI (r <= 0.35)
+                     // 3A. TERRA SCURA E ALBERI (r <= 0.35)
                         if (r <= 0.35) {
-                            // Probabilità aumentata al 35% per generare l'albero
-                            if (Math.random() < 0.35 && idxTree < maxTrees) {
+                            // Probabilità ridotta all'8% per avere alberi rari ma imponenti
+                            if (Math.random() < 0.08 && idxTree < maxTrees) {
                                 let tx = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-15, 15);
                                 let tz = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-15, 15);
                                 dummy.position.set(tx, 0, tz); // Base a livello terra
                                 
-                                // Variazione di scala per renderli slanciati
-                                let s = MathUtils.randomRange(0.8, 1.5);
-                                dummy.scale.set(s, s * MathUtils.randomRange(1.0, 1.5), s);
+                                // Variazione di scala: ALBERI GIGANTI (da 2x a 3.5x più grandi)
+                                let s = MathUtils.randomRange(2.0, 3.5);
+                                // Allunghiamo ulteriormente l'asse Y per farli svettare altissimi
+                                dummy.scale.set(s, s * MathUtils.randomRange(1.1, 1.5), s);
                                 
                                 dummy.rotation.set(0, Math.random() * Math.PI * 2, 0); 
                                 dummy.updateMatrix();

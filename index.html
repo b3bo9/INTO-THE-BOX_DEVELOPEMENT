@@ -3100,7 +3100,7 @@ class Player extends Entity {
         
         // Luce molto più potente e con un raggio più ampio per svelare i dettagli del terreno
        // Aggiunto il quarto parametro '2' (Fisica del decadimento quadratico)
-this.light = new THREE.PointLight(0xffffff, 2.2, 750, 2); this.light.position.y = 24;
+this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y = 24;
         
         this.mesh.add(this.light); this.mesh.position.set(this.x, 0, this.y); Game.scene.add(this.mesh);
         this.mesh.traverse(c => { if(c.material && c.material.emissive && c !== this.modelParts.staffGem) this.flashMats.push(c.material); });

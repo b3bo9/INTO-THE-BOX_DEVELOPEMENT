@@ -1740,10 +1740,16 @@ const Game = {
         
         const pixelRatio = isTouchDevice ? 0.75 : (AppSettings.isUltra ? Math.min(window.devicePixelRatio, 2.0) : Math.min(window.devicePixelRatio, 1.5));
         
-        this.renderer = new THREE.WebGLRenderer({ antialias: !isTouchDevice, alpha: false, powerPreference: "high-performance" });
+        this.renderer = new THREE.WebGLRenderer({ 
+    antialias: !isTouchDevice, 
+    alpha: false, 
+    powerPreference: isTouchDevice ? "default" : "high-performance",
+    precision: isTouchDevice ? "mediump" : "highp" 
+});
         this.renderer.setPixelRatio(pixelRatio); this.renderer.setSize(this.width, this.height);
         this.renderer.outputEncoding = THREE.sRGBEncoding; this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.25;
-        this.renderer.shadowMap.enabled = AppSettings.shadowsEnabled; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.shadowMap.enabled = AppSettings.shadowsEnabled; 
+this.renderer.shadowMap.type = isTouchDevice ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
         container.appendChild(this.renderer.domElement);
         
         // Luce globale quasi inesistente (notte fonda), esalta la luce del giocatore
@@ -2351,7 +2357,7 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
     }
 };
 // --- SISTEMA ERBA INTERATTIVA (GPU SHADER) ---
-const MAX_WIND = 15;
+const MAX_WIND = isTouchDevice ? 6 : 15;
 
 const InteractiveGrassSystem = {
     uniforms: {
@@ -2651,7 +2657,7 @@ class GameMap {
         meshDebris.receiveShadow = true;
         // Le piccole pietre fanno ombra solo su Ultra (per massime prestazioni)
         meshDebris.castShadow = AppSettings.isUltraPC; 
-        meshDebris.frustumCulled = false;
+       // meshDebris.frustumCulled = false;
         let idxDebris = 0;
         
         // --- 2.6 ALLOCHIAMO GLI ALBERI ---
@@ -2661,13 +2667,13 @@ class GameMap {
         const meshTrees = new THREE.InstancedMesh(geoTree, matTree, maxTrees);
         meshTrees.receiveShadow = true;
         meshTrees.castShadow = AppSettings.shadowsEnabled; 
-        meshTrees.frustumCulled = false;
+       // meshTrees.frustumCulled = false;
         
         // --- NUOVO: FAKE SHADOWS PER GLI ALBERI ---
         const treeShadowGeo = new THREE.PlaneGeometry(1, 1);
         treeShadowGeo.rotateX(-Math.PI / 2); // La sdraiamo a terra
         const meshTreeShadows = new THREE.InstancedMesh(treeShadowGeo, SharedMat.blobShadow, maxTrees);
-        meshTreeShadows.frustumCulled = false;
+      //  meshTreeShadows.frustumCulled = false;
         // ------------------------------------------
        // --- NUOVO: SANGUE PERMANENTE SUL PAVIMENTO ---
         Game.maxBlood = isTouchDevice ? 60 : 150; // Quante macchie max prima di riciclare
@@ -2675,7 +2681,7 @@ class GameMap {
         bloodGeo.rotateX(-Math.PI / 2);
         const bloodMat = new THREE.MeshBasicMaterial({ map: BLOOD_TEX, transparent: true, opacity: 0.7, depthWrite: false, color: 0x4a0000 });
         Game.bloodMesh = new THREE.InstancedMesh(bloodGeo, bloodMat, Game.maxBlood);
-        Game.bloodMesh.frustumCulled = false;
+       // Game.bloodMesh.frustumCulled = false;
         // Nascondiamo tutte le macchie sottoterra all'inizio
         let hideMatrix = new THREE.Matrix4().makeTranslation(0, -100, 0);
         for(let i=0; i<Game.maxBlood; i++) Game.bloodMesh.setMatrixAt(i, hideMatrix);
@@ -2716,7 +2722,7 @@ class GameMap {
         }
         
         const floorGeo = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE); floorGeo.rotateX(-Math.PI/2);
-        const MapMaterialClass = THREE.MeshStandardMaterial;
+        const MapMaterialClass = isTouchDevice ? THREE.MeshLambertMaterial : THREE.MeshStandardMaterial;
         const alphaTex = createOrganicAlphaMap();
 
         const tintDirt = 0x5a4638;  // Marrone fango medio, leggibile

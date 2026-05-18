@@ -2042,19 +2042,28 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         this.animBounce = Math.sin(this.frameCount * 0.4) * 4;
         this.animFloat = Math.sin(this.frameCount * 0.1) * 5;
         this.animArm = Math.sin(this.frameCount * 0.3) * 0.5;
-       // Lampi spettrali ambientali (Temporale sotterraneo)
-        if (Math.random() < 0.0015) {
+       // --- LAMPI SPETTRALI (Bilanciati per Fotosensibilità) ---
+        if (this.lightningCooldown === undefined) this.lightningCooldown = 0;
+        this.lightningCooldown -= dt;
+
+        // Scatta solo se il cooldown è a zero E la probabilità si avvera
+        if (this.lightningCooldown <= 0 && Math.random() < 0.002) {
+            // Imposta un blocco obbligatorio di MINIMO 7 secondi tra un lampo e l'altro (Zero rischio strobo)
+            this.lightningCooldown = MathUtils.randomRange(7.0, 15.0); 
+
             if (this.dirLight) {
-                this.dirLight.intensity = 3.8; 
-                this.dirLight.color.setHex(0xccddff); 
+                this.dirLight.intensity = 2.6; // Picco molto più basso e morbido
+                this.dirLight.color.setHex(0xaaccff); // Azzurro polvere, meno aggressivo del bianco puro
+                
                 setTimeout(() => { 
                     if (this.dirLight) {
                         this.dirLight.intensity = 1.5; 
                         this.dirLight.color.setHex(0x556688); 
                     }
-                }, 80); 
+                }, 180); // Durata raddoppiata (180ms): diventa un "pulsare" invece che uno "sfarfallio"
             }
         }
+        // --------------------------------------------------------
 
         if (this.combo > 0) { 
             this.comboTimer -= dt * (this.player ? this.player.modifiers.comboDecayRate : 1.0); 

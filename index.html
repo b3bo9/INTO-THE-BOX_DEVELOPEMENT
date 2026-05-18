@@ -2466,8 +2466,6 @@ function createDarkTreeGeometry() {
             if (depth <= 0) return;
 
             const radialSegments = depth === 3 ? 5 : 4; 
-            
-            // Sicurezza: Impediamo al raggio di scendere matematicamente a zero
             radiusTip = Math.max(0.01, radiusTip);
             radiusBase = Math.max(0.01, radiusBase);
 
@@ -2487,7 +2485,6 @@ function createDarkTreeGeometry() {
                 }
             }
 
-            // Rotazione sicura contro i vettori opposti
             const axis = new THREE.Vector3(0, 1, 0);
             const quaternion = new THREE.Quaternion();
             if (direction.y < -0.999) {
@@ -2496,11 +2493,10 @@ function createDarkTreeGeometry() {
                 quaternion.setFromUnitVectors(axis, direction);
             }
             
-            // ---> LA CORREZIONE CRITICA È QUI <---
-            // Creiamo una matrice di rotazione dal quaternione e la applichiamo alla geometria
+            // ---> LA MAGIA È QUI: Creiamo la matrice senza usare applyQuaternion
             const rotationMatrix = new THREE.Matrix4().makeRotationFromQuaternion(quaternion);
             geo.applyMatrix4(rotationMatrix);
-            // ------------------------------------
+            // <------------------------------------------------------------------
 
             geo.translate(startPoint.x, startPoint.y, startPoint.z);
             geo.clearGroups();
@@ -2536,7 +2532,7 @@ function createDarkTreeGeometry() {
         buildBranch(startPos, startDir, 22, 1.8, 1.2, 3); 
 
         let merged = THREE.BufferGeometryUtils.mergeBufferGeometries(geometries, false);
-        if (!merged) throw new Error("Il Merge delle geometrie ha restituito null.");
+        if (!merged) throw new Error("Merge nullo.");
         
         merged.computeVertexNormals(); 
         return merged;
@@ -2601,7 +2597,7 @@ class GameMap {
         // --- 2.5 ALLOCHIAMO I DETRITI ---
         const maxDebris = floorCount * (isTouchDevice ? 8 : 20);
         const geoDebris = new THREE.DodecahedronGeometry(2.5, 0);
-        const matDebris = new THREE.MeshLambertMaterial({ color: 0x282018, emissive: 0x050403, flatShading: true }); 
+        const matDebris = new THREE.MeshStandardMaterial({ color: 0x282018, emissive: 0x050403, roughness: 0.9 }); 
         const meshDebris = new THREE.InstancedMesh(geoDebris, matDebris, maxDebris);
         meshDebris.receiveShadow = true;
         meshDebris.castShadow = !isTouchDevice;
@@ -2612,7 +2608,7 @@ class GameMap {
         const maxTrees = floorCount * (isTouchDevice ? 1 : 2); 
         const geoTree = createDarkTreeGeometry();
         // NERO CENERE PECE
-        const matTree = new THREE.MeshLambertMaterial({ color: 0x0a0807, emissive: 0x020101, flatShading: true });
+       const matTree = new THREE.MeshStandardMaterial({ color: 0x0a0807, emissive: 0x020101, roughness: 0.9 });
         const meshTrees = new THREE.InstancedMesh(geoTree, matTree, maxTrees);
         meshTrees.receiveShadow = true;
         meshTrees.castShadow = !isTouchDevice;
@@ -2648,17 +2644,12 @@ class GameMap {
         const tintRock = 0x333344;  
         const tintWall = 0x252530;  
 
-        const matDirt = new MapMaterialClass({ map: texDirt, color: tintDirt, roughness: 0.9, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5, shininess: 2 });
-        const matGrass = new MapMaterialClass({ map: texGrass, color: tintGrass, roughness: 1.0, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, shininess: 0, alphaMap: alphaTex, transparent: true, depthWrite: false });
-        const matRock = new MapMaterialClass({ map: texRock, color: tintRock, roughness: 0.6, metalness: 0.2, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, shininess: 10, alphaMap: alphaTex, transparent: true, depthWrite: false });
+        const matDirt = new MapMaterialClass({ map: texDirt, color: tintDirt, roughness: 0.9, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5 });
+        const matGrass = new MapMaterialClass({ map: texGrass, color: tintGrass, roughness: 1.0, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, alphaMap: alphaTex, transparent: true, depthWrite: false });
+        const matRock = new MapMaterialClass({ map: texRock, color: tintRock, roughness: 0.6, metalness: 0.2, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, alphaMap: alphaTex, transparent: true, depthWrite: false });
 
-        const meshDirt = new THREE.InstancedMesh(floorGeo, matDirt, floorCount);
-        const meshGrass = new THREE.InstancedMesh(floorGeo, matGrass, floorCount);
-        const meshRock = new THREE.InstancedMesh(floorGeo, matRock, floorCount);
-        meshDirt.renderOrder = -3; meshGrass.renderOrder = -2; meshRock.renderOrder = -1;
-        
         const wallGeo = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
-        this.wallMat = new MapMaterialClass({ map: texWall, color: tintWall, roughness: 0.8, metalness: 0.1, bumpMap: isHighQ ? texWall : null, bumpScale: 3.0, shininess: 5 });
+        this.wallMat = new MapMaterialClass({ map: texWall, color: tintWall, roughness: 0.8, metalness: 0.1, bumpMap: isHighQ ? texWall : null, bumpScale: 3.0 });
 
         const wallMesh = new THREE.InstancedMesh(wallGeo, this.wallMat, wallCount);
         const baseGeo = new THREE.BoxGeometry(35, 15, 35);

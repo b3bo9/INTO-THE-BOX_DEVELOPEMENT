@@ -2458,7 +2458,7 @@ const InteractiveGrassSystem = {
         };
     }
 };
-   function createDarkTreeGeometry() {
+function createDarkTreeGeometry() {
     const geometries = [];
 
     // Funzione ricorsiva per generare rami in stile frattale
@@ -2534,12 +2534,12 @@ const InteractiveGrassSystem = {
     const startDir = new THREE.Vector3(MathUtils.randomRange(-0.15, 0.15), 1, MathUtils.randomRange(-0.15, 0.15)).normalize();
 
     // Albero a 3 Strati: Tronco (3) -> Biforcazione Maggiore (2) -> Spini Finali (1)
-    // baseLength: 22, radiusBase: 1.8, radiusTip: 1.2
     buildBranch(startPos, startDir, 22, 1.8, 1.2, 3); 
 
     // Unisce l'intera struttura frattale in un singolo blocco super ottimizzato
     return THREE.BufferGeometryUtils.mergeBufferGeometries(geometries);
 }
+
 class GameMap {
     constructor(w, h) {
         this.width = w; this.height = h; this.grid = [];
@@ -2589,19 +2589,20 @@ class GameMap {
         interactiveGrassMesh.frustumCulled = false; 
         let idxInteractiveGrass = 0;
 
-        // --- 2.5 ALLOCHIAMO I DETRITI (Ora sono Sassi tondi e scuri) ---
+        // --- 2.5 ALLOCHIAMO I DETRITI ---
         const maxDebris = floorCount * (isTouchDevice ? 8 : 20);
-        const geoDebris = new THREE.DodecahedronGeometry(2.5, 0); // Geometria pseudo-sferica (sasso low-poly)
-        const matDebris = new THREE.MeshLambertMaterial({ color: 0x282018, emissive: 0x050403, flatShading: true }); // Marrone scuro terra
+        const geoDebris = new THREE.DodecahedronGeometry(2.5, 0);
+        const matDebris = new THREE.MeshLambertMaterial({ color: 0x282018, emissive: 0x050403, flatShading: true }); 
         const meshDebris = new THREE.InstancedMesh(geoDebris, matDebris, maxDebris);
         meshDebris.receiveShadow = true;
         meshDebris.castShadow = !isTouchDevice;
         meshDebris.frustumCulled = false;
         let idxDebris = 0;
-     // --- 2.6 ALLOCHIAMO GLI ALBERI ---
+        
+        // --- 2.6 ALLOCHIAMO GLI ALBERI ---
         const maxTrees = floorCount * (isTouchDevice ? 1 : 2); 
         const geoTree = createDarkTreeGeometry();
-        // NERO CENERE PECE: Si stagliano duramente contro la nebbia, molto "Silenzio degli Innocenti"
+        // NERO CENERE PECE
         const matTree = new THREE.MeshLambertMaterial({ color: 0x0a0807, emissive: 0x020101, flatShading: true });
         const meshTrees = new THREE.InstancedMesh(geoTree, matTree, maxTrees);
         meshTrees.receiveShadow = true;
@@ -2685,24 +2686,20 @@ class GameMap {
                         let noiseSafe = (noiseRaw + 1.0) / 2.0; 
                         let r = Math.random() * 0.4 + (noiseRaw * 0.6 + 0.5); 
                         
-                     // 3A. TERRA SCURA E ALBERI (r <= 0.35)
+                      // 3A. TERRA SCURA E ALBERI (r <= 0.35)
                         if (r <= 0.35) {
-                            // Probabilità ridotta all'8% per avere alberi rari ma imponenti
                             if (Math.random() < 0.08 && idxTree < maxTrees) {
                                 let tx = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-15, 15);
                                 let tz = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-15, 15);
                                 dummy.position.set(tx, 0, tz); // Base a livello terra
                                 
-                                // Variazione di scala: ALBERI GIGANTI (da 2x a 3.5x più grandi)
                                 let s = MathUtils.randomRange(2.0, 3.5);
-                                // Allunghiamo ulteriormente l'asse Y per farli svettare altissimi
                                 dummy.scale.set(s, s * MathUtils.randomRange(1.1, 1.5), s);
                                 
                                 dummy.rotation.set(0, Math.random() * Math.PI * 2, 0); 
                                 dummy.updateMatrix();
                                 meshTrees.setMatrixAt(idxTree++, dummy.matrix);
                             } 
-                            // Altrimenti, probabilità di piazzare dei detriti (sassi)
                             else if (Math.random() > 0.50) {
                                 let numDebris = MathUtils.randomInt(1, 3);
                                 for (let d = 0; d < numDebris; d++) {
@@ -2863,7 +2860,6 @@ class GameMap {
         if (gx < 0 || gy < 0 || gx >= this.width || gy >= this.height) return true; return this.grid[gx][gy] === 1 || this.grid[gx][gy] === 3; 
     }
 }
-
 class Entity {
     constructor(x, y, radius, speed) {
         this.id = Math.random().toString(36).substr(2, 9); this.x = x; this.y = y; this.radius = radius; this.speed = speed;

@@ -2611,7 +2611,7 @@ class GameMap {
        // --- 2.5 ALLOCHIAMO I DETRITI ---
         const maxDebris = floorCount * (isTouchDevice ? 8 : 20);
         const geoDebris = new THREE.DodecahedronGeometry(2.5, 0);
-        const matDebris = new THREE.MeshStandardMaterial({ color: 0x282018, emissive: 0x050403, roughness: 0.9 }); 
+        const matDebris = new THREE.MeshStandardMaterial({ color: 0x1a1a22, roughness: 0.9, metalness: 0.1 });
         const meshDebris = new THREE.InstancedMesh(geoDebris, matDebris, maxDebris);
         meshDebris.receiveShadow = true;
         // Le piccole pietre fanno ombra solo su Ultra (per massime prestazioni)

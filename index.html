@@ -3375,6 +3375,18 @@ let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 6 : 12);
                 this.modelParts.weaponGroup.position.z = 8; 
             } 
         }
+
+        // --- NUOVO: Sfarfallio Organico (Light Flicker) ---
+        // Calcoliamo la luce base a seconda di quanti potenziamenti hai attivo
+        let baseInt = Game.ultimateActive ? 4.0 : (this.overdrive ? 3.5 : (this.essence ? 2.5 : 1.8));
+        
+        // Creiamo il rumore: un mix tra ronzio matematico continuo (sin) e scoppiettio caotico (random)
+        let flicker = Math.sin(Game.playTime * 28) * 0.05 + Math.random() * 0.08;
+        
+        // Applichiamo la luce instabile alla PointLight e al Fake Bloom dello smartphone
+        this.light.intensity = baseInt + flicker;
+        this.fakeBloom.material.opacity = (this.overdrive ? 1.0 : 0.6) + (flicker * 0.8);
+        // --------------------------------------------------
     }
     
    flamethrower(dt) {

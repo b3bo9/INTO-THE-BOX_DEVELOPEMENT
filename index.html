@@ -176,7 +176,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 104</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 105</p>
                 </div>
             </div>
         </div>
@@ -1962,9 +1962,14 @@ this.dirLight = new THREE.DirectionalLight(0x4466aa, 1.8);
     },
     spawnSpecificEnemy(x, y, difficulty) {
         const r = Math.random(); let type = 'goblin';
-        if (difficulty >= 1.0 && r > 0.3) type = 'orc'; if (difficulty >= 1.0 && r > 0.5) type = 'skeleton_archer'; 
-        if (difficulty > 1.2 && r > 0.7) type = 'mage'; if (difficulty > 1.5 && r > 0.8) type = 'leaper';
-        if (difficulty > 2.0 && r > 0.85) type = 'pyromancer'; if (difficulty > 2.5 && r > 0.90) type = 'fire_demon';        
+        
+        // BILANCIAMENTO SPAWN: Progressione molto più dolce
+        if (difficulty >= 1.2 && r > 0.4) type = 'orc';
+        if (difficulty >= 1.8 && r > 0.6) type = 'skeleton_archer'; // Appaiono verso la fine del Piano 1 / inizio Piano 2
+        if (difficulty > 2.5 && r > 0.75) type = 'mage';            // Appaiono dal Piano 3
+        if (difficulty > 3.0 && r > 0.8) type = 'leaper';
+        if (difficulty > 4.0 && r > 0.85) type = 'pyromancer';
+        if (difficulty > 5.0 && r > 0.90) type = 'fire_demon';        
         
         let enemy = this.getEnemy();
         enemy.spawn(x, y, type, difficulty);
@@ -3906,6 +3911,7 @@ class Enemy extends Entity {
         this.type = type; 
         this.level = level; 
         this.attackCooldown = 0;
+        this.telegraphTimer = 0; // <-- NUOVO: Inizializza il preavviso d'attacco
 
         // --- BUGFIX 1: RESET DELLO STATO DAL POOL ---
         // Previene l'esplosione dei poligoni resettando animazioni e stati residui
@@ -4128,6 +4134,28 @@ class Enemy extends Entity {
         
         // Movimento Continuo a 60 FPS basato sui dati calcolati dallo "Staggering"
         if (this.distToTargetSq !== undefined && this.distToTargetSq < this.aggroRangeSq) {
+            
+            // --- INIZIO TELEGRAPHING (Preavviso Attacchi a Distanza) ---
+            if (this.telegraphTimer > 0) {
+                this.telegraphTimer -= dt;
+                
+                // Effetto strobo bianco rapido per caricare il colpo
+                if (Math.floor(this.telegraphTimer * 15) % 2 === 0) {
+                    for(let i=0; i<this.flashMats.length; i++) { this.flashMats[i].emissive.setHex(0xffffff); this.flashMats[i].emissiveIntensity = 2.0; }
+                } else {
+                    let base = this.isElite ? 0x440000 : 0x000000;
+                    for(let i=0; i<this.flashMats.length; i++) { this.flashMats[i].emissive.setHex(base); this.flashMats[i].emissiveIntensity = 1.0; }
+                }
+                
+                if (this.telegraphTimer <= 0) {
+                    let base = this.isElite ? 0x440000 : 0x000000;
+                    for(let i=0; i<this.flashMats.length; i++) { this.flashMats[i].emissive.setHex(base); this.flashMats[i].emissiveIntensity = 1.0; }
+                    this.executeAttack(); // Scaglia il proiettile
+                }
+                return; // Ferma il nemico (non cammina mentre mira)
+            }
+            // --- FINE TELEGRAPHING ---
+
             if (this.distToTargetSq > this.attackRangeSq) { 
                 this.move(this.moveX, this.moveY, dt); 
                 if (this.type !== 'mage' && this.type !== 'pyromancer' && this.type !== 'goblin') { this.mesh.position.y = Game.animBounce; }
@@ -4140,12 +4168,44 @@ class Enemy extends Entity {
         }
     }
     attack() {
-        this.attackCooldown = 0.9; 
-        if (this.type === 'skeleton_archer') { Game.getProjectile().spawn(this.x, this.y, this.angle, 250, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg), 'enemy', 'arrow'); this.attackCooldown = 1.0; } 
-        else if (this.type === 'mage') { Game.getProjectile().spawn(this.x, this.y, this.angle, 180, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * 1.5, 'enemy', 'enemy_bolt'); this.attackCooldown = 1.2; } 
-        else if (this.type === 'fire_demon') { Game.getProjectile().spawn(this.x, this.y, this.angle, 100, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * 3.0, 'enemy', 'enemy_fireball'); this.attackCooldown = 2.5; } 
-        else if (this.type === 'pyromancer') { Game.getProjectile().spawn(this.x, this.y, this.angle, 130, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * 1.5, 'enemy', 'fire_shape'); this.attackCooldown = 2.0; } 
-        else if (this.type !== 'leaper') { Game.player.takeDamage(MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg), this); this.push(Math.cos(this.angle), Math.sin(this.angle), 18); }
+        let isMelee = (this.type === 'goblin' || this.type === 'orc');
+        if (isMelee) {
+            this.executeAttack(); // I melee colpiscono subito
+        } else {
+            this.telegraphTimer = 0.4; // I ranged si fermano e mirano per 400ms
+            this.attackCooldown = 99;  // Mette in pausa l'IA finché non ha sparato
+        }
+    }
+
+    executeAttack() {
+        // BILANCIAMENTO DINAMICO:
+        // A Normale i nemici ricaricano molto più lentamente (x1.66) e sparano proiettili leggermente più lenti (0.9x).
+        // Ad Inferno diventano mitragliatrici letali (ricarica x0.62) e sparano missili (1.15x).
+        let cdMult = Math.max(0.4, 1.0 / Game.difficultyMult); 
+        let spdMult = 0.75 + (Game.difficultyMult * 0.25);     
+        
+        this.attackCooldown = 0.9 * cdMult; 
+        
+        if (this.type === 'skeleton_archer') { 
+            Game.getProjectile().spawn(this.x, this.y, this.angle, 250 * spdMult, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg), 'enemy', 'arrow'); 
+            this.attackCooldown = 1.0 * cdMult; 
+        } 
+        else if (this.type === 'mage') { 
+            Game.getProjectile().spawn(this.x, this.y, this.angle, 180 * spdMult, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * 1.5, 'enemy', 'enemy_bolt'); 
+            this.attackCooldown = 1.2 * cdMult; 
+        } 
+        else if (this.type === 'fire_demon') { 
+            Game.getProjectile().spawn(this.x, this.y, this.angle, 100 * spdMult, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * 3.0, 'enemy', 'enemy_fireball'); 
+            this.attackCooldown = 2.5 * cdMult; 
+        } 
+        else if (this.type === 'pyromancer') { 
+            Game.getProjectile().spawn(this.x, this.y, this.angle, 130 * spdMult, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * 1.5, 'enemy', 'fire_shape'); 
+            this.attackCooldown = 2.0 * cdMult; 
+        } 
+        else if (this.type !== 'leaper') { 
+            Game.player.takeDamage(MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg), this); 
+            this.push(Math.cos(this.angle), Math.sin(this.angle), 18); 
+        }
     }
     takeDamage(amount, source, isCrit = false, canInfect = true) {
         if (source === Game.player && Game.player.modifiers.executioner && (this.stats.hp / this.stats.maxHp) < 0.3) amount *= 2.0;

@@ -3272,26 +3272,35 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
                 let nearby = Game.enemyGrid.findNearby(this, freezeRange);
                 nearby.forEach(e => { 
                     if (MathUtils.distanceSq(this, e) < freezeRangeSq) { 
-                        e.frozenTimer = 4.0; // Nuovo stato: Congelato Assoluto
+                        e.frozenTimer = 4.0;
                         e.takeDamage(this.stats.maxDmg * 1.5 * this.modifiers.dmgMult, this, true, false); 
                     } 
                 }); 
 
-                // 2. Scudo Vita Temporanea (20% HP Max)
+                // 2. Scudo Vita Temporanea
                 this.tempHp = this.stats.maxHp * 0.20;
-                this.shieldMesh.material.color.setHex(0x00ffaa); // Colore Verde/Blu
+                this.shieldMesh.material.color.setHex(0x00ffaa);
                 this.shieldMesh.visible = true;
 
-                // 3. Effetti Visivi
-                let pCount = AppSettings.isLow ? 15 : (AppSettings.isUltraPC ? 80 : 40);
+                // 3. EFFETTO "FROST NOVA" POTENZIATO
+                Game.addTrauma(1.2); // Shake più forte
+                
+                // Nova principale che si espande dal giocatore
+                let nova = Game.getParticle(); 
+                nova.spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'nova'); 
+                nova.baseSize = 400; // Esplosione visiva enorme
+                
+                // Effetto "ghiaccio a terra" (Particelle radiali)
+                let pCount = AppSettings.isLow ? 20 : 60;
                 for(let i=0; i<pCount; i++) { 
                     let a = (Math.PI * 2 / pCount) * i; 
-                    Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'trail', a + 0.5); 
-                    Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark', a - 0.5); 
+                    let p = Game.getParticle();
+                    p.spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'trail', a);
+                    p.vx = Math.cos(a) * 800; // Molto veloci verso l'esterno
+                    p.vz = Math.sin(a) * 800;
+                    p.life = 0.5;
                 }
-                if (!AppSettings.isLow) {
-                    let flash = Game.getParticle(); flash.spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'nova'); flash.baseSize = 120;
-                }
+                
                 AudioEngine.playShoot('chain_lightning');
                 Game.addTrauma(0.8);
            } else if (counts.red === 1 && counts.blue === 1 && counts.green === 1) {
@@ -3927,23 +3936,31 @@ class Enemy extends Entity {
     }
     update(dt) {
         if (!this.active || this.dead) return; 
-        // --- NUOVA LOGICA: CONGELAMENTO ASSOLUTO ---
+        // --- NUOVA LOGICA: CONGELAMENTO ASSOLUTO PULSANTE ---
         if (this.frozenTimer > 0) {
             this.frozenTimer -= dt;
-            this.speed = 0; // Blocca il movimento
+            this.speed = 0; 
             
-            // Applica il colore del ghiaccio solido
-            for (let i=0; i<this.flashMats.length; i++) this.flashMats[i].emissive.setHex(0x00aaff); 
+            // L'emissivo pulsa velocemente (effetto ghiaccio magico)
+            let intensity = 0.5 + Math.sin(Game.playTime * 15) * 0.5;
+            for (let i=0; i<this.flashMats.length; i++) {
+                this.flashMats[i].emissive.setHex(0x00aaff); 
+                this.flashMats[i].emissiveIntensity = intensity * 3.0;
+            }
             
-            // Particellare di brina/neve che cade dal nemico congelato
-            if (Game.frameCount % 10 === 0) Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'spark');
+            // Aggiungiamo un leggero "fumo" freddo che sale dai piedi
+            if (Game.frameCount % 8 === 0) {
+                Game.getParticle().spawn(this.x, 5, this.y, SharedMat.spriteWhite, 'trail');
+            }
             
             if (this.frozenTimer <= 0) {
-                // Ripristina l'emissivo corretto a fine congelamento (Nero per normali, Rosso scuro per Elite)
                 let baseEmissive = this.isElite ? 0x440000 : 0x000000;
-                for (let i=0; i<this.flashMats.length; i++) this.flashMats[i].emissive.setHex(baseEmissive); 
+                for (let i=0; i<this.flashMats.length; i++) {
+                    this.flashMats[i].emissive.setHex(baseEmissive);
+                    this.flashMats[i].emissiveIntensity = 1.0;
+                }
             }
-            return; // Interrompe qui l'update: niente attacchi, rotazioni o IA!
+            return;
         }
         // -------------------------------------------
         this.updateFlash(dt);

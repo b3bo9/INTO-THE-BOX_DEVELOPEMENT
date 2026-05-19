@@ -1816,7 +1816,7 @@ const Game = {
         this.scene = new THREE.Scene(); this.scene.fog = new THREE.Fog(0x050508, 400, 1800); 
         this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 1, 3000);
         
-        const pixelRatio = isTouchDevice ? 0.75 : (AppSettings.isUltra ? Math.min(window.devicePixelRatio, 2.0) : Math.min(window.devicePixelRatio, 1.5));
+        const pixelRatio = isTouchDevice ? 0.9 : (AppSettings.isUltra ? Math.min(window.devicePixelRatio, 2.0) : Math.min(window.devicePixelRatio, 1.5));
         
        this.renderer = new THREE.WebGLRenderer({ 
     antialias: !isTouchDevice, 

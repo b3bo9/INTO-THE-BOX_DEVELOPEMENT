@@ -3234,7 +3234,7 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
             Game.addTrauma(1.5); let comboName = ""; let color = '#ffffff';
             if (counts.red > 0 && counts.blue > 0 && counts.green === 0) {
                 comboName = "ONDA D'URTO!"; color = "#00AAFF"; 
-                let shockRange = 200; 
+                let shockRange = 250; 
                 let shockRangeSq = shockRange * shockRange;
                 
                 // 1. Respingi e Rallenta Nemici
@@ -3245,8 +3245,8 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
                         e.slowType = 'blue'; // Segnalino per l'alone azzurro
                         e.takeDamage(this.stats.maxDmg * 0.3 * this.modifiers.dmgMult, this, false, false); 
                         // Respinge il nemico
-                        let angleToEnemy = MathUtils.angle(this, e);
-                        e.push(Math.cos(angleToEnemy), Math.sin(angleToEnemy), 120);
+                        let angleToEnemy = Math.atan2(e.y - this.y, e.x - this.x);
+                        e.push(Math.cos(angleToEnemy), Math.sin(angleToEnemy), 150);
                     } 
                 });
 
@@ -3259,14 +3259,25 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
                     }
                 }
 
-                // 3. Effetti Visivi
-                for(let i=0; i<(AppSettings.isUltraPC?80:40); i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'spark'); 
-                if (!AppSettings.isLow) {
-                    let flash = Game.getParticle(); flash.spawn(this.x, 20, this.y, SharedMat.spritePink, 'nova'); flash.baseSize = 160;
-                    for(let i=0; i<(AppSettings.isUltraPC?40:20); i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'trail');
-                }
-                AudioEngine.playShoot('chain_lightning');
-                Game.addTrauma(1.0); // Vibrazione schermo
+                // 3. EFFETTI VISIVI (Sbuffi di polvere e luce)
+    // Flash al centro del giocatore
+    Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteBlue, 'nova'); 
+    
+    // Anello di polvere che si espande (sbuffi)
+    let pCount = isTouchDevice ? 10 : 24;
+    for(let i=0; i<pCount; i++) {
+        let a = (Math.PI * 2 / pCount) * i;
+        let px = this.x + Math.cos(a) * 40; // Parte un po' distante dal centro
+        let pz = this.y + Math.sin(a) * 40;
+        let p = Game.getParticle();
+        p.spawn(px, 2, pz, SharedMat.spriteDust, 'dust');
+        // Diamo una velocità radiale alle particelle di polvere
+        p.vx = Math.cos(a) * 300;
+        p.vz = Math.sin(a) * 300;
+    }
+    
+    AudioEngine.playShoot('chain_lightning');
+    Game.addTrauma(0.8);
           } else if (counts.red > 0 && counts.green > 0 && counts.blue === 0) {
                 comboName = "NOVA TOSSICA!"; color = "#99FF00"; 
                 // Evoca un anello dinamico tramite la classe Hazard

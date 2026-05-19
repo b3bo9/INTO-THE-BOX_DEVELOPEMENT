@@ -3174,6 +3174,17 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
         this.shieldMesh.position.y = 12;
         this.shieldMesh.visible = false;
         this.mesh.add(this.shieldMesh);
+        // Scudo Glaciale (Temp HP - Verde/Blu)
+        this.glacialShieldMesh = new THREE.Mesh(SharedGeo.sphere, new THREE.MeshBasicMaterial({
+            color: 0x00ffaa, 
+            transparent: true, 
+            opacity: 0.4, 
+            side: THREE.DoubleSide 
+        }));
+        this.glacialShieldMesh.scale.set(30, 30, 30);
+        this.glacialShieldMesh.position.y = 12;
+        this.glacialShieldMesh.visible = false;
+        this.mesh.add(this.glacialShieldMesh);
         // FAKE BLOOM: Un alone 2D leggerissimo per simulare il bagliore su Smartphone
         this.fakeBloom = new THREE.Sprite(SharedMat.spriteWhite);
         this.fakeBloom.scale.set(18, 18, 1);
@@ -3388,63 +3399,39 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
         this.shadowMesh.position.set(this.x, 0.2, this.y);
         this.shadowMesh.updateMatrix();
 
-        if (this.activeShieldTimer > 0) {
-            this.activeShieldTimer -= dt;
-            this.shieldMesh.rotation.y += dt * 5;
-            this.shieldMesh.rotation.z += dt * 3;
-            // --- GESTIONE FLASH VISIVO ---
+       // Gestione Scudo Cinetico (Shift)
+        if (this.activeShieldTimer > 0) {
+            this.activeShieldTimer -= dt;
+            this.shieldMesh.visible = true;
+            this.shieldMesh.rotation.y += dt * 5;
+            this.shieldMesh.rotation.z += dt * 3;
+            
             if (this.shieldFlashTimer > 0) {
                 this.shieldFlashTimer -= dt;
-                
-                // Calcola il progresso del timer da 1.0 a 0.0 (poiché dura 0.15 secondi)
                 let pulse = this.shieldFlashTimer / 0.15;
-                
-                // L'opacità sfuma morbidamente
-                this.shieldMesh.material.opacity = 0.6 + (0.4 * pulse); 
-                this.shieldMesh.material.color.setHex(0xffffff); 
-                
-                // Espansione fluida "a molla": salta a 36 e si restringe fino a 24
-                let s = 24 + (12 * pulse); 
-                this.shieldMesh.scale.set(s, s, s); 
+                this.shieldMesh.material.opacity = 0.6 + (0.4 * pulse);
+                this.shieldMesh.scale.set(24 + (12 * pulse), 24 + (12 * pulse), 24 + (12 * pulse));
             } else {
                 this.shieldMesh.material.opacity = 0.6;
-                this.shieldMesh.material.color.setHex(0x00DDFF); // Torna azzurro
-                this.shieldMesh.scale.set(24, 24, 24); // Torna alla dimensione base
+                this.shieldMesh.scale.set(24, 24, 24);
             }
-            // -----------------------------
-            
             if (this.activeShieldTimer <= 0) {
                 this.shieldMesh.visible = false;
-                this.activeShieldCooldown = 8.0; // Inizio del Cooldown
-                
-                // Logica della Reliquia: Aegis Esplosiva (CORRETTA)
-                if (this.modifiers.explosiveShield && this.shieldAbsorbed > 0) {
-                    let dmg = this.stats.maxDmg * 2.5 + (this.stats.maxDmg * 2.0 * this.shieldAbsorbed);
-                    let radius = 60 + (this.shieldAbsorbed * 20);
-                    
-                    // 1. Danno Istantaneo ad Area (Nessun fuoco amico!)
-                    let nearby = Game.enemyGrid.findNearby(this, radius);
-                    for(let i = 0; i < nearby.length; i++) {
-                        let e = nearby[i];
-                        if(MathUtils.distanceSq(this, e) < radius * radius && !e.dead) {
-                            e.takeDamage(dmg, this, true, false);
-                        }
-                    }
-
-                    // 2. Esplosione di particelle visive (invece dell'Hazard)
-                    let pCount = AppSettings.isLow ? 15 : (AppSettings.isUltraPC ? 60 : 30);
-                    for(let i=0; i<pCount; i++) {
-                        Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'trail');
-                        Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'spark');
-                    }
-let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 6 : 12);
-                    let pVec = new THREE.Vector3(this.x, 2, this.y); let pQuat = new THREE.Quaternion(); let pScale = new THREE.Vector3(3, 3, 3);
-                    for(let d=0; d<dCount; d++) Game.getDebris().spawn(pVec, pQuat, pScale, SharedGeo.rockDebris, 0x4a3b2c, 10, false);
-                    Game.addTrauma(Math.min(1.0, 0.5 + (this.shieldAbsorbed * 0.1))); // Cap al tremore schermo
-                    AudioEngine.playShoot('chain_lightning'); // Suono più "elettrico/energetico"
-                    Game.getFloatingText().spawn(this.x, this.y, `RILASCIO! (${this.shieldAbsorbed})`, '#00DDFF', 40, true);
-                }
+                this.activeShieldCooldown = 8.0;
             }
+        } else {
+            this.shieldMesh.visible = false;
+        }
+
+        // Gestione Scudo Glaciale (Verde/Blu)
+        if (this.tempHp > 0) {
+            this.glacialShieldMesh.visible = true;
+            // Pulsazione lenta e "ghiacciata"
+            this.glacialShieldMesh.material.opacity = 0.3 + Math.sin(Game.playTime * 3) * 0.1;
+            this.glacialShieldMesh.rotation.y -= dt * 2; 
+            this.glacialShieldMesh.rotation.z -= dt * 1.5;
+        } else {
+            this.glacialShieldMesh.visible = false;
         }
         // --- MANTIENI VISIBILE LO SCUDO SE HAI TEMP HP ---
         if (this.tempHp > 0 && this.activeShieldTimer <= 0) {
@@ -3735,11 +3722,12 @@ let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 6 : 12);
         if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); }
     }
     
-    takeDamage(amount, source) {
+   takeDamage(amount, source) {
         if (this.invincibilityTimer > 0) return; 
         
         this.modifiers.timeSinceLastHit = 0;
         
+        // 1. Priorità: Scudo Cinetico (Shift)
         if (this.modifiers.shieldActive && !this.modifiers.shieldConsumed) { 
             this.modifiers.shieldConsumed = true; 
             Game.getFloatingText().spawn(this.x, this.y, "SCUDO!", '#00DDFF', 30, true); 
@@ -3747,23 +3735,27 @@ let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 6 : 12);
             this.invincibilityTimer = 0.5; 
             return; 
         }
-        // --- NUOVA LOGICA: SCUDO TEMP HP (GLACIAZIONE) ---
+        
+        // 2. Priorità: Scudo Glaciale (Temp Hp Verde/Blu)
         if (this.tempHp > 0) {
             Game.getFloatingText().spawn(this.x, this.y + 20, "ASSORBITO!", '#00ffaa', 25, true);
             Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark');
             
+            // Flash visivo dello scudo glaciale quando colpito
+            this.glacialShieldMesh.material.opacity = 0.8; 
+            
             if (this.tempHp >= amount) {
                 this.tempHp -= amount;
-                return; // Il danno è stato completamente assorbito dallo scudo di ghiaccio
+                return; // Danno totalmente assorbito
             } else {
-                amount -= this.tempHp; // Lo scudo attutisce parte del danno
-                this.tempHp = 0; // Scudo infranto
-                this.shieldMesh.visible = false;
-                AudioEngine.playShoot('explosive_arrow'); // Suono di rottura cristallina
+                amount -= this.tempHp;
+                this.tempHp = 0;
+                this.glacialShieldMesh.visible = false;
+                AudioEngine.playShoot('explosive_arrow'); // Suono di rottura
             }
         }
-        // -------------------------------------------------
-        let wasDead = this.dead; amount *= this.modifiers.dmgTakenMult; if (Game.ultimateActive) amount *= 0.5; 
+        
+        let wasDead = this.dead; amount *= this.modifiers.dmgTakenMult; // ... (il resto del codice)
         
         if (this.modifiers.flowMastery && !wasDead) {
             Game.ultimateCharge = 0;

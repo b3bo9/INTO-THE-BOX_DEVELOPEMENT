@@ -4634,50 +4634,39 @@ class Projectile {
         this.mesh.geometry = geo; this.mesh.material = mat; this.group.position.set(x, 15, y);
         if (type === 'arrow' || type === 'player_arrow' || type === 'homing_arrow') { this.mesh.scale.set(4, 20, 4); this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; }
         else { this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); }
-        // --- NUOVA LOGICA BAGLIORE ---
-        // Definiamo quali proiettili sono "potenziati"
-        let isPowered = (type === 'explosive_arrow' || type === 'chain_lightning' || type === 'homing_arrow' || type === 'fire_shape');
         
-        if (isPowered) {
+       this.mesh.updateMatrix(); this.group.updateMatrix(); 
+        
+        // --- INIZIO EFFETTO RIFLESSO (GLOW) A TERRA ---
+        // Funziona sempre (sia mobile che PC) e costa zero a livello di performance
+        if (type !== 'arrow') { 
             let colorHex = 0xffffff;
-            if (type === 'explosive_arrow' || type === 'fire_shape') colorHex = 0xff3300; // Rosso fuoco
-            if (type === 'chain_lightning') colorHex = 0x00aaff; // Azzurro elettrico
-            if (type === 'homing_arrow') colorHex = 0x33ff00; // Verde acido
+            let glowSize = 1;
+
+            // Definiamo colori e dimensioni dell'alone in base all'elemento
+            if (type === 'player_arrow') { colorHex = 0xffff00; glowSize = 18; } // Base (Giallo)
+            if (type === 'explosive_arrow') { colorHex = 0xff3300; glowSize = 35; } // Fuoco (Rosso)
+            if (type === 'chain_lightning') { colorHex = 0x00aaff; glowSize = 25; } // Elettrico (Blu)
+            if (type === 'homing_arrow') { colorHex = 0x33ff00; glowSize = 25; } // Tossina (Verde)
+            if (type === 'enemy_fireball' || type === 'fire_shape') { colorHex = 0xff3300; glowSize = 40; }
+            if (type === 'enemy_bolt') { colorHex = 0x00aaff; glowSize = 30; }
+
+            this.groundGlow.material.color.setHex(colorHex);
             
-            this.groundGlow.material.color.setHex(colorHex);
-            // La scala dipende dal tipo di proiettile
-            let scale = (type === 'explosive_arrow') ? 80 : 50; 
-            this.groundGlow.scale.set(scale, scale, 1);
-            this.groundGlow.position.set(x, 0.2, y);
+            // Creiamo un cerchio di luce perfetto sotto il proiettile
+            this.groundGlow.scale.set(glowSize, glowSize, 1);
+            
+            // Fissiamo l'altezza rasoterra (y = 0.3 per evitare lo z-fighting col pavimento)
+            this.groundGlow.position.set(x, 0.3, y);
+            
+            // Niente rotazioni: essendo un cerchio sfumato, farà luce in modo uniforme in tutte le direzioni!
+            this.groundGlow.rotation.z = 0; 
+            
             this.groundGlow.visible = true;
         } else {
             this.groundGlow.visible = false;
         }
-        // -----------------------------
-        this.mesh.updateMatrix(); this.group.updateMatrix(); 
-        if (isTouchDevice && type !== 'arrow') {
-            let colorHex = 0xffffff;
-            if (type === 'player_arrow') colorHex = 0xffff00;
-            if (type === 'explosive_arrow' || type === 'enemy_fireball' || type === 'fire_shape') colorHex = 0xff3300;
-            if (type === 'chain_lightning' || type === 'enemy_bolt') colorHex = 0x00aaff;
-            if (type === 'homing_arrow') colorHex = 0x33ff00;
-            this.groundGlow.material.color.setHex(colorHex);
-            if (type === 'player_arrow' || type === 'homing_arrow') {
-                this.groundGlow.scale.set(this.radius * 7, this.radius * 1.5, 1);
-                this.groundGlow.rotation.z = -angle;
-            } else {
-                this.groundGlow.scale.set(this.radius * 4, this.radius * 4, 1);
-                this.groundGlow.rotation.z = 0;
-            }
-            if (type === 'player_arrow' || type === 'homing_arrow') {
-                this.groundGlow.position.set(x, 14.5, y);
-            } else {
-                this.groundGlow.position.set(x, 0.2, y);
-            }
-            this.groundGlow.visible = true;
-        } else {
-            this.groundGlow.visible = false;
-        }
+        // --- FINE EFFETTO RIFLESSO ---
 
         // --- VARIABILI VENTO RESETTATE ALLO SPAWN ---
         this.windX = x;
@@ -4719,21 +4708,17 @@ class Projectile {
             }
         }
        this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt; this.group.position.set(this.x, 15, this.y);
-        // --- AGGIORNAMENTO POSIZIONE BAGLIORE ---
+        
+        // --- AGGIORNAMENTO DEL RIFLESSO A TERRA ---
         if (this.groundGlow.visible) {
-            this.groundGlow.position.set(this.x, 0.2, this.y);
-            // Opzionale: il bagliore pulsa leggermente con il tempo
-            this.groundGlow.material.opacity = 0.4 + Math.sin(Game.playTime * 10) * 0.1;
+            // Segue l'ombra esattamente sotto il proiettile
+            this.groundGlow.position.set(this.x, 0.3, this.y);
+            
+            // JUICE & OPTIMIZATION: 
+            // Invece di costosi calcoli di rotazione (come c'erano prima), aggiungiamo
+            // un sfarfallio (flicker) dell'opacità. Fa sembrare il riflesso una vera luce pulsante!
+            this.groundGlow.material.opacity = 0.5 + Math.sin(this.life * 25) * 0.2;
         }
-        // ----------------------------------------
-        if (this.groundGlow.visible) {
-            if (this.type === 'player_arrow' || this.type === 'homing_arrow') {
-                this.groundGlow.position.set(this.x, 14.5, this.y);
-                this.groundGlow.rotation.z = -this.angle; // Ruota l'alone in direzione del volo
-            } else {
-                this.groundGlow.position.set(this.x, 0.2, this.y);
-            }
-        }
        if (this.type !== 'arrow' && this.type !== 'player_arrow' && this.type !== 'homing_arrow') {
             this.mesh.rotation.x += dt * 5; this.mesh.rotation.y += dt * 5;
             this.mesh.updateMatrix(); 

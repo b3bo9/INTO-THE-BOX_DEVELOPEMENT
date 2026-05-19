@@ -1255,25 +1255,60 @@ const ModelFactory = {
     setupShadows(mesh) { mesh.traverse(c => { if(c.isMesh) { c.castShadow = true; c.receiveShadow = true; } }); },
     buildPlayer(mat, gemMat) {
         let group = new THREE.Group();
-        let body = new THREE.Mesh(SharedGeo.cone, mat); body.scale.set(16, 24, 16); body.position.y = 12;
         
-        // Creazione del volto (leggermente spostato in avanti e rimpicciolito)
-        let faceMat = new THREE.MeshStandardMaterial({color: 0xdddddd, emissive: 0x222222});
-        let head = new THREE.Mesh(SharedGeo.sphere, faceMat); head.scale.set(5.5, 5.5, 4); head.position.set(0, 28, 2.5);
+        // 1. Corpo base (La parte inferiore della tunica)
+        let body = new THREE.Mesh(SharedGeo.cone, mat); 
+        body.scale.set(16, 26, 16); 
+        body.position.y = 13;
         
-        // Creazione del cappuccio (sfera avvolgente che usa lo stesso materiale del mantello)
-        let hood = new THREE.Mesh(SharedGeo.sphere, mat); hood.scale.set(6.8, 6.8, 6.8); hood.position.set(0, 28.5, -0.5);
+        // 2. Spalle (Il panneggio largo e pesante sulle clavicole)
+        let shoulders = new THREE.Mesh(SharedGeo.sphere, mat);
+        shoulders.scale.set(13, 6, 11);
+        shoulders.position.set(0, 22, -1);
         
-        let scarf = new THREE.Mesh(SharedGeo.torus, new THREE.MeshStandardMaterial({color: 0x880000})); scarf.scale.set(7, 7, 2); scarf.position.set(0, 24, 0); scarf.rotation.x = Math.PI/2;
+        // 3. Volto (Il Vuoto Nero Assoluto: MeshBasicMaterial ignora le luci del gioco)
+        let voidMat = new THREE.MeshBasicMaterial({color: 0x000000}); 
+        let faceVoid = new THREE.Mesh(SharedGeo.sphere, voidMat); 
+        faceVoid.scale.set(5.5, 6.5, 4.5); 
+        faceVoid.position.set(0, 28, 1.5);
         
-        let weaponGroup = new THREE.Group(); weaponGroup.position.set(12, 16, 8);
-        let staff = new THREE.Mesh(SharedGeo.cylinder, new THREE.MeshStandardMaterial({color: 0x444444, metalness: 0.8})); staff.scale.set(2, 35, 2); staff.position.y = 10;
-        let staffGem = new THREE.Mesh(SharedGeo.icosahedron, gemMat); staffGem.scale.set(4, 4, 4); staffGem.position.y = 28;
-        let halo = new THREE.Mesh(SharedGeo.torus, gemMat); halo.scale.set(5, 5, 5); halo.position.y = 28; halo.rotation.x = Math.PI/2;
+        // 4. Occhi (Sfere brillanti ciano)
+        let eyeMat = new THREE.MeshBasicMaterial({color: 0x00ffff}); 
+        let eyeL = new THREE.Mesh(SharedGeo.sphere, eyeMat); 
+        eyeL.scale.set(0.8, 0.8, 0.8); eyeL.position.set(-1.8, 28.5, 5.2);
+        let eyeR = new THREE.Mesh(SharedGeo.sphere, eyeMat); 
+        eyeR.scale.set(0.8, 0.8, 0.8); eyeR.position.set(1.8, 28.5, 5.2);
+        
+        // 5. Cappuccio Parte Posteriore (Avvolge la nuca e la testa)
+        let hoodBase = new THREE.Mesh(SharedGeo.sphere, mat); 
+        hoodBase.scale.set(8.5, 9.5, 8.5); 
+        hoodBase.position.set(0, 29.5, -1.5);
+        
+        // 6. Bordo del Cappuccio (Usa un Torus per creare lo spessore dell'apertura frontale)
+        let hoodRim = new THREE.Mesh(SharedGeo.torus, mat);
+        hoodRim.scale.set(7.5, 9.5, 3.5); 
+        hoodRim.position.set(0, 28.5, 0.5);
+
+        // 7. Arma (Bastone magico - leggermente spostato per non coprire il cappuccio)
+        let weaponGroup = new THREE.Group(); weaponGroup.position.set(14, 16, 10);
+        let staff = new THREE.Mesh(SharedGeo.cylinder, new THREE.MeshStandardMaterial({color: 0x222222, metalness: 0.8})); 
+        staff.scale.set(1.5, 35, 1.5); staff.position.y = 10;
+        let staffGem = new THREE.Mesh(SharedGeo.icosahedron, gemMat); 
+        staffGem.scale.set(4, 4, 4); staffGem.position.y = 28;
+        let halo = new THREE.Mesh(SharedGeo.torus, gemMat); 
+        halo.scale.set(5, 5, 5); halo.position.y = 28; halo.rotation.x = Math.PI/2;
         
         weaponGroup.add(staff); weaponGroup.add(staffGem); weaponGroup.add(halo);
-        // Aggiungiamo 'hood' al gruppo
-        group.add(body); group.add(head); group.add(hood); group.add(scarf); group.add(weaponGroup);
+        
+        // Aggiungiamo tutte le parti costruite al giocatore
+        group.add(body); 
+        group.add(shoulders);
+        group.add(faceVoid); 
+        group.add(eyeL); 
+        group.add(eyeR);
+        group.add(hoodBase); 
+        group.add(hoodRim);
+        group.add(weaponGroup);
         
         this.setupShadows(group);
         return { group, staffGem, halo, weaponGroup, body };

@@ -3476,9 +3476,22 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
         if (this.modifiers.passiveUltCharge && !Game.ultimateActive) { Game.addUltimateCharge(2.0 * dt); }
 
         if (this.invincibilityTimer > 0) {
-            this.invincibilityTimer -= dt; let isVisible = (Math.floor(this.invincibilityTimer * 15) % 2 === 0);
-            this.mesh.children.forEach(child => { if (child !== this.light && child !== this.shieldMesh) child.visible = isVisible; });
-            if (this.invincibilityTimer <= 0) { this.mesh.children.forEach(child => { if (child !== this.light && child !== this.shieldMesh) child.visible = true; }); }
+            this.invincibilityTimer -= dt; 
+            let isVisible = (Math.floor(this.invincibilityTimer * 15) % 2 === 0);
+            // AGGIUNTA: Escludi glacialShieldMesh dal loop di blink
+            this.mesh.children.forEach(child => { 
+                if (child !== this.light && child !== this.shieldMesh && child !== this.glacialShieldMesh) {
+                    child.visible = isVisible; 
+                }
+            });
+            
+            if (this.invincibilityTimer <= 0) { 
+                this.mesh.children.forEach(child => { 
+                    if (child !== this.light && child !== this.shieldMesh && child !== this.glacialShieldMesh) {
+                        child.visible = true; 
+                    }
+                }); 
+            }
         }
         if (!Game.ultimateActive && this.modelParts.body.material.emissive.getHex() === 0x00DDFF) this.updateAppearance();
         

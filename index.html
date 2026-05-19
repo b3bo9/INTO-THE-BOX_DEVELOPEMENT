@@ -3420,8 +3420,7 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
         this.shadowMesh.position.set(this.x, 0.2, this.y);
         this.shadowMesh.updateMatrix();
 
-       // Gestione Scudo Cinetico (Shift)
-    
+      // Gestione Scudo Cinetico (Shift)
         if (this.activeShieldTimer > 0) {
             this.activeShieldTimer -= dt;
             // Se invincibilità attiva, nascondi lo scudo durante il blink
@@ -3445,6 +3444,19 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
             }
         } else {
             this.shieldMesh.visible = false;
+        }
+
+        // Gestione Scudo Glaciale (Temp HP - Verde/Blu)
+        if (this.tempHp > 0) {
+            // Se invincibilità attiva, segui il lampeggio, altrimenti mostra lo scudo
+            let isBlinking = this.invincibilityTimer > 0;
+            this.glacialShieldMesh.visible = !isBlinking;
+            
+            this.glacialShieldMesh.material.opacity = 0.3 + Math.sin(Game.playTime * 3) * 0.1;
+            this.glacialShieldMesh.rotation.y -= dt * 2; 
+            this.glacialShieldMesh.rotation.z -= dt * 1.5;
+        } else {
+            this.glacialShieldMesh.visible = false;
         }
 
         // Gestione Scudo Glaciale (Verde/Blu)
@@ -3504,12 +3516,12 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
         if (this.modifiers.passiveUltCharge && !Game.ultimateActive) { Game.addUltimateCharge(2.0 * dt); }
 
         // Gestione Invincibilità (con esclusione sicura degli scudi)
-        if (this.invincibilityTimer > 0) {
+       if (this.invincibilityTimer > 0) {
             this.invincibilityTimer -= dt; 
             let isVisible = (Math.floor(this.invincibilityTimer * 15) % 2 === 0);
             
             this.mesh.children.forEach(child => { 
-                // Escludiamo esplicitamente gli scudi e la luce
+                // ESCLUSIONE TOTALE: Light e Scudi non devono MAI lampeggiare via
                 if (child !== this.light && child !== this.shieldMesh && child !== this.glacialShieldMesh) {
                     child.visible = isVisible; 
                 }
@@ -3789,12 +3801,11 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
         if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); }
     }
     
-   takeDamage(amount, source) {
+  takeDamage(amount, source) {
         if (this.invincibilityTimer > 0) return; 
-        
         this.modifiers.timeSinceLastHit = 0;
         
-        // 1. Priorità: Scudo Cinetico (Shift)
+        // 1. Scudo Cinetico
         if (this.modifiers.shieldActive && !this.modifiers.shieldConsumed) { 
             this.modifiers.shieldConsumed = true; 
             Game.getFloatingText().spawn(this.x, this.y, "SCUDO!", '#00DDFF', 30, true); 
@@ -3802,38 +3813,42 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
             this.invincibilityTimer = 0.5; 
             return; 
         }
-       // 2. Priorità: Scudo Glaciale (Temp Hp Verde/Blu)
+
+        // 2. Scudo Glaciale (Temp HP)
         if (this.tempHp > 0) {
             Game.getFloatingText().spawn(this.x, this.y + 20, "ASSORBITO!", '#00ffaa', 25, true);
             Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark');
             
-            // Flash visivo dello scudo glaciale quando colpito
             this.glacialShieldMesh.material.opacity = 0.8; 
+            // Reset sicuro per non lasciare l'opacità alta
             setTimeout(() => { if(this.glacialShieldMesh) this.glacialShieldMesh.material.opacity = 0.4; }, 100);
             
             if (this.tempHp >= amount) {
                 this.tempHp -= amount;
-                return; // Il danno è stato assorbito
+                return; 
             } else {
                 amount -= this.tempHp;
                 this.tempHp = 0;
-                this.glacialShieldMesh.visible = false; // <-- FIX: Ora nasconde quello giusto!
+                this.glacialShieldMesh.visible = false;
                 AudioEngine.playShoot('explosive_arrow'); 
             }
         }
         
-        let wasDead = this.dead; amount *= this.modifiers.dmgTakenMult; // ... (il resto del codice)
+        let wasDead = this.dead; 
+        amount *= this.modifiers.dmgTakenMult; 
+        if (Game.ultimateActive) amount *= 0.5; 
         
         if (this.modifiers.flowMastery && !wasDead) {
             Game.ultimateCharge = 0;
-            amount += this.stats.hp / 2; // Lose half current HP
+            amount += this.stats.hp / 2;
         } else {
             Game.resetCombo(); 
         }
 
         super.takeDamage(amount, source);
-        this.invincibilityTimer = 0.2; // <-- 0.2 secondi di invincibilità ad ogni hit
+        this.invincibilityTimer = 0.2; 
         AudioEngine.playHit('player');
+    }
 
         if (!wasDead) {
             Game.addTrauma(0.8);

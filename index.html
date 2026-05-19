@@ -4634,7 +4634,26 @@ class Projectile {
         this.mesh.geometry = geo; this.mesh.material = mat; this.group.position.set(x, 15, y);
         if (type === 'arrow' || type === 'player_arrow' || type === 'homing_arrow') { this.mesh.scale.set(4, 20, 4); this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; }
         else { this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); }
+        // --- NUOVA LOGICA BAGLIORE ---
+        // Definiamo quali proiettili sono "potenziati"
+        let isPowered = (type === 'explosive_arrow' || type === 'chain_lightning' || type === 'homing_arrow' || type === 'fire_shape');
         
+        if (isPowered) {
+            let colorHex = 0xffffff;
+            if (type === 'explosive_arrow' || type === 'fire_shape') colorHex = 0xff3300; // Rosso fuoco
+            if (type === 'chain_lightning') colorHex = 0x00aaff; // Azzurro elettrico
+            if (type === 'homing_arrow') colorHex = 0x33ff00; // Verde acido
+            
+            this.groundGlow.material.color.setHex(colorHex);
+            // La scala dipende dal tipo di proiettile
+            let scale = (type === 'explosive_arrow') ? 80 : 50; 
+            this.groundGlow.scale.set(scale, scale, 1);
+            this.groundGlow.position.set(x, 0.2, y);
+            this.groundGlow.visible = true;
+        } else {
+            this.groundGlow.visible = false;
+        }
+        // -----------------------------
         this.mesh.updateMatrix(); this.group.updateMatrix(); 
         if (isTouchDevice && type !== 'arrow') {
             let colorHex = 0xffffff;
@@ -4700,6 +4719,13 @@ class Projectile {
             }
         }
        this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt; this.group.position.set(this.x, 15, this.y);
+        // --- AGGIORNAMENTO POSIZIONE BAGLIORE ---
+        if (this.groundGlow.visible) {
+            this.groundGlow.position.set(this.x, 0.2, this.y);
+            // Opzionale: il bagliore pulsa leggermente con il tempo
+            this.groundGlow.material.opacity = 0.4 + Math.sin(Game.playTime * 10) * 0.1;
+        }
+        // ----------------------------------------
         if (this.groundGlow.visible) {
             if (this.type === 'player_arrow' || this.type === 'homing_arrow') {
                 this.groundGlow.position.set(this.x, 14.5, this.y);

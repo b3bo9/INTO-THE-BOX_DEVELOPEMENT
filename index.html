@@ -3202,7 +3202,9 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
         if (counts.red === 3) { this.essence = 'red'; this.triggerOverdrive(); } 
         else if (counts.blue === 3) { this.essence = 'blue'; this.triggerOverdrive(); } 
         else if (counts.green === 3) { this.essence = 'green'; this.triggerOverdrive(); } 
-        } else if (counts.red > 0 && counts.blue > 0 && counts.green === 0) {
+        else {
+            Game.addTrauma(1.5); let comboName = ""; let color = '#ffffff';
+            if (counts.red > 0 && counts.blue > 0 && counts.green === 0) {
                 comboName = "ONDA D'URTO!"; color = "#00AAFF"; 
                 let shockRange = 200; 
                 let shockRangeSq = shockRange * shockRange;

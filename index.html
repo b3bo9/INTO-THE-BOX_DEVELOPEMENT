@@ -176,7 +176,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 102</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 103</p>
                 </div>
             </div>
         </div>
@@ -1214,6 +1214,7 @@ function createBlobShadowTexture() {
 const BLOB_SHADOW_TEX = createBlobShadowTexture();
 const BLOOD_TEX = createPatternTexture('blood'); const GLOW_TEX = createGlowTexture();
 const SharedMat = {
+    hazardNovaRing: new THREE.MeshBasicMaterial({color: 0x99ff00, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending}),
     blood: new THREE.MeshStandardMaterial({map: BLOOD_TEX, transparent: true, opacity: 0.85, depthWrite: false, roughness: 0.8}),
     spriteLevel: new THREE.SpriteMaterial({color: 0xffffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
     spriteRed: new THREE.SpriteMaterial({color: ESSENCE_COLORS.red, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
@@ -1420,69 +1421,117 @@ class Hazard {
         this.group.add(this.plane); this.group.add(this.ring); this.group.visible = false; Game.scene.add(this.group);
     }
     spawn(x, z, radius, duration, damage, colorHex, type='fire') {
-        this.active = true; this.x = x; this.y = z; this.radius = radius; this.life = duration; this.maxLife = duration;
+        this.active = true; this.x = x; this.y = z; this.life = duration; this.maxLife = duration;
         this.damage = damage; this.type = type; 
         this.hitCooldown.clear(); 
         this.activationTimer = (type === 'enemy_fire') ? 1.0 : 0.0;
         this.group.position.set(x, 0, z); 
-        this.plane.scale.set(this.radius, 0.1, this.radius); this.ring.scale.set(this.radius, this.radius, 1);
-        if (type === 'poison') { this.plane.material = SharedMat.hazardPoisonPlane; this.ring.material = SharedMat.hazardPoisonRing; }
-        else if (type === 'enemy_fire') { this.plane.material = SharedMat.hazardEnemyPlane; this.ring.material = SharedMat.hazardEnemyRing; }
-        else if (type === 'crystal_fire') { this.plane.material = SharedMat.hazardCrystalPlane; this.ring.material = SharedMat.hazardCrystalRing; }
-        else { this.plane.material = SharedMat.hazardFirePlane; this.ring.material = SharedMat.hazardFireRing; }
+        
+        if (type === 'nova_ring') {
+            // Nuova logica: parte piccola e si espanderà nell'update
+            this.maxRadius = radius;
+            this.radius = 5; 
+            this.expansionSpeed = radius / duration; // Es. 300 / 0.6 = 500 unità/s
+            this.plane.visible = false; // Nascondiamo il disco interno, mostriamo solo l'anello
+            this.ring.material = SharedMat.hazardNovaRing;
+        } else {
+            // Logica Classica per fuoco e veleno a terra
+            this.radius = radius;
+            this.plane.visible = true;
+            this.plane.scale.set(this.radius, 0.1, this.radius); 
+            this.ring.scale.set(this.radius, this.radius, 1);
+            if (type === 'poison') { this.plane.material = SharedMat.hazardPoisonPlane; this.ring.material = SharedMat.hazardPoisonRing; }
+            else if (type === 'enemy_fire') { this.plane.material = SharedMat.hazardEnemyPlane; this.ring.material = SharedMat.hazardEnemyRing; }
+            else if (type === 'crystal_fire') { this.plane.material = SharedMat.hazardCrystalPlane; this.ring.material = SharedMat.hazardCrystalRing; }
+            else { this.plane.material = SharedMat.hazardFirePlane; this.ring.material = SharedMat.hazardFireRing; }
+        }
         
         this.plane.updateMatrix(); this.ring.updateMatrix(); this.group.updateMatrix();
         this.group.visible = true;
     }
-    update(dt) {
-        if (!this.active) return;
-        this.life -= dt;
-      if (this.activationTimer > 0) { 
-            this.activationTimer -= dt; let pulse = (1.0 - this.activationTimer) * 0.5;
-            // Opacità alzata durante il caricamento
-            this.plane.material.opacity = 0.15 + pulse; 
-            this.ring.material.opacity = 0.2 + pulse;
-        } else { 
-            // FIX: Opacità base del piano interno triplicata (da 0.15 a 0.35)
-            this.plane.material.opacity = 0.35 + Math.sin(this.life * 10) * 0.1; 
-            this.ring.material.opacity = 0.8 + Math.sin(this.life * 15) * 0.2; 
-        }
-        if ((Game.frameCount + this.updateOffset) % 5 === 0 && !isTouchDevice && this.activationTimer <= 0) { 
-            let mat = this.type === 'poison' ? SharedMat.spriteGreen : (this.type === 'crystal_fire' ? SharedMat.spritePink : SharedMat.spriteRed);
-            Game.getParticle().spawn(this.x + MathUtils.randomRange(-this.radius, this.radius), 2, this.y + MathUtils.randomRange(-this.radius, this.radius), mat, 'trail');
-        }
-        
-        if (this.activationTimer <= 0) {
-            if ((Game.frameCount + this.updateOffset) % 6 === 0) {
-                if (this.type === 'fire' || this.type === 'poison' || this.type === 'crystal_fire') {
-                    let nearby = Game.enemyGrid.findNearby(this, this.radius);
-                    for (let i=0, len=nearby.length; i<len; i++) {
-                        let e = nearby[i];
-                        // MODIFICA: Uso il tempo assoluto per il calcolo del cooldown
-                        let cd = this.hitCooldown.get(e.id) || 0;
-                        if (Game.playTime >= cd && MathUtils.distanceSq(this, e) < (this.radius + e.radius)**2) {
-                            e.takeDamage(this.damage, Game.player, false, false); 
-                            if(this.type === 'poison') e.slowedTimer = 2.0; 
-                            if(this.type === 'fire' && Game.player && Game.player.modifiers.fireTrailDebuff) e.fireDebuffTimer = 3.0;
-                            this.hitCooldown.set(e.id, Game.playTime + 0.5);
-                        }
-                    }
-                }
-            }
-            if ((this.type === 'enemy_fire' || this.type === 'crystal_fire') && (Game.frameCount + this.updateOffset) % 6 === 0) {
-                let pCd = this.hitCooldown.get('player') || 0;
-                if (Game.playTime >= pCd && MathUtils.distanceSq(this, Game.player) < (this.radius + Game.player.radius)**2) { 
-                    let playerDmg = this.type === 'crystal_fire' ? 35 * Game.difficultyMult : this.damage;
-                    Game.player.takeDamage(playerDmg, null); 
-                    this.hitCooldown.set('player', Game.playTime + 1.0); 
-                }
-            }
-        }
-        
-        // Il vecchio ciclo for (let [key, value] of this.hitCooldown.entries()) è stato completamente rimosso!
 
-        if (this.life <= 0) { this.active = false; this.group.visible = false; }
-    }
+    update(dt) {
+        if (!this.active) return;
+        this.life -= dt;
+        
+        // --- LOGICA DELL'ANELLO IN ESPANSIONE ---
+        if (this.type === 'nova_ring') {
+            this.radius += this.expansionSpeed * dt;
+            this.ring.scale.set(this.radius, this.radius, 1.5); // Diamo un po' di spessore
+            this.ring.updateMatrix();
+            this.ring.material.opacity = (this.life / this.maxLife) * 0.9; // Dissolvenza organica
+            
+            // Effetto grafico: scintille che viaggiano sul perimetro
+            if (Game.frameCount % 2 === 0 && !isTouchDevice) {
+                let angle = Math.random() * Math.PI * 2;
+                Game.getParticle().spawn(this.x + Math.cos(angle)*this.radius, 5, this.y + Math.sin(angle)*this.radius, SharedMat.spriteGreen, 'flame');
+                Game.getParticle().spawn(this.x + Math.cos(angle)*this.radius, 5, this.y + Math.sin(angle)*this.radius, SharedMat.spriteRed, 'spark');
+            }
+            
+            // Collisione calcolata specificamente sul perimetro (anello vuoto al centro)
+            let nearby = Game.enemyGrid.findNearby(this, this.radius + 30);
+            for (let i=0, len=nearby.length; i<len; i++) {
+                let e = nearby[i];
+                let cd = this.hitCooldown.get(e.id) || 0;
+                let dist = MathUtils.distance(this, e);
+                // Hitbox spessa 15 unità per parte attorno alla circonferenza
+                if (Game.playTime >= cd && Math.abs(dist - this.radius) < e.radius + 15) {
+                    e.takeDamage(this.damage, Game.player, true, true);
+                    e.infected = true;
+                    e.slowedTimer = 2.0;
+                    
+                    // Spinta verso l'esterno generata dal centro della Nova
+                    let angleToEnemy = MathUtils.angle(this, e);
+                    e.push(Math.cos(angleToEnemy), Math.sin(angleToEnemy), 80);
+                    
+                    this.hitCooldown.set(e.id, Game.playTime + 1.0); // Colpisce una volta sola
+                }
+            }
+        } 
+        // --- LOGICA VECCHIA DELLE POZZE STATICHE ---
+        else {
+            if (this.activationTimer > 0) { 
+                this.activationTimer -= dt; let pulse = (1.0 - this.activationTimer) * 0.5;
+                this.plane.material.opacity = 0.15 + pulse; 
+                this.ring.material.opacity = 0.2 + pulse;
+            } else { 
+                this.plane.material.opacity = 0.35 + Math.sin(this.life * 10) * 0.1; 
+                this.ring.material.opacity = 0.8 + Math.sin(this.life * 15) * 0.2; 
+            }
+            if ((Game.frameCount + this.updateOffset) % 5 === 0 && !isTouchDevice && this.activationTimer <= 0) { 
+                let mat = this.type === 'poison' ? SharedMat.spriteGreen : (this.type === 'crystal_fire' ? SharedMat.spritePink : SharedMat.spriteRed);
+                Game.getParticle().spawn(this.x + MathUtils.randomRange(-this.radius, this.radius), 2, this.y + MathUtils.randomRange(-this.radius, this.radius), mat, 'trail');
+            }
+            
+            if (this.activationTimer <= 0) {
+                if ((Game.frameCount + this.updateOffset) % 6 === 0) {
+                    if (this.type === 'fire' || this.type === 'poison' || this.type === 'crystal_fire') {
+                        let nearby = Game.enemyGrid.findNearby(this, this.radius);
+                        for (let i=0, len=nearby.length; i<len; i++) {
+                            let e = nearby[i];
+                            let cd = this.hitCooldown.get(e.id) || 0;
+                            if (Game.playTime >= cd && MathUtils.distanceSq(this, e) < (this.radius + e.radius)**2) {
+                                e.takeDamage(this.damage, Game.player, false, false); 
+                                if(this.type === 'poison') e.slowedTimer = 2.0; 
+                                if(this.type === 'fire' && Game.player && Game.player.modifiers.fireTrailDebuff) e.fireDebuffTimer = 3.0;
+                                this.hitCooldown.set(e.id, Game.playTime + 0.5);
+                            }
+                        }
+                    }
+                }
+                if ((this.type === 'enemy_fire' || this.type === 'crystal_fire') && (Game.frameCount + this.updateOffset) % 6 === 0) {
+                    let pCd = this.hitCooldown.get('player') || 0;
+                    if (Game.playTime >= pCd && MathUtils.distanceSq(this, Game.player) < (this.radius + Game.player.radius)**2) { 
+                        let playerDmg = this.type === 'crystal_fire' ? 35 * Game.difficultyMult : this.damage;
+                        Game.player.takeDamage(playerDmg, null); 
+                        this.hitCooldown.set('player', Game.playTime + 1.0); 
+                    }
+                }
+            }
+        }
+
+        if (this.life <= 0) { this.active = false; this.group.visible = false; }
+    }
 }
 
 class Decoy {
@@ -2063,6 +2112,22 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
             if ((p.active || p.windIntensity > 0) && windCount < MAX_WIND) { 
                 windSources[windCount].set(p.windX, p.windIntensity, p.windZ);
                 windCount++;
+            }
+        }
+       // --- VENTO PER LA NOVA CORROTTA IN ESPANSIONE ---
+        for(let i=0; i<this.hazards.length; i++) {
+            let h = this.hazards[i];
+            // Controlla che ci sia spazio nel buffer (lasciando un margine per il player)
+            if (h.active && h.type === 'nova_ring' && windCount < MAX_WIND - 4) {
+                let points = isTouchDevice ? 4 : 8; // Più punti su PC per massima fluidità
+                for(let j=0; j<points; j++) {
+                    if(windCount >= MAX_WIND) break;
+                    // Distribuiamo punti di vento lungo la circonferenza.
+                    // Il time aggiunto fa ruotare i punti, coprendo tutta l'area in modo fluido.
+                    let a = (Math.PI * 2 / points) * j + (Game.playTime * 5); 
+                    windSources[windCount].set(h.x + Math.cos(a)*h.radius, 1.5, h.y + Math.sin(a)*h.radius);
+                    windCount++;
+                }
             }
         }
         InteractiveGrassSystem.uniforms.uWindCount.value = windCount;
@@ -3137,50 +3202,138 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
         if (counts.red === 3) { this.essence = 'red'; this.triggerOverdrive(); } 
         else if (counts.blue === 3) { this.essence = 'blue'; this.triggerOverdrive(); } 
         else if (counts.green === 3) { this.essence = 'green'; this.triggerOverdrive(); } 
-        else {
-            Game.addTrauma(1.5); let comboName = ""; let color = '#ffffff';
-            if (counts.red > 0 && counts.blue > 0 && counts.green === 0) {
-                comboName = "SHOCK TERMICO!"; color = "#ddaaff"; 
-                let shockRange = 250; let nearby = Game.enemyGrid.findNearby(this, shockRange);
-                nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < shockRange * shockRange) { e.slowedTimer = 4.0; e.takeDamage(this.stats.maxDmg * 2 * this.modifiers.dmgMult, this, true, false); } });
+        } else if (counts.red > 0 && counts.blue > 0 && counts.green === 0) {
+                comboName = "ONDA D'URTO!"; color = "#00AAFF"; 
+                let shockRange = 200; 
+                let shockRangeSq = shockRange * shockRange;
+                
+                // 1. Respingi e Rallenta Nemici
+                let nearby = Game.enemyGrid.findNearby(this, shockRange);
+                nearby.forEach(e => { 
+                    if (MathUtils.distanceSq(this, e) < shockRangeSq) { 
+                        e.slowedTimer = 4.0; 
+                        e.slowType = 'blue'; // Segnalino per l'alone azzurro
+                        e.takeDamage(this.stats.maxDmg * 1.5 * this.modifiers.dmgMult, this, true, false); 
+                        // Respinge il nemico
+                        let angleToEnemy = MathUtils.angle(this, e);
+                        e.push(Math.cos(angleToEnemy), Math.sin(angleToEnemy), 120);
+                    } 
+                });
+
+                // 2. Distruzione Proiettili (Bullet-Clear)
+                for (let i = 0; i < Game.projectiles.length; i++) {
+                    let p = Game.projectiles[i];
+                    // Se il proiettile è attivo, è di un nemico ed è nel raggio d'azione
+                    if (p.active && p.owner !== 'player' && MathUtils.distanceSq(this, p) < shockRangeSq) {
+                        p.destroy(); // Distrugge l'attacco nemico
+                    }
+                }
+
+                // 3. Effetti Visivi
                 for(let i=0; i<(AppSettings.isUltraPC?80:40); i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'spark'); 
                 if (!AppSettings.isLow) {
-                    let flash = Game.getParticle(); flash.spawn(this.x, 20, this.y, SharedMat.spritePink, 'flame'); flash.baseSize = 80;
-                    for(let i=0; i<(AppSettings.isUltraPC?40:20); i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'trail');
+                    let flash = Game.getParticle(); flash.spawn(this.x, 20, this.y, SharedMat.spritePink, 'nova'); flash.baseSize = 160;
+                    for(let i=0; i<(AppSettings.isUltraPC?40:20); i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'trail');
                 }
                 AudioEngine.playShoot('chain_lightning');
-            } else if (counts.red > 0 && counts.green > 0 && counts.blue === 0) {
-                comboName = "ESPLOSIONE TOSSICA!"; color = "#33FF00"; 
-                let poisonRange = 180; let nearby = Game.enemyGrid.findNearby(this, poisonRange);
-                nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < poisonRange*poisonRange) { e.takeDamage(this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, this, true, true); e.infected = true; e.slowedTimer = 3.0; } });
+                Game.addTrauma(1.0); // Vibrazione schermo
+          } else if (counts.red > 0 && counts.green > 0 && counts.blue === 0) {
+                comboName = "NOVA TOSSICA!"; color = "#99FF00"; 
+                // Evoca un anello dinamico tramite la classe Hazard
+                // Raggio finale: 300, Durata: 0.6s (quindi si espande a 500 unità/s, come la freccia rossa)
+                Game.getHazard().spawn(this.x, this.y, 300, 0.6, this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, 0x99FF00, 'nova_ring');
+                
+                // Effetti centrali esplosivi istantanei
                 let pCount = AppSettings.isLow ? 15 : (AppSettings.isUltraPC ? 80 : 40);
-                for(let i=0; i<pCount; i++) { let a = (Math.PI * 2 / pCount) * i; Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'trail', a); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'flame', a); }
+                for(let i=0; i<pCount; i++) { let a = (Math.PI * 2 / pCount) * i; Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'trail', a); }
                 if (!AppSettings.isLow) {
-                    let flashCount = AppSettings.isUltraPC ? 16 : 8;
-                    for(let i=0; i<flashCount; i++) { let p = Game.getParticle(); p.spawn(this.x + MathUtils.randomRange(-40,40), 20, this.y + MathUtils.randomRange(-40,40), SharedMat.spriteGreen, 'flame'); p.baseSize = 50; p.life = 1.0; p.maxLife = 1.0; }
+                    let flash = Game.getParticle(); flash.spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'flame'); flash.baseSize = 90;
                 }
                 AudioEngine.playShoot('explosive_arrow');
             } else if (counts.blue > 0 && counts.green > 0 && counts.red === 0) {
-                comboName = "VORTICE!"; color = "#00ffaa"; 
-                let vortexRange = 220; let nearby = Game.enemyGrid.findNearby(this, vortexRange);
-                nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < vortexRange*vortexRange) { let ang = Math.atan2(this.y - e.y, this.x - e.x); e.push(Math.cos(ang), Math.sin(ang), 120); e.takeDamage(this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, this, true, false); } }); 
+                comboName = "GLACIAZIONE!"; color = "#00ffaa"; 
+                let freezeRange = 300; 
+                let freezeRangeSq = freezeRange * freezeRange;
+                
+                // 1. Congelamento Nemici
+                let nearby = Game.enemyGrid.findNearby(this, freezeRange);
+                nearby.forEach(e => { 
+                    if (MathUtils.distanceSq(this, e) < freezeRangeSq) { 
+                        e.frozenTimer = 4.0; // Nuovo stato: Congelato Assoluto
+                        e.takeDamage(this.stats.maxDmg * 1.5 * this.modifiers.dmgMult, this, true, false); 
+                    } 
+                }); 
+
+                // 2. Scudo Vita Temporanea (20% HP Max)
+                this.tempHp = this.stats.maxHp * 0.20;
+                this.shieldMesh.material.color.setHex(0x00ffaa); // Colore Verde/Blu
+                this.shieldMesh.visible = true;
+
+                // 3. Effetti Visivi
                 let pCount = AppSettings.isLow ? 15 : (AppSettings.isUltraPC ? 80 : 40);
-                for(let i=0; i<pCount; i++) { let a = (Math.PI * 2 / pCount) * i; Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'trail', a + 0.5); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark', a - 0.5); }
+                for(let i=0; i<pCount; i++) { 
+                    let a = (Math.PI * 2 / pCount) * i; 
+                    Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'trail', a + 0.5); 
+                    Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark', a - 0.5); 
+                }
                 if (!AppSettings.isLow) {
-                    let flash = Game.getParticle(); flash.spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'flame'); flash.baseSize = 90;
+                    let flash = Game.getParticle(); flash.spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'nova'); flash.baseSize = 120;
                 }
                 AudioEngine.playShoot('chain_lightning');
-            } else if (counts.red === 1 && counts.blue === 1 && counts.green === 1) {
-                comboName = "CAOS ELEMENTALE!"; color = "#ffffff"; Game.addTrauma(2.0);
+                Game.addTrauma(0.8);
+           } else if (counts.red === 1 && counts.blue === 1 && counts.green === 1) {
+                comboName = "CAOS ELEMENTALE!"; color = "#ffffff"; 
+                // Aumentiamo il trauma per uno screen-shake devastante
+                Game.addTrauma(3.0); 
+                
                 let range = 300; let nearby = Game.enemyGrid.findNearby(this, range);
-                nearby.forEach(e => { if (MathUtils.distanceSq(this, e) < range * range) { e.slowedTimer = 4.0; e.infected = true; e.takeDamage(this.stats.maxDmg * 3.5 * this.modifiers.dmgMult, this, true, true); } });
-                let pCount = AppSettings.isLow ? 20 : (AppSettings.isUltraPC ? 120 : 60);
-                for(let i=0; i<pCount; i++) { let mat = [SharedMat.spriteRed, SharedMat.spriteBlue, SharedMat.spriteGreen][i % 3]; Game.getParticle().spawn(this.x, 20, this.y, mat, 'trail'); }
+                nearby.forEach(e => { 
+                    if (MathUtils.distanceSq(this, e) < range * range) { 
+                        e.slowedTimer = 4.0; e.infected = true; 
+                        e.takeDamage(this.stats.maxDmg * 3.5 * this.modifiers.dmgMult, this, true, true); 
+                    } 
+                });
+
+                // --- EFFETTO ESPLOSIONE COLORATA ULTRA-ACCENTUATO ---
+                let pCount = AppSettings.isLow ? 30 : (AppSettings.isUltraPC ? 120 : 60);
+                
                 if (!AppSettings.isLow) {
-                    let core = Game.getParticle(); core.spawn(this.x, 30, this.y, SharedMat.spriteWhite, 'flame'); core.baseSize = 150; core.life = 0.5; core.maxLife = 0.5;
-                    for(let i=0; i<(AppSettings.isUltraPC?50:25); i++) { Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'flame'); Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'spark'); }
+                    // 1. Nova Tripla Espansiva (Rosso, Verde e Blu sovrapposti a scale diverse)
+                    let novaR = Game.getParticle(); novaR.spawn(this.x, 20, this.y, SharedMat.spriteRed, 'nova'); novaR.baseSize = 280;
+                    let novaG = Game.getParticle(); novaG.spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'nova'); novaG.baseSize = 240;
+                    let novaB = Game.getParticle(); novaB.spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'nova'); novaB.baseSize = 200;
+                    
+                    // 2. Flash di luce globale abbagliante (sovrascrive temporaneamente il cielo)
+                    if (Game.dirLight) {
+                        let oldInt = Game.dirLight.intensity;
+                        let oldCol = Game.dirLight.color.getHex();
+                        Game.dirLight.intensity = 6.0;
+                        Game.dirLight.color.setHex(0xffffff);
+                        
+                        // Torna alla normalità dopo 150 millisecondi
+                        setTimeout(() => {
+                            if (Game.dirLight) {
+                                Game.dirLight.intensity = oldInt;
+                                Game.dirLight.color.setHex(oldCol);
+                            }
+                        }, 150);
+                    }
                 }
-                AudioEngine.playShoot('explosive_arrow'); AudioEngine.playShoot('chain_lightning');
+
+                // 3. Pioggia di Scintille e Fiamme in Radiale RGB (pattern perfetto)
+                for(let i=0; i<pCount; i++) { 
+                    let mat = [SharedMat.spriteRed, SharedMat.spriteBlue, SharedMat.spriteGreen][i % 3]; 
+                    let angle = (Math.PI * 2 / pCount) * i; // Distribuzione radiale a 360°
+                    
+                    // Fiamme esplodono verso l'esterno, scintille volano in alto
+                    Game.getParticle().spawn(this.x, 20, this.y, mat, 'flame', angle); 
+                    Game.getParticle().spawn(this.x, 30, this.y, mat, 'spark', angle + 0.1); 
+                }
+                // -----------------------------------------------------
+                
+                AudioEngine.playShoot('explosive_arrow'); 
+                AudioEngine.playShoot('chain_lightning');
+                
                 let healAmount = this.stats.maxHp * 0.20;
                 this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount); 
                 Game.getFloatingText().spawn(this.x, this.y + 20, `+${Math.floor(healAmount)} HP`, '#00DDFF', 25);
@@ -3291,6 +3444,16 @@ let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 6 : 12);
                 }
             }
         }
+        // --- MANTIENI VISIBILE LO SCUDO SE HAI TEMP HP ---
+        if (this.tempHp > 0 && this.activeShieldTimer <= 0) {
+            this.shieldMesh.visible = true;
+            this.shieldMesh.material.opacity = 0.5;
+            this.shieldMesh.material.color.setHex(0x00ffaa); // Colore Verde-Azzurro
+            // Lo facciamo ruotare al contrario rispetto allo scudo base per distinguerlo
+            this.shieldMesh.rotation.y -= dt * 2; 
+            this.shieldMesh.rotation.z -= dt * 1.5;
+        }
+        // -------------------------------------------------
         this.modifiers.timeSinceLastHit += dt;
         if (this.modifiers.shieldActive && this.modifiers.shieldConsumed && this.modifiers.timeSinceLastHit >= 15.0) {
             this.modifiers.shieldConsumed = false;
@@ -3582,7 +3745,22 @@ let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 6 : 12);
             this.invincibilityTimer = 0.5; 
             return; 
         }
-        
+        // --- NUOVA LOGICA: SCUDO TEMP HP (GLACIAZIONE) ---
+        if (this.tempHp > 0) {
+            Game.getFloatingText().spawn(this.x, this.y + 20, "ASSORBITO!", '#00ffaa', 25, true);
+            Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark');
+            
+            if (this.tempHp >= amount) {
+                this.tempHp -= amount;
+                return; // Il danno è stato completamente assorbito dallo scudo di ghiaccio
+            } else {
+                amount -= this.tempHp; // Lo scudo attutisce parte del danno
+                this.tempHp = 0; // Scudo infranto
+                this.shieldMesh.visible = false;
+                AudioEngine.playShoot('explosive_arrow'); // Suono di rottura cristallina
+            }
+        }
+        // -------------------------------------------------
         let wasDead = this.dead; amount *= this.modifiers.dmgTakenMult; if (Game.ultimateActive) amount *= 0.5; 
         
         if (this.modifiers.flowMastery && !wasDead) {
@@ -3755,13 +3933,46 @@ class Enemy extends Entity {
     }
     update(dt) {
         if (!this.active || this.dead) return; 
+        // --- NUOVA LOGICA: CONGELAMENTO ASSOLUTO ---
+        if (this.frozenTimer > 0) {
+            this.frozenTimer -= dt;
+            this.speed = 0; // Blocca il movimento
+            
+            // Applica il colore del ghiaccio solido
+            for (let i=0; i<this.flashMats.length; i++) this.flashMats[i].emissive.setHex(0x00aaff); 
+            
+            // Particellare di brina/neve che cade dal nemico congelato
+            if (Game.frameCount % 10 === 0) Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'spark');
+            
+            if (this.frozenTimer <= 0) {
+                // Ripristina l'emissivo corretto a fine congelamento (Nero per normali, Rosso scuro per Elite)
+                let baseEmissive = this.isElite ? 0x440000 : 0x000000;
+                for (let i=0; i<this.flashMats.length; i++) this.flashMats[i].emissive.setHex(baseEmissive); 
+            }
+            return; // Interrompe qui l'update: niente attacchi, rotazioni o IA!
+        }
+        // -------------------------------------------
         this.updateFlash(dt);
         if (this.type === 'mage' || this.type === 'pyromancer') { this.mesh.rotation.y += dt; this.mesh.position.y = Game.animFloat; if(this.modelParts.crystals) this.modelParts.crystals.rotation.y += dt*2; }
         if (this.type === 'goblin') { this.mesh.rotation.x += dt * 15; this.mesh.rotation.y += dt * 10; }
         if (this.type === 'crystal') { this.modelParts.ring.rotation.x += dt; this.modelParts.gem.rotation.y -= dt; }
         
-        if (this.slowedTimer > 0) { this.slowedTimer -= dt; this.speed = this.baseSpeed * 0.5; for (let i=0; i<this.flashMats.length; i++) this.flashMats[i].emissive.setHex(0x004400); } 
-        else { this.speed = this.baseSpeed; }
+        if (this.slowedTimer > 0) { 
+            this.slowedTimer -= dt; 
+            this.speed = this.baseSpeed * 0.5; 
+            
+            // Colore dell'emissivo in base al tipo di rallentamento (Blu o Verde)
+            let glowColor = this.slowType === 'blue' ? 0x0044aa : 0x004400;
+            for (let i=0; i<this.flashMats.length; i++) this.flashMats[i].emissive.setHex(glowColor); 
+            
+            // Crea un alone azzurro a terra tramite particelle se è affetto dall'onda d'urto
+            if (this.slowType === 'blue' && Game.frameCount % 5 === 0) {
+                Game.getParticle().spawn(this.x, 2, this.y, SharedMat.spriteBlue, 'dust');
+            }
+        } else { 
+            this.speed = this.baseSpeed; 
+            this.slowType = null; // Resetta il tipo di rallentamento
+        }
         
         if (this.fireDebuffTimer > 0) this.fireDebuffTimer -= dt;
 

@@ -176,7 +176,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 103</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 104</p>
                 </div>
             </div>
         </div>
@@ -1457,9 +1457,9 @@ class Hazard {
         // --- LOGICA DELL'ANELLO IN ESPANSIONE ---
         if (this.type === 'nova_ring') {
             this.radius += this.expansionSpeed * dt;
-            this.ring.scale.set(this.radius, this.radius, 1.5); // Diamo un po' di spessore
+            this.ring.scale.set(this.radius, this.radius, 1.5);
             this.ring.updateMatrix();
-            this.ring.material.opacity = (this.life / this.maxLife) * 0.9; // Dissolvenza organica
+            this.ring.material.opacity = (this.life / this.maxLife) * 0.9;
             
             // Effetto grafico: scintille che viaggiano sul perimetro
             if (Game.frameCount % 2 === 0 && !isTouchDevice) {
@@ -1467,6 +1467,18 @@ class Hazard {
                 Game.getParticle().spawn(this.x + Math.cos(angle)*this.radius, 5, this.y + Math.sin(angle)*this.radius, SharedMat.spriteGreen, 'flame');
                 Game.getParticle().spawn(this.x + Math.cos(angle)*this.radius, 5, this.y + Math.sin(angle)*this.radius, SharedMat.spriteRed, 'spark');
             }
+
+            // --- NUOVO: SBUFFI DI POLVERE LUNGO L'ANELLO ---
+            // Spawniamo particelle di polvere sul bordo dell'anello ogni 4 frame
+            if (Game.frameCount % 4 === 0) {
+                 let angle = Math.random() * Math.PI * 2;
+                 let px = this.x + Math.cos(angle) * this.radius;
+                 let pz = this.y + Math.sin(angle) * this.radius;
+                 // Usiamo il tipo 'dust' che avevi già definito nel sistema particellare
+                 Game.getParticle().spawn(px, 2, pz, SharedMat.spriteDust, 'dust');
+            }
+            
+            // Collisione calcolata... (il resto del codice che avevi già rimane invariato)
             
             // Collisione calcolata specificamente sul perimetro (anello vuoto al centro)
             let nearby = Game.enemyGrid.findNearby(this, this.radius + 30);

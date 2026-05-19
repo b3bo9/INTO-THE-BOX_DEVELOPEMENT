@@ -4746,9 +4746,9 @@ class Projectile {
                     Game.player.shieldAbsorbed++;
                     Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'spark');
                     AudioEngine.playCollect(); 
-                    Game.addUltimateCharge(5); 
+                    Game.addUltimateCharge(7.5); 
                     
-                    let heal = Game.player.stats.maxHp * 0.05; 
+                    let heal = Game.player.stats.maxHp * 0.1; 
                     Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + heal);
                     Game.getFloatingText().spawn(Game.player.x, Game.player.y + 10, `+${Math.floor(heal)}`, '#00DDFF', 22, true);
                     Game.player.shieldFlashTimer = 0.15; 

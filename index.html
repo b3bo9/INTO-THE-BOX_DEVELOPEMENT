@@ -3421,11 +3421,11 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
         this.shadowMesh.updateMatrix();
 
        // Gestione Scudo Cinetico (Shift)
+    
         if (this.activeShieldTimer > 0) {
             this.activeShieldTimer -= dt;
-            // Se invincibilità attiva, segui il lampeggio, altrimenti mostra lo scudo
-            let isBlinking = this.invincibilityTimer > 0;
-            this.shieldMesh.visible = !isBlinking;
+            // Se invincibilità attiva, nascondi lo scudo durante il blink
+            this.shieldMesh.visible = (this.invincibilityTimer <= 0 || Math.floor(this.invincibilityTimer * 15) % 2 === 0);
             
             this.shieldMesh.rotation.y += dt * 5;
             this.shieldMesh.rotation.z += dt * 3;
@@ -3445,6 +3445,18 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
             }
         } else {
             this.shieldMesh.visible = false;
+        }
+
+        // Gestione Scudo Glaciale (Verde/Blu)
+        if (this.tempHp > 0) {
+            // Se invincibilità attiva, nascondi lo scudo durante il blink
+            this.glacialShieldMesh.visible = (this.invincibilityTimer <= 0 || Math.floor(this.invincibilityTimer * 15) % 2 === 0);
+            
+            this.glacialShieldMesh.material.opacity = 0.3 + Math.sin(Game.playTime * 3) * 0.1;
+            this.glacialShieldMesh.rotation.y -= dt * 2; 
+            this.glacialShieldMesh.rotation.z -= dt * 1.5;
+        } else {
+            this.glacialShieldMesh.visible = false;
         }
 
         // Gestione Scudo Glaciale (Verde/Blu)
@@ -3491,20 +3503,21 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
 
         if (this.modifiers.passiveUltCharge && !Game.ultimateActive) { Game.addUltimateCharge(2.0 * dt); }
 
+        // Gestione Invincibilità (con esclusione sicura degli scudi)
         if (this.invincibilityTimer > 0) {
             this.invincibilityTimer -= dt; 
             let isVisible = (Math.floor(this.invincibilityTimer * 15) % 2 === 0);
             
-            // Applichiamo il lampeggio a tutto tranne la luce
             this.mesh.children.forEach(child => { 
-                if (child !== this.light) {
+                // Escludiamo esplicitamente gli scudi e la luce
+                if (child !== this.light && child !== this.shieldMesh && child !== this.glacialShieldMesh) {
                     child.visible = isVisible; 
                 }
             });
             
             if (this.invincibilityTimer <= 0) { 
                 this.mesh.children.forEach(child => { 
-                    if (child !== this.light) {
+                    if (child !== this.light && child !== this.shieldMesh && child !== this.glacialShieldMesh) {
                         child.visible = true; 
                     }
                 }); 

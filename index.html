@@ -3423,7 +3423,10 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
        // Gestione Scudo Cinetico (Shift)
         if (this.activeShieldTimer > 0) {
             this.activeShieldTimer -= dt;
-            this.shieldMesh.visible = true;
+            // Se invincibilità attiva, segui il lampeggio, altrimenti mostra lo scudo
+            let isBlinking = this.invincibilityTimer > 0;
+            this.shieldMesh.visible = !isBlinking;
+            
             this.shieldMesh.rotation.y += dt * 5;
             this.shieldMesh.rotation.z += dt * 3;
             
@@ -3442,6 +3445,19 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
             }
         } else {
             this.shieldMesh.visible = false;
+        }
+
+        // Gestione Scudo Glaciale (Verde/Blu)
+        if (this.tempHp > 0) {
+            // Se invincibilità attiva, segui il lampeggio, altrimenti mostra lo scudo
+            let isBlinking = this.invincibilityTimer > 0;
+            this.glacialShieldMesh.visible = !isBlinking;
+            
+            this.glacialShieldMesh.material.opacity = 0.3 + Math.sin(Game.playTime * 3) * 0.1;
+            this.glacialShieldMesh.rotation.y -= dt * 2; 
+            this.glacialShieldMesh.rotation.z -= dt * 1.5;
+        } else {
+            this.glacialShieldMesh.visible = false;
         }
 
        // Gestione Scudo Glaciale (Verde/Blu)
@@ -3478,16 +3494,17 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
         if (this.invincibilityTimer > 0) {
             this.invincibilityTimer -= dt; 
             let isVisible = (Math.floor(this.invincibilityTimer * 15) % 2 === 0);
-            // AGGIUNTA: Escludi glacialShieldMesh dal loop di blink
+            
+            // Applichiamo il lampeggio a tutto tranne la luce
             this.mesh.children.forEach(child => { 
-                if (child !== this.light && child !== this.shieldMesh && child !== this.glacialShieldMesh) {
+                if (child !== this.light) {
                     child.visible = isVisible; 
                 }
             });
             
             if (this.invincibilityTimer <= 0) { 
                 this.mesh.children.forEach(child => { 
-                    if (child !== this.light && child !== this.shieldMesh && child !== this.glacialShieldMesh) {
+                    if (child !== this.light) {
                         child.visible = true; 
                     }
                 }); 

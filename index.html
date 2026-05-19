@@ -3307,8 +3307,8 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
 
                 // 2. Scudo Vita Temporanea
                 this.tempHp = this.stats.maxHp * 0.20;
-                this.shieldMesh.material.color.setHex(0x00ffaa);
-                this.shieldMesh.visible = true;
+                this.glacialShieldMesh.material.color.setHex(0x00ffaa); // Colore sfera
+                this.glacialShieldMesh.visible = true; // Attiva SOLO la sfera glaciale
 
                 // 3. EFFETTO "FROST NOVA" POTENZIATO
                 Game.addTrauma(1.2); // Shake più forte

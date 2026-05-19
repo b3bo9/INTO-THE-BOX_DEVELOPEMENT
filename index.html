@@ -3463,22 +3463,10 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
             this.shieldMesh.visible = false;
         }
 
-        // Gestione Scudo Glaciale (Verde/Blu)
+       // Gestione unica ed esclusiva dello Scudo Glaciale (Temp HP)
         if (this.tempHp > 0) {
-            // Se invincibilità attiva, nascondi lo scudo durante il blink
-            this.glacialShieldMesh.visible = (this.invincibilityTimer <= 0 || Math.floor(this.invincibilityTimer * 15) % 2 === 0);
-            
-            this.glacialShieldMesh.material.opacity = 0.3 + Math.sin(Game.playTime * 3) * 0.1;
-            this.glacialShieldMesh.rotation.y -= dt * 2; 
-            this.glacialShieldMesh.rotation.z -= dt * 1.5;
-        } else {
-            this.glacialShieldMesh.visible = false;
-        }
-
-        // Gestione Scudo Glaciale (Verde/Blu)
-        if (this.tempHp > 0) {
-            // Se invincibilità attiva, segui il lampeggio, altrimenti mostra lo scudo
-            let isBlinking = this.invincibilityTimer > 0;
+            // Nasconde lo scudo solo se stiamo "lampeggiando" per l'invincibilità
+            let isBlinking = this.invincibilityTimer > 0 && Math.floor(this.invincibilityTimer * 15) % 2 !== 0;
             this.glacialShieldMesh.visible = !isBlinking;
             
             this.glacialShieldMesh.material.opacity = 0.3 + Math.sin(Game.playTime * 3) * 0.1;
@@ -3487,30 +3475,9 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
         } else {
             this.glacialShieldMesh.visible = false;
         }
+       
 
-       // Gestione Scudo Glaciale (Verde/Blu)
-        if (this.tempHp > 0) {
-            this.glacialShieldMesh.visible = true;
-            this.glacialShieldMesh.material.opacity = 0.3 + Math.sin(Game.playTime * 3) * 0.1;
-            this.glacialShieldMesh.rotation.y -= dt * 2; 
-            this.glacialShieldMesh.rotation.z -= dt * 1.5;
-        } else {
-            // Forza la scomparsa se tempHp è 0
-            if (this.glacialShieldMesh.visible) {
-                this.glacialShieldMesh.visible = false;
-                this.glacialShieldMesh.material.opacity = 0.3; // Reset opacity
-            }
-        }
-        // --- MANTIENI VISIBILE LO SCUDO SE HAI TEMP HP ---
-        if (this.tempHp > 0 && this.activeShieldTimer <= 0) {
-            this.shieldMesh.visible = true;
-            this.shieldMesh.material.opacity = 0.5;
-            this.shieldMesh.material.color.setHex(0x00ffaa); // Colore Verde-Azzurro
-            // Lo facciamo ruotare al contrario rispetto allo scudo base per distinguerlo
-            this.shieldMesh.rotation.y -= dt * 2; 
-            this.shieldMesh.rotation.z -= dt * 1.5;
-        }
-        // -------------------------------------------------
+       
         this.modifiers.timeSinceLastHit += dt;
         if (this.modifiers.shieldActive && this.modifiers.shieldConsumed && this.modifiers.timeSinceLastHit >= 15.0) {
             this.modifiers.shieldConsumed = false;
@@ -3888,6 +3855,8 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
             this.activeShieldTimer = 2.0 + this.modifiers.shieldDurationAdd; // <--- MODIFICATO QUI
             this.shieldAbsorbed = 0;
             this.shieldMesh.visible = true;
+            this.shieldMesh.material.color.setHex(0x00DDFF); // Forza il ciano originale
+            this.shieldMesh.material.opacity = 0.6;
             AudioEngine.playCollect(); 
         }
     }

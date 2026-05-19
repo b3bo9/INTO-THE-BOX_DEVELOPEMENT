@@ -3153,7 +3153,7 @@ class Entity {
 
 class Player extends Entity {
     constructor(x, y) {
-        super(x, y, 16, 200); this.baseSpeed = 200; this.level = 1; this.xp = 0; this.xpNeeded = 100;
+        super(x, y, 16, 200); this.baseSpeed = 200; this.level = 1; this.xp = 0; this.xpNeeded = 100; this.tempHp = 0;
         this.attackTimer = 0; this.baseAttackSpeed = 3.5; this.isAttacking = false; this.attackSwing = 0;
         this.dashTimer = 0; this.isDashing = false; this.dashCooldown = 0; this.stats = { hp: 100, maxHp: 100, minDmg: 8, maxDmg: 15 };
         this.essenceList = []; this.essence = null; this.essenceTimer = 0; this.overdrive = false; this.invincibilityTimer = 0; this.relics = [];
@@ -3452,7 +3452,9 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
             this.glacialShieldMesh.rotation.y -= dt * 2; 
             this.glacialShieldMesh.rotation.z -= dt * 1.5;
         } else {
-            this.glacialShieldMesh.visible = false;
+           if (this.glacialShieldMesh.visible) {
+                this.glacialShieldMesh.visible = false;
+            }
         }
         // --- MANTIENI VISIBILE LO SCUDO SE HAI TEMP HP ---
         if (this.tempHp > 0 && this.activeShieldTimer <= 0) {
@@ -3756,23 +3758,22 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
             this.invincibilityTimer = 0.5; 
             return; 
         }
-        
-        // 2. Priorità: Scudo Glaciale (Temp Hp Verde/Blu)
+       // 2. Priorità: Scudo Glaciale (Temp Hp Verde/Blu)
         if (this.tempHp > 0) {
-            Game.getFloatingText().spawn(this.x, this.y + 20, "ASSORBITO!", '#00ffaa', 25, true);
-            Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark');
-            
-            // Flash visivo dello scudo glaciale quando colpito
+            // Effetto grafico immediato
             this.glacialShieldMesh.material.opacity = 0.8; 
             
             if (this.tempHp >= amount) {
                 this.tempHp -= amount;
-                return; // Danno totalmente assorbito
+                Game.getFloatingText().spawn(this.x, this.y + 20, "ASSORBITO!", '#00ffaa', 25, true);
+                Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark');
+                return; // Il danno è stato assorbito, il proiettile non deve colpire la vita base
             } else {
-                amount -= this.tempHp;
-                this.tempHp = 0;
+                amount -= this.tempHp; // Lo scudo attutisce parte del danno
+                this.tempHp = 0; 
                 this.glacialShieldMesh.visible = false;
-                AudioEngine.playShoot('explosive_arrow'); // Suono di rottura
+                AudioEngine.playShoot('explosive_arrow');
+                Game.getFloatingText().spawn(this.x, this.y + 20, "SCUDO INFRANTO!", '#ff3300', 25, true);
             }
         }
         

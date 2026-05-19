@@ -3232,7 +3232,7 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
         else if (counts.green === 3) { this.essence = 'green'; this.triggerOverdrive(); } 
         else {
             Game.addTrauma(1.5); let comboName = ""; let color = '#ffffff';
-            if (counts.red > 0 && counts.blue > 0 && counts.green === 0) {
+           if (counts.red > 0 && counts.blue > 0 && counts.green === 0) {
                 comboName = "ONDA D'URTO!"; color = "#00AAFF"; 
                 let shockRange = 250; 
                 let shockRangeSq = shockRange * shockRange;
@@ -3250,35 +3250,51 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
                     } 
                 });
 
-                // 2. Distruzione Proiettili (Bullet-Clear)
+                // 2. Distruzione Proiettili con Feedback Visivo (Corto Circuito)
                 for (let i = 0; i < Game.projectiles.length; i++) {
                     let p = Game.projectiles[i];
-                    // Se il proiettile è attivo, è di un nemico ed è nel raggio d'azione
                     if (p.active && p.owner !== 'player' && MathUtils.distanceSq(this, p) < shockRangeSq) {
-                        p.destroy(); // Distrugge l'attacco nemico
+                        // Mostra un lampo bianco sul proiettile prima di distruggerlo
+                        let overload = Game.getParticle();
+                        overload.spawn(p.x, 15, p.y, SharedMat.spriteWhite, 'nova');
+                        overload.baseSize = 45;
+                        p.destroy(); 
                     }
                 }
 
-                // 3. EFFETTI VISIVI (Sbuffi di polvere e luce)
-    // Flash al centro del giocatore
-    Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteBlue, 'nova'); 
-    
-    // Anello di polvere che si espande (sbuffi)
-    let pCount = isTouchDevice ? 10 : 24;
-    for(let i=0; i<pCount; i++) {
-        let a = (Math.PI * 2 / pCount) * i;
-        let px = this.x + Math.cos(a) * 40; // Parte un po' distante dal centro
-        let pz = this.y + Math.sin(a) * 40;
-        let p = Game.getParticle();
-        p.spawn(px, 2, pz, SharedMat.spriteDust, 'dust');
-        // Diamo una velocità radiale alle particelle di polvere
-        p.vx = Math.cos(a) * 300;
-        p.vz = Math.sin(a) * 300;
-    }
-    
-    AudioEngine.playShoot('chain_lightning');
-    Game.addTrauma(0.8);
-          } else if (counts.red > 0 && counts.green > 0 && counts.blue === 0) {
+                // 3. EFFETTI VISIVI POTENZIATI (Scarica EMP Cinetica)
+                Game.hitStop = 0.15; // Leggero freeze-frame per enfatizzare l'impatto
+                Game.addTrauma(1); // Screen-shake molto più secco e violento
+                
+                // Doppia Nova centrale (Bianca e Azzurra) enorme per accecare l'area
+                let novaB = Game.getParticle(); novaB.spawn(this.x, 15, this.y, SharedMat.spriteBlue, 'nova'); novaB.baseSize = 350;
+                let novaW = Game.getParticle(); novaW.spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'nova'); novaW.baseSize = 200;
+
+                // Anello di fulmini ed energia cinetica ad altissima velocità
+                let pCount = AppSettings.isLow ? 15 : (isTouchDevice ? 30 : 60);
+                for(let i=0; i<pCount; i++) {
+                    let a = (Math.PI * 2 / pCount) * i;
+                    
+                    // Scia elettrica azzurra (Fulmine radiale rapidissimo)
+                    let spark = Game.getParticle();
+                    spark.spawn(this.x, 15, this.y, SharedMat.spriteBlue, 'spark');
+                    spark.vx = Math.cos(a) * 1200; 
+                    spark.vz = Math.sin(a) * 1200;
+                    spark.life = 0.25; // Svanisce quasi subito, come un vero flash
+                    
+                    // Polvere cinetica sollevata violentemente dall'onda
+                    if (i % 4 === 0) {
+                        let dust = Game.getParticle();
+                        dust.spawn(this.x + Math.cos(a)*20, 2, this.y + Math.sin(a)*20, SharedMat.spriteDust, 'dust');
+                        dust.vx = Math.cos(a) * 600;
+                        dust.vz = Math.sin(a) * 600;
+                    }
+                }
+                
+                // Sovrapponiamo fulmine + esplosione sorda per un suono potente
+                AudioEngine.playShoot('chain_lightning');
+                AudioEngine.playShoot('explosive_arrow'); 
+            } else if (counts.red > 0 && counts.green > 0 && counts.blue === 0) {
                 comboName = "NOVA TOSSICA!"; color = "#99FF00"; 
                 // Evoca un anello dinamico tramite la classe Hazard
                 // Raggio finale: 250, Durata: 1.5s 

@@ -1892,7 +1892,15 @@ this.dirLight = new THREE.DirectionalLight(0x4466aa, 1.8);
         this.dashLines = Array.from({length: 15}, () => new DashLine());     
     },
 
-    getDebris() { let d = this.debris[this._debrisIdx]; this._debrisIdx = (this._debrisIdx + 1) % this.debris.length; return d; },
+    getDebris() { 
+        let startIdx = this._debrisIdx;
+        do {
+            let d = this.debris[this._debrisIdx];
+            this._debrisIdx = (this._debrisIdx + 1) % this.debris.length;
+            if (!d.active) return d; // Restituisce solo se inattivo
+        } while (this._debrisIdx !== startIdx);
+        return null; // Pool esaurito: evita di teletrasportare detriti già in volo
+    },
     getParticle() { let p = this.particles[this._particleIdx]; this._particleIdx = (this._particleIdx + 1) % this.particles.length; return p; },
     getProjectile() { let p = this.projectiles[this._projectileIdx]; this._projectileIdx = (this._projectileIdx + 1) % this.projectiles.length; return p; },
     getFloatingText() { let f = this.floatingTexts[this._textIdx]; this._textIdx = (this._textIdx + 1) % this.floatingTexts.length; return f; },
@@ -4177,7 +4185,8 @@ class Enemy extends Entity {
                 child.getWorldScale(_scale);
                 
                 // Passiamo "this.radius" per bloccare il gigantismo
-                Game.getDebris().spawn(_pos, _quat, _scale, child.geometry, cHex, this.radius, this.isElite);
+                let debris = Game.getDebris();
+                if (debris) debris.spawn(_pos, _quat, _scale, child.geometry, cHex, this.radius, this.isElite);
             }
         });
         // --- INIZIO EFFETTI "JUICY" ---
@@ -4746,7 +4755,10 @@ class Projectile {
             // --- NUOVO: Spawna sassi volanti dall'esplosione! ---
             let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 5 : 10);
             let pVec = new THREE.Vector3(this.x, 2, this.y); let pQuat = new THREE.Quaternion(); let pScale = new THREE.Vector3(3, 3, 3);
-            for(let d=0; d<dCount; d++) Game.getDebris().spawn(pVec, pQuat, pScale, SharedGeo.rockDebris, 0x4a3b2c, 10, false);
+            for(let d=0; d<dCount; d++) {
+                let deb = Game.getDebris();
+                if (deb) deb.spawn(pVec, pQuat, pScale, SharedGeo.rockDebris, 0x4a3b2c, 10, false);
+            }
         }
     }
 }

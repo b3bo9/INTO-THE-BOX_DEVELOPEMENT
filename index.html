@@ -3444,16 +3444,17 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
             this.shieldMesh.visible = false;
         }
 
-        // Gestione Scudo Glaciale (Verde/Blu)
+       // Gestione Scudo Glaciale (Verde/Blu)
         if (this.tempHp > 0) {
             this.glacialShieldMesh.visible = true;
-            // Pulsazione lenta e "ghiacciata"
             this.glacialShieldMesh.material.opacity = 0.3 + Math.sin(Game.playTime * 3) * 0.1;
             this.glacialShieldMesh.rotation.y -= dt * 2; 
             this.glacialShieldMesh.rotation.z -= dt * 1.5;
         } else {
-           if (this.glacialShieldMesh.visible) {
+            // Forza la scomparsa se tempHp è 0
+            if (this.glacialShieldMesh.visible) {
                 this.glacialShieldMesh.visible = false;
+                this.glacialShieldMesh.material.opacity = 0.3; // Reset opacity
             }
         }
         // --- MANTIENI VISIBILE LO SCUDO SE HAI TEMP HP ---
@@ -3760,20 +3761,21 @@ this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y 
         }
        // 2. Priorità: Scudo Glaciale (Temp Hp Verde/Blu)
         if (this.tempHp > 0) {
-            // Effetto grafico immediato
+            Game.getFloatingText().spawn(this.x, this.y + 20, "ASSORBITO!", '#00ffaa', 25, true);
+            Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark');
+            
+            // Flash visivo dello scudo glaciale quando colpito
             this.glacialShieldMesh.material.opacity = 0.8; 
+            setTimeout(() => { if(this.glacialShieldMesh) this.glacialShieldMesh.material.opacity = 0.4; }, 100);
             
             if (this.tempHp >= amount) {
                 this.tempHp -= amount;
-                Game.getFloatingText().spawn(this.x, this.y + 20, "ASSORBITO!", '#00ffaa', 25, true);
-                Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark');
-                return; // Il danno è stato assorbito, il proiettile non deve colpire la vita base
+                return; // Il danno è stato assorbito
             } else {
-                amount -= this.tempHp; // Lo scudo attutisce parte del danno
-                this.tempHp = 0; 
-                this.glacialShieldMesh.visible = false;
-                AudioEngine.playShoot('explosive_arrow');
-                Game.getFloatingText().spawn(this.x, this.y + 20, "SCUDO INFRANTO!", '#ff3300', 25, true);
+                amount -= this.tempHp;
+                this.tempHp = 0;
+                this.glacialShieldMesh.visible = false; // <-- FIX: Ora nasconde quello giusto!
+                AudioEngine.playShoot('explosive_arrow'); 
             }
         }
         

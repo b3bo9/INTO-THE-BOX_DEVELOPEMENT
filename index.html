@@ -569,9 +569,11 @@ const AudioEngine = {
     gameBGM: (() => { let a = new Audio('Gameplay.mp3'); a.loop = true; a.preload = 'auto'; return a; })(),
     bossBGM: (() => { let a = new Audio('Boss.mp3'); a.loop = true; a.preload = 'auto'; return a; })(),
     transitionSFX: (() => { let a = new Audio('Vittoria_Piano.mp3'); a.preload = 'auto'; return a; })(),
-    deathSFX: (() => { let a = new Audio('Caduto.mp3'); a.preload = 'auto'; return a; })(),
-    gameOverSFX: (() => { let a = new Audio('RIP.mp3'); a.preload = 'auto'; return a; })(),
-    _menuFade: null, _gameFade: null, _bossFade: null,
+    deathSFX: (() => { let a = new Audio('Caduto.mp3'); a.preload = 'auto'; return a; })(),
+    gameOverSFX: (() => { let a = new Audio('RIP.mp3'); a.preload = 'auto'; return a; })(),
+    uiClickSFX: (() => { let a = new Audio('click.mp3'); a.preload = 'auto'; return a; })(),
+    countdownSFX: (() => { let a = new Audio('countdown.mp3'); a.preload = 'auto'; return a; })(),
+    _menuFade: null, _gameFade: null, _bossFade: null,
     lastHitTime: 0, hitCount: 0, lastShootTime: 0, shootCount: 0,
     // ---> AGGIUNGI QUESTO BLOCCO <---
     heartbeatTimer: 0, isLowHp: false,
@@ -747,12 +749,19 @@ const AudioEngine = {
         osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(this.ctx.currentTime + 0.1);
     },
     playClick() {
-        if (!this.ctx || this.ctx.state === 'suspended' || this.sfxMuted) return;
-        let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
-        osc.type = 'square'; osc.frequency.setValueAtTime(100, this.ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(20, this.ctx.currentTime + 0.2);
-        gain.gain.setValueAtTime(0.2, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
-        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(this.ctx.currentTime + 0.2);
-    },
+        if (this.sfxMuted) return;
+        this.uiClickSFX.currentTime = 0;
+        this.uiClickSFX.volume = 0.6; // Regola il volume se è troppo alto (0.0 - 1.0)
+        let p = this.uiClickSFX.play();
+        if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
+    },
+    playCountdown() {
+        if (this.sfxMuted) return;
+        this.countdownSFX.currentTime = 0;
+        this.countdownSFX.volume = 0.8;
+        let p = this.countdownSFX.play();
+        if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
+    },
     playMenuMusic() {
         if (this.musicMuted || this.musicNode) return;
         this.stopGameMusic(); this.stopBossMusic();
@@ -2459,9 +2468,9 @@ if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
                 let newSec = Math.ceil(this.floorEndTimer);
                 
                 if (oldSec !== newSec && newSec > 0) {
-                    Game.getFloatingText().spawn(this.player.x, this.player.y, newSec.toString(), '#00DDFF', 60, true);
-                    AudioEngine.playHit('player');
-                }
+                    Game.getFloatingText().spawn(this.player.x, this.player.y, newSec.toString(), '#00DDFF', 60, true);
+                    AudioEngine.playCountdown();
+                }
                 
                 if (this.floorEndTimer <= 0 || (enemiesLeft <= 0 && this.enemies.length === 0)) {
                     for (let i = this.enemies.length - 1; i >= 0; i--) {
@@ -5401,8 +5410,8 @@ const Preloader = {
             img.src = src;
         });
 
-        // 3. Audio (non bloccante)
-        ['The_Iron_Pulse.mp3', 'Gameplay.mp3', 'Boss.mp3', 'Vittoria_Piano.mp3', 'Caduto.mp3', 'RIP.mp3'].forEach(src => {
+     // 3. Audio (non bloccante)
+        ['The_Iron_Pulse.mp3', 'Gameplay.mp3', 'Boss.mp3', 'Vittoria_Piano.mp3', 'Caduto.mp3', 'RIP.mp3', 'click.mp3', 'countdown.mp3'].forEach(src => {
             fetch(src).catch(e => {});
         });
     }

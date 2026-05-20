@@ -2992,7 +2992,7 @@ const matDirt = new MapMaterialClass({
         const meshDirt = new THREE.InstancedMesh(floorGeo, matDirt, floorCount);
         const meshGrass = new THREE.InstancedMesh(floorGeo, matGrass, floorCount);
         const meshRock = new THREE.InstancedMesh(floorGeo, matRock, floorCount);
-        meshDirt.renderOrder = -3; meshGrass.renderOrder = -2; meshRock.renderOrder = -1;
+        meshDirt.renderOrder = -10; meshGrass.renderOrder = -9; meshRock.renderOrder = -8;
        
 
         const wallGeo = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
@@ -3225,7 +3225,7 @@ const matDirt = new MapMaterialClass({
 });
 
 this.fogMesh = new THREE.InstancedMesh(fogGeo, fogMat, fogCount);
-this.fogMesh.renderOrder = 5; // Assicura che venga disegnato DOPO il terreno (renderOrder alto = disegnato dopo)
+this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (renderOrder alto = disegnato dopo)
             for(let i = 0; i < fogCount; i++) {
                 // Posizioni casuali su tutta la mappa
                 let px = Math.random() * (this.width * TILE_SIZE);

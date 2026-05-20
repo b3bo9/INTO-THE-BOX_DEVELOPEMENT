@@ -63,37 +63,32 @@
         @keyframes shimmer { 100% { transform: translateX(100%); } }
         .animate-shimmer { animation: shimmer 1.5s infinite linear; }
 
-      #vignette { 
-    position: absolute; inset: 0; 
-    /* Su mobile allarghiamo l'area trasparente centrale al 50% per dare respiro all'azione */
-    background: radial-gradient(circle at center, transparent 50%, rgba(6, 6, 16, 0.95) 100%); 
-    box-shadow: inset 0 0 120px rgba(2, 2, 8, 0.9);
+     #vignette { 
+    position: absolute; inset: 0; 
+    /* Il box-shadow interno per scurire i bordi è stato fuso nel gradiente. FPS x2 su mobile! */
+    background: radial-gradient(circle at center, transparent 40%, rgba(6, 6, 16, 0.8) 85%, rgba(2, 2, 8, 0.95) 100%); 
     z-index: 5; pointer-events: none; 
     mix-blend-mode: multiply; 
     transition: opacity 0.5s; 
 }
 
-        /* Questo è il nuovo strato dedicato ESCLUSIVAMENTE al sangue, separato da quello nero */
-        #vignette::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at center, transparent 30%, rgba(220, 0, 0, 0.8) 115%);
-            box-shadow: inset 0 0 160px rgba(255, 0, 0, 0.9);
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s;
-        }
+#blood-vignette {
+    background: radial-gradient(circle at center, transparent 30%, rgba(220, 0, 0, 0.3) 80%, rgba(255, 0, 0, 0.6) 100%);
+    transition: opacity 0.3s;
+}
 
-        .vignette-low-hp {
-            mix-blend-mode: normal !important;
-            opacity: 1 !important; 
-        }
+.vignette-low-hp-active {
+    opacity: 1 !important;
+    animation: pulse-blood-opacity 0.8s infinite ease-in-out;
+}
 
-        /* Quando scendi sotto il 30%, facciamo pulsare SOLO l'opacità dello strato rosso */
-        .vignette-low-hp::after {
-            animation: pulse-blood-opacity 0.8s infinite ease-in-out;
-        }
+@keyframes pulse-blood-opacity {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+        
+       
 
         @keyframes pulse-blood-opacity {
             0%, 100% { opacity: 0.3; }
@@ -438,7 +433,7 @@
     <canvas id="uiCanvas"></canvas>
     <div id="mist"></div>
     <div id="vignette"></div>
-
+<div id="blood-vignette" class="absolute inset-0 pointer-events-none opacity-0 z-[6]"></div>
     <!-- CONTROLLI MOBILE -->
     <div id="mobile-controls" class="absolute inset-0 pointer-events-none z-50 hidden">
         <div id="joy-left-zone" class="absolute bottom-8 left-8 sm:bottom-12 sm:left-12 landscape:bottom-6 landscape:left-12 w-32 h-32 bg-white/10 rounded-full border border-white/20 pointer-events-auto touch-none">
@@ -1879,6 +1874,9 @@ if (this.els.btnDash) {
     }
 };
 const Game = {
+    _dummyQuat: new THREE.Quaternion(),
+_dummyScale: new THREE.Vector3(3, 3, 3),
+    _dummyFog: new THREE.Object3D(),
     scene: null, camera: null, renderer: null, raycaster: new THREE.Raycaster(), uiCanvas: document.getElementById('uiCanvas'), uiCtx: null,
     width: window.innerWidth, height: window.innerHeight, keys: {}, mouse: { x: 0, y: 0, worldX: 0, worldY: 0, leftDown: false },
     inputs: { left: {x:0, y:0, active:false}, right: {x:0, y:0, active:false} },
@@ -1912,6 +1910,7 @@ const Game = {
         UI.init(); TouchControls.init(); const container = document.getElementById('game-container');
         this.scene = new THREE.Scene(); this.scene.fog = new THREE.Fog(0x050508, 400, 1800); 
         this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 1, 3000);
+        this.els.fpsValue = document.getElementById('fps-value');
         
         const pixelRatio = isTouchDevice ? 0.9 : (AppSettings.isUltra ? Math.min(window.devicePixelRatio, 2.0) : Math.min(window.devicePixelRatio, 1.5));
         
@@ -2132,7 +2131,7 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         this.fpsFrames++;
         if (timestamp > this.fpsLastTime + 1000) {
             let fps = Math.round((this.fpsFrames * 1000) / (timestamp - this.fpsLastTime));
-            let fpsEl = document.getElementById('fps-value');
+let fpsEl = UI.els.fpsValue;
             
             if (fpsEl) {
                 fpsEl.innerText = fps;
@@ -2311,7 +2310,7 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         // --- AGGIORNAMENTO DERIVA DELLA NEBBIA BASSA ---
         // Dentro Game.update(dt)
 if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
-    let dummyFog = new THREE.Object3D();
+    let dummyFog = this._dummyFog;
     let mapW = this.map.width * TILE_SIZE;
     let mapH = this.map.height * TILE_SIZE;
     
@@ -2365,20 +2364,20 @@ if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
                         // 50% Gialle (Lucciole classiche), 50% Verdi (Spore silvane)
                        let magicMat = Math.random() > 0.3 ? SharedMat.spriteWhite : SharedMat.spriteRed;
                         // SPAWNA NEL CIELO: La cenere piove dall'alto verso il basso!
-                        p.spawn(px, MathUtils.randomRange(100, 180), pz, magicMat, 'ambient');
+                       p.spawn(px, MathUtils.randomRange(40, 80), pz, magicMat, 'ambient');
                     }
                 }
             }
         }
         // ---------------------------------------------
-        if ((this.player.stats.hp / this.player.stats.maxHp) < 0.30 && !this.player.dead) {
-            document.getElementById('vignette').classList.add('vignette-low-hp');
-            AudioEngine.setLowHpState(true);
-            AudioEngine.playHeartbeat(dt);
-        } else {
-            document.getElementById('vignette').classList.remove('vignette-low-hp');
-            AudioEngine.setLowHpState(false);
-        }
+   if ((this.player.stats.hp / this.player.stats.maxHp) < 0.30 && !this.player.dead) {
+    document.getElementById('blood-vignette').classList.add('vignette-low-hp-active');
+    AudioEngine.setLowHpState(true);
+    AudioEngine.playHeartbeat(dt);
+} else {
+    document.getElementById('blood-vignette').classList.remove('vignette-low-hp-active');
+    AudioEngine.setLowHpState(false);
+}
         // ---------------------------------------------
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             let e = this.enemies[i]; e.update(dt); this.enemyGrid.updateClient(e); 
@@ -5013,8 +5012,11 @@ class Projectile {
             
             // --- NUOVO: Spawna sassi volanti dall'esplosione! ---
             let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 5 : 10);
-            let pVec = new THREE.Vector3(this.x, 2, this.y); let pQuat = new THREE.Quaternion(); let pScale = new THREE.Vector3(3, 3, 3);
-            for(let d=0; d<dCount; d++) {
+Game._vec3Screen.set(this.x, 2, this.y); // Ricicliamo la variabile globale
+for(let d=0; d<dCount; d++) {
+    let deb = Game.getDebris();
+    if (deb) deb.spawn(Game._vec3Screen, Game._dummyQuat, Game._dummyScale, SharedGeo.rockDebris, 0x4a3b2c, 10, false);
+}
                 let deb = Game.getDebris();
                 if (deb) deb.spawn(pVec, pQuat, pScale, SharedGeo.rockDebris, 0x4a3b2c, 10, false);
             }
@@ -5036,12 +5038,12 @@ class Particle {
             this.life = 0.15;
             this.baseSize = MathUtils.randomRange(60, 100);
             this.vx = 0; this.vy = 0; this.vz = 0;
-       } else if (type === 'ambient') { // --- NUOVO: Spore/Lucciole
-            this.life = MathUtils.randomRange(2.0, 4.5); 
-            this.baseSize = MathUtils.randomRange(4, 9); 
-            this.vx = MathUtils.randomRange(-10, 10);
-            this.vy = MathUtils.randomRange(-18, -6); 
-            this.vz = MathUtils.randomRange(-10, 10);
+      } else if (type === 'ambient') { 
+    this.life = MathUtils.randomRange(3.0, 6.0); 
+    this.baseSize = MathUtils.randomRange(15, 35); // Più grandi per compensare la distanza
+    this.vx = MathUtils.randomRange(-15, 15);
+    this.vy = MathUtils.randomRange(-35, -15); // Cadono più velocemente
+    this.vz = MathUtils.randomRange(-15, 15);
         } else if (type === 'dust') { // --- NUOVO: Polvere al calpestio
             this.life = MathUtils.randomRange(0.4, 0.6);
             this.baseSize = MathUtils.randomRange(15, 25);

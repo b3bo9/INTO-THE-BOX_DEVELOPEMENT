@@ -16,6 +16,14 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
 
     <style>
+        /* Flash di danno in faccia al giocatore */
+        .damage-flash-active {
+            animation: hit-flash 0.25s ease-out forwards !important;
+        }
+        @keyframes hit-flash {
+            0% { box-shadow: inset 0 0 150px rgba(255, 0, 0, 0.9); background-color: rgba(200, 0, 0, 0.2); }
+            100% { box-shadow: inset 0 0 0px transparent; background-color: transparent; }
+        }
         * { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
         input { -webkit-user-select: auto; user-select: auto; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #050508; font-family: 'Impact', 'Georgia', serif; }
@@ -91,18 +99,30 @@
             0%, 100% { opacity: 0.3; }
             50% { opacity: 1; }
         }
-     /* --- NUOVO: Nebbia Volumetrica Parallasse 2D --- */
+    /* --- NEBBIA VOLUMETRICA PARALLASSE (DOPPIO STRATO) --- */
+        #mist, #mist::after {
+            position: absolute; inset: -50%; z-index: 4; pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.015' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.25'/%3E%3C/svg%3E");
+            mix-blend-mode: screen; 
+        }
         #mist {
-            position: absolute; inset: 0; z-index: 4; pointer-events: none;
-            /* Fumo generato matematicamente via SVG senza scaricare immagini */
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.015' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.25'/%3E%3C/svg%3E");
-            mix-blend-mode: screen; opacity: 0.4;
-            animation: mist-drift 60s linear infinite;
+            opacity: 0.35;
+            animation: mist-drift-layer1 70s linear infinite;
         }
-        @keyframes mist-drift { 
-            from { transform: scale(1.5) translate(0, 0); } 
-            to { transform: scale(1.5) translate(-10%, -10%); } 
+        #mist::after {
+            content: '';
+            opacity: 0.25;
+            /* Lo strato superiore si muove in direzione diversa ed è scalato, creando parallasse */
+            animation: mist-drift-layer2 45s linear infinite;
         }
+        @keyframes mist-drift-layer1 { 
+            from { transform: scale(1.2) translate(0, 0); } 
+            to { transform: scale(1.2) translate(-15%, -10%); } 
+        }
+        @keyframes mist-drift-layer2 { 
+            from { transform: scale(1.8) translate(0, 0) rotate(10deg); } 
+            to { transform: scale(1.8) translate(10%, -15%) rotate(10deg); } 
+        }
         .relic-card { transition: all 0.2s; cursor: pointer; } .relic-card:hover { transform: scale(1.05) translateY(-5px); } .relic-card:active { transform: scale(0.95); }
         .rarity-common { border-color: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); } .rarity-rare { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
         .rarity-epic { border-color: #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.6); } .rarity-legendary { border-color: #fbbf24; box-shadow: 0 0 30px rgba(251, 191, 36, 0.8); }
@@ -2134,10 +2154,12 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         let windCount = 0;
 
         if (this.player && !this.player.dead) {
-            // FIX "EFFETTO CALAMITA": Niente più ritardo (lerp). Il vento è esattamente sul giocatore.
-            windSources[windCount].set(this.player.x, 1.0, this.player.y);
-            windCount++;
-        }
+            // Il vento base è 1.0, ma diventa un tornado (4.0) durante lo scatto 
+            // e si alza (2.5) costantemente durante l'Ascensione (Ultimate)
+            let windForce = this.player.isDashing ? 4.5 : (Game.ultimateActive ? 2.5 : 1.0);
+            windSources[windCount].set(this.player.x, windForce, this.player.y);
+            windCount++;
+        }
         for(let i=0; i<this.projectiles.length; i++) {
             let p = this.projectiles[i];
             // Processa sia quelli attivi, sia le scie fantasma in dissolvenza
@@ -3651,13 +3673,14 @@ class Player extends Entity {
         // Calcoliamo la luce base a seconda di quanti potenziamenti hai attivi
         let baseInt = Game.ultimateActive ? 4.0 : (this.overdrive ? 3.5 : (this.essence ? 2.5 : 1.8));
         
-        // NIENTE Math.random() (evita l'effetto strobo). 
-        // Usiamo due onde sinusoidali asincrone a BASSA frequenza (4.3 e 7.8).
-        // Sommando le due onde si crea un "respiro" imprevedibile, morbido e fluido.
-        let flicker = (Math.sin(Game.playTime * 4.3) * 0.1) + (Math.sin(Game.playTime * 7.8) * 0.12);
-        
-        // Applichiamo la luce instabile alla PointLight
-        this.light.intensity = baseInt + flicker;
+       // Respiro naturale della luce
+        let flicker = (Math.sin(Game.playTime * 4.3) * 0.1) + (Math.sin(Game.playTime * 7.8) * 0.12);
+        
+        // Esplosione di luce extra sincronizzata con il colpo dell'arma
+        let attackBurst = this.isAttacking ? (Math.sin(this.attackSwing) * 1.5) : 0.0;
+        
+        // Applichiamo luce base + respiro + flash dell'attacco
+        this.light.intensity = baseInt + flicker + attackBurst;
         
         // Facciamo pulsare dolcemente anche l'alone visivo (Fake Bloom)
         let baseOpacity = this.overdrive ? 1.0 : (this.essence ? 0.8 : 0.5);
@@ -3846,11 +3869,17 @@ class Player extends Entity {
         }
 
         super.takeDamage(amount, source);
-        this.invincibilityTimer = 0.2; // <-- 0.2 secondi di invincibilità ad ogni hit
-        AudioEngine.playHit('player');
+        this.invincibilityTimer = 0.2; // <-- 0.2 secondi di invincibilità ad ogni hit
+        AudioEngine.playHit('player');
 
-        if (!wasDead) {
-            Game.addTrauma(0.8);
+        // --- FLASH ROSSO SULLO SCHERMO ---
+        const vignetteEl = document.getElementById('vignette');
+        vignetteEl.classList.remove('damage-flash-active');
+        void vignetteEl.offsetWidth; // Triggera il reflow per riavviare l'animazione CSS
+        vignetteEl.classList.add('damage-flash-active');
+
+        if (!wasDead) {
+            Game.addTrauma(0.8);
             if (this.stats.hp <= 0) { 
                 AudioEngine.stopAllMusic();
                 Game.lives--; this.dead = true; Game.state = 'DEAD'; 

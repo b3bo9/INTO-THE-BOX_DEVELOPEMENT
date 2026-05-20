@@ -2309,37 +2309,33 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         this.updateMouseWorld(); this.player.update(dt); this.updateCamera(dt);
 
         // --- AGGIORNAMENTO DERIVA DELLA NEBBIA BASSA ---
-        if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
-            let dummyFog = new THREE.Object3D();
-            let mapW = this.map.width * TILE_SIZE;
-            let mapH = this.map.height * TILE_SIZE;
-            
-            for(let i=0; i<this.map.fogData.length; i++) {
-                let d = this.map.fogData[i];
-                
-                // Spostamento e rotazione lentissima
-                d.x += d.vx * dt;
-                d.z += d.vz * dt;
-                d.rot += dt * 0.05; 
-                
-                // Wrap attorno alla mappa se esce dai bordi
-                if (d.x < -300) d.x += mapW + 600;
-                if (d.x > mapW + 300) d.x -= mapW + 600;
-                if (d.z < -300) d.z += mapH + 600;
-                if (d.z > mapH + 300) d.z -= mapH + 600;
+        // Dentro Game.update(dt)
+if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
+    let dummyFog = new THREE.Object3D();
+    let mapW = this.map.width * TILE_SIZE;
+    let mapH = this.map.height * TILE_SIZE;
+    
+    for(let i=0; i<this.map.fogData.length; i++) {
+        let d = this.map.fogData[i];
+        
+        // Muoviamo con le velocità condivise
+        d.x += d.vx * dt;
+        d.z += d.vz * dt;
+        
+        // Loop spaziale (quando un banco esce, rientra dal lato opposto)
+        if (d.x < -200) d.x = mapW + 200;
+        if (d.x > mapW + 200) d.x = -200;
+        if (d.z < -200) d.z = mapH + 200;
+        if (d.z > mapH + 200) d.z = -200;
 
-                // Fluttuazione verticale organica (ondeggia tra la sua Y e +4)
-                let floatY = d.y + Math.sin(this.playTime * 0.3 + i) * 4;
-
-                dummyFog.position.set(d.x, floatY, d.z);
-                dummyFog.rotation.set(0, d.rot, 0);
-                dummyFog.scale.set(d.scale, 1, d.scale);
-                dummyFog.updateMatrix();
-                this.map.fogMesh.setMatrixAt(i, dummyFog.matrix);
-            }
-            this.map.fogMesh.instanceMatrix.needsUpdate = true;
-        }
-        // ------------------------------------------------
+        dummyFog.position.set(d.x, d.y, d.z);
+        dummyFog.scale.set(d.scale, 1, d.scale);
+        dummyFog.updateMatrix();
+        this.map.fogMesh.setMatrixAt(i, dummyFog.matrix);
+    }
+    this.map.fogMesh.instanceMatrix.needsUpdate = true;
+}
+      
 
        // ---------------------------------------------
         // SPAWN LUCCIOLE/SPORE AMBIENTALI
@@ -3219,24 +3215,17 @@ const matDirt = new MapMaterialClass({
             fogGeo.rotateX(-Math.PI / 2); // Sdraiamo la geometria parallela al suolo
 
             const fogMat = new THREE.MeshBasicMaterial({
-    color: 0x0000ff, // Blu brillante
+    map: texSmoke,           // Usa la tua immagine fumo
+    color: 0x667799,         // Un colore grigio-azzurro freddo
     transparent: true,
-    opacity: 0.5
+    opacity: 0.35,           // Regola questo valore per la densità (0.1 a 0.5)
+    depthWrite: false,       // Fondamentale per non avere "buchi" nel terreno
+    depthTest: true,
+    blending: THREE.NormalBlending // Usa NormalBlending invece di Additive se vuoi che il fumo "copra" il suolo
 });
-         //   const fogMat = new THREE.MeshBasicMaterial({
-   // map: texSmoke,
-  //  alphaMap: alphaTex,
-   // color: 0x5a6a8c,
-  //  transparent: true,
-  //  opacity: 0.3, // Opacità visibile
-  //  depthWrite: false, 
- //   depthTest: true, // FONDAMENTALE: permette alla nebbia di sovrapporsi correttamente
- //   blending: THREE.AdditiveBlending // Rende il fumo molto più "etereo" e luminoso
-//});
 
 this.fogMesh = new THREE.InstancedMesh(fogGeo, fogMat, fogCount);
-this.fogMesh.renderOrder = 10; // FORZA il rendering sopra il terreno
-            
+this.fogMesh.renderOrder = 5; // Assicura che venga disegnato DOPO il terreno (renderOrder alto = disegnato dopo)
             for(let i = 0; i < fogCount; i++) {
                 // Posizioni casuali su tutta la mappa
                 let px = Math.random() * (this.width * TILE_SIZE);

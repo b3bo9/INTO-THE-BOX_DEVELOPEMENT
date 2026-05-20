@@ -1623,27 +1623,33 @@ class SpatialHashGrid {
 }
 
 const TouchControls = {
-    lastTapTime: 0, // Aggiungi questa variabile per tracciare il tempo
+    lastTapTime: 0,
 
     init() {
-        if (!isTouchDevice) return; document.getElementById('mobile-controls').classList.remove('hidden');
+        if (!isTouchDevice) return; 
+        document.getElementById('mobile-controls').classList.remove('hidden');
         this.setupJoystick(document.getElementById('joy-left-zone'), document.getElementById('joy-left-stick'), 'left');
         this.setupJoystick(document.getElementById('joy-right-zone'), document.getElementById('joy-right-stick'), 'right');
         
-        // --- LOGICA DOPPIO TAP PER DASH ---
+        // --- LOGICA DOPPIO TAP CORRETTA ---
         document.body.addEventListener('touchstart', (e) => {
-            // Ignoriamo il tocco se stiamo premendo un tasto UI (come il tasto dash esistente o ultimate)
-            if (e.target.tagName === 'BUTTON') return;
+            // IGNORA i tocchi se avvengono sui joystick, sui pulsanti o sulle carte reliquia.
+            // In questo modo i controlli del movimento e dello sparo tornano puliti!
+            if (e.target.closest('#joy-left-zone') || 
+                e.target.closest('#joy-right-zone') || 
+                e.target.closest('button') ||
+                e.target.closest('.relic-card')) {
+                return;
+            }
 
             const now = Date.now();
             const timeSinceLastTap = now - this.lastTapTime;
             
-            // Se il tempo tra i due tap è inferiore a 300ms, è un doppio tap
             if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
                 if(Game.state === 'PLAYING') Game.player.dash();
             }
             this.lastTapTime = now;
-        }, {passive: false});
+        }, {passive: true});
         // ------------------------------------
 
         document.getElementById('btn-dash').addEventListener('touchstart', (e) => { e.preventDefault(); if(Game.state === 'PLAYING') Game.player.dash(); });

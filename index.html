@@ -1937,7 +1937,7 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
     addTrauma(amount) { this.trauma = Math.min(this.trauma + amount, 1.0); },
     snapCamera() {
         // Camera più vicina e angolata su mobile per esaltare i personaggi
-        let camY = isTouchDevice ? 650 : 700; let camZ = this.player.y + (isTouchDevice ? 450 : 500);
+        let camY = isTouchDevice ? 750 : 700; let camZ = this.player.y + (isTouchDevice ? 500 : 500);
         this.camera.position.set(this.player.x, camY, camZ); this.camera.lookAt(this.player.x, 0, this.player.y);
         if (this.dirLight) {
             this.dirLight.position.set(this.player.x - 400, 1000, this.player.y - 400);
@@ -1996,7 +1996,7 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         }
     },
    updateCamera(dt) {
-        let camX = this.player.x; let camY = isTouchDevice ? 650 : 600; let camZ = this.player.y + (isTouchDevice ? 450 : 400);
+        let camX = this.player.x; let camY = isTouchDevice ? 750 : 600; let camZ = this.player.y + (isTouchDevice ? 500 : 400);
         let shakeX = 0, shakeY = 0, shakeZ = 0;
         if (this.trauma > 0) {
             let shakeForce = this.trauma * this.trauma * 40; 

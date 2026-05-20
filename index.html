@@ -5012,13 +5012,10 @@ class Projectile {
             
             // --- NUOVO: Spawna sassi volanti dall'esplosione! ---
             let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 5 : 10);
-Game._vec3Screen.set(this.x, 2, this.y); // Ricicliamo la variabile globale
-for(let d=0; d<dCount; d++) {
-    let deb = Game.getDebris();
-    if (deb) deb.spawn(Game._vec3Screen, Game._dummyQuat, Game._dummyScale, SharedGeo.rockDebris, 0x4a3b2c, 10, false);
-}
+            Game._vec3Screen.set(this.x, 2, this.y); // Ricicliamo la variabile globale
+            for(let d=0; d<dCount; d++) {
                 let deb = Game.getDebris();
-                if (deb) deb.spawn(pVec, pQuat, pScale, SharedGeo.rockDebris, 0x4a3b2c, 10, false);
+                if (deb) deb.spawn(Game._vec3Screen, Game._dummyQuat, Game._dummyScale, SharedGeo.rockDebris, 0x4a3b2c, 10, false);
             }
         }
     }

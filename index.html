@@ -1732,6 +1732,7 @@ const UI = {
     cache: { hpPct: null, hpText: null, floor: null, enemiesLeft: null, ultActive: null, ultCharge: null, comboOpacity: null, lives: null, level: null, xpPct: null, isBossFloor: false, progressPct: null },
     els: {},
     init() { 
+        this.els.fpsValue = document.getElementById('fps-value'); // <--- RIGA CORRETTA
         this.els.hpFill = document.getElementById('ui-hp-fill'); this.els.hpText = document.getElementById('ui-hp-text');
         this.els.lives = document.getElementById('ui-lives'); this.els.level = document.getElementById('ui-level'); 
         this.els.xpCircle = document.getElementById('ui-xp-circle');
@@ -1907,11 +1908,9 @@ _dummyScale: new THREE.Vector3(3, 3, 3),
     },
 
     init() {
-        UI.init(); TouchControls.init(); const container = document.getElementById('game-container');
-        this.scene = new THREE.Scene(); this.scene.fog = new THREE.Fog(0x050508, 400, 1800); 
-        this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 1, 3000);
-        this.els.fpsValue = document.getElementById('fps-value');
-        
+        UI.init(); TouchControls.init(); const container = document.getElementById('game-container');
+        this.scene = new THREE.Scene(); this.scene.fog = new THREE.Fog(0x050508, 400, 1800); 
+        this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 1, 3000);
         const pixelRatio = isTouchDevice ? 0.9 : (AppSettings.isUltra ? Math.min(window.devicePixelRatio, 2.0) : Math.min(window.devicePixelRatio, 1.5));
         
        this.renderer = new THREE.WebGLRenderer({ 
@@ -5007,17 +5006,17 @@ class Projectile {
         for(let i=0; i<count; i++) Game.getParticle().spawn(this.x, 15, this.y, pMat, 'spark');
         if (this.type === 'fire_shape') Game.getHazard().spawn(this.x, this.y, 45, 8.0, this.damage, 0xff3300, 'enemy_fire');
         if (this.type === 'explosive_arrow') {
-            Game.addTrauma(0.3); let nearby = Game.enemyGrid.findNearby(this, 120);
-            for(let i=0, len=nearby.length; i<len; i++) { let e = nearby[i]; if (!e.dead && MathUtils.distanceSq(this, e) < 120*120) e.takeDamage(this.damage * 1.5, Game.player, false, false); }
-            
-            // --- NUOVO: Spawna sassi volanti dall'esplosione! ---
-            let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 5 : 10);
-            Game._vec3Screen.set(this.x, 2, this.y); // Ricicliamo la variabile globale
-            for(let d=0; d<dCount; d++) {
-                let deb = Game.getDebris();
-                if (deb) deb.spawn(Game._vec3Screen, Game._dummyQuat, Game._dummyScale, SharedGeo.rockDebris, 0x4a3b2c, 10, false);
-            }
-        }
+            Game.addTrauma(0.3); let nearby = Game.enemyGrid.findNearby(this, 120);
+            for(let i=0, len=nearby.length; i<len; i++) { let e = nearby[i]; if (!e.dead && MathUtils.distanceSq(this, e) < 120*120) e.takeDamage(this.damage * 1.5, Game.player, false, false); }
+            
+            // --- NUOVO: Spawna sassi volanti dall'esplosione! ---
+            let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 5 : 10);
+            Game._vec3Screen.set(this.x, 2, this.y); // Ricicliamo la variabile globale
+            for(let d=0; d<dCount; d++) {
+                let deb = Game.getDebris();
+                if (deb) deb.spawn(Game._vec3Screen, Game._dummyQuat, Game._dummyScale, SharedGeo.rockDebris, 0x4a3b2c, 10, false);
+            }
+        }
     }
 }
 class Particle {

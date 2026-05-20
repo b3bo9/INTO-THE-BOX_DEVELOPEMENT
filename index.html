@@ -1624,6 +1624,7 @@ class SpatialHashGrid {
 
 const TouchControls = {
     lastTapTime: 0,
+    lastRightTapTime: 0, // Aggiungiamo un timer dedicato solo al joystick di mira
 
     init() {
         if (!isTouchDevice) return; 
@@ -1631,9 +1632,9 @@ const TouchControls = {
         this.setupJoystick(document.getElementById('joy-left-zone'), document.getElementById('joy-left-stick'), 'left');
         this.setupJoystick(document.getElementById('joy-right-zone'), document.getElementById('joy-right-stick'), 'right');
         
-        // --- LOGICA DOPPIO TAP CORRETTA ---
+        // --- LOGICA DOPPIO TAP SCHERMO (VUOTO) ---
         document.body.addEventListener('touchstart', (e) => {
-            // IGNORA i tocchi se avvengono sui joystick, sui pulsanti o sulle carte reliquia.
+            // Continuiamo a ignorare l'UI fissa e i joystick per non accavallare i comandi
             if (e.target.closest('#joy-left-zone') || 
                 e.target.closest('#joy-right-zone') || 
                 e.target.closest('button') ||
@@ -1658,26 +1659,77 @@ const TouchControls = {
 
     setupJoystick(zone, stick, side) {
         let identifier = null; const maxR = 40; let cx = 0, cy = 0;
+        
         const onStart = (e) => {
-            e.preventDefault(); let rect = zone.getBoundingClientRect(); cx = rect.left + rect.width / 2; cy = rect.top + rect.height / 2;
-            if(e.changedTouches) { for(let i=0; i<e.changedTouches.length; i++) { if(identifier === null) { identifier = e.changedTouches[i].identifier; updateStick(e.changedTouches[i].clientX, e.changedTouches[i].clientY); break; } } } else { updateStick(e.clientX, e.clientY); }
+            e.preventDefault(); 
+            
+            // --- NUOVO: LOGICA DOPPIO TAP SUL JOYSTICK DESTRO ---
+            if (side === 'right') {
+                const now = Date.now();
+                // Se tocchi due volte rapidamente l'area del joystick rosso
+                if (now - TouchControls.lastRightTapTime < 300 && now - TouchControls.lastRightTapTime > 0) {
+                    if (Game.state === 'PLAYING') Game.player.dash();
+                }
+                TouchControls.lastRightTapTime = now;
+            }
+            // ----------------------------------------------------
+
+            let rect = zone.getBoundingClientRect(); cx = rect.left + rect.width / 2; cy = rect.top + rect.height / 2;
+            if(e.changedTouches) { 
+                for(let i=0; i<e.changedTouches.length; i++) { 
+                    if(identifier === null) { 
+                        identifier = e.changedTouches[i].identifier; 
+                        updateStick(e.changedTouches[i].clientX, e.changedTouches[i].clientY); 
+                        break; 
+                    } 
+                } 
+            } else { 
+                updateStick(e.clientX, e.clientY); 
+            }
         };
+
         const onMove = (e) => {
             e.preventDefault(); if(identifier === null) return;
-            if(e.changedTouches) { for(let i=0; i<e.changedTouches.length; i++) { if(e.changedTouches[i].identifier === identifier) { updateStick(e.changedTouches[i].clientX, e.changedTouches[i].clientY); break; } } } else { updateStick(e.clientX, e.clientY); }
+            if(e.changedTouches) { 
+                for(let i=0; i<e.changedTouches.length; i++) { 
+                    if(e.changedTouches[i].identifier === identifier) { 
+                        updateStick(e.changedTouches[i].clientX, e.changedTouches[i].clientY); 
+                        break; 
+                    } 
+                } 
+            } else { 
+                updateStick(e.clientX, e.clientY); 
+            }
         };
+
         const onEnd = (e) => {
             e.preventDefault(); if(identifier === null) return;
-            if(e.changedTouches) { let found = false; for(let i=0; i<e.changedTouches.length; i++) { if(e.changedTouches[i].identifier === identifier) found = true; } if(!found) return; }
-            identifier = null; stick.style.transform = `translate(-50%, -50%) translate(0px, 0px)`; Game.inputs[side] = { x: 0, y: 0, active: false };
+            if(e.changedTouches) { 
+                let found = false; 
+                for(let i=0; i<e.changedTouches.length; i++) { 
+                    if(e.changedTouches[i].identifier === identifier) found = true; 
+                } 
+                if(!found) return; 
+            }
+            identifier = null; 
+            stick.style.transform = `translate(-50%, -50%) translate(0px, 0px)`; 
+            Game.inputs[side] = { x: 0, y: 0, active: false };
         };
+
         const updateStick = (clientX, clientY) => {
-            let dx = clientX - cx; let dy = clientY - cy; let distance = Math.sqrt(dx*dx + dy*dy); let nx = dx / distance || 0; let ny = dy / distance || 0;
+            let dx = clientX - cx; let dy = clientY - cy; 
+            let distance = Math.sqrt(dx*dx + dy*dy); 
+            let nx = dx / distance || 0; let ny = dy / distance || 0;
+            
             if (distance > maxR) { dx = nx * maxR; dy = ny * maxR; }
-            stick.style.transform = `translate(-50%, -50%) translate(${dx}px, ${dy}px)`; Game.inputs[side] = { x: nx, y: ny, active: true };
+            stick.style.transform = `translate(-50%, -50%) translate(${dx}px, ${dy}px)`; 
+            Game.inputs[side] = { x: nx, y: ny, active: true };
         };
-        zone.addEventListener('touchstart', onStart, {passive: false}); zone.addEventListener('touchmove', onMove, {passive: false});
-        zone.addEventListener('touchend', onEnd, {passive: false}); zone.addEventListener('touchcancel', onEnd, {passive: false});
+
+        zone.addEventListener('touchstart', onStart, {passive: false}); 
+        zone.addEventListener('touchmove', onMove, {passive: false});
+        zone.addEventListener('touchend', onEnd, {passive: false}); 
+        zone.addEventListener('touchcancel', onEnd, {passive: false});
     }
 };
 

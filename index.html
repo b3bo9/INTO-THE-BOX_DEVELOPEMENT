@@ -3219,15 +3219,20 @@ const matDirt = new MapMaterialClass({
             fogGeo.rotateX(-Math.PI / 2); // Sdraiamo la geometria parallela al suolo
 
             const fogMat = new THREE.MeshBasicMaterial({
-    map: texSmoke,
-    alphaMap: alphaTex,
-    color: 0x5a6a8c,
+    color: 0x0000ff, // Blu brillante
     transparent: true,
-    opacity: 0.3, // Opacità visibile
-    depthWrite: false, 
-    depthTest: true, // FONDAMENTALE: permette alla nebbia di sovrapporsi correttamente
-    blending: THREE.AdditiveBlending // Rende il fumo molto più "etereo" e luminoso
+    opacity: 0.5
 });
+         //   const fogMat = new THREE.MeshBasicMaterial({
+   // map: texSmoke,
+  //  alphaMap: alphaTex,
+   // color: 0x5a6a8c,
+  //  transparent: true,
+  //  opacity: 0.3, // Opacità visibile
+  //  depthWrite: false, 
+ //   depthTest: true, // FONDAMENTALE: permette alla nebbia di sovrapporsi correttamente
+ //   blending: THREE.AdditiveBlending // Rende il fumo molto più "etereo" e luminoso
+//});
 
 this.fogMesh = new THREE.InstancedMesh(fogGeo, fogMat, fogCount);
 this.fogMesh.renderOrder = 10; // FORZA il rendering sopra il terreno

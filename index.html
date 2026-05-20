@@ -3244,8 +3244,8 @@ this.fogMesh.renderOrder = 5; // Assicura che venga disegnato DOPO il terreno (r
                 this.fogData.push({
                     x: px, y: py, z: pz,
                     rot: rotY, scale: s,
-                    vx: MathUtils.randomRange(-12, 12), // Deriva causale asse X
-                    vz: MathUtils.randomRange(-12, 12)  // Deriva casuale asse Z
+                    vx: MathUtils.randomRange(-20, 20), // Deriva causale asse X
+                    vz: MathUtils.randomRange(-20, 20)  // Deriva casuale asse Z
                 });
             }
             this.mapGroup.add(this.fogMesh);

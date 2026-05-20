@@ -20,9 +20,9 @@
         input { -webkit-user-select: auto; user-select: auto; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #050508; font-family: 'Impact', 'Georgia', serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        #game-container canvas {
-    /* Aumenta il contrasto del 15% e la saturazione del 25% */
-    filter: contrast(1.15) saturate(1.25);
+       #game-container canvas {
+    /* Contrasto leggermente ridotto per non affogare i neri, saturazione alzata per far brillare le magie */
+    filter: contrast(1.1) saturate(1.3) brightness(1.1);
 }
         #uiCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
         
@@ -55,11 +55,11 @@
         @keyframes shimmer { 100% { transform: translateX(100%); } }
         .animate-shimmer { animation: shimmer 1.5s infinite linear; }
 
-      #vignette { 
-    position: absolute; inset: 0; 
-    /* Sfuma verso un blu/viola scurissimo invece che nero puro */
-    background: radial-gradient(circle at center, transparent 35%, rgba(6, 6, 16, 0.98) 100%); 
-    box-shadow: inset 0 0 180px rgba(2, 2, 8, 1); 
+      #vignette { 
+    position: absolute; inset: 0; 
+    /* Su mobile allarghiamo l'area trasparente centrale al 50% per dare respiro all'azione */
+    background: radial-gradient(circle at center, transparent 50%, rgba(6, 6, 16, 0.95) 100%); 
+    box-shadow: inset 0 0 120px rgba(2, 2, 8, 0.9);
     z-index: 5; pointer-events: none; 
     mix-blend-mode: multiply; 
     transition: opacity 0.5s; 
@@ -1834,10 +1834,11 @@ this.renderer.shadowMap.type = isTouchDevice ? THREE.PCFShadowMap : THREE.PCFSof
        // Luce ambientale nerissima (le ombre diventano abissi)
        // Luce ambientale azzurrata notturna (impedisce lo schermo nero assoluto)
         // Tonalità blu/viola più satura, intensità calibrata a 0.20
-const ambientLight = new THREE.AmbientLight(0x080a18, 0.2); this.scene.add(ambientLight);
-        
-// Luce lunare virata verso un blu freddo più acceso a 1.8 di potenza
-this.dirLight = new THREE.DirectionalLight(0x4466aa, 1.8);
+// Alziamo leggermente la luce ambientale per non avere neri assoluti sui modelli
+const ambientLight = new THREE.AmbientLight(0x0c0f22, 0.35); this.scene.add(ambientLight);
+        
+// Luce lunare leggermente più ciano e meno intensa per far risaltare la luce del giocatore
+this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         this.dirLight.position.set(-500, 1000, -500); 
         this.dirLight.castShadow = true; 
         this.dirLight.shadow.camera.top = 1000; 
@@ -1935,7 +1936,8 @@ this.dirLight = new THREE.DirectionalLight(0x4466aa, 1.8);
 
     addTrauma(amount) { this.trauma = Math.min(this.trauma + amount, 1.0); },
     snapCamera() {
-        let camY = isTouchDevice ? 850 : 700; let camZ = this.player.y + (isTouchDevice ? 550 : 500);
+        // Camera più vicina e angolata su mobile per esaltare i personaggi
+        let camY = isTouchDevice ? 650 : 700; let camZ = this.player.y + (isTouchDevice ? 450 : 500);
         this.camera.position.set(this.player.x, camY, camZ); this.camera.lookAt(this.player.x, 0, this.player.y);
         if (this.dirLight) {
             this.dirLight.position.set(this.player.x - 400, 1000, this.player.y - 400);
@@ -1993,8 +1995,8 @@ this.dirLight = new THREE.DirectionalLight(0x4466aa, 1.8);
             this.spawnEnemy();
         }
     },
-    updateCamera(dt) {
-        let camX = this.player.x; let camY = isTouchDevice ? 850 : 600; let camZ = this.player.y + (isTouchDevice ? 550 : 400);
+   updateCamera(dt) {
+        let camX = this.player.x; let camY = isTouchDevice ? 650 : 600; let camZ = this.player.y + (isTouchDevice ? 450 : 400);
         let shakeX = 0, shakeY = 0, shakeZ = 0;
         if (this.trauma > 0) {
             let shakeForce = this.trauma * this.trauma * 40; 
@@ -2833,10 +2835,10 @@ class GameMap {
         const MapMaterialClass = isTouchDevice ? THREE.MeshPhongMaterial : THREE.MeshStandardMaterial;
         const alphaTex = createOrganicAlphaMap();
 
-        const tintDirt = 0x5a4638;  // Marrone fango medio, leggibile
-        const tintGrass = 0x354a38; // Verde muschio, si fonde perfettamente con l'erba 3D
-        const tintRock = 0x4a4a5a;  // Grigio ardesia visibile
-        const tintWall = 0x2a2a35;  // Muri leggermente schiariti per non affogare nel nero
+        const tintDirt = 0x705848;  // Più chiaro per riflettere meglio la luce del giocatore
+        const tintGrass = 0x446048; // Verde più vivace
+        const tintRock = 0x5c5c6e;  // Ardesia schiarita
+        const tintWall = 0x3a3a48;
 
 const matDirt = new MapMaterialClass({ 
     map: texDirt, color: tintDirt, 
@@ -3193,9 +3195,9 @@ class Player extends Entity {
         this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}), new THREE.MeshPhongMaterial({color: 0xffff00, emissive: 0xffff00}));
         this.mesh = this.modelParts.group; this.staffGemMat = this.modelParts.staffGem.material;
         
-        // Luce molto più potente e con un raggio più ampio per svelare i dettagli del terreno
-       // Aggiunto il quarto parametro '2' (Fisica del decadimento quadratico)
-this.light = new THREE.PointLight(0xffffff, 2.4, 900, 2); this.light.position.y = 24;
+        // Luce più calda (ambra/arancio), raggio esteso e decadimento più morbido (1.5 invece di 2) 
+        // Questo crea un centro saturo e chiaro che degrada dolcemente nell'oscurità
+        this.light = new THREE.PointLight(0xffddaa, 3.2, 1200, 1.5); this.light.position.y = 30;
         
         this.mesh.add(this.light); this.mesh.position.set(this.x, 0, this.y); Game.scene.add(this.mesh);
         this.mesh.traverse(c => { if(c.material && c.material.emissive && c !== this.modelParts.staffGem) this.flashMats.push(c.material); });

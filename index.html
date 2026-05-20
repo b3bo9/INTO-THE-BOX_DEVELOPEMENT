@@ -3746,23 +3746,27 @@ class Player extends Entity {
             } 
         }
 
-        // --- NUOVO: Sfarfallio Organico (Light Flicker) SICURO ---
-        // Calcoliamo la luce base a seconda di quanti potenziamenti hai attivi
-        let baseInt = Game.ultimateActive ? 4.0 : (this.overdrive ? 3.5 : (this.essence ? 2.5 : 1.8));
-        
-       // Respiro naturale della luce
-        let flicker = (Math.sin(Game.playTime * 4.3) * 0.1) + (Math.sin(Game.playTime * 7.8) * 0.12);
-        
-        // Esplosione di luce extra sincronizzata con il colpo dell'arma
-        let attackBurst = this.isAttacking ? (Math.sin(this.attackSwing) * 1.5) : 0.0;
+        // --- SFARFALLIO SICURO E FEEDBACK D'ATTACCO (FOTOSENSIBILITÀ) ---
+        let baseInt = Game.ultimateActive ? 4.0 : (this.overdrive ? 3.5 : (this.essence ? 2.5 : 1.8));
         
-        // Applichiamo luce base + respiro + flash dell'attacco
-        this.light.intensity = baseInt + flicker + attackBurst;
-        
-        // Facciamo pulsare dolcemente anche l'alone visivo (Fake Bloom)
-        let baseOpacity = this.overdrive ? 1.0 : (this.essence ? 0.8 : 0.5);
-        this.fakeBloom.material.opacity = Math.max(0.1, Math.min(1.0, baseOpacity + (flicker * 0.5)));
-        // ---------------------------------------------------------
+        // 1. Respiro naturale morbido e asincrono
+        let flicker = (Math.sin(Game.playTime * 4.3) * 0.1) + (Math.sin(Game.playTime * 7.8) * 0.12);
+        
+        // 2. L'escursione luminosa dell'attacco è ridotta a 0.3 (nessun effetto strobo)
+        let attackIntensityBurst = this.isAttacking ? (Math.sin(this.attackSwing) * 0.3) : 0.0;
+        
+        // 3. Trasferiamo l'impatto visivo sull'allargamento del cono di luce sul pavimento
+        let baseRadius = 1200;
+        let attackRadiusBurst = this.isAttacking ? (Math.sin(this.attackSwing) * 200) : 0.0;
+        
+        // Applichiamo i valori in modo sicuro
+        this.light.intensity = baseInt + flicker + attackIntensityBurst;
+        this.light.distance = baseRadius + attackRadiusBurst;
+        
+        // L'alone visivo per mobile si espande impercettibilmente, senza accecare
+        let baseOpacity = this.overdrive ? 1.0 : (this.essence ? 0.8 : 0.5);
+        this.fakeBloom.material.opacity = Math.max(0.1, Math.min(1.0, baseOpacity + (flicker * 0.5)));
+        // -----------------------------------------------------------------
     }
     
    flamethrower(dt) {

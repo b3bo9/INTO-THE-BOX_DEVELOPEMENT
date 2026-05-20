@@ -2307,8 +2307,42 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         }
 
         this.updateMouseWorld(); this.player.update(dt); this.updateCamera(dt);
-       // ---------------------------------------------
-        // SPAWN LUCCIOLE/SPORE AMBIENTALI
+
+        // --- AGGIORNAMENTO DERIVA DELLA NEBBIA BASSA ---
+        if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
+            let dummyFog = new THREE.Object3D();
+            let mapW = this.map.width * TILE_SIZE;
+            let mapH = this.map.height * TILE_SIZE;
+            
+            for(let i=0; i<this.map.fogData.length; i++) {
+                let d = this.map.fogData[i];
+                
+                // Spostamento e rotazione lentissima
+                d.x += d.vx * dt;
+                d.z += d.vz * dt;
+                d.rot += dt * 0.05; 
+                
+                // Wrap attorno alla mappa se esce dai bordi
+                if (d.x < -300) d.x += mapW + 600;
+                if (d.x > mapW + 300) d.x -= mapW + 600;
+                if (d.z < -300) d.z += mapH + 600;
+                if (d.z > mapH + 300) d.z -= mapH + 600;
+
+                // Fluttuazione verticale organica (ondeggia tra la sua Y e +4)
+                let floatY = d.y + Math.sin(this.playTime * 0.3 + i) * 4;
+
+                dummyFog.position.set(d.x, floatY, d.z);
+                dummyFog.rotation.set(0, d.rot, 0);
+                dummyFog.scale.set(d.scale, 1, d.scale);
+                dummyFog.updateMatrix();
+                this.map.fogMesh.setMatrixAt(i, dummyFog.matrix);
+            }
+            this.map.fogMesh.instanceMatrix.needsUpdate = true;
+        }
+        // ------------------------------------------------
+
+       // ---------------------------------------------
+        // SPAWN LUCCIOLE/SPORE AMBIENTALI
         // ---------------------------------------------
         // Frequenza: ogni tot frame (ritmo rilassato per non saturare lo schermo)
         if (Game.frameCount % (isTouchDevice ? 15 : 6) === 0) {
@@ -2810,13 +2844,14 @@ function createDarkTreeGeometry() {
 }
 
 class GameMap {
-    constructor(w, h) {
-        this.width = w; this.height = h; this.grid = [];
-        for(let x=0; x<w; x++) { this.grid[x] = []; for(let y=0; y<h; y++) this.grid[x][y] = 1; }
-        this.mapGroup = new THREE.Group();
-        this.floorMat = null; 
-        this.wallMat = null;
-    }
+    constructor(w, h) {
+        this.width = w; this.height = h; this.grid = [];
+        for(let x=0; x<w; x++) { this.grid[x] = []; for(let y=0; y<h; y++) this.grid[x][y] = 1; }
+        this.mapGroup = new THREE.Group();
+        this.floorMat = null; 
+        this.wallMat = null;
+        this.fogData = []; // <-- Array per la fisica della nebbia
+    }
     
   generate(isBossFloor = false) {
         InteractiveGrassSystem.init();
@@ -3169,10 +3204,60 @@ const matDirt = new MapMaterialClass({
         this.mapGroup.add(meshDirt, meshGrass, meshRock); 
         this.mapGroup.add(wallMesh); 
         
-        if(pillarCount > 0) this.mapGroup.add(pillarBaseMesh, pillarShaftMesh, pillarCapMesh);
-        
-        Game.scene.add(this.mapGroup);
-    }
+       if(pillarCount > 0) this.mapGroup.add(pillarBaseMesh, pillarShaftMesh, pillarCapMesh);
+        
+        // --- INIZIO SISTEMA NEBBIA BASSA 3D ---
+        const texSmoke = Preloader.textures.smoke;
+        if (texSmoke) {
+            texSmoke.wrapS = THREE.RepeatWrapping;
+            texSmoke.wrapT = THREE.RepeatWrapping;
+            texSmoke.encoding = THREE.sRGBEncoding;
+
+            // Meno banchi su mobile per performance, ma grandi per riempire la mappa
+            const fogCount = isTouchDevice ? 15 : 40; 
+            const fogGeo = new THREE.PlaneGeometry(350, 350); 
+            fogGeo.rotateX(-Math.PI / 2); // Sdraiamo la geometria parallela al suolo
+
+            const fogMat = new THREE.MeshBasicMaterial({
+                map: texSmoke,
+                alphaMap: alphaTex, // Usa la maschera del suolo per sfumare i bordi perfetti del fumo!
+                color: 0x5a6a8c, // Colore bluastro/grigio spettrale
+                transparent: true,
+                opacity: 0.12, // Molto leggera per creare atmosfera senza nascondere i nemici
+                depthWrite: false, // ZERO compenetrazioni e ottimizzazione massima
+                blending: THREE.NormalBlending
+            });
+
+            this.fogMesh = new THREE.InstancedMesh(fogGeo, fogMat, fogCount);
+            
+            for(let i = 0; i < fogCount; i++) {
+                // Posizioni casuali su tutta la mappa
+                let px = Math.random() * (this.width * TILE_SIZE);
+                let pz = Math.random() * (this.height * TILE_SIZE);
+                let py = MathUtils.randomRange(2, 10); // Altezza fluttuante dal suolo
+                let s = MathUtils.randomRange(1.0, 2.5); // Grandezze variabili
+                let rotY = Math.random() * Math.PI * 2;
+                
+                dummy.position.set(px, py, pz);
+                dummy.rotation.set(0, rotY, 0);
+                dummy.scale.set(s, 1, s);
+                dummy.updateMatrix();
+                this.fogMesh.setMatrixAt(i, dummy.matrix);
+                
+                // Salviamo i dati per animarli ogni frame
+                this.fogData.push({
+                    x: px, y: py, z: pz,
+                    rot: rotY, scale: s,
+                    vx: MathUtils.randomRange(-12, 12), // Deriva causale asse X
+                    vz: MathUtils.randomRange(-12, 12)  // Deriva casuale asse Z
+                });
+            }
+            this.mapGroup.add(this.fogMesh);
+        }
+        // --- FINE SISTEMA NEBBIA ---
+
+        Game.scene.add(this.mapGroup);
+    }
     
     isAdjacentToFloor(x,y) {
         if(x>0 && this.grid[x-1][y]===2) return true; if(x<this.width-1 && this.grid[x+1][y]===2) return true;
@@ -5309,12 +5394,13 @@ const Preloader = {
         // 1. Carichiamo le Texture 3D passando il manager
         const texLoader = new THREE.TextureLoader(this.manager);
         this.textures.dirt = texLoader.load('dirt.jpg');
-        this.textures.grass = texLoader.load('grass.jpg');
-        this.textures.rock = texLoader.load('rock.jpg');
-        this.textures.wall = texLoader.load('wall.jpg');
+        this.textures.grass = texLoader.load('grass.jpg');
+        this.textures.rock = texLoader.load('rock.jpg');
+        this.textures.wall = texLoader.load('wall.jpg');
+        this.textures.smoke = texLoader.load('smoke.png'); // <-- Texture fumo
 
-        // 2. Carichiamo le immagini UI (non bloccanti)
-        const imagesToLoad = ['bg.png', 'bg_morte.png', 'bg_box.png', 'bg_piano.png'];
+        // 2. Carichiamo le immagini UI (non bloccanti)
+        const imagesToLoad = ['bg.png', 'bg_morte.png', 'bg_box.png', 'bg_piano.png', 'smoke.png'];
         RelicSystem.allRelics.forEach(r => { if(r.image) imagesToLoad.push(r.image); });
         imagesToLoad.forEach(src => {
             const img = new Image();

@@ -3219,16 +3219,18 @@ const matDirt = new MapMaterialClass({
             fogGeo.rotateX(-Math.PI / 2); // Sdraiamo la geometria parallela al suolo
 
             const fogMat = new THREE.MeshBasicMaterial({
-                map: texSmoke,
-                alphaMap: alphaTex, // Usa la maschera del suolo per sfumare i bordi perfetti del fumo!
-                color: 0x5a6a8c, // Colore bluastro/grigio spettrale
-                transparent: true,
-                opacity: 0.3, // Molto leggera per creare atmosfera senza nascondere i nemici
-                depthWrite: false, // ZERO compenetrazioni e ottimizzazione massima
-                blending: THREE.NormalBlending
-            });
+    map: texSmoke,
+    alphaMap: alphaTex,
+    color: 0x5a6a8c,
+    transparent: true,
+    opacity: 0.3, // Opacità visibile
+    depthWrite: false, 
+    depthTest: true, // FONDAMENTALE: permette alla nebbia di sovrapporsi correttamente
+    blending: THREE.AdditiveBlending // Rende il fumo molto più "etereo" e luminoso
+});
 
-            this.fogMesh = new THREE.InstancedMesh(fogGeo, fogMat, fogCount);
+this.fogMesh = new THREE.InstancedMesh(fogGeo, fogMat, fogCount);
+this.fogMesh.renderOrder = 10; // FORZA il rendering sopra il terreno
             
             for(let i = 0; i < fogCount; i++) {
                 // Posizioni casuali su tutta la mappa

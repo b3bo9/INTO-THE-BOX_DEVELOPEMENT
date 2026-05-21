@@ -1335,6 +1335,20 @@ const ModelFactory = {
             let gem = new THREE.Mesh(SharedGeo.icosahedron, mat); gem.scale.set(size*0.8, size*2.5, size*0.8); gem.position.y = size*1.8;
             let ring = new THREE.Mesh(SharedGeo.torus, mat); ring.scale.set(size*1.5, size*1.5, size*0.2); ring.position.y = size*1.8; ring.rotation.x = Math.PI/2;
             group.add(base); group.add(gem); group.add(ring); parts.ring = ring; parts.gem = gem;
+            } else if (type === 'golem') {
+            let torso = new THREE.Mesh(SharedGeo.box, mat); torso.scale.set(size*1.8, size*2.0, size*1.5); torso.position.y = size*1.5;
+            let head = new THREE.Mesh(SharedGeo.box, darkMat); head.scale.set(size*0.9, size*0.9, size*0.9); head.position.set(0, size*2.8, size*0.2);
+            let armL = new THREE.Mesh(SharedGeo.box, darkMat); armL.scale.set(size*0.7, size*1.8, size*0.7); armL.position.set(-size*1.4, size*1.6, 0);
+            let armR = new THREE.Mesh(SharedGeo.box, darkMat); armR.scale.set(size*0.7, size*1.8, size*0.7); armR.position.set(size*1.4, size*1.6, 0);
+            
+            // Scudo Frontale Trasparente Ciano
+            let shieldMat = new THREE.MeshPhongMaterial({color: 0x00ffff, transparent: true, opacity: 0.4, emissive: 0x0088ff});
+            let shield = new THREE.Mesh(SharedGeo.box, shieldMat);
+            shield.scale.set(size*3.2, size*2.5, size*0.2);
+            shield.position.set(0, size*1.5, size*1.0); // Spinto in avanti a coprire il corpo
+            
+            group.add(torso); group.add(head); group.add(armL); group.add(armR); group.add(shield);
+            parts.armL = armL; parts.armR = armR; parts.shield = shield;
         } else if (type === 'boss') {
             let torso = new THREE.Mesh(SharedGeo.box, darkMat); torso.scale.set(size*1.5, size*1.5, size); torso.position.y = size*1.5;
             let core = new THREE.Mesh(SharedGeo.icosahedron, mat); core.scale.set(size, size, size); core.position.set(0, size*1.5, size*0.5);
@@ -2074,8 +2088,9 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         if (difficulty >= 1 && r > 0.6) type = 'skeleton_archer'; 
         if (difficulty > 2.5 && r > 0.75) type = 'mage';            
         if (difficulty > 3.0 && r > 0.8) type = 'leaper';
-        if (difficulty > 4.0 && r > 0.85) type = 'pyromancer';
-        if (difficulty > 5.0 && r > 0.90) type = 'fire_demon';        
+        if (difficulty > 3.5 && r > 0.85) type = 'golem'; 
+        if (difficulty > 4.0 && r > 0.90) type = 'pyromancer';
+        if (difficulty > 5.0 && r > 0.94) type = 'fire_demon';        
         
         let enemy = this.getEnemy();
         enemy.spawn(x, y, type, difficulty);
@@ -4132,6 +4147,7 @@ class Enemy extends Entity {
         else if (type === 'leaper') { color = 0xaa00aa; size = 12; spdMod = 0.7; hpMod = 1.0; dmgMod = 2.2; this.aggroRange = 600; this.attackRange = 250; this.leapCooldown = 0; this.state = 'walk'; } 
         else if (type === 'pyromancer') { color = 0xff3300; size = 12; spdMod = 0.6; hpMod = 0.8; dmgMod = 2.2; this.aggroRange = 650; this.attackRange = 450; }
         else if (type === 'fire_demon') { color = 0xff5500; size = 14; spdMod = 1.0; hpMod = 1.1; dmgMod = 3.0; this.aggroRange = 800; this.attackRange = 600; } 
+        else if (type === 'golem') { color = 0x8899aa; size = 20; spdMod = 0.4; hpMod = 4.0; dmgMod = 2.0; this.aggroRange = 600; this.attackRange = 60; }
         else if (type === 'mage') { color = 0x0055ff; size = 12; spdMod = 0.6; hpMod = 0.7; dmgMod = 2.8; this.aggroRange = 700; this.attackRange = 450; }
         else if (type === 'crystal') { color = 0xff00ff; size = 12; this.aggroRange = 0; this.speed = 0; hpMod = 0.001; }
         else if (type === 'boss') { color = 0x550000; size = 35; }
@@ -4316,6 +4332,13 @@ class Enemy extends Entity {
         // Rotazione visiva fluida (Eseguita ogni frame)
         if (this.type === 'leaper' || this.type === 'orc' || this.type === 'skeleton_archer' || this.type === 'fire_demon' || this.type === 'boss') {
             this.mesh.rotation.y = -this.angle + Math.PI / 2;
+        } else if (this.type === 'golem') {
+            // Il Golem ruota molto lentamente, permettendo al giocatore di agirargli alle spalle
+            let targetRot = -this.angle + Math.PI / 2;
+            let diff = targetRot - this.mesh.rotation.y;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            this.mesh.rotation.y += diff * 1.5 * dt; // Rotazione ammortizzata!
         }
 
         if (this.attackCooldown > 0) this.attackCooldown -= dt; 
@@ -4371,7 +4394,7 @@ class Enemy extends Entity {
         }
     }
     attack() {
-        let isMelee = (this.type === 'goblin' || this.type === 'orc');
+        let isMelee = (this.type === 'goblin' || this.type === 'orc' || this.type === 'golem'); // <-- AGGIUNTO GOLEM
         if (isMelee) {
             this.executeAttack(); // I melee colpiscono subito
         } else {
@@ -4405,15 +4428,44 @@ class Enemy extends Entity {
             Game.getProjectile().spawn(this.x, this.y, this.angle, 130 * spdMult, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * 1.5, 'enemy', 'fire_shape'); 
             this.attackCooldown = 2.0 * cdMult; 
         } 
-        else if (this.type !== 'leaper') { 
+       else if (this.type !== 'leaper') { 
             Game.player.takeDamage(MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg), this); 
-            this.push(Math.cos(this.angle), Math.sin(this.angle), 18); 
+            // Il Golem è pesante, non rincula in avanti quando sferra il colpo
+            this.push(Math.cos(this.angle), Math.sin(this.angle), this.type === 'golem' ? 3 : 18); 
         }
     }
-    takeDamage(amount, source, isCrit = false, canInfect = true) {
+   takeDamage(amount, source, isCrit = false, canInfect = true) {
         if (source === Game.player && Game.player.modifiers.executioner && (this.stats.hp / this.stats.maxHp) < 0.3) amount *= 2.0;
         if (this.fireDebuffTimer > 0 && Game.player.modifiers.fireTrailDebuff) amount *= 1.25;
-        super.takeDamage(amount, source, isCrit); if (Game.player.overdrive && Game.player.essence === 'green' && canInfect) this.infected = true;
+        
+        // --- LOGICA SCUDO GOLEM ---
+        if (this.type === 'golem' && source) {
+            let angleToSource = Math.atan2(source.y - this.y, source.x - this.x);
+            let golemFacingAngle = -this.mesh.rotation.y + Math.PI / 2; // Ricalcola in base alla rotazione REALE (lenta) della mesh
+            
+            let diff = angleToSource - golemFacingAngle;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            
+            // Se colpito frontalmente (Cono di ~120 gradi davanti al Golem)
+            if (Math.abs(diff) < Math.PI / 1.5) {
+                amount *= 0.2;  // Mitiga l'80% dei danni
+                isCrit = false; // Impossibile fare critici frontalmente
+                
+                // Feedback particellare (scintilla azzurra sullo scudo)
+                Game.getParticle().spawn(this.x + Math.cos(angleToSource)*this.radius, 15, this.y + Math.sin(angleToSource)*this.radius, SharedMat.spriteBlue, 'spark');
+                
+                // Fa brillare lo scudo 3D
+                if (this.modelParts && this.modelParts.shield) {
+                    this.modelParts.shield.material.opacity = 0.9;
+                    setTimeout(() => { if (this.modelParts && this.modelParts.shield) this.modelParts.shield.material.opacity = 0.4; }, 150);
+                }
+            }
+        }
+        // --------------------------
+
+        super.takeDamage(amount, source, isCrit); 
+        if (Game.player.overdrive && Game.player.essence === 'green' && canInfect) this.infected = true;
     }
     onDeath() {
         if (this.type === 'crystal') {

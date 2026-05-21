@@ -1748,7 +1748,16 @@ const TouchControls = {
             let nx = dx / distance || 0; let ny = dy / distance || 0;
             
             if (distance > maxR) { dx = nx * maxR; dy = ny * maxR; }
-            stick.style.transform = `translate(-50%, -50%) translate(${dx}px, ${dy}px)`; 
+            
+            // OTTIMIZZAZIONE DOM: Previene il ricalcolo CSS selvaggio usando rAF
+            if (!stick.ticking) {
+                window.requestAnimationFrame(() => {
+                    stick.style.transform = `translate(-50%, -50%) translate(${dx}px, ${dy}px)`;
+                    stick.ticking = false;
+                });
+                stick.ticking = true;
+            }
+            
             Game.inputs[side] = { x: nx, y: ny, active: true };
         };
 
@@ -2380,19 +2389,23 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
 
         this.updateMouseWorld(); this.player.update(dt); this.updateCamera(dt);
 
-        // --- AGGIORNAMENTO DERIVA DELLA NEBBIA BASSA ---
-        // Dentro Game.update(dt)
+       // --- AGGIORNAMENTO DERIVA DELLA NEBBIA BASSA ---
 if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
-    let dummyFog = this._dummyFog;
-    let mapW = this.map.width * TILE_SIZE;
-    let mapH = this.map.height * TILE_SIZE;
-    
-    for(let i=0; i<this.map.fogData.length; i++) {
-        let d = this.map.fogData[i];
+    // OTTIMIZZAZIONE: Su mobile calcola le matrici della nebbia solo 1 frame su 3.
+    if (!isTouchDevice || Game.frameCount % 3 === 0) {
+        let dummyFog = this._dummyFog;
+        let mapW = this.map.width * TILE_SIZE;
+        let mapH = this.map.height * TILE_SIZE;
+        
+        // Moltiplichiamo il dt per compensare i frame saltati su mobile
+        let dtFog = isTouchDevice ? dt * 3 : dt; 
+
+        for(let i=0; i<this.map.fogData.length; i++) {
+            let d = this.map.fogData[i];
         
         // Muoviamo con le velocità condivise
-        d.x += d.vx * dt;
-        d.z += d.vz * dt;
+        d.x += d.vx * dtFog;
+        d.z += d.vz * dtFog;
         
         // Loop spaziale (quando un banco esce, rientra dal lato opposto)
         if (d.x < -200) d.x = mapW + 200;
@@ -2407,6 +2420,7 @@ if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
     }
     this.map.fogMesh.instanceMatrix.needsUpdate = true;
 }
+    }
       
 
        // ---------------------------------------------
@@ -2754,7 +2768,7 @@ const InteractiveGrassSystem = {
                     float radius = 180.0;
                     if(dist < radius && dist > 0.001) {
                         float falloff = 1.0 - smoothstep(0.0, radius, dist);
-                        float pushForce = pow(falloff, 3.0);
+                        float pushForce = falloff * falloff * falloff;
                         float wobble = 1.0 + sin(dist * 0.08 - uTime * 12.0) * 0.65 * falloff;
                         
                         interactDir += normalize(dir) * (pushForce * wobble) * 45.0 * intensity;

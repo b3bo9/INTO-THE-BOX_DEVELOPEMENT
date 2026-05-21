@@ -3609,7 +3609,7 @@ class Player extends Entity {
                 comboName = "NOVA TOSSICA!"; color = "#99FF00"; 
                 // Evoca un anello dinamico tramite la classe Hazard
                 // Raggio finale: 250, Durata: 1.5s 
-                Game.getHazard().spawn(this.x, this.y, 250, 1.5, this.stats.maxDmg * 2.5 * this.modifiers.dmgMult, 0x99FF00, 'nova_ring');
+                Game.getHazard().spawn(this.x, this.y, 250, 1.5, this.stats.maxDmg * 1.5 * this.modifiers.dmgMult, 0x99FF00, 'nova_ring');
                 
                 // Effetti centrali esplosivi istantanei
                 let pCount = AppSettings.isLow ? 15 : (AppSettings.isUltraPC ? 80 : 40);

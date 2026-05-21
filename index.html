@@ -1330,30 +1330,30 @@ const ModelFactory = {
             let gem = new THREE.Mesh(SharedGeo.icosahedron, mat); gem.scale.set(size*0.8, size*2.5, size*0.8); gem.position.y = size*1.8;
             let ring = new THREE.Mesh(SharedGeo.torus, mat); ring.scale.set(size*1.5, size*1.5, size*0.2); ring.position.y = size*1.8; ring.rotation.x = Math.PI/2;
             group.add(base); group.add(gem); group.add(ring); parts.ring = ring; parts.gem = gem;
-           } else if (type === 'golem') {
+          } else if (type === 'golem') {
             let torso = new THREE.Mesh(SharedGeo.box, mat); torso.scale.set(size*1.8, size*2.0, size*1.5); torso.position.y = size*1.5;
             
-            // Nuova Testa Ciano ad altissima luminescenza
-            let headMat = new THREE.MeshPhongMaterial({color: 0x002244, emissive: 0x00ffff, emissiveIntensity: 1.5});
+            // Impostiamo un colore Ciano uniforme per Glow, Scudo e Testa
+            let shieldColor = 0x00ffff;
+            
+            let headMat = new THREE.MeshPhongMaterial({color: 0x002244, emissive: shieldColor, emissiveIntensity: 1.5});
             let head = new THREE.Mesh(SharedGeo.box, headMat); head.scale.set(size*0.9, size*0.9, size*0.9); head.position.set(0, size*2.8, size*0.2);
             
             let armL = new THREE.Mesh(SharedGeo.box, darkMat); armL.scale.set(size*0.7, size*1.8, size*0.7); armL.position.set(-size*1.4, size*1.6, 0);
             let armR = new THREE.Mesh(SharedGeo.box, darkMat); armR.scale.set(size*0.7, size*1.8, size*0.7); armR.position.set(size*1.4, size*1.6, 0);
             
-            // Scudo Frontale Trasparente Ciano
-            let shieldMat = new THREE.MeshPhongMaterial({color: 0x00ffff, transparent: true, opacity: 0.4, emissive: 0x0088ff});
+            let shieldMat = new THREE.MeshPhongMaterial({color: shieldColor, transparent: true, opacity: 0.4, emissive: 0x0088ff});
             let shield = new THREE.Mesh(SharedGeo.box, shieldMat);
             shield.scale.set(size*3.2, size*2.5, size*0.2);
             shield.position.set(0, size*1.5, size*1.0); 
             
-            // Aggiungiamo un alone Sprite per il Glow "morbido"
-            let glowMat = new THREE.SpriteMaterial({color: 0x00ffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false});
+            // AGGIUNTO AL GRUPPO ESTERNO (NON ALLO SCUDO) per evitare il bug del moltiplicatore scala!
+            let glowMat = new THREE.SpriteMaterial({color: shieldColor, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false});
             let shieldGlow = new THREE.Sprite(glowMat);
-            shieldGlow.scale.set(size*6, size*5, 1);
-            shieldGlow.position.set(0, 0, size*0.2);
-            shield.add(shieldGlow);
+            shieldGlow.scale.set(size*5, size*4, 1);
+            shieldGlow.position.set(0, size*1.5, size*1.2);
             
-            group.add(torso); group.add(head); group.add(armL); group.add(armR); group.add(shield);
+            group.add(torso); group.add(head); group.add(armL); group.add(armR); group.add(shield); group.add(shieldGlow);
             parts.armL = armL; parts.armR = armR; parts.shield = shield;
         }
         this.setupShadows(group);
@@ -1803,10 +1803,13 @@ const UI = {
             this.els.essenceTimer.style.width = `${(Game.player.essenceTimer / maxTimer) * 100}%`;
         } else { this.els.essenceHud.classList.remove('opacity-100'); this.els.essenceHud.classList.add('opacity-0'); }
 
-        if (Game.ultimateActive) {
+       if (Game.ultimateActive) {
             let uPct = `${(Game.ultimateTimer / (10.0 + Game.player.modifiers.ascensionDurationAdd)) * 100}%`;
             if(this.cache.ultCharge !== uPct || !this.cache.ultActive) {
-                if(this.els.btnUltFill) { this.els.btnUltFill.style.height = uPct; this.els.btnUltFill.className = "absolute bottom-0 left-0 w-full bg-cyan-400/60 transition-all duration-200 pointer-events-none z-0"; }
+                if(this.els.btnUltFill) { 
+                    this.els.btnUltFill.style.height = uPct; 
+                    this.els.btnUltFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-200 pointer-events-none"; 
+                }
                 if(this.els.btnUlt) { this.els.btnUlt.classList.add('opacity-100', 'border-cyan-400', 'ult-ready'); this.els.btnUlt.classList.remove('opacity-75', 'border-gray-600'); }
                 if(this.els.ultChargeText) { this.els.ultChargeText.innerText = "ON"; }
                 this.cache.ultCharge = uPct; this.cache.ultActive = true;
@@ -1814,7 +1817,10 @@ const UI = {
         } else {
             let uPct = `${Game.ultimateCharge}%`;
             if (this.cache.ultCharge !== uPct || this.cache.ultActive) {
-                if(this.els.btnUltFill) { this.els.btnUltFill.style.height = uPct; this.els.btnUltFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-200 pointer-events-none z-0"; }
+                if(this.els.btnUltFill) { 
+                    this.els.btnUltFill.style.height = uPct; 
+                    this.els.btnUltFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-200 pointer-events-none"; 
+                }
                 
                 if (Game.ultimateCharge >= 100) {
                     if(this.els.btnUlt) { this.els.btnUlt.classList.add('opacity-100', 'border-cyan-300', 'ult-ready'); this.els.btnUlt.classList.remove('opacity-75', 'border-gray-600'); }
@@ -1840,14 +1846,18 @@ const UI = {
             if (this.els.btnShield) {
                 this.els.btnShield.classList.add('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]');
                 this.els.btnShield.classList.remove('border-gray-600', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]');
-                this.els.btnShieldFill.style.height = '100%';
-                this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-cyan-400/60 transition-all duration-100 pointer-events-none z-0";
+                if (this.els.btnShieldFill) {
+                    this.els.btnShieldFill.style.height = '100%';
+                    this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-100 pointer-events-none";
+                }
             }
         } else {
             if (this.els.btnShield) {
                 let cdPct = Game.player.activeShieldCooldown > 0 ? (1 - (Game.player.activeShieldCooldown / 8.0)) * 100 : 100;
-                this.els.btnShieldFill.style.height = `${cdPct}%`;
-                this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-100 pointer-events-none z-0";
+                if (this.els.btnShieldFill) {
+                    this.els.btnShieldFill.style.height = `${cdPct}%`;
+                    this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-100 pointer-events-none";
+                }
                 
                 if (Game.player.activeShieldCooldown <= 0) {
                     this.els.btnShield.classList.add('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]');
@@ -1864,18 +1874,20 @@ const UI = {
             let maxDashCd = 2.0 * Game.player.modifiers.dashCooldownMult; 
             let dashCdPct = Game.player.dashCooldown > 0 ? (1 - (Game.player.dashCooldown / maxDashCd)) * 100 : 100;
             
-            this.els.btnDashFill.style.height = `${dashCdPct}%`;
+            if (this.els.btnDashFill) {
+                this.els.btnDashFill.style.height = `${dashCdPct}%`;
+            }
             
             if (Game.player.dashCooldown <= 0) {
                 this.els.btnDash.classList.add('border-yellow-400', 'opacity-100');
                 this.els.btnDash.classList.remove('border-gray-600', 'opacity-75');
-                this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-yellow-500/60 transition-all duration-100 pointer-events-none z-0";
+                if (this.els.btnDashFill) this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-yellow-500/50 transition-all duration-100 pointer-events-none";
             } else {
                 this.els.btnDash.classList.remove('border-yellow-400', 'opacity-100');
                 this.els.btnDash.classList.add('border-gray-600', 'opacity-75');
-                this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-gray-500/50 transition-all duration-100 pointer-events-none z-0";
+                if (this.els.btnDashFill) this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-yellow-500/50 transition-all duration-100 pointer-events-none";
             }
-        } else {
+        }else {
             if (this.els.btnShield) {
                 let cdPct = Game.player.activeShieldCooldown > 0 ? (1 - (Game.player.activeShieldCooldown / 8.0)) * 100 : 100;
                 this.els.btnShieldFill.style.height = `${cdPct}%`;

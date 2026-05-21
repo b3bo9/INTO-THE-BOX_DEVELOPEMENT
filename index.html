@@ -1178,7 +1178,7 @@ const SharedGeo = {
         geo.center();
         return geo;
     })(),
-    coin: new THREE.CylinderGeometry(8, 8, 2, 16)
+    coin: new THREE.CylinderGeometry(10, 10, 2, 16)
 };
 
 
@@ -1190,7 +1190,7 @@ class Coin {
         this.group.matrixAutoUpdate = false; 
         core.matrixAutoUpdate = false; core.updateMatrix();
         this.group.add(core); this.group.visible = false; Game.scene.add(this.group);
-        this.groundGlow = new THREE.Mesh(new THREE.PlaneGeometry(45, 45), new THREE.MeshBasicMaterial({map: GLOW_TEX, color: 0xffaa00, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
+        this.groundGlow = new THREE.Mesh(new THREE.PlaneGeometry(55, 55), new THREE.MeshBasicMaterial({map: GLOW_TEX, color: 0xffaa00, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
         this.groundGlow.rotation.x = -Math.PI / 2; this.groundGlow.visible = false; Game.scene.add(this.groundGlow);
     }
     spawn(x, y) { 

@@ -1168,7 +1168,7 @@ const SharedGeo = {
     })(),
     coin: new THREE.CylinderGeometry(4, 4, 1, 16)
 };
-SharedMat.coin = new THREE.MeshStandardMaterial({color: 0xffd700, emissive: 0xaa6600, metalness: 1.0, roughness: 0.2});
+
 
 class Coin {
     constructor() {
@@ -1313,7 +1313,7 @@ const SharedMat = {
     leaperTeeth: new THREE.MeshBasicMaterial({color: 0xffffff}),
     dashLine: new THREE.MeshBasicMaterial({color: 0x00ffff, blending: THREE.AdditiveBlending, transparent: true})
 };
-
+SharedMat.coin = new THREE.MeshStandardMaterial({color: 0xffd700, emissive: 0xaa6600, metalness: 1.0, roughness: 0.2});
 const ModelFactory = {
     setupShadows(mesh) { mesh.traverse(c => { if(c.isMesh) { c.castShadow = true; c.receiveShadow = true; } }); },
     buildPlayer(mat, gemMat) {

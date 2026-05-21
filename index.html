@@ -384,9 +384,17 @@
                 <p class="text-[10px] sm:text-sm text-cyan-200 font-bold tracking-[0.3em] uppercase bg-blue-950/50 px-6 py-2 rounded-full border border-cyan-500/30 backdrop-blur-md">L'oscurità si intensifica...</p>
             </div>
 
-            <!-- NEGOZIO (Inserito nel centro del layout) -->
+            <!-- NEGOZIO E STATISTICHE -->
             <div class="flex-1 w-full flex flex-col items-center justify-center gap-3 my-2 z-20">
+                <!-- STATISTICHE CORRENTI -->
+                <div class="flex gap-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest bg-black/40 px-4 py-2 rounded-lg border border-gray-800">
+                    <span>HP: <span id="stat-hp" class="text-green-400">100</span></span>
+                    <span>DMG: <span id="stat-dmg" class="text-red-400">10</span></span>
+                    <span>SPD: <span id="stat-speed" class="text-blue-400">1.0</span></span>
+                </div>
+                
                 <div class="text-yellow-400 font-black text-xl sm:text-2xl drop-shadow-[0_0_10px_rgba(250,204,21,0.6)]"><i class="fa-solid fa-coins"></i> <span id="shop-coins">0</span></div>
+                
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-[500px]">
                     <button onclick="ShopSystem.buy('hp')" class="bg-black/60 border border-green-500/50 hover:bg-green-900/40 rounded-xl p-3 flex flex-col items-center justify-center transition-all active:scale-95 group">
                         <i class="fa-solid fa-heart text-green-400 text-lg mb-1"></i>
@@ -1170,7 +1178,7 @@ const SharedGeo = {
         geo.center();
         return geo;
     })(),
-    coin: new THREE.CylinderGeometry(4, 4, 1, 16)
+    coin: new THREE.CylinderGeometry(8, 8, 2, 16)
 };
 
 
@@ -1182,7 +1190,7 @@ class Coin {
         this.group.matrixAutoUpdate = false; 
         core.matrixAutoUpdate = false; core.updateMatrix();
         this.group.add(core); this.group.visible = false; Game.scene.add(this.group);
-        this.groundGlow = new THREE.Mesh(new THREE.PlaneGeometry(25, 25), new THREE.MeshBasicMaterial({map: GLOW_TEX, color: 0xffaa00, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
+        this.groundGlow = new THREE.Mesh(new THREE.PlaneGeometry(45, 45), new THREE.MeshBasicMaterial({map: GLOW_TEX, color: 0xffaa00, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
         this.groundGlow.rotation.x = -Math.PI / 2; this.groundGlow.visible = false; Game.scene.add(this.groundGlow);
     }
     spawn(x, y) { 
@@ -5659,29 +5667,48 @@ const Preloader = {
 };
 
     const ShopSystem = {
-    updateUI() {
-        document.getElementById('shop-coins').innerText = Game.coins;
-    },
-    buy(type) {
-        let cost = 0;
-        if (type === 'hp') cost = 5;
-        if (type === 'dmg') cost = 8;
-        if (type === 'speed') cost = 6;
+    bonus: { hp: 0, dmg: 0, speed: 0 },
+    
+    updateUI() {
+        document.getElementById('shop-coins').innerText = Game.coins;
+        // Aggiorna le statistiche mostrando base + bonus
+        document.getElementById('stat-hp').innerText = 
+            `${Math.floor(Game.player.stats.maxHp)} ${this.bonus.hp > 0 ? '(+' + this.bonus.hp + ')' : ''}`;
+        document.getElementById('stat-dmg').innerText = 
+            `${Math.floor(Game.player.stats.maxDmg)} ${this.bonus.dmg > 0 ? '(+' + Math.round(this.bonus.dmg*100) + '%)' : ''}`;
+        document.getElementById('stat-speed').innerText = 
+            `${Game.player.modifiers.speedMult.toFixed(2)} ${this.bonus.speed > 0 ? '(+' + Math.round(this.bonus.speed*100) + '%)' : ''}`;
+    },
+    
+    buy(type) {
+        let cost = 0;
+        if (type === 'hp') cost = 5;
+        if (type === 'dmg') cost = 8;
+        if (type === 'speed') cost = 6;
 
-        if (Game.coins >= cost) {
-            Game.coins -= cost;
-            AudioEngine.playCollect();
-            
-            if (type === 'hp') { Game.player.stats.maxHp += 15; Game.player.stats.hp += 15; }
-            if (type === 'dmg') { Game.player.modifiers.dmgMult += 0.10; }
-            if (type === 'speed') { Game.player.modifiers.speedMult += 0.05; }
-            
-            this.updateUI();
-            if(UI.els.coins) UI.els.coins.innerText = Game.coins;
-        } else {
-            AudioEngine.playClick(); // Suono di negazione (o riusa il click)
-        }
-    }
+        if (Game.coins >= cost) {
+            Game.coins -= cost;
+            AudioEngine.playCollect();
+            
+            if (type === 'hp') { 
+                Game.player.stats.maxHp += 15; Game.player.stats.hp += 15; 
+                this.bonus.hp += 15;
+            }
+            if (type === 'dmg') { 
+                Game.player.modifiers.dmgMult += 0.10; 
+                this.bonus.dmg += 0.10;
+            }
+            if (type === 'speed') { 
+                Game.player.modifiers.speedMult += 0.05; 
+                this.bonus.speed += 0.05;
+            }
+            
+            this.updateUI();
+            if(UI.els.coins) UI.els.coins.innerText = Game.coins;
+        } else {
+            AudioEngine.playClick();
+        }
+    }
 };
 
 // Modifica la funzione nextFloor() per aggiornare la UI del negozio

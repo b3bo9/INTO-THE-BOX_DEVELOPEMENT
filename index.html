@@ -3503,7 +3503,7 @@ class Player extends Entity {
                     if (MathUtils.distanceSq(this, e) < shockRangeSq) { 
                         e.slowedTimer = 4.0; 
                         e.slowType = 'blue'; 
-                        e.takeDamage(this.stats.maxDmg * 0.3 * this.modifiers.dmgMult, this, false, false); 
+                        e.takeDamage(this.stats.maxDmg * 0.15 * this.modifiers.dmgMult, this, false, false); 
                         let angleToEnemy = Math.atan2(e.y - this.y, e.x - this.x);
                         e.push(Math.cos(angleToEnemy), Math.sin(angleToEnemy), 200); // Push potenziato
                     } 
@@ -3564,7 +3564,7 @@ class Player extends Entity {
                 nearby.forEach(e => { 
                     if (MathUtils.distanceSq(this, e) < freezeRangeSq) { 
                         e.frozenTimer = 4.0;
-                        e.takeDamage(this.stats.maxDmg * 0.2 * this.modifiers.dmgMult, this, true, false); 
+                        e.takeDamage(this.stats.maxDmg * 0.15 * this.modifiers.dmgMult, this, true, false); 
                     } 
                 }); 
 
@@ -3603,7 +3603,7 @@ class Player extends Entity {
                 nearby.forEach(e => { 
                     if (MathUtils.distanceSq(this, e) < range * range) { 
                         e.slowedTimer = 4.0; e.infected = true; 
-                        e.takeDamage(this.stats.maxDmg * 3.5 * this.modifiers.dmgMult, this, true, true); 
+                        e.takeDamage(this.stats.maxDmg * 1.5 * this.modifiers.dmgMult, this, true, true); 
                     } 
                 });
 

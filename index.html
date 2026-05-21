@@ -1066,7 +1066,7 @@ const RelicSystem = {
         { id: 'c4', name: "Cristallo Vitale", desc: "+15% Salute Massima", rarity: "common", image: "icona_cristallo_vitale.png", icon: "fa-heart", apply: (p) => { p.stats.maxHp = Math.floor(p.stats.maxHp * 1.15); p.stats.hp = p.stats.maxHp; } },
         { id: 'c5', name: "Runa Minore", desc: "+10% Danni base", rarity: "common", image: "icona_runa_minore.png", icon: "fa-fire", apply: (p) => p.modifiers.dmgMult += 0.10 },
         { id: 'r1', name: "Bussola Dimensionale", desc: "Essenze durano 50% in più", rarity: "rare", image: "icona_bussola_dimensionale.png", icon: "fa-compass", apply: (p) => p.modifiers.essenceDurationMult += 0.50 },
-        { id: 'r2', name: "Mercurio", desc: "Cooldown Scatto -25%", rarity: "rare", image: "icona_mercurio.png", icon: "fa-shoe-prints", apply: (p) => p.modifiers.dashCooldownMult -= 0.25 },
+        { id: 'r2', name: "Mercurio", desc: "Cooldown Scatto -50%", rarity: "rare", image: "icona_mercurio.png", icon: "fa-shoe-prints", apply: (p) => p.modifiers.dashCooldownMult -= 0.50 },
         { id: 'r3', name: "Scudo dell'Egidio", desc: "Blocca un attacco. Si ricarica in 15s", rarity: "rare", image: "icona_scudo_dell_egidio.png", icon: "fa-shield-halved", apply: (p) => p.modifiers.shieldActive = true },
        { id: 'r4', name: "Spirito Avaro", desc: "+50% XP, ma subisci +15% di danni", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.50; p.modifiers.dmgTakenMult += 0.15; } },
         { id: 'r5', name: "Magnete delle Anime", desc: "Raggio raccolta raddoppiato", rarity: "rare", image: "icona_magnete_delle_anime.png", icon: "fa-magnet", apply: (p) => p.modifiers.pickupRadiusMult += 1.0 },
@@ -1081,8 +1081,10 @@ const RelicSystem = {
         { id: 'l4', name: "Sete di Sangue Eterna", desc: "Curati 5% ogni 10 kill. 0 cure a terra. HP non salgono con livello.", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", icon: "fa-droplet", apply: (p) => { p.modifiers.bloodthirst = true; p.modifiers.noHealDrops = true; p.modifiers.noMaxHpLevelUp = true; } },
         { id: 'l5', name: "Maestria del Flow", desc: "Bonus combo doppi e decado lento. Danni dimezzano HP attuali.", rarity: "legendary", image: "icona_maestria_del_flow.png", icon: "fa-infinity", apply: (p) => { p.modifiers.flowMastery = true; p.modifiers.comboDecayRate *= 0.5; } },
         { id: 'e6', name: "Batteria a Ioni", desc: "Lo Scudo Cinetico dura 2 secondi in più (Totale: 4s).", rarity: "epic", image: "icona_batteria_ioni.png", icon: "fa-battery-full", apply: (p) => p.modifiers.shieldDurationAdd += 2.0   },
-        { id: 'l6', name: "Aegis del Guardiano", desc: "Lo Scudo attivo esplode alla fine. L'area e i danni aumentano per ogni proiettile assorbito.", rarity: "legendary", image: "fa_shieldx.png", icon: "fa-shield", apply: (p) => { p.modifiers.explosiveShield = true; } }
-    ],
+       { id: 'l6', name: "Aegis del Guardiano", desc: "Lo Scudo attivo esplode alla fine. L'area e i danni aumentano per ogni proiettile assorbito.", rarity: "legendary", image: "fa_shieldx.png", icon: "fa-shield", apply: (p) => { p.modifiers.explosiveShield = true; } },
+        { id: 'e7', name: "Lama del Vento", desc: "Dopo uno scatto, i prossimi 2 attacchi sono colpi critici garantiti.", rarity: "epic", image: "icona_lama_vento.png", icon: "fa-wind", apply: (p) => { p.modifiers.dashCritsEnabled = true; } },
+        { id: 'l7', name: "Impatto Tonante", desc: "Lo scatto crea un fulmine all'arrivo che infligge danni lievi e stordisce i nemici per 2s.", rarity: "legendary", image: "icona_impatto_tonante.png", icon: "fa-bolt", apply: (p) => { p.modifiers.dashLightning = true; } }
+    ],
     getRandomRarity() { 
         let r = Math.random() * 100; 
         if (r <= 45) return 'common';   // 45% 
@@ -3456,8 +3458,11 @@ class Player extends Entity {
             passiveUltCharge: false, noHealDrops: false, noMaxHpLevelUp: false, bloodthirst: false, bloodthirstCount: 0, flowMastery: false,
             timeSinceLastHit: 0, 
             explosiveShield: false,
-            shieldDurationAdd: 0
-        };
+            shieldDurationAdd: 0,
+            dashCritsEnabled: false,
+            dashCritsStacks: 0,
+            dashLightning: false
+        };
         
         this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}), new THREE.MeshPhongMaterial({color: 0xffff00, emissive: 0xffff00}));
         this.mesh = this.modelParts.group; this.staffGemMat = this.modelParts.staffGem.material;
@@ -3933,11 +3938,23 @@ class Player extends Entity {
             if (this.modifiers.fireTrail && Game.frameCount % 5 === 0) Game.getHazard().spawn(this.x, this.y, 20, 1.5, this.stats.maxDmg * 0.8, 0xffaa00, 'fire');
             this.move(Math.cos(this.dashAngle), Math.sin(this.dashAngle), dt * 4.0);
             
-            if (this.dashTimer <= 0) { 
-                this.isDashing = false; 
-                this.mesh.scale.set(1, 1, 1); // Reset immediato e di sicurezza a fine scatto
-                if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); Game.addTrauma(0.5); } 
-            }
+           if (this.dashTimer <= 0) { 
+                this.isDashing = false; 
+                this.mesh.scale.set(1, 1, 1); // Reset immediato e di sicurezza a fine scatto
+                if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); Game.addTrauma(0.5); } 
+                if (this.modifiers.dashLightning) {
+                    Game.addTrauma(0.6);
+                    Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'nova');
+                    AudioEngine.playShoot('chain_lightning');
+                    let nearby = Game.enemyGrid.findNearby(this, 120);
+                    nearby.forEach(e => {
+                        if (MathUtils.distanceSq(this, e) < 120*120) {
+                            e.takeDamage(this.stats.maxDmg * 0.5 * this.modifiers.dmgMult, this, false, false);
+                            e.frozenTimer = 2.0; // Stordisce e congela i nemici per 2 secondi
+                        }
+                    });
+                }
+            }
         }
 
         this.attackTimer -= dt;
@@ -4047,7 +4064,8 @@ class Player extends Entity {
         if (Game.ultimateActive) spdMult *= 2.0; 
         this.attackTimer = 1 / (this.baseAttackSpeed * spdMult); this.isAttacking = true; this.attackSwing = 0;
         let critChance = this.modifiers.critChance + Math.min(Game.combo * 0.005, 0.5 * flowCapMult); let isCrit = Math.random() < critChance;
-        let baseDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * (1 + Math.min(Game.combo * 0.04, 2.0 * flowCapMult)) * this.modifiers.dmgMult; if (Game.ultimateActive) baseDmg *= 2.0; if (isCrit) baseDmg *= this.modifiers.critDmgMult;
+        if (this.modifiers.dashCritsStacks > 0) { isCrit = true; this.modifiers.dashCritsStacks--; }
+        let baseDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * (1 + Math.min(Game.combo * 0.04, 2.0 * flowCapMult)) * this.modifiers.dmgMult; if (Game.ultimateActive) baseDmg *= 2.0; if (isCrit) baseDmg *= this.modifiers.critDmgMult;f (Game.ultimateActive) baseDmg *= 2.0; if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         let projType = 'player_arrow'; if (this.essence === 'red') projType = 'explosive_arrow'; if (this.essence === 'blue') projType = 'chain_lightning'; if (this.essence === 'green') projType = 'homing_arrow';
         let piercing = (this.overdrive && this.essence === 'blue'); AudioEngine.playShoot(projType, isCrit);
         
@@ -4074,7 +4092,8 @@ class Player extends Entity {
         }
         
         this.isDashing = true; this.dashTimer = 0.25; this.dashAngle = Game.inputs.left.active ? Math.atan2(Game.inputs.left.y, Game.inputs.left.x) : this.angle;
-        this.dashCooldown = perfectDodge ? 0.5 : 2.0 * this.modifiers.dashCooldownMult; // (mantieni 2.0 o 1.0 a seconda di quello che avevi scelto)
+        this.dashCooldown = perfectDodge ? 0.5 : 2.0 * this.modifiers.dashCooldownMult; // (mantieni 2.0 o 1.0 a seconda di quello che avevi scelto)
+        if (this.modifiers.dashCritsEnabled) this.modifiers.dashCritsStacks = 2;
         
         if (this.essence === 'blue') {
             let maxDist = 250; 

@@ -520,7 +520,9 @@
     </div> 
 <script>
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-
+let ESSENCE_COLORS = { 'red': 0xFF1133, 'blue': 0x00AAFF, 'green': 0x33FF00 }; 
+const ESSENCE_NAMES = { 'red': 'INFERNO', 'blue': 'TEMPESTA', 'green': 'PANDEMIA' };
+const ESSENCE_TYPES = ['red', 'blue', 'green'];
 const AppSettings = {
     mode: 1, 
     colorblind: false,
@@ -961,8 +963,7 @@ const MathUtils = {
 };
 
 const TILE_SIZE = 64; const CHUNK_SIZE = 30; const FIXED_TIME_STEP = 1 / 60; const MAX_TIME_STEP = 0.1;
-let ESSENCE_COLORS = { 'red': 0xFF1133, 'blue': 0x00AAFF, 'green': 0x33FF00 }; const ESSENCE_NAMES = { 'red': 'INFERNO', 'blue': 'TEMPESTA', 'green': 'PANDEMIA' };
-const ESSENCE_TYPES = ['red', 'blue', 'green'];
+
 const DEATH_QUOTES = [
     "L'oscurità reclama un'altra anima.", "Non sei il primo a cadere, e non sarai l'ultimo.", "La scatola si chiude su di te.", "Cenere alla cenere.",
     "I demoni banchettano con i tuoi resti.", "Un flebile respiro, poi il buio assoluto.", "Hai combattuto valorosamente, ma la scatola vince sempre.",
@@ -5415,63 +5416,49 @@ function hideHighScores() { AudioEngine.playClick(); document.getElementById('hi
 // Sistema invisibile per forzare il download delle immagini in cache
 const Preloader = {
     manager: new THREE.LoadingManager(),
-    textures: {}, // Salveremo qui le texture 3D
+    textures: {}, 
     init() {
         const loadingText = document.getElementById('loadingText');
         const loadingProgress = document.getElementById('loadingProgress');
         const startText = document.getElementById('startText');
         const initScreen = document.getElementById('initScreen');
 
-        // Quando il LoadingManager fa progressi, aggiorniamo la %
-        this.manager.onProgress = (url, itemsLoaded, itemsTotal) => {
-            loadingProgress.innerText = Math.floor((itemsLoaded / itemsTotal) * 100);
-        };
-
-        // Quando ha finito TUTTO, sblocchiamo il gioco
-        this.manager.onLoad = () => {
-            loadingText.classList.add('hidden');
-            startText.classList.remove('hidden');
-            initScreen.style.pointerEvents = 'auto'; // Riattiviamo il click
-        };
-
-        // Se un'immagine fallisce, lo notifichiamo ma non fermiamo tutto
-        this.manager.onError = (url) => {
-            console.warn("Impossibile caricare:", url, "- Verrà usato un colore di base.");
-        };
-
-        // FALLBACK DI SICUREZZA: Sblocca sempre il gioco dopo 3 secondi
-        // Previene il blocco se si apre il gioco senza un server locale (file://)
-        setTimeout(() => {
-            if (loadingText.classList.contains('hidden')) return; // Se è già sbloccato, ignora
-            console.warn("Forzatura avvio: Texture mancanti o bloccate dal browser.");
+        // Funzione sicura per sbloccare il gioco
+        const forceUnlock = () => {
+            if (loadingText.classList.contains('hidden')) return;
             loadingText.classList.add('hidden');
             startText.classList.remove('hidden');
             initScreen.style.pointerEvents = 'auto';
-        }, 3000);
+        };
 
-        // 1. Carichiamo le Texture 3D passando il manager
+        this.manager.onProgress = (url, itemsLoaded, itemsTotal) => {
+            // Evita errori matematici (divisione per zero)
+            if (itemsTotal > 0) loadingProgress.innerText = Math.floor((itemsLoaded / itemsTotal) * 100);
+        };
+
+        this.manager.onLoad = () => { forceUnlock(); };
+        this.manager.onError = (url) => { console.warn("Manca file:", url); };
+
+        // FALLBACK DI SICUREZZA: Sblocca SEMPRE il gioco dopo 2 secondi, 
+        // anche se mancano file audio o texture.
+        setTimeout(forceUnlock, 2000); 
+
         const texLoader = new THREE.TextureLoader(this.manager);
         this.textures.dirt = texLoader.load('dirt.jpg');
-        this.textures.grass = texLoader.load('grass.jpg');
-        this.textures.rock = texLoader.load('rock.jpg');
-        this.textures.wall = texLoader.load('wall.jpg');
-        this.textures.smoke = texLoader.load('smoke.png'); // <-- Texture fumo
+        this.textures.grass = texLoader.load('grass.jpg');
+        this.textures.rock = texLoader.load('rock.jpg');
+        this.textures.wall = texLoader.load('wall.jpg');
+        this.textures.smoke = texLoader.load('smoke.png');
 
-        // 2. Carichiamo le immagini UI (non bloccanti)
-        const imagesToLoad = ['bg.png', 'bg_morte.png', 'bg_box.png', 'bg_piano.png', 'smoke.png'];
+        const imagesToLoad = ['bg.png', 'bg_morte.png', 'bg_box.png', 'bg_piano.png', 'smoke.png'];
         RelicSystem.allRelics.forEach(r => { if(r.image) imagesToLoad.push(r.image); });
-        imagesToLoad.forEach(src => {
-            const img = new Image();
-            img.src = src;
-        });
+        imagesToLoad.forEach(src => { const img = new Image(); img.src = src; });
 
-     // 3. Audio (non bloccante)
-        ['The_Iron_Pulse.mp3', 'Gameplay.mp3', 'Boss.mp3', 'Vittoria_Piano.mp3', 'Caduto.mp3', 'RIP.mp3', 'click.mp3', 'countdown.mp3'].forEach(src => {
+        ['The_Iron_Pulse.mp3', 'Gameplay.mp3', 'Boss.mp3', 'Vittoria_Piano.mp3', 'Caduto.mp3', 'RIP.mp3', 'click.mp3', 'countdown.mp3'].forEach(src => {
             fetch(src).catch(e => {});
         });
     }
 };
-
 window.onload = () => {
     Preloader.init(); // Avvia il LoadingManager globale
     ScoreManager.init(); Game.init();

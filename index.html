@@ -3746,6 +3746,32 @@ class Player extends Entity {
             if (this.activeShieldTimer <= 0) {
                 this.shieldMesh.visible = false;
                 this.activeShieldCooldown = 8.0;
+                
+                // --- FIX: ESPLOSIONE AEGIS DEL GUARDIANO ---
+                if (this.modifiers.explosiveShield) {
+                    let baseDmg = this.stats.maxDmg * 2.0;
+                    // +50% di danno per ogni proiettile assorbito
+                    let bonusDmg = this.shieldAbsorbed * (this.stats.maxDmg * 0.5); 
+                    let totalDmg = (baseDmg + bonusDmg) * this.modifiers.dmgMult;
+                    
+                    let baseRadius = 150;
+                    let bonusRadius = this.shieldAbsorbed * 20;
+                    // Cap massimo al raggio per evitare che pulisca l'intera mappa
+                    let totalRadius = Math.min(baseRadius + bonusRadius, 400); 
+                    
+                    // Genera l'onda d'urto letale
+                    Game.getHazard().spawn(this.x, this.y, totalRadius, 0.5, totalDmg, 0x00DDFF, 'nova_ring');
+                    Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'nova');
+                    Game.addTrauma(1.5);
+                    AudioEngine.playShoot('explosive_arrow');
+                    
+                    // Feedback visivo
+                    if (this.shieldAbsorbed > 0) {
+                        Game.getFloatingText().spawn(this.x, this.y + 20, `AEGIS: ${this.shieldAbsorbed} ASSORBITI!`, '#00DDFF', 35, true);
+                    }
+                    this.shieldAbsorbed = 0; // Reset contatore
+                }
+                // ------------------------------------------
             }
         } else {
             this.shieldMesh.visible = false;

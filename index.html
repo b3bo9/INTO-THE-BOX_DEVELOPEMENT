@@ -1356,7 +1356,18 @@ const ModelFactory = {
             
             group.add(torso); group.add(head); group.add(armL); group.add(armR); group.add(shield); group.add(shieldGlow);
             parts.armL = armL; parts.armR = armR; parts.shield = shield;
+        } else if (type === 'boss') {
+            let torso = new THREE.Mesh(SharedGeo.box, darkMat); torso.scale.set(size*1.5, size*1.5, size); torso.position.y = size*1.5;
+            let core = new THREE.Mesh(SharedGeo.icosahedron, mat); core.scale.set(size, size, size); core.position.set(0, size*1.5, size*0.5);
+            let head = new THREE.Mesh(SharedGeo.box, darkMat); head.scale.set(size*0.5, size*0.5, size*0.5); head.position.set(0, size*2.8, size*0.2);
+            let crown = new THREE.Mesh(SharedGeo.torus, mat); crown.scale.set(size*0.8, size*0.8, size*0.2); crown.position.set(0, size*3.2, size*0.2); crown.rotation.x = Math.PI/2;
+            let armL = new THREE.Mesh(SharedGeo.cylinder, darkMat); armL.scale.set(size*0.4, size*1.8, size*0.4); armL.position.set(-size*1.2, size*1.5, 0);
+            let armR = new THREE.Mesh(SharedGeo.cylinder, darkMat); armR.scale.set(size*0.4, size*1.8, size*0.4); armR.position.set(size*1.2, size*1.5, 0);
+            let sword = new THREE.Mesh(SharedGeo.box, mat); sword.scale.set(size*0.2, size*3, size*0.6); sword.position.set(0, -size*1.5, size); sword.rotation.x = Math.PI/2;
+            armR.add(sword); group.add(torso); group.add(core); group.add(head); group.add(crown); group.add(armL); group.add(armR);
+            parts.armL = armL; parts.armR = armR; parts.crown = crown;
         }
+ 
         this.setupShadows(group);
         return { group, parts };
     }

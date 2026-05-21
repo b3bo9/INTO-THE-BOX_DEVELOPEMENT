@@ -143,7 +143,26 @@
             </div>
 
             <!-- ZONA CENTRALE: VUOTA PER LASCIAR VEDERE LO SFONDO -->
-            <div class="flex-1 w-full min-h-[50px]"></div>
+            <div class="flex-1 w-full flex flex-col items-center justify-center gap-3 my-4 z-20">
+                <div class="text-yellow-400 font-black text-xl sm:text-2xl drop-shadow-[0_0_10px_rgba(250,204,21,0.6)] mb-2"><i class="fa-solid fa-coins"></i> <span id="shop-coins">0</span></div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-[600px]">
+                    <button onclick="ShopSystem.buy('hp')" class="bg-black/60 border border-green-500/50 hover:bg-green-900/40 hover:border-green-400 rounded-xl p-3 flex flex-col items-center justify-center transition-all active:scale-95 group">
+                        <i class="fa-solid fa-heart text-green-400 text-xl mb-1 group-hover:scale-110 transition-transform"></i>
+                        <span class="text-white font-bold text-xs uppercase tracking-widest">+15 HP Max</span>
+                        <span class="text-yellow-400 text-[10px] font-black mt-1"><i class="fa-solid fa-coins"></i> 5</span>
+                    </button>
+                    <button onclick="ShopSystem.buy('dmg')" class="bg-black/60 border border-red-500/50 hover:bg-red-900/40 hover:border-red-400 rounded-xl p-3 flex flex-col items-center justify-center transition-all active:scale-95 group">
+                        <i class="fa-solid fa-fire text-red-400 text-xl mb-1 group-hover:scale-110 transition-transform"></i>
+                        <span class="text-white font-bold text-xs uppercase tracking-widest">+10% Danni</span>
+                        <span class="text-yellow-400 text-[10px] font-black mt-1"><i class="fa-solid fa-coins"></i> 8</span>
+                    </button>
+                    <button onclick="ShopSystem.buy('speed')" class="bg-black/60 border border-blue-500/50 hover:bg-blue-900/40 hover:border-blue-400 rounded-xl p-3 flex flex-col items-center justify-center transition-all active:scale-95 group">
+                        <i class="fa-solid fa-shoe-prints text-blue-400 text-xl mb-1 group-hover:scale-110 transition-transform"></i>
+                        <span class="text-white font-bold text-xs uppercase tracking-widest">+5% Velocità</span>
+                        <span class="text-yellow-400 text-[10px] font-black mt-1"><i class="fa-solid fa-coins"></i> 6</span>
+                    </button>
+                </div>
+            </div>
 
            <!-- CONTROLLI IN BASSO -->
             <div class="w-full max-w-[450px] flex flex-col gap-3 pointer-events-auto shrink-0 relative z-20 mb-4 sm:mb-8">
@@ -471,9 +490,9 @@
                 <div class="health-bar-container h-4 sm:h-5 w-full rounded-full border border-gray-500 shadow-[0_0_10px_rgba(220,38,38,0.4)]"><div id="ui-hp-fill" class="health-bar-fill rounded-full"></div></div>
                 
                 <div class="flex justify-between w-full text-[9px] sm:text-xs font-black uppercase tracking-widest text-gray-300 drop-shadow-md mt-1">
-                    <span id="ui-floor-text">Piano <span id="ui-floor" class="text-white">1</span></span>
-                    <span><span id="ui-enemy-label">Demoni:</span> <span id="ui-enemies-left" class="text-white">0</span></span>
-                </div>
+                    <span id="ui-floor-text">Piano <span id="ui-floor" class="text-white">1</span> | <i class="fa-solid fa-coins text-yellow-400"></i> <span id="ui-coins" class="text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.8)]">0</span></span>
+                    <span><span id="ui-enemy-label">Demoni:</span> <span id="ui-enemies-left" class="text-white">0</span></span>
+                </div>
                 <div class="w-full h-2 sm:h-2.5 bg-black/80 border border-gray-700 rounded-full overflow-hidden shadow-inner backdrop-blur-md">
                     <div id="ui-floor-progress" class="h-full w-0 bg-gradient-to-r from-red-900 via-red-600 to-amber-500 transition-all duration-300"></div>
                 </div>
@@ -1145,9 +1164,31 @@ const SharedGeo = {
         shape.bezierCurveTo(-4, 1.5, -2, 3.5, 0, 1.5);
         const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.5, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.2, bevelThickness: 0.2 });
         geo.center();
-        return geo;
-    })()
+        return geo;
+    })(),
+    coin: new THREE.CylinderGeometry(4, 4, 1, 16)
 };
+SharedMat.coin = new THREE.MeshStandardMaterial({color: 0xffd700, emissive: 0xaa6600, metalness: 1.0, roughness: 0.2});
+
+class Coin {
+    constructor() {
+        this.active = false; this.group = new THREE.Group();
+        let core = new THREE.Mesh(SharedGeo.coin, SharedMat.coin);
+        core.rotation.x = Math.PI / 2; // La mette in piedi
+        this.group.matrixAutoUpdate = false; 
+        core.matrixAutoUpdate = false; core.updateMatrix();
+        this.group.add(core); this.group.visible = false; Game.scene.add(this.group);
+        this.groundGlow = new THREE.Mesh(new THREE.PlaneGeometry(25, 25), new THREE.MeshBasicMaterial({map: GLOW_TEX, color: 0xffaa00, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
+        this.groundGlow.rotation.x = -Math.PI / 2; this.groundGlow.visible = false; Game.scene.add(this.groundGlow);
+    }
+    spawn(x, y) { 
+        this.active = true; this.x = x; this.y = y; this.life = 15.0; 
+        this.group.position.set(x, 8, y); this.group.updateMatrix(); this.group.visible = true; 
+        if (isTouchDevice) { this.groundGlow.position.set(x, 0.2, y); this.groundGlow.visible = true; }
+    }
+    destroy() { this.active = false; this.group.visible = false; this.groundGlow.visible = false; }
+}
+
 function createOrganicAlphaMap() {
     const canvas = document.createElement('canvas'); 
     canvas.width = 256; canvas.height = 256; 
@@ -1775,6 +1816,7 @@ const UI = {
     els: {},
     init() { 
         this.els.fpsValue = document.getElementById('fps-value'); // <--- RIGA CORRETTA
+        this.els.coins = document.getElementById('ui-coins');
         this.els.hpFill = document.getElementById('ui-hp-fill'); this.els.hpText = document.getElementById('ui-hp-text');
         this.els.lives = document.getElementById('ui-lives'); this.els.level = document.getElementById('ui-level'); 
         this.els.xpCircle = document.getElementById('ui-xp-circle');
@@ -1967,13 +2009,13 @@ _dummyScale: new THREE.Vector3(3, 3, 3),
     inputs: { left: {x:0, y:0, active:false}, right: {x:0, y:0, active:false} },
     _vec2: new THREE.Vector2(), _vec3: new THREE.Vector3(), _plane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), _vec3Screen: new THREE.Vector3(),
     _camTarget: new THREE.Vector3(),
-    _particleIdx: 0, _projectileIdx: 0, _hazardIdx: 0, _textIdx: 0, _essenceIdx: 0, _extraLifeIdx: 0, _decoyIdx: 0, _dashLineIdx: 0,
-    lastTime: 0, accumulator: 0, state: 'MENU', floor: 1, floorMaxKills: 0, floorKills: 0, totalKills: 0, frameCount: 0, fpsFrames: 0, fpsLastTime: performance.now(),isBossFloor: false,
-    lastDrawTime: 0, frameInterval: isTouchDevice ? 1000 / 60 : 0, // <-- NUOVO: Cap 60fps solo su mobile
-    hitStop: 0, trauma: 0, combo: 0, comboTimer: 0, comboMaxTime: 5.0, difficultyMult: 1.0, ultimateCharge: 0, ultimateActive: false, ultimateTimer: 0, lives: 3, playTime: 0, bossDefeatedTimer: 0, floorEndTimer: 0, floorEndTriggered: false,
-    player: null, map: null, enemyGrid: null, enemies: [], projectiles: [], particles: [], essences: [], extraLivesDrops: [], floatingTexts: [], hazards: [], decoys: [], dashLines: [], bloodDecals: [], bloodDecalIndex: 0, _debrisIdx: 0,
-    
-    composer: null, bloomPass: null, dirLight: null,
+    _particleIdx: 0, _projectileIdx: 0, _hazardIdx: 0, _textIdx: 0, _essenceIdx: 0, _extraLifeIdx: 0, _decoyIdx: 0, _dashLineIdx: 0, _coinIdx: 0,
+    lastTime: 0, accumulator: 0, state: 'MENU', floor: 1, floorMaxKills: 0, floorKills: 0, totalKills: 0, coins: 0, frameCount: 0, fpsFrames: 0, fpsLastTime: performance.now(),isBossFloor: false,
+    lastDrawTime: 0, frameInterval: isTouchDevice ? 1000 / 60 : 0,
+    hitStop: 0, trauma: 0, combo: 0, comboTimer: 0, comboMaxTime: 5.0, difficultyMult: 1.0, ultimateCharge: 0, ultimateActive: false, ultimateTimer: 0, lives: 3, playTime: 0, bossDefeatedTimer: 0, floorEndTimer: 0, floorEndTriggered: false,
+    player: null, map: null, enemyGrid: null, enemies: [], projectiles: [], particles: [], essences: [], extraLivesDrops: [], coinDrops: [], floatingTexts: [], hazards: [], decoys: [], dashLines: [], bloodDecals: [], bloodDecalIndex: 0, _debrisIdx: 0,
+    
+    composer: null, bloomPass: null, dirLight: null,
     
     _hpBars: Array.from({length: 500}, () => ({x:0, y:0, pct:0})),
     _hpBarCount: 0,
@@ -2066,13 +2108,14 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         this.projectiles = Array.from({length: 300}, () => new Projectile());
         this.floatingTexts = Array.from({length: 100}, () => new FloatingText());
         this.hazards = Array.from({length: 60}, () => new Hazard());
-        this.essences = Array.from({length: 50}, () => new Essence());
-        this.extraLivesDrops = Array.from({length: 10}, () => new ExtraLife());
-        this.decoys = Array.from({length: 10}, () => new Decoy());
-        this.dashLines = Array.from({length: 15}, () => new DashLine());     
-    },
-
-    getDebris() { 
+       this.essences = Array.from({length: 50}, () => new Essence());
+        this.extraLivesDrops = Array.from({length: 10}, () => new ExtraLife());
+        this.coinDrops = Array.from({length: 40}, () => new Coin());
+        this.decoys = Array.from({length: 10}, () => new Decoy());
+        this.dashLines = Array.from({length: 15}, () => new DashLine());     
+    },
+    getCoin() { let c = this.coinDrops[this._coinIdx]; this._coinIdx = (this._coinIdx + 1) % this.coinDrops.length; return c; },
+    getDebris() {
         let startIdx = this._debrisIdx;
         do {
             let d = this.debris[this._debrisIdx];
@@ -2290,11 +2333,12 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         this.resetCombo(); this.snapCamera();
     },
 
-    startGame(diffMult) {
-        document.getElementById('mainMenu').classList.add('hidden'); document.getElementById('hud').classList.remove('hidden');
-        if (isTouchDevice) document.getElementById('mobile-controls').classList.remove('hidden');
-        this.difficultyMult = diffMult || 1.0;
-        this.floor = 1; this.totalKills = 0; this.lives = 3; this.playTime = 0; 
+  startGame(diffMult) {
+        document.getElementById('mainMenu').classList.add('hidden'); document.getElementById('hud').classList.remove('hidden');
+        if (isTouchDevice) document.getElementById('mobile-controls').classList.remove('hidden');
+        this.difficultyMult = diffMult || 1.0;
+        this.floor = 1; this.totalKills = 0; this.lives = 3; this.playTime = 0; this.coins = 0;
+        if(UI.els.coins) UI.els.coins.innerText = "0";
         this.ultimateCharge = 0; this.ultimateActive = false;
         this.floorEndTimer = 0; this.floorEndTriggered = false;
         if (this.player) { Game.scene.remove(this.player.mesh); this.player = null; }
@@ -2530,7 +2574,23 @@ if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
             }
         }
 
+for(let i = 0, len = this.coinDrops.length; i < len; i++) {
+            let c = this.coinDrops[i];
+            if(c.active) {
+                c.life -= dt;
+                if (c.life <= 0) { c.destroy(); continue; }
+                if (c.life < 3.0) c.group.visible = Math.floor(c.life * 8) % 2 === 0;
+                else c.group.visible = true;
 
+                c.group.rotation.y += dt * 3; c.group.position.y = 8 + this.animFloat;
+                c.group.updateMatrix();
+                if (MathUtils.distanceSq(this.player, c) < pRadiusSq) { 
+                    c.destroy(); AudioEngine.playCollect();
+                    Game.coins++; UI.els.coins.innerText = Game.coins;
+                    Game.getFloatingText().spawn(this.player.x, this.player.y, "+1", '#ffaa00', 25, true);
+                }
+            }
+        }
         if (this.isBossFloor && this.bossDefeatedTimer > 0) {
             this.bossDefeatedTimer -= dt;
             if (this.bossDefeatedTimer <= 0 && this.state === 'PLAYING') { this.state = 'RELIC_SELECTION'; RelicSystem.showChoices(); }
@@ -4065,8 +4125,8 @@ class Player extends Entity {
         this.attackTimer = 1 / (this.baseAttackSpeed * spdMult); this.isAttacking = true; this.attackSwing = 0;
         let critChance = this.modifiers.critChance + Math.min(Game.combo * 0.005, 0.5 * flowCapMult); let isCrit = Math.random() < critChance;
         if (this.modifiers.dashCritsStacks > 0) { isCrit = true; this.modifiers.dashCritsStacks--; }
-        let baseDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * (1 + Math.min(Game.combo * 0.04, 2.0 * flowCapMult)) * this.modifiers.dmgMult; if (Game.ultimateActive) baseDmg *= 2.0; if (isCrit) baseDmg *= this.modifiers.critDmgMult;f (Game.ultimateActive) baseDmg *= 2.0; if (isCrit) baseDmg *= this.modifiers.critDmgMult;
-        let projType = 'player_arrow'; if (this.essence === 'red') projType = 'explosive_arrow'; if (this.essence === 'blue') projType = 'chain_lightning'; if (this.essence === 'green') projType = 'homing_arrow';
+        let baseDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * (1 + Math.min(Game.combo * 0.04, 2.0 * flowCapMult)) * this.modifiers.dmgMult; if (Game.ultimateActive) baseDmg *= 2.0; if (isCrit) baseDmg *= this.modifiers.critDmgMult;
+        let projType = 'player_arrow'; if (this.essence === 'red') projType = 'explosive_arrow'; if (this.essence === 'blue') projType = 'chain_lightning'; if (this.essence === 'green') projType = 'homing_arrow';
         let piercing = (this.overdrive && this.essence === 'blue'); AudioEngine.playShoot(projType, isCrit);
         
         // Calcola la velocità: 500 per il rosso, 1000 per tutti gli altri
@@ -4697,10 +4757,19 @@ class Enemy extends Entity {
         }
         if (Game.player.modifiers.noHealDrops) lifeChance = 0;
         
-        if (Math.random() < lifeChance) { 
-            Game.getExtraLife().spawn(this.x, this.y); 
-        } 
-        else {
+       let coinChance = this.isBoss ? 1.0 : (this.isElite ? 0.35 : 0.08);
+        if (Math.random() < coinChance) {
+            let count = this.isBoss ? MathUtils.randomInt(1, 3) : 1;
+            for(let c=0; c<count; c++) {
+                let cx = this.x + MathUtils.randomRange(-20, 20); let cy = this.y + MathUtils.randomRange(-20, 20);
+                if (!Game.map.isSolid(cx, cy)) Game.getCoin().spawn(cx, cy);
+            }
+        }
+
+        if (Math.random() < lifeChance) { 
+            Game.getExtraLife().spawn(this.x, this.y); 
+        } 
+        else {
             // Se è Elite droppa sempre un'essenza (100%), altrimenti probabilità standard
             let essenceChance = this.isElite ? 1.0 : (0.20 + (Game.combo * 0.003));
             if (Math.random() < essenceChance) { 
@@ -5438,6 +5507,7 @@ function clearScene() {
     for(let i=0, len=Game.dashLines.length; i<len; i++) { Game.dashLines[i].active = false; Game.dashLines[i].mesh.visible = false; }
     for(let i=0, len=Game.essences.length; i<len; i++) { Game.essences[i].destroy(); }
     for(let i=0, len=Game.extraLivesDrops.length; i<len; i++) { Game.extraLivesDrops[i].destroy(); }
+    for(let i=0, len=Game.coinDrops.length; i<len; i++) { Game.coinDrops[i].destroy(); }
     
     if(Game.player) {
         Game.scene.remove(Game.player.mesh);
@@ -5581,7 +5651,47 @@ const Preloader = {
         });
     }
 };
-window.onload = () => {
+
+    const ShopSystem = {
+    updateUI() {
+        document.getElementById('shop-coins').innerText = Game.coins;
+    },
+    buy(type) {
+        let cost = 0;
+        if (type === 'hp') cost = 5;
+        if (type === 'dmg') cost = 8;
+        if (type === 'speed') cost = 6;
+
+        if (Game.coins >= cost) {
+            Game.coins -= cost;
+            AudioEngine.playCollect();
+            
+            if (type === 'hp') { Game.player.stats.maxHp += 15; Game.player.stats.hp += 15; }
+            if (type === 'dmg') { Game.player.modifiers.dmgMult += 0.10; }
+            if (type === 'speed') { Game.player.modifiers.speedMult += 0.05; }
+            
+            this.updateUI();
+            if(UI.els.coins) UI.els.coins.innerText = Game.coins;
+        } else {
+            AudioEngine.playClick(); // Suono di negazione (o riusa il click)
+        }
+    }
+};
+
+// Modifica la funzione nextFloor() per aggiornare la UI del negozio
+const originalNextFloor = nextFloor;
+window.nextFloor = function() {
+    originalNextFloor();
+    ShopSystem.updateUI();
+};
+
+// Aggiorna i coin la prima volta che muori o passi piano
+setInterval(() => {
+    if(document.getElementById('floorScreen') && !document.getElementById('floorScreen').classList.contains('hidden')) {
+        ShopSystem.updateUI();
+    }
+}, 500);
+    window.onload = () => {
     Preloader.init(); // Avvia il LoadingManager globale
     ScoreManager.init(); Game.init();
     const initScreen = document.getElementById('initScreen'); const mainMenu = document.getElementById('mainMenu');

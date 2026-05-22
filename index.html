@@ -2526,37 +2526,35 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         this.updateMouseWorld(); this.player.update(dt); this.updateCamera(dt);
 
        // --- AGGIORNAMENTO DERIVA DELLA NEBBIA BASSA ---
-if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
-    // OTTIMIZZAZIONE: Su mobile calcola le matrici della nebbia solo 1 frame su 3.
-    if (!isTouchDevice || Game.frameCount % 3 === 0) {
-        let dummyFog = this._dummyFog;
-        let mapW = this.map.width * TILE_SIZE;
-        let mapH = this.map.height * TILE_SIZE;
-        
-        // Moltiplichiamo il dt per compensare i frame saltati su mobile
-        let dtFog = isTouchDevice ? dt * 3 : dt; 
+        if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
+            let dummyFog = this._dummyFog;
+            let mapW = this.map.width * TILE_SIZE;
+            let mapH = this.map.height * TILE_SIZE;
+            
+            // Limite di spawn molto più ampio (i blocchi scalati superano le 800 unità di larghezza)
+            // Cosi si teletrasportano solo quando sono COMPLETAMENTE fuori dallo schermo
+            let offsetMax = 800;
 
-        for(let i=0; i<this.map.fogData.length; i++) {
-            let d = this.map.fogData[i];
-        
-        // Muoviamo con le velocità condivise
-        d.x += d.vx * dtFog;
-        d.z += d.vz * dtFog;
-        
-        // Loop spaziale (quando un banco esce, rientra dal lato opposto)
-        if (d.x < -200) d.x = mapW + 200;
-        if (d.x > mapW + 200) d.x = -200;
-        if (d.z < -200) d.z = mapH + 200;
-        if (d.z > mapH + 200) d.z = -200;
+            for(let i=0; i<this.map.fogData.length; i++) {
+                let d = this.map.fogData[i];
+            
+                // Aggiornamento fluido continuo senza salti di frame
+                d.x += d.vx * dt;
+                d.z += d.vz * dt;
+                
+                // Loop spaziale invisibile fuori dai bordi telecamera
+                if (d.x < -offsetMax) d.x = mapW + offsetMax;
+                if (d.x > mapW + offsetMax) d.x = -offsetMax;
+                if (d.z < -offsetMax) d.z = mapH + offsetMax;
+                if (d.z > mapH + offsetMax) d.z = -offsetMax;
 
-        dummyFog.position.set(d.x, d.y, d.z);
-        dummyFog.scale.set(d.scale, 1, d.scale);
-        dummyFog.updateMatrix();
-        this.map.fogMesh.setMatrixAt(i, dummyFog.matrix);
-    }
-    this.map.fogMesh.instanceMatrix.needsUpdate = true;
-}
-    }
+                dummyFog.position.set(d.x, d.y, d.z);
+                dummyFog.scale.set(d.scale, 1, d.scale);
+                dummyFog.updateMatrix();
+                this.map.fogMesh.setMatrixAt(i, dummyFog.matrix);
+            }
+            this.map.fogMesh.instanceMatrix.needsUpdate = true;
+        }
       
 
        // ---------------------------------------------

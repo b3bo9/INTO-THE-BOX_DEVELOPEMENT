@@ -1176,20 +1176,20 @@ const RelicSystem = {
         { id: 'c1', name: "Prisma dell'Avarizia", desc: "I tuoi colpi critici hanno il 20% di probabilità di generare 1 Moneta.", rarity: "common", image: "icona_prisma.png", icon: "fa-gem", apply: (p) => p.modifiers.critGold = true },
         { id: 'c2', name: "Siero Adrenalinico", desc: "Se i tuoi HP scendono sotto il 30%, la Velocità d'Attacco aumenta del +30%.", rarity: "common", image: "icona_adrenalina.png", icon: "fa-bolt", apply: (p) => p.modifiers.lowHpAtkSpeed = true },
         { id: 'c3', name: "Piuma Spettrale", desc: "Dopo aver eseguito uno Scatto, ottieni invulnerabilità totale per 0.4 secondi.", rarity: "common", image: "icona_piuma.png", icon: "fa-feather", apply: (p) => p.modifiers.dashInvul = true },
-        { id: 'c4', name: "Cristallo Rigenerante", desc: "Il tuo corpo assorbe l'ambiente. Rigeneri passivamente 1 HP ogni 3 secondi.", rarity: "common", image: "icona_cristallo_vitale.png", icon: "fa-heart", apply: (p) => p.modifiers.regen = 1 },
+        { id: 'c4', name: "Cristallo Rigenerante", desc: "Rigeneri passivamente 1 HP ogni 3 secondi.", rarity: "common", image: "icona_cristallo_vitale.png", icon: "fa-heart", apply: (p) => p.modifiers.regen = 1 },
         { id: 'r5', name: "Magnete delle Anime", desc: "Raggio di raccolta di Monete ed Essenze raddoppiato.", rarity: "common", image: "icona_magnete_delle_anime.png", icon: "fa-magnet", apply: (p) => p.modifiers.pickupRadiusMult += 1.0 },
 
         // RARE: Meccaniche di combattimento
         { id: 'c5', name: "Runa dell'Agguato", desc: "Infliggi il +30% di danni ai nemici che hanno più dell'80% di Salute.", rarity: "rare", image: "icona_runa_minore.png", icon: "fa-fire", apply: (p) => p.modifiers.openerDmg = true },
         { id: 'r1', name: "Bussola Dimensionale", desc: "Tutte le Essenze raccolte e la modalità Inferno durano il 50% in più.", rarity: "rare", image: "icona_bussola_dimensionale.png", icon: "fa-compass", apply: (p) => p.modifiers.essenceDurationMult += 0.50 },
         { id: 'r3', name: "Scudo dell'Egidio", desc: "Ogni 15s dall'ultima volta che lo Scudo viene distrutto, si riattiva da solo.", rarity: "rare", image: "icona_scudo_dell_egidio.png", icon: "fa-shield-halved", apply: (p) => p.modifiers.shieldActive = true },
-        { id: 'r4', name: "Spirito Avaro", desc: "Ottieni +50% XP per salire di livello più in fretta, ma subisci +15% di danni.", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.50; p.modifiers.dmgTakenMult += 0.15; } },
+        { id: 'r4', name: "Spirito Avaro", desc: "Ottieni +50% XP, ma subisci +15% di danni.", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.50; p.modifiers.dmgTakenMult += 0.15; } },
         { id: 'e5', name: "Zanna del Vampiro", desc: "I nemici sconfitti hanno il 5% di probabilità di droppare un Cuore Vitale extra.", rarity: "rare", image: "icona_zanna_del_vampiro.png", icon: "fa-tooth", apply: (p) => p.modifiers.healDropMult += 1.0 },
 
         // EPICHE: Sinergie Costruttive (Build Definers)
         { id: 'r2', name: "Calzari di Mercurio", desc: "Il Cooldown dello Scatto è ridotto del 40%.", rarity: "epic", image: "icona_mercurio.png", icon: "fa-shoe-prints", apply: (p) => p.modifiers.dashCooldownMult -= 0.40 },
         { id: 'e1', name: "Ritmo di Battaglia", desc: "La Combo sale di +2 a colpo e decade più lentamente, facilitando il moltiplicatore.", rarity: "epic", image: "icona_ritmo_di_battaglia.png", icon: "fa-drum", apply: (p) => { p.modifiers.comboStep += 1; p.modifiers.comboDecayAdd += 1.0; } },
-        { id: 'e2', name: "Riciclo Magico", desc: "Quando usi un'Essenza Overdrive (es. 3 Rosse), non consumi l'ultima raccolta.", rarity: "epic", image: "icona_riciclo_magico.png", icon: "fa-recycle", apply: (p) => p.modifiers.keepEssenceOnCombo = true },
+        { id: 'e2', name: "Riciclo Magico", desc: "Quando usi un'Essenza Overdrive, non consumi l'ultima raccolta.", rarity: "epic", image: "icona_riciclo_magico.png", icon: "fa-recycle", apply: (p) => p.modifiers.keepEssenceOnCombo = true },
         { id: 'e3', name: "Passo Infernale", desc: "Lo scatto lascia una scia di fuoco. I nemici a fuoco subiscono +25% danni dai tuoi colpi.", rarity: "epic", image: "icona_passo_infernale.png", icon: "fa-fire-flame-curved", apply: (p) => { p.modifiers.fireTrail = true; p.modifiers.fireTrailDebuff = true; } },
         { id: 'e4', name: "Sovraccarico Etereo", desc: "L'Ascensione Finale (Ultimate) dura 4 secondi in più.", rarity: "epic", image: "icona_sovraccarico.png", icon: "fa-bolt-lightning", apply: (p) => p.modifiers.ascensionDurationAdd += 4.0 },
         { id: 'e6', name: "Batteria a Ioni", desc: "Lo Scudo Cinetico dura 2 secondi in più e resiste più a lungo al fuoco nemico.", rarity: "epic", image: "icona_batteria_ioni.png", icon: "fa-battery-full", apply: (p) => p.modifiers.shieldDurationAdd += 2.0   },
@@ -1202,7 +1202,7 @@ const RelicSystem = {
         { id: 'l4', name: "Sete di Sangue Eterna", desc: "Ti curi del 5% ogni 10 uccisioni. I nemici NON droppano cuori. I Level Up non danno HP.", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", icon: "fa-droplet", apply: (p) => { p.modifiers.bloodthirst = true; p.modifiers.noHealDrops = true; p.modifiers.noMaxHpLevelUp = true; } },
         { id: 'l5', name: "Maestria del Flow", desc: "Il cap del moltiplicatore Combo è raddoppiato. Ma se subisci danno, PERDI META' DEGLI HP.", rarity: "legendary", image: "icona_maestria_del_flow.png", icon: "fa-infinity", apply: (p) => { p.modifiers.flowMastery = true; p.modifiers.comboDecayRate *= 0.5; } },
         { id: 'l6', name: "Aegis del Guardiano", desc: "Lo Scudo esplode quando finisce. Il danno e l'area scalano in base ai colpi bloccati.", rarity: "legendary", image: "fa_shieldx.png", icon: "fa-shield", apply: (p) => { p.modifiers.explosiveShield = true; } },
-        { id: 'l7', name: "Impatto Tonante", desc: "Lo scatto crea un fulmine all'arrivo che stordisce i nemici per 2s impedendogli di agire.", rarity: "legendary", image: "icona_impatto_tonante.png", icon: "fa-bolt", apply: (p) => { p.modifiers.dashLightning = true; } }
+        { id: 'l7', name: "Impatto Tonante", desc: "Lo scatto crea un fulmine all'arrivo che danneggia e stordisce i nemici per 2s.", rarity: "legendary", image: "icona_impatto_tonante.png", icon: "fa-bolt", apply: (p) => { p.modifiers.dashLightning = true; } }
     ],
     getRandomRarity() { 
         let r = Math.random() * 100; 

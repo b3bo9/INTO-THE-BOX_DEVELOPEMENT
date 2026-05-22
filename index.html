@@ -186,7 +186,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 107</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 108</p>
                 </div>
             </div>
         </div>
@@ -1936,8 +1936,12 @@ const UI = {
                 for(let i=0; i<3; i++) { if (i < Game.player.essenceList.length) this.els.stacks[i].className = `stack-dot active ${Game.player.essenceList[i]}`; else this.els.stacks[i].className = `stack-dot`; }
                 this.els.overdriveText.classList.add('hidden');
             }
-            let maxTimer = Game.player.overdrive ? (5.0 * Game.player.modifiers.essenceDurationMult) : (8.0 * Game.player.modifiers.essenceDurationMult);
-            this.els.essenceTimer.style.width = `${(Game.player.essenceTimer / maxTimer) * 100}%`;
+           let maxTimer = Game.player.overdrive ? (5.0 * Game.player.modifiers.essenceDurationMult) : (8.0 * Game.player.modifiers.essenceDurationMult);
+            let ePct = Math.round((Game.player.essenceTimer / maxTimer) * 100);
+            if (this.cache.essenceWidth !== ePct) {
+                this.els.essenceTimer.style.width = `${ePct}%`;
+                this.cache.essenceWidth = ePct;
+            }
         } else { this.els.essenceHud.classList.remove('opacity-100'); this.els.essenceHud.classList.add('opacity-0'); }
 
        if (Game.ultimateActive) {
@@ -1976,7 +1980,13 @@ const UI = {
             else { this.els.comboContainer.classList.remove('opacity-100'); this.els.comboContainer.classList.add('opacity-0'); }
             this.cache.comboOpacity = isCombo; 
         }
-        if (isCombo) this.els.comboBar.style.width = `${(Game.comboTimer / Game.comboMaxTime) * 100}%`;
+       if (isCombo) {
+            let cPct = Math.round((Game.comboTimer / Game.comboMaxTime) * 100);
+            if (this.cache.comboWidth !== cPct) {
+                this.els.comboBar.style.width = `${cPct}%`;
+                this.cache.comboWidth = cPct;
+            }
+        }
         
         // Update Scudo Attivo
         if (Game.player.activeShieldTimer > 0) {
@@ -2309,8 +2319,8 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
             this.dirLight.target.position.set(this.player.x, 0, this.player.y);
         }
     },
-    updateMouseWorld() {
-        if (isTouchDevice && this.inputs.right.active) return; 
+   updateMouseWorld() {
+        if (isTouchDevice) return; // STOP! Niente calcoli a matrice su smartphone, mira col joystick!
         this._vec2.set((this.mouse.x / this.width) * 2 - 1, -(this.mouse.y / this.height) * 2 + 1);
         this.raycaster.setFromCamera(this._vec2, this.camera); this.raycaster.ray.intersectPlane(this._plane, this._vec3);
         if (this._vec3) { this.mouse.worldX = this._vec3.x; this.mouse.worldY = this._vec3.z; }
@@ -2578,14 +2588,14 @@ if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
             }
         }
         // ---------------------------------------------
-   if ((this.player.stats.hp / this.player.stats.maxHp) < 0.30 && !this.player.dead) {
-    document.getElementById('blood-vignette').classList.add('vignette-low-hp-active');
-    AudioEngine.setLowHpState(true);
-    AudioEngine.playHeartbeat(dt);
-} else {
-    document.getElementById('blood-vignette').classList.remove('vignette-low-hp-active');
-    AudioEngine.setLowHpState(false);
-}
+   let isLow = (this.player.stats.hp / this.player.stats.maxHp) < 0.30 && !this.player.dead;
+        if (isLow !== AudioEngine.isLowHp) {
+            AudioEngine.setLowHpState(isLow);
+            let vignette = document.getElementById('blood-vignette');
+            if(isLow) vignette.classList.add('vignette-low-hp-active');
+            else vignette.classList.remove('vignette-low-hp-active');
+        }
+        if (isLow) AudioEngine.playHeartbeat(dt);
         // ---------------------------------------------
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             let e = this.enemies[i]; e.update(dt); this.enemyGrid.updateClient(e); 
@@ -4803,9 +4813,9 @@ class Enemy extends Entity {
             }
         }
 
-        // --- SANGUE CORRETTAMENTE POSIZIONATO ---
+       // --- SANGUE CORRETTAMENTE POSIZIONATO ---
         if (Game.bloodMesh) {
-            let dummy = new THREE.Object3D();
+            let dummy = Game._dummyFog; // Zero Memory Leak: Ricicliamo l'oggetto globale!
             dummy.position.set(this.x, 0.15 + (Math.random() * 0.05), this.y); 
             let bs = MathUtils.randomRange(1.2, 2.5);
             dummy.scale.set(bs, 1, bs);

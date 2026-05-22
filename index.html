@@ -679,9 +679,10 @@ const AudioEngine = {
     bossBGM: (() => { let a = new Audio('Boss.mp3'); a.loop = true; a.preload = 'auto'; return a; })(),
     transitionSFX: (() => { let a = new Audio('Vittoria_Piano.mp3'); a.preload = 'auto'; return a; })(),
     deathSFX: (() => { let a = new Audio('Caduto.mp3'); a.preload = 'auto'; return a; })(),
-    gameOverSFX: (() => { let a = new Audio('RIP.mp3'); a.preload = 'auto'; return a; })(),
+    gameOverSFX: (() => { let a = new Audio('RIP.mp3'); a.preload = 'auto'; return a; })(),
     uiClickSFX: (() => { let a = new Audio('click.mp3'); a.preload = 'auto'; return a; })(),
     countdownSFX: (() => { let a = new Audio('countdown.mp3'); a.preload = 'auto'; return a; })(),
+    coinSFX: (() => { let a = new Audio('coin.mp3'); a.preload = 'auto'; return a; })(),
     _menuFade: null, _gameFade: null, _bossFade: null,
     lastHitTime: 0, hitCount: 0, lastShootTime: 0, shootCount: 0,
     // ---> AGGIUNGI QUESTO BLOCCO <---
@@ -864,13 +865,21 @@ const AudioEngine = {
         let p = this.uiClickSFX.play();
         if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
     },
-    playCountdown() {
-        if (this.sfxMuted) return;
-        this.countdownSFX.currentTime = 0;
-        this.countdownSFX.volume = 0.8;
-        let p = this.countdownSFX.play();
-        if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
-    },
+    playCountdown() {
+        if (this.sfxMuted) return;
+        this.countdownSFX.currentTime = 0;
+        this.countdownSFX.volume = 0.8;
+        let p = this.countdownSFX.play();
+        if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
+    },
+    playCoin() {
+        if (this.sfxMuted) return;
+        this.coinSFX.currentTime = 0;
+        this.coinSFX.volume = 0.6;
+        let p = this.coinSFX.play();
+        if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
+    },
+    playMenuMusic() {
     playMenuMusic() {
         if (this.musicMuted || this.musicNode) return;
         this.stopGameMusic(); this.stopBossMusic();
@@ -2710,11 +2719,11 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
 
                 c.group.rotation.y += dt * 3; c.group.position.y = 8 + this.animFloat;
                 c.group.updateMatrix();
-                if (MathUtils.distanceSq(this.player, c) < pRadiusSq) { 
-                    c.destroy(); AudioEngine.playCollect();
-                    Game.coins++; UI.els.coins.innerText = Game.coins;
-                    Game.getFloatingText().spawn(this.player.x, this.player.y, "+1", '#ffaa00', 25, true);
-                }
+                if (MathUtils.distanceSq(this.player, c) < pRadiusSq) { 
+                    c.destroy(); AudioEngine.playCoin();
+                    Game.coins++; UI.els.coins.innerText = Game.coins;
+                    Game.getFloatingText().spawn(this.player.x, this.player.y, "+1", '#ffaa00', 25, true);
+                }
             }
         }
         if (this.isBossFloor && this.bossDefeatedTimer > 0) {
@@ -3958,7 +3967,10 @@ class Player extends Entity {
             }
             if (this.activeShieldTimer <= 0) {
                 this.shieldMesh.visible = false;
-                this.activeShieldCooldown = 8.0;
+                if (!this.autoShieldActive) {
+                    this.activeShieldCooldown = 8.0;
+                }
+                this.autoShieldActive = false;
                 
                 // --- FIX: ESPLOSIONE AEGIS DEL GUARDIANO ---
                 if (this.modifiers.explosiveShield) {
@@ -4015,6 +4027,7 @@ class Player extends Entity {
                 this.shieldMesh.visible = true;
                 this.shieldMesh.material.color.setHex(0x00DDFF);
                 this.shieldMesh.material.opacity = 0.6;
+                this.autoShieldActive = true;
                 AudioEngine.playCollect();
                 Game.getFloatingText().spawn(this.x, this.y, "EGIDA!", '#00DDFF', 30, true);
             }
@@ -5832,7 +5845,7 @@ const Preloader = {
         RelicSystem.allRelics.forEach(r => { if(r.image) imagesToLoad.push(r.image); });
         imagesToLoad.forEach(src => { const img = new Image(); img.src = src; });
 
-        ['The_Iron_Pulse.mp3', 'Gameplay.mp3', 'Boss.mp3', 'Vittoria_Piano.mp3', 'Caduto.mp3', 'RIP.mp3', 'click.mp3', 'countdown.mp3'].forEach(src => {
+        ['The_Iron_Pulse.mp3', 'Gameplay.mp3', 'Boss.mp3', 'Vittoria_Piano.mp3', 'Caduto.mp3', 'RIP.mp3', 'click.mp3', 'countdown.mp3', 'coin.mp3'].forEach(src => {
             fetch(src).catch(e => {});
         });
     }
@@ -5881,11 +5894,11 @@ const Preloader = {
         }
     },
 
-    buy(type) {
+   buy(type) {
         let cost = this.costs[type];
         if (Game.coins >= cost) {
             Game.coins -= cost;
-            AudioEngine.playCollect();
+            AudioEngine.playCoin();
 
             this.costs[type] += 2; // Rincaro lineare
 
@@ -5898,6 +5911,18 @@ const Preloader = {
             this.updateUI();
         } else {
             AudioEngine.playClick();
+            let btn = document.querySelector(`button[onclick="ShopSystem.buy('${type}')"]`);
+            if (btn) {
+                let textSpans = btn.querySelectorAll('span.text-white');
+                textSpans.forEach(span => {
+                    span.classList.remove('text-white');
+                    span.classList.add('text-red-500');
+                    setTimeout(() => {
+                        span.classList.remove('text-red-500');
+                        span.classList.add('text-white');
+                    }, 300);
+                });
+            }
         }
     },
 

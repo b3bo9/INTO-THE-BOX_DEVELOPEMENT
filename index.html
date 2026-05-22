@@ -186,7 +186,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 106</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 107</p>
                 </div>
             </div>
         </div>
@@ -1701,7 +1701,27 @@ class SpatialHashGrid {
             cell.add(client);
         }
     }
-    updateClient(client) { this.remove(client); this.insert(client); }
+   updateClient(client) {
+        this._clientKeys(client, this._tempKeys);
+        let changed = false;
+        if (!client.gridKeys || client.gridKeys.length !== this._tempKeys.length) {
+            changed = true;
+        } else {
+            for (let i = 0; i < this._tempKeys.length; i++) {
+                if (client.gridKeys[i] !== this._tempKeys[i]) { changed = true; break; }
+            }
+        }
+        if (changed) {
+            this.remove(client);
+            if (!client.gridKeys) client.gridKeys = [];
+            client.gridKeys.length = 0;
+            for(let i=0; i<this._tempKeys.length; i++) {
+                let k = this._tempKeys[i]; client.gridKeys.push(k);
+                let cell = this.cells.get(k); if (!cell) { cell = new Set(); this.cells.set(k, cell); }
+                cell.add(client);
+            }
+        }
+    }
     remove(client) {
         if (!client.gridKeys) return;
         for(let i=0; i<client.gridKeys.length; i++) {
@@ -2058,6 +2078,8 @@ _dummyScale: new THREE.Vector3(3, 3, 3),
     
     _hpBars: Array.from({length: 500}, () => ({x:0, y:0, pct:0})),
     _hpBarCount: 0,
+    _offScreenEnemies: Array.from({length: 100}, () => ({enemy: null, dist: 0})), // <--- OTTIMIZZAZIONE
+    _boundLoop: null, // <--- OTTIMIZZAZIONE
     
     animBounce: 0, animFloat: 0, animArm: 0,
 
@@ -2137,7 +2159,7 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
             this.composer.addPass(this.bloomPass);
         }
         this.uiCtx = this.uiCanvas.getContext('2d'); this.resize(); window.addEventListener('resize', () => this.resize());
-        this.setupInputs(); this.initPools(); requestAnimationFrame(this.loop.bind(this));
+        this.setupInputs(); this.initPools(); this._boundLoop = this.loop.bind(this); requestAnimationFrame(this._boundLoop);
     },
 
     initPools() {
@@ -2286,7 +2308,7 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
             if (!this.lastDrawTime) this.lastDrawTime = timestamp;
             const elapsed = timestamp - this.lastDrawTime;
             if (elapsed < this.frameInterval) {
-                requestAnimationFrame(this.loop.bind(this));
+                requestAnimationFrame(this._boundLoop);
                 return; // Salta il frame se è passato troppo poco tempo
             }
             // Sincronizza il tempo per evitare micro-stuttering
@@ -2322,7 +2344,7 @@ let fpsEl = UI.els.fpsValue;
             this.accumulator -= FIXED_TIME_STEP;
         }
         this.draw(); 
-        requestAnimationFrame(this.loop.bind(this));
+        requestAnimationFrame(this._boundLoop);
     },
 
     setupFloor() {
@@ -2710,36 +2732,37 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
             this.uiCtx.fillStyle = '#ff0000';
             for(let i=0; i<this._hpBarCount; i++) this.uiCtx.fillRect(this._hpBars[i].x - 15, this._hpBars[i].y-1, 30 * this._hpBars[i].pct, 4);
         }
-       // INDICATORI NEMICI FUORI SCHERMO
-       let offScreenEnemies = [];
+      // INDICATORI NEMICI FUORI SCHERMO
+       let offCount = 0;
        
-       for(let i=0; i<this.enemies.length; i++) {
-           let e = this.enemies[i];
-           if (e.dead || e.type === 'crystal' || e.angle === undefined) continue;
-           
-           if(this.player) {
+       if(this.player) {
+           for(let i=0; i<this.enemies.length; i++) {
+               let e = this.enemies[i];
+               if (e.dead || e.type === 'crystal' || e.angle === undefined) continue;
+               
                let distSq = MathUtils.distanceSq(this.player, e);
                if(distSq < (e.aggroRangeSq || 1000000)) {
-                   // Valutiamo se è fuori schermo
                    let pos = toScreenPosition(e.x, 20, e.y);
                    let padding = 20;
-                   
                    if (pos.x < padding || pos.x > this.width - padding || pos.y < padding || pos.y > this.height - padding || pos.z > 1) {
-                       offScreenEnemies.push({ enemy: e, dist: distSq });
+                       if (offCount < this._offScreenEnemies.length) {
+                           this._offScreenEnemies[offCount].enemy = e;
+                           this._offScreenEnemies[offCount].dist = distSq;
+                           offCount++;
+                       }
                    }
                }
            }
        }
 
-       // Ordina i nemici dal più vicino al più lontano
-       offScreenEnemies.sort((a, b) => a.dist - b.dist);
+       let activeOffScreen = this._offScreenEnemies.slice(0, offCount);
+       activeOffScreen.sort((a, b) => a.dist - b.dist);
        
-       let maxArrows = 5; // <-- MODIFICA QUI: Limite massimo di frecce mostrate a schermo
-       this.uiCtx.fillStyle = 'rgba(255, 0, 0, 0.3)'; // Opacità ridotta per dare meno fastidio
+       let maxArrows = 5; 
+       this.uiCtx.fillStyle = 'rgba(255, 0, 0, 0.3)'; 
        
-       // Disegna solo il numero massimo consentito (i più vicini)
-       for(let i=0; i<Math.min(maxArrows, offScreenEnemies.length); i++) {
-           let e = offScreenEnemies[i].enemy;
+       for(let i=0; i<Math.min(maxArrows, offCount); i++) {
+           let e = activeOffScreen[i].enemy;
            let padding = 20;
            let cx = this.width / 2; let cy = this.height / 2;
            let angle = Math.atan2(e.y - this.player.y, e.x - this.player.x);
@@ -3840,8 +3863,10 @@ class Player extends Entity {
         if (this.dead) return; this.updateFlash(dt);
         this.modelParts.halo.rotation.z += dt; this.modelParts.staffGem.rotation.y += dt;
         if (this.activeShieldCooldown > 0) this.activeShieldCooldown -= dt;
-        this.shadowMesh.position.set(this.x, 0.2, this.y);
-        this.shadowMesh.updateMatrix();
+        if (this.shadowMesh.visible) {
+            this.shadowMesh.position.set(this.x, 0.2, this.y);
+            this.shadowMesh.updateMatrix();
+        }
 
        // Gestione Scudo Cinetico (Shift)
     
@@ -4527,8 +4552,10 @@ class Enemy extends Entity {
             this.distToTargetSq = dx*dx + dy*dy;
             this.angle = Math.atan2(dy, dx);
             this.isTargetingPlayer = (target === Game.player);
+            if (this.shadowMesh.visible) {
             this.shadowMesh.position.set(this.x, 0.2, this.y);
             this.shadowMesh.updateMatrix();
+        }
             // Inizializza i vettori di movimento in base all'angolo del bersaglio
             this.moveX = Math.cos(this.angle);
             this.moveY = Math.sin(this.angle);

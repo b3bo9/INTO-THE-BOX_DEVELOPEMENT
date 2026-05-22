@@ -384,73 +384,71 @@
                 <p class="text-[10px] sm:text-sm text-cyan-200 font-bold tracking-[0.3em] uppercase bg-blue-950/50 px-6 py-2 rounded-full border border-cyan-500/30 backdrop-blur-md">L'oscurità si intensifica...</p>
             </div>
 
-           <!-- NEGOZIO E STATISTICHE COMPATTO -->
-            <div class="flex-1 w-full flex flex-col items-center justify-center gap-3 my-2 z-20">
+          <!-- NEGOZIO E STATISTICHE COMPATTO -->
+            <div class="flex-1 w-full flex flex-col items-center justify-center gap-3 my-2 z-20 overflow-y-auto custom-scrollbar">
                 
                 <!-- TITOLO NEGOZIO & MONETE -->
-                <div class="flex items-center gap-3 bg-black/60 px-5 py-2 rounded-xl border border-yellow-500/30 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
+                <div class="flex items-center gap-3 bg-black/60 px-5 py-2 rounded-xl border border-yellow-500/30 shadow-[0_0_15px_rgba(250,204,21,0.2)] shrink-0">
                     <span class="text-gray-300 font-bold tracking-widest text-[10px] sm:text-xs uppercase">Essenza Dorata:</span>
                     <span class="text-yellow-400 font-black text-xl sm:text-2xl drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]"><i class="fa-solid fa-coins"></i> <span id="shop-coins">0</span></span>
                 </div>
 
                 <!-- CARDS NEGOZIO -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-[650px] px-2">
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full max-w-[700px] px-2 pb-2">
                     
                     <!-- HP CARD -->
-                    <button onclick="ShopSystem.buy('hp')" class="relative bg-gradient-to-b from-black/80 to-green-950/40 border border-green-500/50 hover:border-green-400 hover:from-green-900/60 rounded-xl p-3 flex flex-row sm:flex-col items-center justify-between sm:justify-center transition-all active:scale-95 group overflow-hidden shadow-[0_4px_15px_rgba(34,197,94,0.15)] hover:shadow-[0_0_20px_rgba(34,197,94,0.3)]">
+                    <button onclick="ShopSystem.buy('hp')" class="relative bg-gradient-to-b from-black/80 to-green-950/40 border border-green-500/50 hover:border-green-400 hover:from-green-900/60 rounded-xl p-3 flex flex-col items-center justify-center transition-all active:scale-95 group overflow-hidden shadow-[0_4px_15px_rgba(34,197,94,0.15)]">
                         <div class="absolute inset-0 bg-green-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <div class="flex items-center sm:flex-col gap-3 sm:gap-1.5">
-                            <i class="fa-solid fa-heart text-green-400 text-2xl sm:text-3xl drop-shadow-[0_0_8px_rgba(34,197,94,0.8)] group-hover:scale-110 transition-transform"></i>
-                            <span class="text-white font-black text-[11px] sm:text-sm uppercase tracking-widest">Vitalità</span>
+                        <i class="fa-solid fa-heart text-green-400 text-2xl drop-shadow-[0_0_8px_rgba(34,197,94,0.8)] mb-1"></i>
+                        <span class="text-white font-black text-[10px] sm:text-xs uppercase tracking-widest">Vitalità</span>
+                        <div class="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-md border border-green-500/20 mt-1 mb-2">
+                            <span id="shop-hp-curr" class="text-gray-400 font-bold text-[9px] sm:text-[10px]">100</span><i class="fa-solid fa-arrow-right text-green-400 text-[8px]"></i><span id="shop-hp-next" class="text-green-300 font-black text-[10px] sm:text-xs">115</span>
                         </div>
-                        <div class="flex flex-col items-end sm:items-center gap-1 mt-0 sm:mt-2">
-                            <div class="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-md border border-green-500/20">
-                                <span id="shop-hp-curr" class="text-gray-400 font-bold text-[10px] sm:text-xs">100</span>
-                                <i class="fa-solid fa-arrow-right text-green-400 text-[9px]"></i>
-                                <span id="shop-hp-next" class="text-green-300 font-black text-[11px] sm:text-sm">115</span>
-                            </div>
-                            <div class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 px-3 py-0.5 rounded-full text-[10px] sm:text-xs font-black drop-shadow-md flex items-center gap-1">
-                                <i class="fa-solid fa-coins"></i> <span id="shop-cost-hp">5</span>
-                            </div>
-                        </div>
+                        <div class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 px-3 py-0.5 rounded-full text-[10px] font-black drop-shadow-md flex items-center gap-1"><i class="fa-solid fa-coins"></i> <span id="shop-cost-hp">4</span></div>
                     </button>
 
                     <!-- DMG CARD -->
-                    <button onclick="ShopSystem.buy('dmg')" class="relative bg-gradient-to-b from-black/80 to-red-950/40 border border-red-500/50 hover:border-red-400 hover:from-red-900/60 rounded-xl p-3 flex flex-row sm:flex-col items-center justify-between sm:justify-center transition-all active:scale-95 group overflow-hidden shadow-[0_4px_15px_rgba(239,68,68,0.15)] hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+                    <button onclick="ShopSystem.buy('dmg')" class="relative bg-gradient-to-b from-black/80 to-red-950/40 border border-red-500/50 hover:border-red-400 hover:from-red-900/60 rounded-xl p-3 flex flex-col items-center justify-center transition-all active:scale-95 group overflow-hidden shadow-[0_4px_15px_rgba(239,68,68,0.15)]">
                         <div class="absolute inset-0 bg-red-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <div class="flex items-center sm:flex-col gap-3 sm:gap-1.5">
-                            <i class="fa-solid fa-fire text-red-500 text-2xl sm:text-3xl drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] group-hover:scale-110 transition-transform"></i>
-                            <span class="text-white font-black text-[11px] sm:text-sm uppercase tracking-widest">Furia</span>
+                        <i class="fa-solid fa-fire text-red-500 text-2xl drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] mb-1"></i>
+                        <span class="text-white font-black text-[10px] sm:text-xs uppercase tracking-widest">Furia</span>
+                        <div class="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-md border border-red-500/20 mt-1 mb-2">
+                            <span id="shop-dmg-curr" class="text-gray-400 font-bold text-[9px] sm:text-[10px]">1.0x</span><i class="fa-solid fa-arrow-right text-red-500 text-[8px]"></i><span id="shop-dmg-next" class="text-red-300 font-black text-[10px] sm:text-xs">1.1x</span>
                         </div>
-                        <div class="flex flex-col items-end sm:items-center gap-1 mt-0 sm:mt-2">
-                            <div class="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-md border border-red-500/20">
-                                <span id="shop-dmg-curr" class="text-gray-400 font-bold text-[10px] sm:text-xs">1.0x</span>
-                                <i class="fa-solid fa-arrow-right text-red-500 text-[9px]"></i>
-                                <span id="shop-dmg-next" class="text-red-300 font-black text-[11px] sm:text-sm">1.1x</span>
-                            </div>
-                            <div class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 px-3 py-0.5 rounded-full text-[10px] sm:text-xs font-black drop-shadow-md flex items-center gap-1">
-                                <i class="fa-solid fa-coins"></i> <span id="shop-cost-dmg">8</span>
-                            </div>
-                        </div>
+                        <div class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 px-3 py-0.5 rounded-full text-[10px] font-black drop-shadow-md flex items-center gap-1"><i class="fa-solid fa-coins"></i> <span id="shop-cost-dmg">6</span></div>
                     </button>
 
                     <!-- SPEED CARD -->
-                    <button onclick="ShopSystem.buy('speed')" class="relative bg-gradient-to-b from-black/80 to-blue-950/40 border border-blue-500/50 hover:border-blue-400 hover:from-blue-900/60 rounded-xl p-3 flex flex-row sm:flex-col items-center justify-between sm:justify-center transition-all active:scale-95 group overflow-hidden shadow-[0_4px_15px_rgba(59,130,246,0.15)] hover:shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+                    <button onclick="ShopSystem.buy('speed')" class="relative bg-gradient-to-b from-black/80 to-blue-950/40 border border-blue-500/50 hover:border-blue-400 hover:from-blue-900/60 rounded-xl p-3 flex flex-col items-center justify-center transition-all active:scale-95 group overflow-hidden shadow-[0_4px_15px_rgba(59,130,246,0.15)]">
                         <div class="absolute inset-0 bg-blue-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <div class="flex items-center sm:flex-col gap-3 sm:gap-1.5">
-                            <i class="fa-solid fa-shoe-prints text-blue-400 text-2xl sm:text-3xl drop-shadow-[0_0_8px_rgba(59,130,246,0.8)] group-hover:scale-110 transition-transform"></i>
-                            <span class="text-white font-black text-[11px] sm:text-sm uppercase tracking-widest">Agilità</span>
+                        <i class="fa-solid fa-shoe-prints text-blue-400 text-2xl drop-shadow-[0_0_8px_rgba(59,130,246,0.8)] mb-1"></i>
+                        <span class="text-white font-black text-[10px] sm:text-xs uppercase tracking-widest">Agilità</span>
+                        <div class="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-md border border-blue-500/20 mt-1 mb-2">
+                            <span id="shop-spd-curr" class="text-gray-400 font-bold text-[9px] sm:text-[10px]">1.0x</span><i class="fa-solid fa-arrow-right text-blue-400 text-[8px]"></i><span id="shop-spd-next" class="text-blue-300 font-black text-[10px] sm:text-xs">1.05x</span>
                         </div>
-                        <div class="flex flex-col items-end sm:items-center gap-1 mt-0 sm:mt-2">
-                            <div class="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-md border border-blue-500/20">
-                                <span id="shop-spd-curr" class="text-gray-400 font-bold text-[10px] sm:text-xs">1.0x</span>
-                                <i class="fa-solid fa-arrow-right text-blue-400 text-[9px]"></i>
-                                <span id="shop-spd-next" class="text-blue-300 font-black text-[11px] sm:text-sm">1.05x</span>
-                            </div>
-                            <div class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 px-3 py-0.5 rounded-full text-[10px] sm:text-xs font-black drop-shadow-md flex items-center gap-1">
-                                <i class="fa-solid fa-coins"></i> <span id="shop-cost-spd">6</span>
-                            </div>
+                        <div class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 px-3 py-0.5 rounded-full text-[10px] font-black drop-shadow-md flex items-center gap-1"><i class="fa-solid fa-coins"></i> <span id="shop-cost-spd">5</span></div>
+                    </button>
+
+                    <!-- ATK SPEED CARD -->
+                    <button onclick="ShopSystem.buy('atkSpeed')" class="relative bg-gradient-to-b from-black/80 to-amber-950/40 border border-amber-500/50 hover:border-amber-400 hover:from-amber-900/60 rounded-xl p-3 flex flex-col items-center justify-center transition-all active:scale-95 group overflow-hidden shadow-[0_4px_15px_rgba(245,158,11,0.15)]">
+                        <div class="absolute inset-0 bg-amber-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <i class="fa-solid fa-bolt text-amber-500 text-2xl drop-shadow-[0_0_8px_rgba(245,158,11,0.8)] mb-1"></i>
+                        <span class="text-white font-black text-[10px] sm:text-xs uppercase tracking-widest">Ritmo</span>
+                        <div class="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-md border border-amber-500/20 mt-1 mb-2">
+                            <span id="shop-atk-curr" class="text-gray-400 font-bold text-[9px] sm:text-[10px]">1.0x</span><i class="fa-solid fa-arrow-right text-amber-500 text-[8px]"></i><span id="shop-atk-next" class="text-amber-300 font-black text-[10px] sm:text-xs">1.05x</span>
                         </div>
+                        <div class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 px-3 py-0.5 rounded-full text-[10px] font-black drop-shadow-md flex items-center gap-1"><i class="fa-solid fa-coins"></i> <span id="shop-cost-atk">6</span></div>
+                    </button>
+
+                    <!-- CRIT CARD -->
+                    <button onclick="ShopSystem.buy('crit')" class="relative bg-gradient-to-b from-black/80 to-purple-950/40 border border-purple-500/50 hover:border-purple-400 hover:from-purple-900/60 rounded-xl p-3 flex flex-col items-center justify-center transition-all active:scale-95 group overflow-hidden shadow-[0_4px_15px_rgba(168,85,247,0.15)]">
+                        <div class="absolute inset-0 bg-purple-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <i class="fa-solid fa-crosshairs text-purple-500 text-2xl drop-shadow-[0_0_8px_rgba(168,85,247,0.8)] mb-1"></i>
+                        <span class="text-white font-black text-[10px] sm:text-xs uppercase tracking-widest">Precisione</span>
+                        <div class="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-md border border-purple-500/20 mt-1 mb-2">
+                            <span id="shop-crit-curr" class="text-gray-400 font-bold text-[9px] sm:text-[10px]">10%</span><i class="fa-solid fa-arrow-right text-purple-500 text-[8px]"></i><span id="shop-crit-next" class="text-purple-300 font-black text-[10px] sm:text-xs">15%</span>
+                        </div>
+                        <div class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 px-3 py-0.5 rounded-full text-[10px] font-black drop-shadow-md flex items-center gap-1"><i class="fa-solid fa-coins"></i> <span id="shop-cost-crit">7</span></div>
                     </button>
                     
                 </div>
@@ -1134,31 +1132,38 @@ const UIManager = {
 };
 const RelicSystem = {
     allRelics: [
-        { id: 'c1', name: "Prisma", desc: "+10% Probabilità Critico", rarity: "common", image: "icona_prisma.png", icon: "fa-gem", apply: (p) => p.modifiers.critChance += 0.10 },
-        { id: 'c2', name: "Adrenalina", desc: "+10% Velocità Attacco", rarity: "common", image: "icona_adrenalina.png", icon: "fa-bolt", apply: (p) => p.modifiers.atkSpeedMult += 0.10 },
-        { id: 'c3', name: "Piuma", desc: "+10% Velocità Movimento", rarity: "common", image: "icona_piuma.png", icon: "fa-feather", apply: (p) => p.modifiers.speedMult += 0.10 },
-        { id: 'c4', name: "Cristallo Vitale", desc: "+15% Salute Massima", rarity: "common", image: "icona_cristallo_vitale.png", icon: "fa-heart", apply: (p) => { p.stats.maxHp = Math.floor(p.stats.maxHp * 1.15); p.stats.hp = p.stats.maxHp; } },
-        { id: 'c5', name: "Runa Minore", desc: "+10% Danni base", rarity: "common", image: "icona_runa_minore.png", icon: "fa-fire", apply: (p) => p.modifiers.dmgMult += 0.10 },
-        { id: 'r1', name: "Bussola Dimensionale", desc: "Essenze durano 50% in più", rarity: "rare", image: "icona_bussola_dimensionale.png", icon: "fa-compass", apply: (p) => p.modifiers.essenceDurationMult += 0.50 },
-        { id: 'r2', name: "Mercurio", desc: "Cooldown Scatto -50%", rarity: "rare", image: "icona_mercurio.png", icon: "fa-shoe-prints", apply: (p) => p.modifiers.dashCooldownMult -= 0.50 },
-        { id: 'r3', name: "Scudo dell'Egidio", desc: "Blocca un attacco. Si ricarica in 15s", rarity: "rare", image: "icona_scudo_dell_egidio.png", icon: "fa-shield-halved", apply: (p) => p.modifiers.shieldActive = true },
-       { id: 'r4', name: "Spirito Avaro", desc: "+50% XP, ma subisci +15% di danni", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.50; p.modifiers.dmgTakenMult += 0.15; } },
-        { id: 'r5', name: "Magnete delle Anime", desc: "Raggio raccolta raddoppiato", rarity: "rare", image: "icona_magnete_delle_anime.png", icon: "fa-magnet", apply: (p) => p.modifiers.pickupRadiusMult += 1.0 },
-        { id: 'e1', name: "Ritmo di Battaglia", desc: "Combo sale di +2 e decade più tardi", rarity: "epic", image: "icona_ritmo_di_battaglia.png", icon: "fa-drum", apply: (p) => { p.modifiers.comboStep += 1; p.modifiers.comboDecayAdd += 1.0; } },
-        { id: 'e2', name: "Riciclo Magico", desc: "Non perdi l'ultima essenza presa", rarity: "epic", image: "icona_riciclo_magico.png", icon: "fa-recycle", apply: (p) => p.modifiers.keepEssenceOnCombo = true },
-        { id: 'e3', name: "Passo Infernale", desc: "Lo scatto brucia. Nemici a fuoco subiscono +25% danni", rarity: "epic", image: "icona_passo_infernale.png", icon: "fa-fire-flame-curved", apply: (p) => { p.modifiers.fireTrail = true; p.modifiers.fireTrailDebuff = true; } },
-        { id: 'e4', name: "Sovraccarico", desc: "Ascensione dura 4s in più", rarity: "epic", image: "icona_sovraccarico.png", icon: "fa-bolt-lightning", apply: (p) => p.modifiers.ascensionDurationAdd += 4.0 },
-        { id: 'e5', name: "Zanna del Vampiro", desc: "10% probabilità di curare 2% HP per kill", rarity: "epic", image: "icona_zanna_del_vampiro.png", icon: "fa-tooth", apply: (p) => p.modifiers.vampirismMaxHp += 0.02 },
-        { id: 'l1', name: "Follia Omicida", desc: "Critici infliggono 3X danni, ma subisci +25% danni", rarity: "legendary", image: "icona_follia_omicida.png", icon: "fa-skull", apply: (p) => { p.modifiers.critDmgMult = 3.0; p.modifiers.dmgTakenMult += 0.25; } },
-        { id: 'l2', name: "Lama del Giudizio", desc: "Danni Raddoppiati a nemici con <30% HP", rarity: "legendary", image: "icona_lama_del_giudizio.png", icon: "fa-gavel", apply: (p) => p.modifiers.executioner = true },
-        { id: 'l3', name: "Patto Ascetico", desc: "Ascensione passiva (+2%/s), ma HP Max -30%", rarity: "legendary", image: "icona_patto_ascetico.png", icon: "fa-link", apply: (p) => { p.modifiers.passiveUltCharge = true; p.stats.maxHp = Math.floor(p.stats.maxHp * 0.7); if(p.stats.hp > p.stats.maxHp) p.stats.hp = p.stats.maxHp; } },
-        { id: 'l4', name: "Sete di Sangue Eterna", desc: "Curati 5% ogni 10 kill. 0 cure a terra. HP non salgono con livello.", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", icon: "fa-droplet", apply: (p) => { p.modifiers.bloodthirst = true; p.modifiers.noHealDrops = true; p.modifiers.noMaxHpLevelUp = true; } },
-        { id: 'l5', name: "Maestria del Flow", desc: "Bonus combo doppi e decado lento. Danni dimezzano HP attuali.", rarity: "legendary", image: "icona_maestria_del_flow.png", icon: "fa-infinity", apply: (p) => { p.modifiers.flowMastery = true; p.modifiers.comboDecayRate *= 0.5; } },
-        { id: 'e6', name: "Batteria a Ioni", desc: "Lo Scudo Cinetico dura 2 secondi in più (Totale: 4s).", rarity: "epic", image: "icona_batteria_ioni.png", icon: "fa-battery-full", apply: (p) => p.modifiers.shieldDurationAdd += 2.0   },
-       { id: 'l6', name: "Aegis del Guardiano", desc: "Lo Scudo attivo esplode alla fine. L'area e i danni aumentano per ogni proiettile assorbito.", rarity: "legendary", image: "fa_shieldx.png", icon: "fa-shield", apply: (p) => { p.modifiers.explosiveShield = true; } },
-        { id: 'e7', name: "Lama del Vento", desc: "Dopo uno scatto, i prossimi 2 attacchi sono colpi critici garantiti.", rarity: "epic", image: "icona_lama_vento.png", icon: "fa-wind", apply: (p) => { p.modifiers.dashCritsEnabled = true; } },
-        { id: 'l7', name: "Impatto Tonante", desc: "Lo scatto crea un fulmine all'arrivo che infligge danni lievi e stordisce i nemici per 2s.", rarity: "legendary", image: "icona_impatto_tonante.png", icon: "fa-bolt", apply: (p) => { p.modifiers.dashLightning = true; } }
-    ],
+        // COMUNI: Utility & Traits (Ex statistiche pure)
+        { id: 'c1', name: "Prisma dell'Avarizia", desc: "I tuoi colpi critici hanno il 20% di probabilità di generare 1 Moneta.", rarity: "common", image: "icona_prisma.png", icon: "fa-gem", apply: (p) => p.modifiers.critGold = true },
+        { id: 'c2', name: "Siero Adrenalinico", desc: "Se i tuoi HP scendono sotto il 30%, la Velocità d'Attacco aumenta del +30%.", rarity: "common", image: "icona_adrenalina.png", icon: "fa-bolt", apply: (p) => p.modifiers.lowHpAtkSpeed = true },
+        { id: 'c3', name: "Piuma Spettrale", desc: "Dopo aver eseguito uno Scatto, ottieni invulnerabilità totale per 0.4 secondi.", rarity: "common", image: "icona_piuma.png", icon: "fa-feather", apply: (p) => p.modifiers.dashInvul = true },
+        { id: 'c4', name: "Cristallo Rigenerante", desc: "Il tuo corpo assorbe l'ambiente. Rigeneri passivamente 1 HP ogni 3 secondi.", rarity: "common", image: "icona_cristallo_vitale.png", icon: "fa-heart", apply: (p) => p.modifiers.regen = 1 },
+        { id: 'r5', name: "Magnete delle Anime", desc: "Raggio di raccolta di Monete ed Essenze raddoppiato.", rarity: "common", image: "icona_magnete_delle_anime.png", icon: "fa-magnet", apply: (p) => p.modifiers.pickupRadiusMult += 1.0 },
+
+        // RARE: Meccaniche di combattimento
+        { id: 'c5', name: "Runa dell'Agguato", desc: "Infliggi il +30% di danni ai nemici che hanno più dell'80% di Salute.", rarity: "rare", image: "icona_runa_minore.png", icon: "fa-fire", apply: (p) => p.modifiers.openerDmg = true },
+        { id: 'r1', name: "Bussola Dimensionale", desc: "Tutte le Essenze raccolte e la modalità Inferno durano il 50% in più.", rarity: "rare", image: "icona_bussola_dimensionale.png", icon: "fa-compass", apply: (p) => p.modifiers.essenceDurationMult += 0.50 },
+        { id: 'r3', name: "Scudo dell'Egidio", desc: "Ogni 15s dall'ultima volta che lo Scudo viene distrutto, si riattiva da solo.", rarity: "rare", image: "icona_scudo_dell_egidio.png", icon: "fa-shield-halved", apply: (p) => p.modifiers.shieldActive = true },
+        { id: 'r4', name: "Spirito Avaro", desc: "Ottieni +50% XP per salire di livello più in fretta, ma subisci +15% di danni.", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.50; p.modifiers.dmgTakenMult += 0.15; } },
+        { id: 'e5', name: "Zanna del Vampiro", desc: "I nemici sconfitti hanno il 5% di probabilità di droppare un Cuore Vitale extra.", rarity: "rare", image: "icona_zanna_del_vampiro.png", icon: "fa-tooth", apply: (p) => p.modifiers.healDropMult += 1.0 },
+
+        // EPICHE: Sinergie Costruttive (Build Definers)
+        { id: 'r2', name: "Calzari di Mercurio", desc: "Il Cooldown dello Scatto è ridotto del 40%.", rarity: "epic", image: "icona_mercurio.png", icon: "fa-shoe-prints", apply: (p) => p.modifiers.dashCooldownMult -= 0.40 },
+        { id: 'e1', name: "Ritmo di Battaglia", desc: "La Combo sale di +2 a colpo e decade più lentamente, facilitando il moltiplicatore.", rarity: "epic", image: "icona_ritmo_di_battaglia.png", icon: "fa-drum", apply: (p) => { p.modifiers.comboStep += 1; p.modifiers.comboDecayAdd += 1.0; } },
+        { id: 'e2', name: "Riciclo Magico", desc: "Quando usi un'Essenza Overdrive (es. 3 Rosse), non consumi l'ultima raccolta.", rarity: "epic", image: "icona_riciclo_magico.png", icon: "fa-recycle", apply: (p) => p.modifiers.keepEssenceOnCombo = true },
+        { id: 'e3', name: "Passo Infernale", desc: "Lo scatto lascia una scia di fuoco. I nemici a fuoco subiscono +25% danni dai tuoi colpi.", rarity: "epic", image: "icona_passo_infernale.png", icon: "fa-fire-flame-curved", apply: (p) => { p.modifiers.fireTrail = true; p.modifiers.fireTrailDebuff = true; } },
+        { id: 'e4', name: "Sovraccarico Etereo", desc: "L'Ascensione Finale (Ultimate) dura 4 secondi in più.", rarity: "epic", image: "icona_sovraccarico.png", icon: "fa-bolt-lightning", apply: (p) => p.modifiers.ascensionDurationAdd += 4.0 },
+        { id: 'e6', name: "Batteria a Ioni", desc: "Lo Scudo Cinetico dura 2 secondi in più e resiste più a lungo al fuoco nemico.", rarity: "epic", image: "icona_batteria_ioni.png", icon: "fa-battery-full", apply: (p) => p.modifiers.shieldDurationAdd += 2.0   },
+        { id: 'e7', name: "Lama del Vento", desc: "Subito dopo uno Scatto, i tuoi prossimi 2 attacchi sono Colpi Critici garantiti.", rarity: "epic", image: "icona_lama_vento.png", icon: "fa-wind", apply: (p) => { p.modifiers.dashCritsEnabled = true; } },
+
+        // LEGGENDARIE: Cambiano drasticamente le regole (Trade-offs e Potere)
+        { id: 'l1', name: "Follia Omicida", desc: "I tuoi Colpi Critici infliggono 3X Danni (invece di 2X), ma subisci +25% Danni dai nemici.", rarity: "legendary", image: "icona_follia_omicida.png", icon: "fa-skull", apply: (p) => { p.modifiers.critDmgMult = 3.0; p.modifiers.dmgTakenMult += 0.25; } },
+        { id: 'l2', name: "Lama del Giudizio", desc: "Infliggi il DOPPIO dei danni se il nemico ha Meno del 30% di Salute (Esecuzione).", rarity: "legendary", image: "icona_lama_del_giudizio.png", icon: "fa-gavel", apply: (p) => p.modifiers.executioner = true },
+        { id: 'l3', name: "Patto Ascetico", desc: "La Ultimate si ricarica passivamente da sola, ma la tua Salute Massima scende del 30%.", rarity: "legendary", image: "icona_patto_ascetico.png", icon: "fa-link", apply: (p) => { p.modifiers.passiveUltCharge = true; p.stats.maxHp = Math.floor(p.stats.maxHp * 0.7); if(p.stats.hp > p.stats.maxHp) p.stats.hp = p.stats.maxHp; } },
+        { id: 'l4', name: "Sete di Sangue Eterna", desc: "Ti curi del 5% ogni 10 uccisioni. I nemici NON droppano cuori. I Level Up non danno HP.", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", icon: "fa-droplet", apply: (p) => { p.modifiers.bloodthirst = true; p.modifiers.noHealDrops = true; p.modifiers.noMaxHpLevelUp = true; } },
+        { id: 'l5', name: "Maestria del Flow", desc: "Il cap del moltiplicatore Combo è raddoppiato. Ma se subisci danno, PERDI META' DEGLI HP.", rarity: "legendary", image: "icona_maestria_del_flow.png", icon: "fa-infinity", apply: (p) => { p.modifiers.flowMastery = true; p.modifiers.comboDecayRate *= 0.5; } },
+        { id: 'l6', name: "Aegis del Guardiano", desc: "Lo Scudo esplode quando finisce. Il danno e l'area scalano in base ai colpi bloccati.", rarity: "legendary", image: "fa_shieldx.png", icon: "fa-shield", apply: (p) => { p.modifiers.explosiveShield = true; } },
+        { id: 'l7', name: "Impatto Tonante", desc: "Lo scatto crea un fulmine all'arrivo che stordisce i nemici per 2s impedendogli di agire.", rarity: "legendary", image: "icona_impatto_tonante.png", icon: "fa-bolt", apply: (p) => { p.modifiers.dashLightning = true; } }
+    ],
     getRandomRarity() { 
         let r = Math.random() * 100; 
         if (r <= 45) return 'common';   // 45% 
@@ -3597,18 +3602,15 @@ class Player extends Entity {
         this.shockSpeedTimer = 0;
         
         this.modifiers = { 
-            critChance: 0.10, dmgMult: 1.0, speedMult: 1.0, atkSpeedMult: 1.0, dashCooldownMult: 1.0, vampirismMaxHp: 0, 
+            critChance: 0.10, bonusCritChance: 0, dmgMult: 1.0, speedMult: 1.0, atkSpeedMult: 1.0, bonusAtkSpeed: 0, dashCooldownMult: 1.0, vampirismMaxHp: 0, 
             fireTrail: false, fireTrailDebuff: false, ascensionDurationAdd: 0, dmgTakenMult: 1.0, xpMult: 1.0, healDropMult: 1.0, 
             executioner: false, shieldActive: false, shieldConsumed: false, essenceDurationMult: 1.0, critDmgMult: 3.0,
             comboStep: 1, comboDecayAdd: 0, comboDecayRate: 1.0, keepEssenceOnCombo: false, pickupRadiusMult: 1.0,
             passiveUltCharge: false, noHealDrops: false, noMaxHpLevelUp: false, bloodthirst: false, bloodthirstCount: 0, flowMastery: false,
-            timeSinceLastHit: 0, 
-            explosiveShield: false,
-            shieldDurationAdd: 0,
-            dashCritsEnabled: false,
-            dashCritsStacks: 0,
-            dashLightning: false
-        };
+            timeSinceLastHit: 0, explosiveShield: false, shieldDurationAdd: 0, dashCritsEnabled: false, dashCritsStacks: 0, dashLightning: false,
+            // NUOVI TRATTI RELIQUIE E SHOP
+            critGold: false, lowHpAtkSpeed: false, dashInvul: false, regen: 0, openerDmg: false
+        };
         
         this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}), new THREE.MeshPhongMaterial({color: 0xffff00, emissive: 0xffff00}));
         this.mesh = this.modelParts.group; this.staffGemMat = this.modelParts.staffGem.material;
@@ -3884,6 +3886,14 @@ class Player extends Entity {
 
     update(dt) {
         if (this.dead) return; this.updateFlash(dt);
+        if (this.modifiers.regen > 0) {
+            if (!this.regenTimer) this.regenTimer = 0;
+            this.regenTimer += dt;
+            if (this.regenTimer >= 3.0) { // Rigenera 1 HP ogni 3 secondi
+                this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + this.modifiers.regen);
+                this.regenTimer = 0;
+            }
+        }
         this.modelParts.halo.rotation.z += dt; this.modelParts.staffGem.rotation.y += dt;
         if (this.activeShieldCooldown > 0) this.activeShieldCooldown -= dt;
         if (this.shadowMesh.visible) {
@@ -4203,6 +4213,8 @@ class Player extends Entity {
     
     attack() {
         let flowCapMult = this.modifiers.flowMastery ? 2 : 1;
+        let shopSpeed = (1.0 + this.modifiers.bonusAtkSpeed);
+        let adrenalineSpeed = (this.modifiers.lowHpAtkSpeed && (this.stats.hp / this.stats.maxHp) < 0.3) ? 1.3 : 1.0;
         let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult; 
         if (this.overdrive && this.essence === 'blue') spdMult *= 3.0; 
         
@@ -4282,6 +4294,9 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
 
             this.x = endX; this.y = endY; this.dashTimer = 0; this.isDashing = false;
         }
+        if (this.modifiers.dashInvul) {
+            this.invincibilityTimer = Math.max(this.invincibilityTimer, 0.4); // 0.4s di invincibilità post-scatto
+        }
         if (this.essence === 'green') { Game.getDecoy().spawn(this.x, this.y); Game.getHazard().spawn(this.x, this.y, 40, 3.0, this.stats.maxDmg * 0.5 * this.modifiers.dmgMult, ESSENCE_COLORS.green, 'poison'); }
         if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); }
     }
@@ -4709,14 +4724,27 @@ class Enemy extends Entity {
             this.push(Math.cos(this.angle), Math.sin(this.angle), this.type === 'golem' ? 3 : 18); 
         }
     }
-   takeDamage(amount, source, isCrit = false, canInfect = true) {
+  takeDamage(amount, source, isCrit = false, canInfect = true) {
+        // Esecuzione (Lama del Giudizio)
         if (source === Game.player && Game.player.modifiers.executioner && (this.stats.hp / this.stats.maxHp) < 0.3) amount *= 2.0;
+        
+        // NUOVO: Runa Minore (Danni Opener)
+        if (source === Game.player && Game.player.modifiers.openerDmg && (this.stats.hp / this.stats.maxHp) >= 0.8) amount *= 1.3;
+        
+        // NUOVO: Prisma (Crit Gold)
+        if (isCrit && source === Game.player && Game.player.modifiers.critGold && Math.random() < 0.20) {
+            Game.coins++; 
+            if(UI.els.coins) UI.els.coins.innerText = Game.coins;
+            Game.getFloatingText().spawn(this.x, this.y, "+1", '#ffff00', 20);
+        }
+
+        // Danni bonus se il nemico è a fuoco
         if (this.fireDebuffTimer > 0 && Game.player.modifiers.fireTrailDebuff) amount *= 1.25;
         
-        // --- LOGICA SCUDO GOLEM ---
+        // --- LOGICA SCUDO GOLEM (MANTENUTA E INTACTA) ---
         if (this.type === 'golem' && source) {
             let angleToSource = Math.atan2(source.y - this.y, source.x - this.x);
-            let golemFacingAngle = -this.mesh.rotation.y + Math.PI / 2; // Ricalcola in base alla rotazione REALE (lenta) della mesh
+            let golemFacingAngle = -this.mesh.rotation.y + Math.PI / 2; 
             
             let diff = angleToSource - golemFacingAngle;
             while (diff < -Math.PI) diff += Math.PI * 2;
@@ -5775,8 +5803,8 @@ const Preloader = {
 };
 
    const ShopSystem = {
-    bonus: { hp: 0, dmg: 0, speed: 0 },
-    costs: { hp: 5, dmg: 8, speed: 6 },
+    bonus: { hp: 0, dmg: 0, speed: 0, atkSpeed: 0, crit: 0 },
+    costs: { hp: 4, dmg: 6, speed: 5, atkSpeed: 6, crit: 7 },
 
     updateUI() {
         if(!document.getElementById('shop-coins')) return;
@@ -5799,6 +5827,22 @@ const Preloader = {
         document.getElementById('shop-spd-curr').innerText = currentSpdMult.toFixed(2) + "x";
         document.getElementById('shop-spd-next').innerText = (currentSpdMult + 0.05).toFixed(2) + "x";
         document.getElementById('shop-cost-spd').innerText = this.costs.speed;
+
+        // Ritmo (Attack Speed)
+        let currentAtkMult = Game.player ? (1.0 + Game.player.modifiers.bonusAtkSpeed) : 1.0;
+        if(document.getElementById('shop-atk-curr')){
+            document.getElementById('shop-atk-curr').innerText = currentAtkMult.toFixed(2) + "x";
+            document.getElementById('shop-atk-next').innerText = (currentAtkMult + 0.05).toFixed(2) + "x";
+            document.getElementById('shop-cost-atk').innerText = this.costs.atkSpeed;
+        }
+
+        // Precisione (Critico)
+        let currentCrit = Game.player ? Math.round((Game.player.modifiers.critChance + Game.player.modifiers.bonusCritChance) * 100) : 10;
+        if(document.getElementById('shop-crit-curr')){
+            document.getElementById('shop-crit-curr').innerText = currentCrit + "%";
+            document.getElementById('shop-crit-next').innerText = (currentCrit + 5) + "%";
+            document.getElementById('shop-cost-crit').innerText = this.costs.crit;
+        }
     },
 
     buy(type) {
@@ -5807,21 +5851,13 @@ const Preloader = {
             Game.coins -= cost;
             AudioEngine.playCollect();
 
-            // Rincaro del costo: ogni volta che compri, costa 2 monete in più
-            this.costs[type] += 2;
+            this.costs[type] += 2; // Rincaro lineare
 
-            if (type === 'hp') { 
-                Game.player.stats.maxHp += 15; Game.player.stats.hp += 15; 
-                this.bonus.hp += 15;
-            }
-            if (type === 'dmg') { 
-                Game.player.modifiers.dmgMult += 0.10; 
-                this.bonus.dmg += 0.10;
-            }
-            if (type === 'speed') { 
-                Game.player.modifiers.speedMult += 0.05; 
-                this.bonus.speed += 0.05;
-            }
+            if (type === 'hp') { Game.player.stats.maxHp += 15; Game.player.stats.hp += 15; this.bonus.hp += 15; }
+            if (type === 'dmg') { Game.player.modifiers.dmgMult += 0.10; this.bonus.dmg += 0.10; }
+            if (type === 'speed') { Game.player.modifiers.speedMult += 0.05; this.bonus.speed += 0.05; }
+            if (type === 'atkSpeed') { Game.player.modifiers.bonusAtkSpeed += 0.05; this.bonus.atkSpeed += 0.05; }
+            if (type === 'crit') { Game.player.modifiers.bonusCritChance += 0.05; this.bonus.crit += 0.05; }
             
             this.updateUI();
         } else {
@@ -5830,8 +5866,8 @@ const Preloader = {
     },
 
     reset() {
-        this.bonus = { hp: 0, dmg: 0, speed: 0 };
-        this.costs = { hp: 5, dmg: 8, speed: 6 };
+        this.bonus = { hp: 0, dmg: 0, speed: 0, atkSpeed: 0, crit: 0 };
+        this.costs = { hp: 4, dmg: 6, speed: 5, atkSpeed: 6, crit: 7 };
     }
 };
 

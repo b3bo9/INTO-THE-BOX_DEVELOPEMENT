@@ -2528,25 +2528,28 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
        // --- AGGIORNAMENTO DERIVA DELLA NEBBIA BASSA ---
         if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
             let dummyFog = this._dummyFog;
-            let mapW = this.map.width * TILE_SIZE;
-            let mapH = this.map.height * TILE_SIZE;
             
-            // Limite di spawn molto più ampio (i blocchi scalati superano le 800 unità di larghezza)
-            // Cosi si teletrasportano solo quando sono COMPLETAMENTE fuori dallo schermo
-            let offsetMax = 800;
+            // Perno centrale: il giocatore. La nebbia lo seguirà ovunque vada all'infinito.
+            let px = this.player ? this.player.x : (this.map.width * TILE_SIZE) / 2;
+            let pz = this.player ? this.player.y : (this.map.height * TILE_SIZE) / 2;
+            
+            // Distanza oltre la quale la nebbia nera oscura totalmente la vista (~1500 max)
+            let wrapDist = 1600; 
 
             for(let i=0; i<this.map.fogData.length; i++) {
                 let d = this.map.fogData[i];
             
-                // Aggiornamento fluido continuo senza salti di frame
+                // Movimento continuo e fluido
                 d.x += d.vx * dt;
                 d.z += d.vz * dt;
                 
-                // Loop spaziale invisibile fuori dai bordi telecamera
-                if (d.x < -offsetMax) d.x = mapW + offsetMax;
-                if (d.x > mapW + offsetMax) d.x = -offsetMax;
-                if (d.z < -offsetMax) d.z = mapH + offsetMax;
-                if (d.z > mapH + offsetMax) d.z = -offsetMax;
+                // Illusione di infinito: se il blocco esce dalla visuale del giocatore,
+                // viene teletrasportato alle sue spalle nel buio totale.
+                if (d.x > px + wrapDist) d.x -= wrapDist * 2;
+                else if (d.x < px - wrapDist) d.x += wrapDist * 2;
+                
+                if (d.z > pz + wrapDist) d.z -= wrapDist * 2;
+                else if (d.z < pz - wrapDist) d.z += wrapDist * 2;
 
                 dummyFog.position.set(d.x, d.y, d.z);
                 dummyFog.scale.set(d.scale, 1, d.scale);

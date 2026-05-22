@@ -1182,7 +1182,7 @@ const RelicSystem = {
         // RARE: Meccaniche di combattimento
         { id: 'c5', name: "Runa dell'Agguato", desc: "Infliggi il +30% di danni ai nemici che hanno più dell'80% di Salute.", rarity: "rare", image: "icona_runa_minore.png", icon: "fa-fire", apply: (p) => p.modifiers.openerDmg = true },
         { id: 'r1', name: "Bussola Dimensionale", desc: "Tutte le Essenze raccolte e la modalità Inferno durano il 50% in più.", rarity: "rare", image: "icona_bussola_dimensionale.png", icon: "fa-compass", apply: (p) => p.modifiers.essenceDurationMult += 0.50 },
-        { id: 'r3', name: "Scudo dell'Egidio", desc: "Ogni 15s dall'ultima volta che lo Scudo viene distrutto, si riattiva da solo.", rarity: "rare", image: "icona_scudo_dell_egidio.png", icon: "fa-shield-halved", apply: (p) => p.modifiers.shieldActive = true },
+        { id: 'r3', name: "Scudo dell'Egidio", desc: "Lo Scudo Cinetico si attiva automaticamente ogni 15 sec.", rarity: "rare", image: "icona_scudo_dell_egidio.png", icon: "fa-shield-halved", apply: (p) => p.modifiers.shieldActive = true },
         { id: 'r4', name: "Spirito Avaro", desc: "Ottieni +50% XP, ma subisci +15% di danni.", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.50; p.modifiers.dmgTakenMult += 0.15; } },
         { id: 'e5', name: "Zanna del Vampiro", desc: "I nemici sconfitti hanno il 5% di probabilità di droppare un Cuore Vitale extra.", rarity: "rare", image: "icona_zanna_del_vampiro.png", icon: "fa-tooth", apply: (p) => p.modifiers.healDropMult += 1.0 },
 
@@ -2434,8 +2434,7 @@ let fpsEl = UI.els.fpsValue;
             else { this.player ? this.player.modifiers.healDropMult = 0 : null; mutatorText = "MALEDIZIONE DELLA FAME"; floorColor = "#aa00ff"; }
         }
 
-        if (this.player && this.player.modifiers.shieldActive) this.player.modifiers.shieldConsumed = false;
-
+       if (this.player && this.player.modifiers.shieldActive) this.player.modifiers.autoShieldTimer = 0;
         if (this.isBossFloor) {
             this.floorMaxKills = 1; this.floorKills = 0;
             let cx = Math.floor(CHUNK_SIZE / 2) * TILE_SIZE + TILE_SIZE/2; let cy = Math.floor(CHUNK_SIZE / 2) * TILE_SIZE + TILE_SIZE/2;
@@ -4006,10 +4005,19 @@ class Player extends Entity {
        
 
        
-        this.modifiers.timeSinceLastHit += dt;
-        if (this.modifiers.shieldActive && this.modifiers.shieldConsumed && this.modifiers.timeSinceLastHit >= 15.0) {
-            this.modifiers.shieldConsumed = false;
-            Game.getFloatingText().spawn(this.x, this.y, "SCUDO RIPRISTINATO", '#00DDFF', 30, true);
+       if (this.modifiers.shieldActive) {
+            if (this.modifiers.autoShieldTimer === undefined) this.modifiers.autoShieldTimer = 0;
+            this.modifiers.autoShieldTimer += dt;
+            if (this.modifiers.autoShieldTimer >= 15.0) {
+                this.modifiers.autoShieldTimer = 0;
+                this.activeShieldTimer = 2.0 + this.modifiers.shieldDurationAdd;
+                this.shieldAbsorbed = 0;
+                this.shieldMesh.visible = true;
+                this.shieldMesh.material.color.setHex(0x00DDFF);
+                this.shieldMesh.material.opacity = 0.6;
+                AudioEngine.playCollect();
+                Game.getFloatingText().spawn(this.x, this.y, "EGIDA!", '#00DDFF', 30, true);
+            }
         }
 
         if (this.modifiers.passiveUltCharge && !Game.ultimateActive) { Game.addUltimateCharge(2.0 * dt); }
@@ -4252,15 +4260,15 @@ class Player extends Entity {
         let flowCapMult = this.modifiers.flowMastery ? 2 : 1;
         let shopSpeed = (1.0 + this.modifiers.bonusAtkSpeed);
         let adrenalineSpeed = (this.modifiers.lowHpAtkSpeed && (this.stats.hp / this.stats.maxHp) < 0.3) ? 1.3 : 1.0;
-        let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult; 
+        let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult * shopSpeed * adrenalineSpeed; 
         if (this.overdrive && this.essence === 'blue') spdMult *= 3.0; 
         
         // --- MODIFICA CADENZA ARMA ROSSA ---
         if (this.essence === 'red') spdMult *= 0.6; // Abbassa la velocità di attacco
         
-        if (Game.ultimateActive) spdMult *= 2.0; 
-        this.attackTimer = 1 / (this.baseAttackSpeed * spdMult); this.isAttacking = true; this.attackSwing = 0;
-        let critChance = this.modifiers.critChance + Math.min(Game.combo * 0.005, 0.5 * flowCapMult); let isCrit = Math.random() < critChance;
+        if (Game.ultimateActive) spdMult *= 2.0; 
+        this.attackTimer = 1 / (this.baseAttackSpeed * spdMult); this.isAttacking = true; this.attackSwing = 0;
+        let critChance = this.modifiers.critChance + this.modifiers.bonusCritChance + Math.min(Game.combo * 0.005, 0.5 * flowCapMult); let isCrit = Math.random() < critChance;
         if (this.modifiers.dashCritsStacks > 0) { isCrit = true; this.modifiers.dashCritsStacks--; }
         let baseDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * (1 + Math.min(Game.combo * 0.04, 2.0 * flowCapMult)) * this.modifiers.dmgMult;
 if (Game.ultimateActive) baseDmg *= 2.0;
@@ -4341,16 +4349,7 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
    takeDamage(amount, source) {
         if (this.invincibilityTimer > 0) return; 
         
-        this.modifiers.timeSinceLastHit = 0;
         
-        // 1. Priorità: Scudo Cinetico (Shift)
-        if (this.modifiers.shieldActive && !this.modifiers.shieldConsumed) { 
-            this.modifiers.shieldConsumed = true; 
-            Game.getFloatingText().spawn(this.x, this.y, "SCUDO!", '#00DDFF', 30, true); 
-            Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'spark'); 
-            this.invincibilityTimer = 0.5; 
-            return; 
-        }
        // 2. Priorità: Scudo Glaciale (Temp Hp Verde/Blu)
         if (this.tempHp > 0) {
             Game.getFloatingText().spawn(this.x, this.y + 20, "ASSORBITO!", '#00ffaa', 25, true);
@@ -5719,7 +5718,7 @@ function respawnPlayer() {
     }
     Game.player.x = pos.x * TILE_SIZE + TILE_SIZE/2; Game.player.y = pos.y * TILE_SIZE + TILE_SIZE/2;
     Game.player.mesh.position.set(Game.player.x, 0, Game.player.y); Game.player.stats.hp = Game.player.stats.maxHp; Game.player.dead = false; Game.player.invincibilityTimer = 3.0; 
-    if (Game.player.modifiers.shieldActive) Game.player.modifiers.shieldConsumed = false;
+    if (Game.player.modifiers.shieldActive) Game.player.modifiers.autoShieldTimer = 0;
     Game.player.mesh.children.forEach(child => { if (child !== Game.player.light && child !== Game.player.shieldMesh) child.visible = true; }); 
     Game.snapCamera(); Game.state = 'PLAYING';
     if (Game.isBossFloor) AudioEngine.playBossMusic(); else AudioEngine.playGameMusic();

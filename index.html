@@ -879,7 +879,7 @@ const AudioEngine = {
         let p = this.coinSFX.play();
         if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
     },
-    playMenuMusic() {
+  
     playMenuMusic() {
         if (this.musicMuted || this.musicNode) return;
         this.stopGameMusic(); this.stopBossMusic();

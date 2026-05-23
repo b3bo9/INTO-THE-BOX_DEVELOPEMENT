@@ -3649,7 +3649,7 @@ class Player extends Entity {
         this.modifiers = { 
             critChance: 0.10, bonusCritChance: 0, dmgMult: 1.0, speedMult: 1.0, atkSpeedMult: 1.0, bonusAtkSpeed: 0, dashCooldownMult: 1.0, vampirismMaxHp: 0, 
             fireTrail: false, fireTrailDebuff: false, ascensionDurationAdd: 0, dmgTakenMult: 1.0, xpMult: 1.0, healDropMult: 1.0, 
-            executioner: false, shieldActive: false, shieldConsumed: false, essenceDurationMult: 1.0, critDmgMult: 2.0,
+            executioner: false, shieldActive: false, shieldConsumed: false, essenceDurationMult: 1.0, critDmgMult: 1.5,
             comboStep: 1, comboDecayAdd: 0, comboDecayRate: 1.0, keepEssenceOnCombo: false, pickupRadiusMult: 1.0,
             passiveUltCharge: false, noHealDrops: false, noMaxHpLevelUp: false, bloodthirst: false, bloodthirstCount: 0, flowMastery: false,
             timeSinceLastHit: 0, explosiveShield: false, shieldDurationAdd: 0, dashCritsEnabled: false, dashCritsStacks: 0, dashLightning: false,
@@ -4293,10 +4293,10 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         // Calcola la velocità: 500 per il rosso, 1000 per tutti gli altri
         let projSpeed = (projType === 'explosive_arrow') ? 500 : 1000;
         
-        let p1 = Game.getProjectile(); p1.spawn(this.x, this.y, this.angle, projSpeed, baseDmg, 'player', projType, piercing); p1.canInfect = true;
+        let p1 = Game.getProjectile(); p1.spawn(this.x, this.y, this.angle, projSpeed, baseDmg, 'player', projType, piercing, isCrit); p1.canInfect = true;
         if (this.overdrive && this.essence === 'green') {
-            let p2 = Game.getProjectile(); p2.spawn(this.x, this.y, this.angle - 0.4, 800, baseDmg, 'player', 'homing_arrow'); p2.canInfect = true;
-            let p3 = Game.getProjectile(); p3.spawn(this.x, this.y, this.angle + 0.4, 800, baseDmg, 'player', 'homing_arrow'); p3.canInfect = true;
+            let p2 = Game.getProjectile(); p2.spawn(this.x, this.y, this.angle - 0.4, 800, baseDmg, 'player', 'homing_arrow', false, isCrit); p2.canInfect = true;
+            let p3 = Game.getProjectile(); p3.spawn(this.x, this.y, this.angle + 0.4, 800, baseDmg, 'player', 'homing_arrow', false, isCrit); p3.canInfect = true;
         }
     }
     
@@ -5266,9 +5266,10 @@ class Projectile {
         this.windIntensity = 0;
     }
     
-    spawn(x, y, angle, speed, damage, owner, type, piercing=false) {
+    spawn(x, y, angle, speed, damage, owner, type, piercing=false, isCrit=false) {
         this.active = true; this.group.visible = true; this.x = x; this.y = y; this.angle = angle; this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
         this.damage = damage; this.owner = owner; this.type = type; this.piercing = piercing; this.bounceCount = (type === 'chain_lightning') ? 2 : 0;
+        this.isCrit = isCrit;
         this.hitEnemies.clear(); this.target = null; this.canInfect = true;
         
         this.life = owner === 'player' ? (700 / Math.max(1, speed)) : Math.min(3.0, 600 / Math.max(1, speed));
@@ -5388,8 +5389,7 @@ class Projectile {
                     let exactRadSq = (this.radius + e.radius) * (this.radius + e.radius);
                     
                     if (MathUtils.distanceSq(this, e) < exactRadSq) {
-                        let critMod = Game.player.modifiers.critChance + Math.min(Game.combo*0.005, 0.5 * (Game.player.modifiers.flowMastery?2:1));
-                        e.takeDamage(this.damage, Game.player, Math.random() < critMod, this.canInfect); 
+                        e.takeDamage(this.damage, Game.player, this.isCrit, this.canInfect); 
                         if(this.type === 'homing_arrow') e.slowedTimer = 2.0; 
                         this.handleHit(e);
                     }

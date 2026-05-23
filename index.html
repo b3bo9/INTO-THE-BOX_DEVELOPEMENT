@@ -3597,7 +3597,7 @@ class Entity {
             AudioEngine.playHit(isCrit ? 'crit' : 'enemy');
         }
 
-        if (isCrit && source === Game.player) { Game.hitStop = 0.05; Game.addTrauma(0.5); Game.addCombo(); } else if (source === Game.player) { Game.addCombo(); }
+        if (isCrit && source === Game.player) {Game.addTrauma(0.5); Game.addCombo(); } else if (source === Game.player) { Game.addCombo(); }
         
         // CONSOLIDAMENTO DANNI A SCHERMO
         let foundText = null;

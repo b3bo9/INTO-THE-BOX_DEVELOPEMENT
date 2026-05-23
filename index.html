@@ -875,7 +875,7 @@ const AudioEngine = {
     playCoin() {
         if (this.sfxMuted) return;
         this.coinSFX.currentTime = 0;
-        this.coinSFX.volume = 0.6;
+        this.coinSFX.volume = 0.4;
         let p = this.coinSFX.play();
         if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
     },

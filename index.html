@@ -1185,7 +1185,7 @@ const RelicSystem = {
         { id: 'c1', name: "Prisma dell'Avarizia", desc: "I tuoi colpi critici hanno il 20% di probabilità di generare 1 Moneta.", rarity: "common", image: "icona_prisma.png", icon: "fa-gem", apply: (p) => p.modifiers.critGold = true },
         { id: 'c2', name: "Siero Adrenalinico", desc: "Se i tuoi HP scendono sotto il 30%, la Velocità d'Attacco aumenta del +30%.", rarity: "common", image: "icona_adrenalina.png", icon: "fa-bolt", apply: (p) => p.modifiers.lowHpAtkSpeed = true },
         { id: 'c3', name: "Piuma Spettrale", desc: "Dopo aver eseguito uno Scatto, ottieni invulnerabilità totale per 0.4 secondi.", rarity: "common", image: "icona_piuma.png", icon: "fa-feather", apply: (p) => p.modifiers.dashInvul = true },
-        { id: 'c4', name: "Cristallo Rigenerante", desc: "Rigeneri passivamente l'1% della Salute Max ogni 3 secondi.", rarity: "common", image: "icona_cristallo_vitale.png", icon: "fa-heart", apply: (p) => p.modifiers.regen = 0.01 },
+        { id: 'c4', name: "Cristallo Rigenerante", desc: "Rigeneri passivamente 2% della Salute Max ogni 3 secondi.", rarity: "common", image: "icona_cristallo_vitale.png", icon: "fa-heart", apply: (p) => p.modifiers.regen = 0.02 },
         { id: 'r5', name: "Magnete delle Anime", desc: "Raggio di raccolta di Monete ed Essenze raddoppiato.", rarity: "common", image: "icona_magnete_delle_anime.png", icon: "fa-magnet", apply: (p) => p.modifiers.pickupRadiusMult += 1.0 },
 
         // RARE: Meccaniche di combattimento
@@ -4367,7 +4367,9 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         if (this.activeShieldTimer > 0) {
             amount *= 0.75;
         }
-        
+        if (Game.ultimateActive) {
+            amount *= 0.75;
+        }
         
        // 2. Priorità: Scudo Glaciale (Temp Hp Verde/Blu)
         if (this.tempHp > 0) {

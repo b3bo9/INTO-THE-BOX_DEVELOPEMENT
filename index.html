@@ -1194,7 +1194,8 @@ const RelicSystem = {
         { id: 'r3', name: "Scudo dell'Egidio", desc: "Lo Scudo Cinetico si attiva automaticamente ogni 15 sec.", rarity: "rare", image: "icona_scudo_dell_egidio.png", icon: "fa-shield-halved", apply: (p) => p.modifiers.shieldActive = true },
         { id: 'r4', name: "Spirito Avaro", desc: "Ottieni +50% XP, ma subisci +15% di danni.", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.50; p.modifiers.dmgTakenMult += 0.15; } },
         { id: 'e5', name: "Zanna del Vampiro", desc: "I nemici sconfitti hanno il 5% di probabilità di droppare un Cuore Vitale extra.", rarity: "rare", image: "icona_zanna_del_vampiro.png", icon: "fa-tooth", apply: (p) => p.modifiers.healDropMult += 1.0 },
-
+        { id: 'r6', name: "Sovraccarico Cinetico", desc: "Mentre lo Scudo Cinetico è attivo, la tua Velocità d'Attacco aumenta del +30%.", rarity: "rare", image: "icona_sovraccarico_cinetico.png", icon: "fa-bolt", apply: (p) => p.modifiers.shieldAtkSpeedBonus = 0.30 },
+        
         // EPICHE: Sinergie Costruttive (Build Definers)
         { id: 'r2', name: "Calzari di Mercurio", desc: "Il Cooldown dello Scatto è ridotto del 40%.", rarity: "epic", image: "icona_mercurio.png", icon: "fa-shoe-prints", apply: (p) => p.modifiers.dashCooldownMult -= 0.40 },
         { id: 'e1', name: "Ritmo di Battaglia", desc: "La Combo sale di +2 a colpo e decade più lentamente, facilitando il moltiplicatore.", rarity: "epic", image: "icona_ritmo_di_battaglia.png", icon: "fa-drum", apply: (p) => { p.modifiers.comboStep += 1; p.modifiers.comboDecayAdd += 1.0; } },
@@ -4274,7 +4275,9 @@ class Player extends Entity {
         let flowCapMult = this.modifiers.flowMastery ? 2 : 1;
         let shopSpeed = (1.0 + this.modifiers.bonusAtkSpeed);
         let adrenalineSpeed = (this.modifiers.lowHpAtkSpeed && (this.stats.hp / this.stats.maxHp) < 0.3) ? 1.3 : 1.0;
-        let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult * shopSpeed * adrenalineSpeed; 
+        // Calcolo velocità con il bonus dello scudo
+        let shieldSpeed = (this.activeShieldTimer > 0 && this.modifiers.shieldAtkSpeedBonus) ? this.modifiers.shieldAtkSpeedBonus : 0;
+        let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult * shopSpeed * adrenalineSpeed * (1 + shieldSpeed);
         if (this.overdrive && this.essence === 'blue') spdMult *= 3.0; 
         
         // --- MODIFICA CADENZA ARMA ROSSA ---

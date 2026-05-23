@@ -1185,7 +1185,7 @@ const RelicSystem = {
         { id: 'c1', name: "Prisma dell'Avarizia", desc: "I tuoi colpi critici hanno il 20% di probabilità di generare 1 Moneta.", rarity: "common", image: "icona_prisma.png", icon: "fa-gem", apply: (p) => p.modifiers.critGold = true },
         { id: 'c2', name: "Siero Adrenalinico", desc: "Se i tuoi HP scendono sotto il 30%, la Velocità d'Attacco aumenta del +30%.", rarity: "common", image: "icona_adrenalina.png", icon: "fa-bolt", apply: (p) => p.modifiers.lowHpAtkSpeed = true },
         { id: 'c3', name: "Piuma Spettrale", desc: "Dopo aver eseguito uno Scatto, ottieni invulnerabilità totale per 0.4 secondi.", rarity: "common", image: "icona_piuma.png", icon: "fa-feather", apply: (p) => p.modifiers.dashInvul = true },
-        { id: 'c4', name: "Cristallo Rigenerante", desc: "Rigeneri passivamente 1 HP ogni 3 secondi.", rarity: "common", image: "icona_cristallo_vitale.png", icon: "fa-heart", apply: (p) => p.modifiers.regen = 1 },
+        { id: 'c4', name: "Cristallo Rigenerante", desc: "Rigeneri passivamente l'1% della Salute Max ogni 3 secondi.", rarity: "common", image: "icona_cristallo_vitale.png", icon: "fa-heart", apply: (p) => p.modifiers.regen = 0.01 },
         { id: 'r5', name: "Magnete delle Anime", desc: "Raggio di raccolta di Monete ed Essenze raddoppiato.", rarity: "common", image: "icona_magnete_delle_anime.png", icon: "fa-magnet", apply: (p) => p.modifiers.pickupRadiusMult += 1.0 },
 
         // RARE: Meccaniche di combattimento
@@ -1290,11 +1290,11 @@ class Coin {
         this.groundGlow = new THREE.Mesh(new THREE.PlaneGeometry(55, 55), new THREE.MeshBasicMaterial({map: GLOW_TEX, color: 0xffaa00, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
         this.groundGlow.rotation.x = -Math.PI / 2; this.groundGlow.visible = false; Game.scene.add(this.groundGlow);
     }
-    spawn(x, y) { 
-        this.active = true; this.x = x; this.y = y; this.life = 15.0; 
-        this.group.position.set(x, 8, y); this.group.updateMatrix(); this.group.visible = true; 
-        if (isTouchDevice) { this.groundGlow.position.set(x, 0.2, y); this.groundGlow.visible = true; }
-    }
+    spawn(x, y) { 
+        this.active = true; this.x = x; this.y = y; this.life = 15.0; 
+        this.group.position.set(x, 12, y); this.group.updateMatrix(); this.group.visible = true; 
+        if (isTouchDevice) { this.groundGlow.position.set(x, 0.2, y); this.groundGlow.visible = true; }
+    }
     destroy() { this.active = false; this.group.visible = false; this.groundGlow.visible = false; }
 }
 
@@ -2715,10 +2715,10 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
                 c.life -= dt;
                 if (c.life <= 0) { c.destroy(); continue; }
                 if (c.life < 3.0) c.group.visible = Math.floor(c.life * 8) % 2 === 0;
-                else c.group.visible = true;
+                else c.group.visible = true;
 
-                c.group.rotation.y += dt * 3; c.group.position.y = 8 + this.animFloat;
-                c.group.updateMatrix();
+                c.group.rotation.y += dt * 3; c.group.position.y = 12 + this.animFloat;
+                c.group.updateMatrix();
                 if (MathUtils.distanceSq(this.player, c) < pRadiusSq) { 
                     c.destroy(); AudioEngine.playCoin();
                     Game.coins++; UI.els.coins.innerText = Game.coins;
@@ -3931,11 +3931,12 @@ class Player extends Entity {
 
     update(dt) {
         if (this.dead) return; this.updateFlash(dt);
-        if (this.modifiers.regen > 0) {
+       if (this.modifiers.regen > 0) {
             if (!this.regenTimer) this.regenTimer = 0;
             this.regenTimer += dt;
-            if (this.regenTimer >= 3.0) { // Rigenera 1 HP ogni 3 secondi
-                this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + this.modifiers.regen);
+            if (this.regenTimer >= 3.0) { // Rigenera in %
+                let healAmount = this.stats.maxHp * this.modifiers.regen;
+                this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
                 this.regenTimer = 0;
             }
         }
@@ -4361,6 +4362,11 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
     
    takeDamage(amount, source) {
         if (this.invincibilityTimer > 0) return; 
+        
+        // Riduzione del 25% se lo Scudo Cinetico base è attivo
+        if (this.activeShieldTimer > 0) {
+            amount *= 0.75;
+        }
         
         
        // 2. Priorità: Scudo Glaciale (Temp Hp Verde/Blu)

@@ -2456,14 +2456,24 @@ let fpsEl = UI.els.fpsValue;
             else if (this.corruptedType === 'unstable') { mutatorText = "PAVIMENTO INSTABILE"; floorColor = "#ff3300"; this.standStillTimer = 0; }
             else if (this.corruptedType === 'volatile') { mutatorText = "ESSENZE VOLATILI"; floorColor = "#33ff00"; }
             else if (this.corruptedType === 'combo') { mutatorText = "COMBO MALEDETTA"; floorColor = "#ff0000"; }
-            else if (this.corruptedType === 'pursuer') { 
+           else if (this.corruptedType === 'pursuer') { 
                 mutatorText = "INSEGUITORE IMPLACABILE"; floorColor = "#aa00ff"; 
                 // Evoca un Golem fantasma lontano dal giocatore
                 setTimeout(() => {
                     if (this.state !== 'PLAYING') return;
+
+                    // FIX: Troviamo un punto di spawn VALIDO e lontano sulla griglia, 
+                    // invece di sommare brutalmente +800 finendo fuori dalla mappa
+                    let pos = this.map.getRandomFloorTile(); 
+                    let attempts = 0;
+                    while(MathUtils.distance({x: pos.x*TILE_SIZE, y: pos.y*TILE_SIZE}, this.player) < TILE_SIZE * 15 && attempts < 50) { 
+                        pos = this.map.getRandomFloorTile(); 
+                        attempts++; 
+                    }
+
                     let pursuer = this.getEnemy();
-            pursuer.spawn(this.player.x + 800, this.player.y + 800, 'golem', this.floor);
-            pursuer.isPursuer = true;
+                    pursuer.spawn(pos.x * TILE_SIZE + TILE_SIZE/2, pos.y * TILE_SIZE + TILE_SIZE/2, 'golem', this.floor);
+                    pursuer.isPursuer = true;
             pursuer.speed = pursuer.baseSpeed * 0.65; // Lento e implacabile
             pursuer.aggroRange = 9999; pursuer.aggroRangeSq = 9999 * 9999; // Vede il giocatore ovunque
             
@@ -2797,10 +2807,16 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
         } else if (!this.isBossFloor && this.state === 'PLAYING') {
             let enemiesLeft = this.floorMaxKills - this.floorKills;
             
+           // Se scende sotto i 3 ma è > 0, avvia il conto alla rovescia
             if (enemiesLeft <= 3 && enemiesLeft > 0 && !this.floorEndTriggered) {
                 this.floorEndTriggered = true;
                 this.floorEndTimer = 5.0;
                 Game.getFloatingText().spawn(this.player.x, this.player.y, "IL PORTALE SI APRE!", '#00DDFF', 40, true);
+            } 
+            // FIX SOFTLOCK: Se scende a 0 di botto (AoE massivo che spazza via tutto), attiva la fine immediata
+            else if (enemiesLeft <= 0 && !this.floorEndTriggered) {
+                this.floorEndTriggered = true;
+                this.floorEndTimer = 0.0;
             }
             
             if (this.floorEndTriggered) {
@@ -2809,14 +2825,19 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
                 let newSec = Math.ceil(this.floorEndTimer);
                 
                 if (oldSec !== newSec && newSec > 0) {
-                    Game.getFloatingText().spawn(this.player.x, this.player.y, newSec.toString(), '#00DDFF', 60, true);
-                    AudioEngine.playCountdown();
-                }
+                    Game.getFloatingText().spawn(this.player.x, this.player.y, newSec.toString(), '#00DDFF', 60, true);
+                    AudioEngine.playCountdown();
+                }
                 
-                if (this.floorEndTimer <= 0 || (enemiesLeft <= 0 && this.enemies.length === 0)) {
+                // FIX PURSUER: Ignoriamo la lunghezza array (il Pursuer rimarrebbe vivo bloccando il livello)
+                if (this.floorEndTimer <= 0 || enemiesLeft <= 0) {
                     for (let i = this.enemies.length - 1; i >= 0; i--) {
                         let e = this.enemies[i];
-                        if (!e.dead) { e.takeDamage(999999, this.player, false, false); e.onDeath(); }
+                        if (!e.dead) { 
+                            e.isPursuer = false; // Rimuoviamo l'invincibilità all'inseguitore per forzarne la morte
+                            e.takeDamage(999999, this.player, false, false); 
+                            e.onDeath(); 
+                        }
                     }
                     this.state = 'FLOOR_TRANSITION'; 
                     
@@ -2830,11 +2851,6 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
                     AudioEngine.stopGameMusic();
                     AudioEngine.playLevelCompleteMusic();
                 }
-            } else if (enemiesLeft <= 0 && this.enemies.length === 0) {
-                this.state = 'FLOOR_TRANSITION'; 
-                document.getElementById('floorScreen').classList.remove('hidden'); 
-                AudioEngine.stopGameMusic();
-                AudioEngine.playLevelCompleteMusic();
             }
         }
         UI.update();

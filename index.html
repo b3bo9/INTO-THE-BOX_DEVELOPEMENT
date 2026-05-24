@@ -1409,14 +1409,14 @@ const SharedMat = {
     fireShape: new THREE.MeshPhongMaterial({color: 0x220000, emissive: 0xff3300, emissiveIntensity: 2.0}),
     blobShadow: new THREE.MeshBasicMaterial({map: BLOB_SHADOW_TEX, transparent: true, depthWrite: false}),
     
-    hazardFirePlane: new THREE.MeshBasicMaterial({color: 0xff3300, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}),
-    hazardFireRing: new THREE.MeshBasicMaterial({color: 0xffaa00, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}),
-    hazardPoisonPlane: new THREE.MeshBasicMaterial({color: ESSENCE_COLORS.green, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}),
-    hazardPoisonRing: new THREE.MeshBasicMaterial({color: 0xaaffaa, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}),
-    hazardEnemyPlane: new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}),
-    hazardEnemyRing: new THREE.MeshBasicMaterial({color: 0xff5555, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}),
-    hazardCrystalPlane: new THREE.MeshBasicMaterial({color: 0xff00ff, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}),
-    hazardCrystalRing: new THREE.MeshBasicMaterial({color: 0xffaaff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}),
+    hazardFirePlane: new THREE.MeshBasicMaterial({color: 0x33ff00, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}), // GIOCATORE: VERDE
+    hazardFireRing: new THREE.MeshBasicMaterial({color: 0xaaffaa, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}), // GIOCATORE: VERDE
+    hazardPoisonPlane: new THREE.MeshBasicMaterial({color: 0x33ff00, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}), // GIOCATORE: VERDE
+    hazardPoisonRing: new THREE.MeshBasicMaterial({color: 0xaaffaa, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}), // GIOCATORE: VERDE
+    hazardEnemyPlane: new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}), // NEMICO: ROSSO
+    hazardEnemyRing: new THREE.MeshBasicMaterial({color: 0xff5555, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}), // NEMICO: ROSSO
+    hazardCrystalPlane: new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}), // NEMICO: ROSSO
+    hazardCrystalRing: new THREE.MeshBasicMaterial({color: 0xff5555, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}), // NEMICO: ROSSO
     
     enemyDark: new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9}),
     enemyEye: new THREE.MeshBasicMaterial({color: 0xff0000}),
@@ -1714,8 +1714,9 @@ class Hazard {
                 this.plane.material.opacity = 0.35 + Math.sin(this.life * 10) * 0.1; 
                 this.ring.material.opacity = 0.8 + Math.sin(this.life * 15) * 0.2; 
             }
-            if ((Game.frameCount + this.updateOffset) % 5 === 0 && !isTouchDevice && this.activationTimer <= 0) { 
-                let mat = this.type === 'poison' ? SharedMat.spriteGreen : (this.type === 'crystal_fire' ? SharedMat.spritePink : SharedMat.spriteRed);
+           if ((Game.frameCount + this.updateOffset) % 5 === 0 && !isTouchDevice && this.activationTimer <= 0) { 
+                // Le pozze del giocatore (fire/poison) emettono particelle verdi, quelle nemiche particelle rosse
+                let mat = (this.type === 'fire' || this.type === 'poison') ? SharedMat.spriteGreen : SharedMat.spriteRed;
                 Game.getParticle().spawn(this.x + MathUtils.randomRange(-this.radius, this.radius), 2, this.y + MathUtils.randomRange(-this.radius, this.radius), mat, 'trail');
             }
             
@@ -4831,8 +4832,8 @@ class Enemy extends Entity {
         if (Game.player.overdrive && Game.player.essence === 'green' && canInfect) this.infected = true;
     }
     onDeath() {
-        if (this.type === 'crystal') {
-            Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff00ff, 'crystal_fire');
+       if (this.type === 'crystal') {
+            Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff0000, 'crystal_fire');
             Game.addTrauma(1.5); let pCount = AppSettings.isLow ? 5 : (AppSettings.isUltraPC ? 40 : 20);
             for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
             AudioEngine.playShoot('explosive_arrow'); 
@@ -5068,8 +5069,9 @@ class BossEnemy extends Enemy {
         if (this.hazardTimer <= 0) { 
             if (this.bossElement === 'red') {
                 Game.getHazard().spawn(Game.player.x, Game.player.y, this.isEnraged ? 50 : 40, 3.0, this.stats.maxDmg * 0.3, 0xff3300, 'enemy_fire');
-            } else if (this.bossElement === 'green') {
-                Game.getHazard().spawn(Game.player.x, Game.player.y, this.isEnraged ? 80 : 50, 5.0, this.stats.maxDmg * 0.2, ESSENCE_COLORS.green, 'poison');
+           } else if (this.bossElement === 'green') {
+                // Passato da 'poison' a 'enemy_fire' per colorarlo di rosso e farlo scalare correttamente sui danni subiti dal player
+                Game.getHazard().spawn(Game.player.x, Game.player.y, this.isEnraged ? 80 : 50, 5.0, this.stats.maxDmg * 0.2, 0xff0000, 'enemy_fire');
             }
             // Il boss Blu non usa trappole a terra, punta tutto sulla velocità
             this.hazardTimer = this.isEnraged ? 3.0 : 5.0; 

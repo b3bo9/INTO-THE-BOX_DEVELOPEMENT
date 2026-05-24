@@ -4858,8 +4858,9 @@ class Enemy extends Entity {
             this.push(Math.cos(this.angle), Math.sin(this.angle), this.type === 'golem' ? 3 : 18); 
         }
     }
-    if (this.isPursuer) return; // L'inseguitore non può subire alcun danno
+    
   takeDamage(amount, source, isCrit = false, canInfect = true) {
+      if (this.isPursuer) return; // L'inseguitore non può subire alcun danno
         // Esecuzione (Lama del Giudizio)
         if (source === Game.player && Game.player.modifiers.executioner && (this.stats.hp / this.stats.maxHp) < 0.3) amount *= 2.0;
         

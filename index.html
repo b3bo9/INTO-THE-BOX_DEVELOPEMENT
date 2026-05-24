@@ -2440,14 +2440,20 @@ let fpsEl = UI.els.fpsValue;
         let floorColor = 0xffffff; let mutatorText = ""; let camDist = isTouchDevice ? 1000 : 750;
         
         // Impostiamo la visibilità della nebbia sempre costante e pulita
-        this.scene.background = new THREE.Color(0x020205); 
+        this.scene.background = new THREE.Color(0x020205); 
         this.scene.fog = new THREE.Fog(0x020205, camDist - 150, camDist + 500);
+        if (this.dirLight) this.dirLight.intensity = 1.4; // Ripristina sempre la luce lunare
 
         if (this.isCorrupted && !this.isBossFloor) {
             this.difficultyMult *= 1.25; // Aumenta globalmente la difficoltà
-            if (this.corruptedType === 'darkness') { 
+           if (this.corruptedType === 'darkness') { 
                 mutatorText = "OSCURITÀ OPPRIMENTE"; floorColor = "#aa00ff"; 
-                this.scene.fog.color.setHex(0x000000); this.scene.fog.near = 50; this.scene.fog.far = 350; this.scene.background.setHex(0x000000);
+                this.scene.fog.color.setHex(0x000000); 
+                // La nebbia inizia ad avvolgere il mondo appena prima del giocatore e diventa impenetrabile poco dopo
+                this.scene.fog.near = camDist - 100; 
+                this.scene.fog.far = camDist + 150; 
+                this.scene.background.setHex(0x000000);
+                if (this.dirLight) this.dirLight.intensity = 0.2; // Abbassa drasticamente la luce esterna
             }
             else if (this.corruptedType === 'unstable') { mutatorText = "PAVIMENTO INSTABILE"; floorColor = "#ff3300"; this.standStillTimer = 0; }
             else if (this.corruptedType === 'volatile') { mutatorText = "ESSENZE VOLATILI"; floorColor = "#33ff00"; }
@@ -3951,8 +3957,8 @@ class Player extends Entity {
             this.staffGemMat.emissive.setHex(0xffffff); 
         }
         if (Game.isCorrupted && Game.corruptedType === 'darkness') {
-            this.light.intensity *= 0.55; 
-            this.light.distance = 450; 
+            this.light.intensity *= 0.7; // La teniamo un po' più forte
+            this.light.distance = 600; // Estendiamo il raggio per vedere un'area decente attorno a noi
         }
     }
 

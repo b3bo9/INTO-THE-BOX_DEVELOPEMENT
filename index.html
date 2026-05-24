@@ -1575,8 +1575,8 @@ class Essence {
         Game.scene.add(this.groundGlow);
     }
     spawn(x, y, type) {
-        this.active = true; this.x = x; this.y = y; this.type = type; let color = ESSENCE_COLORS[type]; 
-        this.life = 15.0;
+       this.active = true; this.x = x; this.y = y; this.type = type; let color = ESSENCE_COLORS[type]; 
+        this.life = (Game.isCorrupted && Game.corruptedType === 'volatile') ? 3.0 : 15.0; // Esplode in 3 secondi
         // Assegniamo il colore direttamente all'emissione luminosa
         this.coreMat.emissive.setHex(color); this.haloMat.color.setHex(color);
         this.group.position.set(x, 12, y); this.group.updateMatrix(); this.group.visible = true;
@@ -2457,6 +2457,26 @@ let fpsEl = UI.els.fpsValue;
             }
             else if (this.corruptedType === 'unstable') { mutatorText = "PAVIMENTO INSTABILE"; floorColor = "#ff3300"; this.standStillTimer = 0; }
             else if (this.corruptedType === 'volatile') { mutatorText = "ESSENZE VOLATILI"; floorColor = "#33ff00"; }
+            else if (this.corruptedType === 'combo') { mutatorText = "COMBO MALEDETTA"; floorColor = "#ff0000"; }
+            else if (this.corruptedType === 'pursuer') { 
+                mutatorText = "INSEGUITORE IMPLACABILE"; floorColor = "#aa00ff"; 
+                // Evoca un Golem fantasma lontano dal giocatore
+                setTimeout(() => {
+                    if (this.state !== 'PLAYING') return;
+                    let pursuer = this.getEnemy();
+                    pursuer.spawn(this.player.x + 800, this.player.y + 800, 'golem', this.floor);
+                    pursuer.isPursuer = true;
+                    pursuer.speed = pursuer.baseSpeed * 0.65; // Lento e implacabile
+                    pursuer.aggroRange = 9999; pursuer.aggroRangeSq = 9999 * 9999; // Vede il giocatore ovunque
+                    pursuer.mesh.traverse(c => { // Rendilo un'ombra semi-trasparente
+                        if (c.isMesh && c.material) {
+                            c.material.transparent = true; c.material.opacity = 0.4; c.material.color.setHex(0x000000);
+                            if (c.material.emissive) c.material.emissive.setHex(0x330055);
+                        }
+                    });
+                    this.enemies.push(pursuer); this.enemyGrid.insert(pursuer);
+                }, 1500);
+            }
         }
        if (this.player && this.player.modifiers.shieldActive) this.player.modifiers.autoShieldTimer = 0;
         if (this.isBossFloor) {
@@ -2574,9 +2594,14 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         }
         // --------------------------------------------------------
 
-        if (this.combo > 0) { 
-            this.comboTimer -= dt * (this.player ? this.player.modifiers.comboDecayRate : 1.0); 
-            if (this.comboTimer <= 0) this.resetCombo(); 
+       if (this.combo > 0) { 
+            if (!(this.isCorrupted && this.corruptedType === 'combo')) {
+                this.comboTimer -= dt * (this.player ? this.player.modifiers.comboDecayRate : 1.0); 
+                if (this.comboTimer <= 0) this.resetCombo(); 
+            } else {
+                // Nella Combo Maledetta, il contatore non scende mai!
+                this.comboTimer = this.comboMaxTime;
+            }
         }
         if (this.ultimateActive) { this.ultimateTimer -= dt; if (this.ultimateTimer <= 0) this.ultimateActive = false; }
 
@@ -4438,10 +4463,15 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         
         let wasDead = this.dead; amount *= this.modifiers.dmgTakenMult; 
         
-        if (this.modifiers.flowMastery && !wasDead) {
+       if (this.modifiers.flowMastery && !wasDead) {
             Game.ultimateCharge = 0;
             amount += this.stats.hp / 2; // Lose half current HP
         } else {
+            if (Game.isCorrupted && Game.corruptedType === 'combo' && Game.combo > 0 && !wasDead) {
+                // Perde un tot di vita pari al contatore Combo accumulato
+                amount += Game.combo;
+                Game.getFloatingText().spawn(this.x, this.y + 30, `-${Math.floor(Game.combo)} COMBO PENALTY!`, '#ff0000', 35, true);
+            }
             Game.resetCombo(); 
         }
 
@@ -4520,6 +4550,7 @@ class Enemy extends Entity {
         this.level = level; 
         this.attackCooldown = 0;
         this.telegraphTimer = 0; // <-- NUOVO: Inizializza il preavviso d'attacco
+        this.isPursuer = false; // Reset di sicurezza per il pool
 
         // --- BUGFIX 1: RESET DELLO STATO DAL POOL ---
         // Previene l'esplosione dei poligoni resettando animazioni e stati residui
@@ -4821,11 +4852,13 @@ class Enemy extends Entity {
             this.attackCooldown = 2.0 * cdMult; 
         } 
        else if (this.type !== 'leaper') { 
-            Game.player.takeDamage(MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg), this); 
-            // Il Golem è pesante, non rincula in avanti quando sferra il colpo
+            // Se è l'inseguitore, ti fa il 30% della TUA vita massima a botta.
+            let dmg = this.isPursuer ? (Game.player.stats.maxHp * 0.3) : MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg);
+            Game.player.takeDamage(dmg, this); 
             this.push(Math.cos(this.angle), Math.sin(this.angle), this.type === 'golem' ? 3 : 18); 
         }
     }
+    if (this.isPursuer) return; // L'inseguitore non può subire alcun danno
   takeDamage(amount, source, isCrit = false, canInfect = true) {
         // Esecuzione (Lama del Giudizio)
         if (source === Game.player && Game.player.modifiers.executioner && (this.stats.hp / this.stats.maxHp) < 0.3) amount *= 2.0;
@@ -5988,16 +6021,33 @@ const Preloader = {
 };
 
 window.prepareFloorScreen = function() {
-    window.nextCorruptedType = Math.random() < 0.33 ? 'darkness' : (Math.random() < 0.5 ? 'unstable' : 'volatile');
-    window.nextCorruptedReward = Math.random() < 0.5 ? 'coins' : 'relic';
-    
-    let typeText = window.nextCorruptedType === 'darkness' ? "OSCURITÀ" : (window.nextCorruptedType === 'unstable' ? "PAVIMENTO INSTABILE" : "ESSENZE VOLATILI");
-    let rewardText = window.nextCorruptedReward === 'coins' ? "+ DOPPIE MONETE" : "+ RELIQUIA GARANTITA";
-    
-    let cType = document.getElementById('corrupt-type-text');
-    let cReward = document.getElementById('corrupt-reward-text');
-    if(cType) cType.innerText = typeText;
-    if(cReward) cReward.innerText = rewardText;
+    let nextIsBoss = ((Game.floor + 1) % 5 === 0);
+    let btnCorrupt = document.getElementById('btn-corrupt');
+
+    if (nextIsBoss) {
+        // Disattiva il pulsante per il piano del Boss
+        btnCorrupt.disabled = true;
+        btnCorrupt.classList.add('opacity-30', 'cursor-not-allowed', 'grayscale');
+        btnCorrupt.innerHTML = `NIDO DEL BOSS<br><span class="text-[9px] text-gray-400 font-bold">Corruzione Impossibile</span>`;
+    } else {
+        // Attiva il pulsante e scegli casualmente 1 delle 5 maledizioni
+        btnCorrupt.disabled = false;
+        btnCorrupt.classList.remove('opacity-30', 'cursor-not-allowed', 'grayscale');
+        
+        let curses = ['darkness', 'unstable', 'combo', 'volatile', 'pursuer'];
+        window.nextCorruptedType = curses[Math.floor(Math.random() * curses.length)];
+        window.nextCorruptedReward = Math.random() < 0.5 ? 'coins' : 'relic';
+        
+        let typeText = "";
+        if (window.nextCorruptedType === 'darkness') typeText = "OSCURITÀ OPPRIMENTE";
+        if (window.nextCorruptedType === 'unstable') typeText = "PAVIMENTO INSTABILE";
+        if (window.nextCorruptedType === 'volatile') typeText = "ESSENZE VOLATILI";
+        if (window.nextCorruptedType === 'combo') typeText = "COMBO MALEDETTA";
+        if (window.nextCorruptedType === 'pursuer') typeText = "INSEGUITORE IMPLACABILE";
+
+        let rewardText = window.nextCorruptedReward === 'coins' ? "+ DOPPIE MONETE" : "+ RELIQUIA GARANTITA";
+        btnCorrupt.innerHTML = `PIANO CORROTTO<br><span class="text-[9px] text-red-300 font-bold">${typeText}</span><br><span class="text-[9px] text-yellow-400 tracking-widest">${rewardText}</span>`;
+    }
 };
 
 window.nextFloor = function(corrupted = false) {

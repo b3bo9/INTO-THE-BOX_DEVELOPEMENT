@@ -186,7 +186,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 110</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 111</p>
                 </div>
             </div>
         </div>
@@ -495,9 +495,14 @@
             </div>
 
             <!-- BOTTONI BASSI -->
-            <div class="w-full max-w-[450px] flex flex-col gap-3 shrink-0">
-                <button onclick="UIManager.showCollectedRelics()" class="bg-purple-900/50 backdrop-blur-md hover:bg-purple-800/80 text-purple-200 font-bold py-3 rounded-xl text-xs sm:text-sm border border-purple-500/50 transition-all active:scale-95 uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(168,85,247,0.3)]"><i class="fa-solid fa-gem mr-2"></i> RELIQUIE</button>
-                <button onclick="nextFloor()" class="bg-gradient-to-r from-cyan-900 via-blue-600 to-cyan-900 hover:from-blue-800 hover:to-blue-800 text-white font-black py-4 rounded-xl text-lg sm:text-2xl border-2 border-blue-400/50 transition-all active:scale-95 uppercase tracking-[0.2em]">SCENDI PIÙ A FONDO</button>
+            <div class="w-full max-w-[450px] flex flex-col gap-2 shrink-0">
+                <button onclick="UIManager.showCollectedRelics()" class="bg-purple-900/50 backdrop-blur-md hover:bg-purple-800/80 text-purple-200 font-bold py-2.5 rounded-xl text-xs sm:text-sm border border-purple-500/50 transition-all active:scale-95 uppercase tracking-[0.2em] shadow-[0_0_15px_rgba(168,85,247,0.3)]"><i class="fa-solid fa-gem mr-2"></i> LE TUE RELIQUIE</button>
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    <button onclick="nextFloor(false)" class="bg-gradient-to-t from-blue-900 to-cyan-800 hover:from-blue-800 hover:to-cyan-700 text-white font-bold py-3 rounded-xl border border-cyan-500/50 transition-all active:scale-95 uppercase tracking-widest text-[11px] sm:text-xs shadow-[0_0_15px_rgba(34,211,238,0.2)]">PIANO NORMALE</button>
+                    <button onclick="nextFloor(true)" id="btn-corrupt" class="bg-gradient-to-t from-purple-900 to-red-900 hover:from-red-800 hover:to-purple-800 text-white font-black py-2 rounded-xl border border-red-500/80 transition-all active:scale-95 uppercase tracking-wider text-[11px] sm:text-xs shadow-[0_0_20px_rgba(220,38,38,0.6)] leading-tight">
+                        PIANO CORROTTO<br><span id="corrupt-type-text" class="text-[9px] text-red-300 font-bold"></span><br><span id="corrupt-reward-text" class="text-[9px] text-yellow-400 tracking-widest"></span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -2438,13 +2443,15 @@ let fpsEl = UI.els.fpsValue;
         this.scene.background = new THREE.Color(0x020205); 
         this.scene.fog = new THREE.Fog(0x020205, camDist - 150, camDist + 500);
 
-        if (!this.isBossFloor && Math.random() < 0.2) { 
-            let r = Math.random();
-            // Diviso 50/50 tra Frenesia e Fame, addio Oscurità Profonda!
-            if (r < 0.5) { this.difficultyMult *= 1.3; mutatorText = "FRENESIA DEI DEMONI"; floorColor = "#FF2244"; } 
-            else { this.player ? this.player.modifiers.healDropMult = 0 : null; mutatorText = "MALEDIZIONE DELLA FAME"; floorColor = "#aa00ff"; }
-        }
-
+        if (this.isCorrupted && !this.isBossFloor) {
+            this.difficultyMult *= 1.25; // Aumenta globalmente la difficoltà
+            if (this.corruptedType === 'darkness') { 
+                mutatorText = "OSCURITÀ OPPRIMENTE"; floorColor = "#aa00ff"; 
+                this.scene.fog.color.setHex(0x000000); this.scene.fog.near = 50; this.scene.fog.far = 350; this.scene.background.setHex(0x000000);
+            }
+            else if (this.corruptedType === 'unstable') { mutatorText = "PAVIMENTO INSTABILE"; floorColor = "#ff3300"; this.standStillTimer = 0; }
+            else if (this.corruptedType === 'volatile') { mutatorText = "ESSENZE VOLATILI"; floorColor = "#33ff00"; }
+        }
        if (this.player && this.player.modifiers.shieldActive) this.player.modifiers.autoShieldTimer = 0;
         if (this.isBossFloor) {
             this.floorMaxKills = 1; this.floorKills = 0;
@@ -2480,6 +2487,7 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         if(UI.els.coins) UI.els.coins.innerText = "0";
         this.ultimateCharge = 0; this.ultimateActive = false;
         this.floorEndTimer = 0; this.floorEndTriggered = false;
+        this.isCorrupted = false; this.corruptedType = ''; this.corruptedReward = ''; this.standStillTimer = 0;
         ShopSystem.reset();
         if (this.player) { Game.scene.remove(this.player.mesh); this.player = null; }
         
@@ -2673,7 +2681,13 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
             let e = this.essences[i];
             if(e.active) {
                 e.life -= dt;
-                if (e.life <= 0) { e.destroy(); continue; }
+                if (e.life <= 0) { 
+                    if (Game.isCorrupted && Game.corruptedType === 'volatile') {
+                        Game.getHazard().spawn(e.x, e.y, 80, 0.5, Game.player.stats.maxHp * 0.3, 0x33ff00, 'poison'); // Esplosione fissa del 30% HP!
+                        Game.getParticle().spawn(e.x, 20, e.y, SharedMat.spriteGreen, 'nova');
+                    }
+                    e.destroy(); continue; 
+                }
                 if (e.life < 3.0) e.group.visible = Math.floor(e.life * 8) % 2 === 0;
                 else e.group.visible = true;
 
@@ -2756,7 +2770,14 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
                         if (!e.dead) { e.takeDamage(999999, this.player, false, false); e.onDeath(); }
                     }
                     this.state = 'FLOOR_TRANSITION'; 
-                    document.getElementById('floorScreen').classList.remove('hidden'); 
+                    
+                    if (this.isCorrupted && this.corruptedReward === 'relic') {
+                        let dropRelic = RelicSystem.getChoices()[0]; 
+                        dropRelic.apply(this.player); this.player.relics.push(dropRelic);
+                        Game.getFloatingText().spawn(this.player.x, this.player.y, "RELIQUIA OTTENUTA!", '#fbbf24', 50, true);
+                    }
+                    window.prepareFloorScreen();
+                    document.getElementById('floorScreen').classList.remove('hidden');
                     AudioEngine.stopGameMusic();
                     AudioEngine.playLevelCompleteMusic();
                 }
@@ -3926,8 +3947,12 @@ class Player extends Entity {
             this.modelParts.body.material.emissive.setHex(0x00DDFF); 
             this.modelParts.body.material.emissiveIntensity = 2.0; 
             this.light.color.setHex(0x00DDFF); 
-            this.light.intensity = 4.0; // Massima visibilità in modalità Ultimate
+           this.light.intensity = 4.0; // Massima visibilità in modalità Ultimate
             this.staffGemMat.emissive.setHex(0xffffff); 
+        }
+        if (Game.isCorrupted && Game.corruptedType === 'darkness') {
+            this.light.intensity *= 0.55; 
+            this.light.distance = 450; 
         }
     }
 
@@ -4105,9 +4130,19 @@ class Player extends Entity {
             if (Game.keys['w']) dy -= 1; if (Game.keys['s']) dy += 1; if (Game.keys['a']) dx -= 1; if (Game.keys['d']) dx += 1;
             if (Game.inputs.left.active) { dx = Game.inputs.left.x; dy = Game.inputs.left.y; }
             
-            let isMoving = (dx !== 0 || dy !== 0);
+           let isMoving = (dx !== 0 || dy !== 0);
             
-            if (isMoving) { 
+            if (Game.isCorrupted && Game.corruptedType === 'unstable') {
+                if (!isMoving && !Game.ultimateActive) {
+                    Game.standStillTimer += dt;
+                    if (Game.standStillTimer >= 1.5) {
+                        Game.getHazard().spawn(this.x, this.y, 35, 2.0, this.stats.maxDmg * 0.8, 0xff0000, 'enemy_fire');
+                        Game.standStillTimer = 0;
+                    }
+                } else { Game.standStillTimer = 0; }
+            }
+
+            if (isMoving) {
                 this.speed = currentSpeed; 
                 this.move(dx, dy, dt); 
                 this.mesh.position.y = Game.animBounce * 0.75; 
@@ -4937,9 +4972,10 @@ class Enemy extends Entity {
         let itemsToSpawn = [];
 
         // 1. Calcolo Monete (Migliorate per supportare il nuovo negozio scalabile)
-        let coinChance = this.isBoss ? 1.0 : (this.isElite ? 0.70 : 0.20);
+       let coinChance = this.isBoss ? 1.0 : (this.isElite ? 0.70 : 0.20);
         if (Math.random() < coinChance) {
             let count = this.isBoss ? MathUtils.randomInt(2, 4) : (this.isElite ? MathUtils.randomInt(1, 3) : 1);
+            if (Game.isCorrupted && Game.corruptedReward === 'coins') count *= 2; // DOPPIE MONETE!
             for(let c=0; c<count; c++) itemsToSpawn.push('coin');
         }
 
@@ -5945,11 +5981,37 @@ const Preloader = {
     }
 };
 
-// Modifica la funzione nextFloor() per aggiornare la UI del negozio
-const originalNextFloor = nextFloor;
-window.nextFloor = function() {
-    originalNextFloor();
-    ShopSystem.updateUI();
+window.prepareFloorScreen = function() {
+    window.nextCorruptedType = Math.random() < 0.33 ? 'darkness' : (Math.random() < 0.5 ? 'unstable' : 'volatile');
+    window.nextCorruptedReward = Math.random() < 0.5 ? 'coins' : 'relic';
+    
+    let typeText = window.nextCorruptedType === 'darkness' ? "OSCURITÀ" : (window.nextCorruptedType === 'unstable' ? "PAVIMENTO INSTABILE" : "ESSENZE VOLATILI");
+    let rewardText = window.nextCorruptedReward === 'coins' ? "+ DOPPIE MONETE" : "+ RELIQUIA GARANTITA";
+    
+    let cType = document.getElementById('corrupt-type-text');
+    let cReward = document.getElementById('corrupt-reward-text');
+    if(cType) cType.innerText = typeText;
+    if(cReward) cReward.innerText = rewardText;
+};
+
+window.nextFloor = function(corrupted = false) {
+    AudioEngine.playDescendSound(); document.getElementById('floorScreen').classList.add('hidden');
+    clearScene(); Game.state = 'PLAYING'; Game.floor++; Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + 20); 
+    
+    Game.isCorrupted = corrupted;
+    if (corrupted) {
+        Game.corruptedType = window.nextCorruptedType;
+        Game.corruptedReward = window.nextCorruptedReward;
+    } else {
+        Game.corruptedType = ''; Game.corruptedReward = '';
+    }
+
+    Game.setupFloor(); 
+    if (!Game.isBossFloor) { 
+        let txt = corrupted ? "PIANO CORROTTO" : `DISCESA AL PIANO ${Game.floor}`;
+        Game.getFloatingText().spawn(Game.player.x, Game.player.y, txt, corrupted ? '#aa00ff' : '#FF0000', 40, true); 
+    }
+    ShopSystem.updateUI();
 };
 
 // Aggiorna i coin la prima volta che muori o passi piano

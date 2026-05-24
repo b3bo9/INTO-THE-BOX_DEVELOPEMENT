@@ -497,11 +497,9 @@
             <!-- BOTTONI BASSI -->
             <div class="w-full max-w-[450px] flex flex-col gap-2 shrink-0">
                 <button onclick="UIManager.showCollectedRelics()" class="bg-purple-900/50 backdrop-blur-md hover:bg-purple-800/80 text-purple-200 font-bold py-2.5 rounded-xl text-xs sm:text-sm border border-purple-500/50 transition-all active:scale-95 uppercase tracking-[0.2em] shadow-[0_0_15px_rgba(168,85,247,0.3)]"><i class="fa-solid fa-gem mr-2"></i> LE TUE RELIQUIE</button>
-                <div class="grid grid-cols-2 gap-2 mt-1">
-                    <button onclick="nextFloor(false)" class="bg-gradient-to-t from-blue-900 to-cyan-800 hover:from-blue-800 hover:to-cyan-700 text-white font-bold py-3 rounded-xl border border-cyan-500/50 transition-all active:scale-95 uppercase tracking-widest text-[11px] sm:text-xs shadow-[0_0_15px_rgba(34,211,238,0.2)]">PIANO NORMALE</button>
-                    <button onclick="nextFloor(true)" id="btn-corrupt" class="bg-gradient-to-t from-purple-900 to-red-900 hover:from-red-800 hover:to-purple-800 text-white font-black py-2 rounded-xl border border-red-500/80 transition-all active:scale-95 uppercase tracking-wider text-[11px] sm:text-xs shadow-[0_0_20px_rgba(220,38,38,0.6)] leading-tight">
-                        PIANO CORROTTO<br><span id="corrupt-type-text" class="text-[9px] text-red-300 font-bold"></span><br><span id="corrupt-reward-text" class="text-[9px] text-yellow-400 tracking-widest"></span>
-                    </button>
+                <div class="w-full mt-1">
+                    <button id="btn-next-floor" onclick="nextFloor(window.nextIsCorrupted)" class="w-full transition-all active:scale-95">
+                        </button>
                 </div>
             </div>
         </div>
@@ -6053,30 +6051,19 @@ const Preloader = {
 
 window.prepareFloorScreen = function() {
     let nextIsBoss = ((Game.floor + 1) % 5 === 0);
-    let btnCorrupt = document.getElementById('btn-corrupt');
+    let btnNext = document.getElementById('btn-next-floor');
 
-    // Il piano corrotto ha il 20% di probabilità di essere aperto (se non è un piano boss)
-    let canBeCorrupted = !nextIsBoss && Math.random() < 0.20;
+    // Determina se il prossimo piano sarà forzatamente corrotto (20%)
+    window.nextIsCorrupted = !nextIsBoss && Math.random() < 0.20;
 
-    if (!canBeCorrupted) {
-        btnCorrupt.disabled = true;
-        btnCorrupt.classList.add('opacity-30', 'cursor-not-allowed', 'grayscale');
-        btnCorrupt.classList.remove('shadow-[0_0_20px_rgba(220,38,38,0.8)]', 'animate-pulse'); // Rimuove il glow
-        
-        if (nextIsBoss) {
-            btnCorrupt.innerHTML = `NIDO DEL BOSS<br><span class="text-[9px] text-gray-400 font-bold">Corruzione Impossibile</span>`;
-        } else {
-            btnCorrupt.innerHTML = `PIANO CORROTTO<br><span class="text-[9px] text-gray-400 font-bold">Portale Chiuso</span>`;
-        }
-    } else {
-        btnCorrupt.disabled = false;
-        btnCorrupt.classList.remove('opacity-30', 'cursor-not-allowed', 'grayscale');
-        btnCorrupt.classList.add('shadow-[0_0_20px_rgba(220,38,38,0.8)]', 'animate-pulse'); // Aggiunge il glow rosso
+    if (nextIsBoss) {
+        btnNext.className = "w-full bg-gradient-to-t from-amber-900 to-red-900 hover:from-red-800 hover:to-amber-800 text-white font-black py-3 rounded-xl border border-red-500/50 transition-all active:scale-95 uppercase tracking-widest text-[11px] sm:text-xs shadow-[0_0_20px_rgba(220,38,38,0.5)]";
+        btnNext.innerHTML = `NIDO DEL BOSS<br><span class="text-[9px] text-gray-400 font-bold tracking-normal">Corruzione Impossibile</span>`;
+    } else if (window.nextIsCorrupted) {
+        btnNext.className = "w-full bg-gradient-to-t from-purple-900 to-red-900 hover:from-red-800 hover:to-purple-800 text-white font-black py-2 rounded-xl border border-red-500/80 transition-all active:scale-95 uppercase tracking-wider text-[11px] sm:text-xs shadow-[0_0_20px_rgba(220,38,38,0.8)] animate-pulse leading-tight";
         
         let curses = ['darkness', 'unstable', 'combo', 'volatile', 'pursuer'];
         window.nextCorruptedType = curses[Math.floor(Math.random() * curses.length)];
-        
-        // Probabilità 50% monete, 50% reliquia garantita
         window.nextCorruptedReward = Math.random() < 0.5 ? 'coins' : 'relic';
         
         let typeText = "";
@@ -6087,10 +6074,12 @@ window.prepareFloorScreen = function() {
         if (window.nextCorruptedType === 'pursuer') typeText = "INSEGUITORE IMPLACABILE";
 
         let rewardText = window.nextCorruptedReward === 'coins' ? "+ DOPPIE MONETE" : "+ RELIQUIA GARANTITA";
-        btnCorrupt.innerHTML = `PIANO CORROTTO<br><span class="text-[9px] text-red-300 font-bold">${typeText}</span><br><span class="text-[9px] text-yellow-400 tracking-widest">${rewardText}</span>`;
+        btnNext.innerHTML = `PIANO CORROTTO<br><span class="text-[9px] text-red-300 font-bold tracking-normal">${typeText}</span><br><span class="text-[9px] text-yellow-400 tracking-widest">${rewardText}</span>`;
+    } else {
+        btnNext.className = "w-full bg-gradient-to-t from-blue-900 to-cyan-800 hover:from-blue-800 hover:to-cyan-700 text-white font-bold py-3 rounded-xl border border-cyan-500/50 transition-all active:scale-95 uppercase tracking-widest text-[11px] sm:text-xs shadow-[0_0_15px_rgba(34,211,238,0.2)]";
+        btnNext.innerHTML = `PIANO NORMALE<br><span class="text-[9px] text-cyan-200 font-bold tracking-normal">Nessuna Corruzione Rilevata</span>`;
     }
 };
-
 
 window.nextFloor = function(corrupted = false) {
     AudioEngine.playDescendSound(); document.getElementById('floorScreen').classList.add('hidden');

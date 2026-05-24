@@ -1260,7 +1260,7 @@ const RelicSystem = {
                 <p class="text-[11px] sm:text-xs font-bold text-center leading-snug text-white/80 flex-grow flex items-center justify-center">${relic.desc}</p>
                 <button class="mt-4 w-full bg-white/10 hover:bg-white/20 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors shadow-inner border border-white/5">Scegli</button>
             `;
-            card.onclick = () => { AudioEngine.playClick(); relic.apply(Game.player); Game.player.relics.push(relic); Game.getFloatingText().spawn(Game.player.x, Game.player.y, "POTERE ACQUISITO", '#ffff00', 40, true); document.getElementById('relicScreen').classList.add('hidden'); Game.state = 'FLOOR_TRANSITION'; document.getElementById('floorScreen').classList.remove('hidden'); };
+           card.onclick = () => { AudioEngine.playClick(); relic.apply(Game.player); Game.player.relics.push(relic); Game.getFloatingText().spawn(Game.player.x, Game.player.y, "POTERE ACQUISITO", '#ffff00', 40, true); document.getElementById('relicScreen').classList.add('hidden'); Game.state = 'FLOOR_TRANSITION'; window.prepareFloorScreen(); document.getElementById('floorScreen').classList.remove('hidden'); };
             container.appendChild(card);
         }
         document.getElementById('relicScreen').classList.remove('hidden');
@@ -2464,17 +2464,37 @@ let fpsEl = UI.els.fpsValue;
                 setTimeout(() => {
                     if (this.state !== 'PLAYING') return;
                     let pursuer = this.getEnemy();
-                    pursuer.spawn(this.player.x + 800, this.player.y + 800, 'golem', this.floor);
-                    pursuer.isPursuer = true;
-                    pursuer.speed = pursuer.baseSpeed * 0.65; // Lento e implacabile
-                    pursuer.aggroRange = 9999; pursuer.aggroRangeSq = 9999 * 9999; // Vede il giocatore ovunque
-                    pursuer.mesh.traverse(c => { // Rendilo un'ombra semi-trasparente
-                        if (c.isMesh && c.material) {
-                            c.material.transparent = true; c.material.opacity = 0.4; c.material.color.setHex(0x000000);
-                            if (c.material.emissive) c.material.emissive.setHex(0x330055);
-                        }
-                    });
-                    this.enemies.push(pursuer); this.enemyGrid.insert(pursuer);
+            pursuer.spawn(this.player.x + 800, this.player.y + 800, 'golem', this.floor);
+            pursuer.isPursuer = true;
+            pursuer.speed = pursuer.baseSpeed * 0.65; // Lento e implacabile
+            pursuer.aggroRange = 9999; pursuer.aggroRangeSq = 9999 * 9999; // Vede il giocatore ovunque
+            
+            // Crea ed aggancia gli occhi rossi fisici
+            let eyeGeo = new THREE.BoxGeometry(4, 4, 4);
+            let eyeMat = new THREE.MeshBasicMaterial({color: 0xff0000});
+            let eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-6, 56, 10);
+            let eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(6, 56, 10);
+            pursuer.mesh.add(eyeL);
+            pursuer.mesh.add(eyeR);
+
+            pursuer.mesh.traverse(c => { 
+                if (c.isMesh && c.material && c !== eyeL && c !== eyeR) {
+                    // Clona per non intaccare i golem standard!
+                    c.material = c.material.clone();
+                    c.material.transparent = false; 
+                    c.material.opacity = 1.0; 
+                    c.material.color.setHex(0x000000); // Corpo oscurità pura
+                    if (c.material.emissive) {
+                        c.material.emissive.setHex(0xaa0000); // Glow rosso infernale
+                        c.material.emissiveIntensity = 2.0;
+                    }
+                } else if (c.isSprite && c.material) {
+                    c.material = c.material.clone();
+                    c.material.color.setHex(0xff0000); // Aura dello scudo rossa
+                }
+            });
+            
+            this.enemies.push(pursuer); this.enemyGrid.insert(pursuer);
                 }, 1500);
             }
         }
@@ -3636,6 +3656,7 @@ class Entity {
         this.mesh.position.set(this.x, this.mesh.position.y, this.y);
     }
     push(nx, ny, dist) {
+        if (this.isPursuer) return; // L'inseguitore non viene mai sbalzato
         let steps = Math.max(1, Math.ceil(dist / 15)); let stepDist = dist / steps; const r = this.radius * 0.8;
         for (let i = 0; i < steps; i++) {
             let newX = this.x + nx * stepDist; let newY = this.y + ny * stepDist;
@@ -4647,8 +4668,17 @@ class Enemy extends Entity {
             setTimeout(() => { if(!this.dead && this.active) Game.getFloatingText().spawn(this.x, this.y + 20, "ELITE", '#ff3300', 35, true); }, 100);
         }
     }
-    update(dt) {
+   update(dt) {
         if (!this.active || this.dead) return; 
+        
+        // BUGFIX INVINCIBILITA' INSEGUITORE: Immune a malus, veleni e congelamenti
+        if (this.isPursuer) {
+            this.frozenTimer = 0;
+            this.slowedTimer = 0;
+            this.fireDebuffTimer = 0;
+            this.infected = false;
+        }
+
         // --- NUOVA LOGICA: CONGELAMENTO ASSOLUTO PULSANTE ---
         if (this.frozenTimer > 0) {
             this.frozenTimer -= dt;
@@ -6025,18 +6055,28 @@ window.prepareFloorScreen = function() {
     let nextIsBoss = ((Game.floor + 1) % 5 === 0);
     let btnCorrupt = document.getElementById('btn-corrupt');
 
-    if (nextIsBoss) {
-        // Disattiva il pulsante per il piano del Boss
+    // Il piano corrotto ha il 20% di probabilità di essere aperto (se non è un piano boss)
+    let canBeCorrupted = !nextIsBoss && Math.random() < 0.20;
+
+    if (!canBeCorrupted) {
         btnCorrupt.disabled = true;
         btnCorrupt.classList.add('opacity-30', 'cursor-not-allowed', 'grayscale');
-        btnCorrupt.innerHTML = `NIDO DEL BOSS<br><span class="text-[9px] text-gray-400 font-bold">Corruzione Impossibile</span>`;
+        btnCorrupt.classList.remove('shadow-[0_0_20px_rgba(220,38,38,0.8)]', 'animate-pulse'); // Rimuove il glow
+        
+        if (nextIsBoss) {
+            btnCorrupt.innerHTML = `NIDO DEL BOSS<br><span class="text-[9px] text-gray-400 font-bold">Corruzione Impossibile</span>`;
+        } else {
+            btnCorrupt.innerHTML = `PIANO CORROTTO<br><span class="text-[9px] text-gray-400 font-bold">Portale Chiuso</span>`;
+        }
     } else {
-        // Attiva il pulsante e scegli casualmente 1 delle 5 maledizioni
         btnCorrupt.disabled = false;
         btnCorrupt.classList.remove('opacity-30', 'cursor-not-allowed', 'grayscale');
+        btnCorrupt.classList.add('shadow-[0_0_20px_rgba(220,38,38,0.8)]', 'animate-pulse'); // Aggiunge il glow rosso
         
         let curses = ['darkness', 'unstable', 'combo', 'volatile', 'pursuer'];
         window.nextCorruptedType = curses[Math.floor(Math.random() * curses.length)];
+        
+        // Probabilità 50% monete, 50% reliquia garantita
         window.nextCorruptedReward = Math.random() < 0.5 ? 'coins' : 'relic';
         
         let typeText = "";
@@ -6049,6 +6089,7 @@ window.prepareFloorScreen = function() {
         let rewardText = window.nextCorruptedReward === 'coins' ? "+ DOPPIE MONETE" : "+ RELIQUIA GARANTITA";
         btnCorrupt.innerHTML = `PIANO CORROTTO<br><span class="text-[9px] text-red-300 font-bold">${typeText}</span><br><span class="text-[9px] text-yellow-400 tracking-widest">${rewardText}</span>`;
     }
+};
 };
 
 window.nextFloor = function(corrupted = false) {

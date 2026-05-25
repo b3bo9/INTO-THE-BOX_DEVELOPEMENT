@@ -2019,18 +2019,15 @@ const UI = {
             this.cache.progressPct = progressPct; 
         }
         
-        // Effetto Pulsante Dinamico (eseguito ogni frame per massima fluidità)
-        if (progressPct > 0) {
-            let intensity = progressPct / 100; // Valore da 0.0 a 1.0
-            // La velocità del battito accelera man mano che la barra si riempie
+       // OTTIMIZZAZIONE: Throttling del DOM Paint. Aggiorna l'ombra solo 10 volte al secondo invece di 60.
+        if (progressPct > 0 && Game.frameCount % 6 === 0) {
+            let intensity = progressPct / 100; 
             let pulseSpeed = 4 + (intensity * 8); 
             let pulse = Math.abs(Math.sin(Game.playTime * pulseSpeed));
             
-            // Il bagliore (spread) e l'opacità scalano con l'intensità e pulsano
             let spread = 5 + (intensity * 15) + (pulse * intensity * 25);
             let alpha = 0.4 + (intensity * 0.6);
             
-            // Applica l'ombra dinamica sovrascrivendo quella base di Tailwind
             this.els.floorProgress.style.boxShadow = `0 0 ${spread}px rgba(34,211,238, ${alpha})`;
         }
         
@@ -3026,18 +3023,25 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
             let pos = toScreenPosition(ft.x, ft.h, ft.y);
             let progress = ft.life / ft.maxLife; 
             
-            if(pos.z < 1 && progress > 0.05) {
+           if(pos.z < 1 && progress > 0.05) {
                 textsDrawn++;
-                this.uiCtx.globalAlpha = Math.max(0, progress);
+                this.uiCtx.globalAlpha = Math.max(0, progress); 
+                
+                // OTTIMIZZAZIONE: Dimensione base fissa per non ri-compilare la stringa font!
                 let scale = ft.isCrit ? (2.0 - progress) : (1.5 - progress*0.5);
-                let size = Math.floor(Math.max(10, ft.size * scale * (isTouchDevice ? 0.7 : 1)));
-                let fontStr = `900 ${size}px 'Impact', sans-serif`;
+                let baseSize = Math.floor(ft.size * (isTouchDevice ? 0.7 : 1));
+                let fontStr = `900 ${baseSize}px 'Impact', sans-serif`;
                 
                 if (currentFont !== fontStr) { this.uiCtx.font = fontStr; currentFont = fontStr; }
                 if (currentColor !== ft.color) { this.uiCtx.fillStyle = ft.color; currentColor = ft.color; }
                 
-                this.uiCtx.strokeText(ft.text, pos.x, pos.y); 
-                this.uiCtx.fillText(ft.text, pos.x, pos.y); 
+                // Usiamo la matrice hardware per scalare, eliminando il carico sulla CPU
+                this.uiCtx.save();
+                this.uiCtx.translate(pos.x, pos.y);
+                this.uiCtx.scale(scale, scale);
+                this.uiCtx.strokeText(ft.text, 0, 0); 
+                this.uiCtx.fillText(ft.text, 0, 0); 
+                this.uiCtx.restore();
             }
         }
         this.uiCtx.globalAlpha = 1;

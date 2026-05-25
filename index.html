@@ -1628,9 +1628,10 @@ class Hazard {
     spawn(x, z, radius, duration, damage, colorHex, type='fire') {
         this.active = true; this.x = x; this.y = z; this.life = duration; this.maxLife = duration;
         this.damage = damage; this.type = type; 
-        this.hitCooldown.clear(); 
-        this.activationTimer = (type === 'enemy_fire') ? 1.0 : 0.0;
-        this.group.position.set(x, 0, z); 
+       this.hitCooldown.clear(); 
+        // snake_fire si arma dopo 0.6 secondi (ti dà il tempo di allontanarti dalla scia)
+        this.activationTimer = (type === 'enemy_fire') ? 1.0 : (type === 'snake_fire' ? 0.6 : 0.0);
+        this.group.position.set(x, 0, z);
         
         if (type === 'nova_ring') {
             // Nuova logica: parte piccola e si espanderà nell'update
@@ -1645,8 +1646,8 @@ class Hazard {
             this.plane.visible = true;
             this.plane.scale.set(this.radius, 0.1, this.radius); 
             this.ring.scale.set(this.radius, this.radius, 1);
-            if (type === 'poison') { this.plane.material = SharedMat.hazardPoisonPlane; this.ring.material = SharedMat.hazardPoisonRing; }
-            else if (type === 'enemy_fire') { this.plane.material = SharedMat.hazardEnemyPlane; this.ring.material = SharedMat.hazardEnemyRing; }
+           if (type === 'poison') { this.plane.material = SharedMat.hazardPoisonPlane; this.ring.material = SharedMat.hazardPoisonRing; }
+            else if (type === 'enemy_fire' || type === 'snake_fire') { this.plane.material = SharedMat.hazardEnemyPlane; this.ring.material = SharedMat.hazardEnemyRing; }
             else if (type === 'crystal_fire') { this.plane.material = SharedMat.hazardCrystalPlane; this.ring.material = SharedMat.hazardCrystalRing; }
             else { this.plane.material = SharedMat.hazardFirePlane; this.ring.material = SharedMat.hazardFireRing; }
         }
@@ -1727,8 +1728,8 @@ class Hazard {
             }
             
             if (this.activationTimer <= 0) {
-                if ((Game.frameCount + this.updateOffset) % 6 === 0) {
-                    if (this.type === 'fire' || this.type === 'poison' || this.type === 'crystal_fire') {
+              if ((Game.frameCount + this.updateOffset) % 6 === 0) {
+                    if (this.type === 'fire' || this.type === 'poison' || this.type === 'crystal_fire' || this.type === 'snake_fire') {
                         let nearby = Game.enemyGrid.findNearby(this, this.radius);
                         for (let i=0, len=nearby.length; i<len; i++) {
                             let e = nearby[i];
@@ -1742,7 +1743,7 @@ class Hazard {
                         }
                     }
                 }
-                if ((this.type === 'enemy_fire' || this.type === 'crystal_fire') && (Game.frameCount + this.updateOffset) % 6 === 0) {
+               if ((this.type === 'enemy_fire' || this.type === 'crystal_fire' || this.type === 'snake_fire') && (Game.frameCount + this.updateOffset) % 6 === 0) {
                     let pCd = this.hitCooldown.get('player') || 0;
                     if (Game.playTime >= pCd && MathUtils.distanceSq(this, Game.player) < (this.radius + Game.player.radius)**2) { 
                         let playerDmg = this.type === 'crystal_fire' ? 35 * Game.difficultyMult : this.damage;
@@ -4244,13 +4245,15 @@ class Player extends Entity {
            let isMoving = (dx !== 0 || dy !== 0);
             
             if (Game.isCorrupted && Game.corruptedType === 'unstable') {
-                if (!isMoving && !Game.ultimateActive) {
-                    Game.standStillTimer += dt;
-                    if (Game.standStillTimer >= 1.5) {
-                        Game.getHazard().spawn(this.x, this.y, 35, 2.0, this.stats.maxDmg * 0.8, 0xff0000, 'enemy_fire');
-                        Game.standStillTimer = 0;
+                if (isMoving && !this.isDashing) {
+                    if (!this.snakeTrailTimer) this.snakeTrailTimer = 0;
+                    this.snakeTrailTimer += dt;
+                    if (this.snakeTrailTimer >= 0.2) {
+                        // Raggio 22, dura 4 secondi, fa il 40% del danno max (bilanciato per hit multipli)
+                        Game.getHazard().spawn(this.x, this.y, 22, 4.0, this.stats.maxDmg * 0.4, 0xff3300, 'snake_fire');
+                        this.snakeTrailTimer = 0;
                     }
-                } else { Game.standStillTimer = 0; }
+                }
             }
 
             if (isMoving) {

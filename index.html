@@ -1392,6 +1392,10 @@ function createBlobShadowTexture() {
 }
 const BLOB_SHADOW_TEX = createBlobShadowTexture();
 const BLOOD_TEX = createPatternTexture('blood'); const GLOW_TEX = createGlowTexture();
+
+// OTTIMIZZAZIONE 1: Cache Globale delle texture del pavimento per evitare VRAM Leaks
+const GLOBAL_WALL_TEX = createPatternTexture('wall'); 
+const GLOBAL_ALPHA_TEX = createOrganicAlphaMap();
 const SharedMat = {
     hazardNovaRing: new THREE.MeshBasicMaterial({color: 0x99ff00, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending}),
     blood: new THREE.MeshStandardMaterial({map: BLOOD_TEX, transparent: true, opacity: 0.85, depthWrite: false, roughness: 0.8}),
@@ -3385,7 +3389,7 @@ class GameMap {
 
         // --- INIZIO GESTIONE MATERIALI OTTIMIZZATI ---
         const isHighQ = !AppSettings.isLow && !isTouchDevice; 
-        const wallTex = createPatternTexture('wall');
+        const wallTex = GLOBAL_WALL_TEX; // OTTIMIZZAZIONE 2: Usa la texture in cache
         
         const texDirt = Preloader.textures.dirt;
         const texGrass = Preloader.textures.grass;
@@ -3415,7 +3419,7 @@ class GameMap {
         
         const floorGeo = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE); floorGeo.rotateX(-Math.PI/2);
         const MapMaterialClass = isTouchDevice ? THREE.MeshPhongMaterial : THREE.MeshStandardMaterial;
-        const alphaTex = createOrganicAlphaMap();
+        const alphaTex = GLOBAL_ALPHA_TEX; // OTTIMIZZAZIONE 3: Usa la mappa alpha in cache
 
         const tintDirt = 0x705848;  // Più chiaro per riflettere meglio la luce del giocatore
         const tintGrass = 0x446048; // Verde più vivace
@@ -5954,9 +5958,16 @@ function clearScene() {
     for(let i=0, len=Game.extraLivesDrops.length; i<len; i++) { Game.extraLivesDrops[i].destroy(); }
     for(let i=0, len=Game.coinDrops.length; i<len; i++) { Game.coinDrops[i].destroy(); }
     
-    if(Game.player) {
+   if(Game.player) {
+        // OTTIMIZZAZIONE 4: Pulizia profonda del Giocatore (Previene il leak dei materiali al riavvio)
+        Game.player.mesh.traverse((child) => {
+            if (child.isMesh && child.material) {
+                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                else child.material.dispose();
+            }
+        });
+        
         Game.scene.remove(Game.player.mesh);
-        // FIX: Rimuoviamo l'ombra del giocatore vecchio in modo che non si accavalli a quello nuovo
         if(Game.player.shadowMesh) { 
             Game.player.shadowMesh.visible = false; 
             Game.scene.remove(Game.player.shadowMesh); 

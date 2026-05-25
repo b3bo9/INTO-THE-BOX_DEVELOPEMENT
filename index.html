@@ -5878,47 +5878,68 @@ class FloatingText {
 }
 
 function clearScene() {
-    if (Game.map) Game.scene.remove(Game.map.mapGroup);
-    for(let i=0, len=Game.debris.length; i<len; i++) { Game.debris[i].active = false; Game.debris[i].mesh.visible = false; }
-    
+    if (Game.map) {
+        // [OTTIMIZZAZIONE 1]: Pulizia profonda della memoria GPU (Memory Leak Fix)
+        Game.map.mapGroup.traverse((child) => {
+            if (child.isMesh || child.isInstancedMesh) {
+                // Elimina le geometrie proteggendo quelle globali e riutilizzabili
+                if (child.geometry && child.geometry !== InteractiveGrassSystem.geo) {
+                    child.geometry.dispose();
+                }
+                // Elimina i materiali proteggendo quelli globali
+                if (child.material && child.material !== InteractiveGrassSystem.mat && child.material !== SharedMat.blobShadow) {
+                    if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                    else child.material.dispose();
+                }
+                // Libera i buffer interni degli InstancedMesh
+                if (child.dispose) child.dispose();
+            }
+        });
+        Game.scene.remove(Game.map.mapGroup);
+    }
+    
+    for(let i=0, len=Game.debris.length; i<len; i++) { Game.debris[i].active = false; Game.debris[i].mesh.visible = false; }
+    
     // I boss e altri nemici rimasti attivi vengono spenti
-    for(let i=0, len=Game.enemies.length; i<len; i++) { 
-        let e = Game.enemies[i];
-        if(e.isBoss) {
-            if (e.mat) e.mat.dispose(); 
-            Game.scene.remove(e.mesh);
-            // FIX: Ora eliminiamo definitivamente anche l'ombra del boss!
+    for(let i=0, len=Game.enemies.length; i<len; i++) { 
+        let e = Game.enemies[i];
+        if(e.isBoss) {
+            if (e.mat) e.mat.dispose(); 
+            Game.scene.remove(e.mesh);
             if (e.shadowMesh) { e.shadowMesh.visible = false; Game.scene.remove(e.shadowMesh); }
-        }
-    }
-    
-    // Disattiva e nascondi tutto il pool dei nemici, senza cancellarlo dalla memoria
-    if (Game.enemyPool) {
-        for(let i=0; i<Game.enemyPool.length; i++) { 
-            Game.enemyPool[i].active = false; 
-            Game.enemyPool[i].mesh.visible = false; 
-            if(Game.enemyPool[i].shadowMesh) Game.enemyPool[i].shadowMesh.visible = false; 
-        }
-    }
-    
-    for(let i=0, len=Game.projectiles.length; i<len; i++) { Game.projectiles[i].active = false; Game.projectiles[i].group.visible = false; if (Game.projectiles[i].groundGlow) Game.projectiles[i].groundGlow.visible = false; }
-    for(let i=0, len=Game.hazards.length; i<len; i++) { Game.hazards[i].active = false; Game.hazards[i].group.visible = false; }
-    for(let i=0, len=Game.particles.length; i<len; i++) { Game.particles[i].active = false; Game.particles[i].mesh.visible = false; }
-    for(let i=0, len=Game.floatingTexts.length; i<len; i++) { Game.floatingTexts[i].active = false; }
-    for(let i=0, len=Game.decoys.length; i<len; i++) { Game.decoys[i].destroy(); }
-    for(let i=0, len=Game.dashLines.length; i<len; i++) { Game.dashLines[i].active = false; Game.dashLines[i].mesh.visible = false; }
-    for(let i=0, len=Game.essences.length; i<len; i++) { Game.essences[i].destroy(); }
-    for(let i=0, len=Game.extraLivesDrops.length; i<len; i++) { Game.extraLivesDrops[i].destroy(); }
-    for(let i=0, len=Game.coinDrops.length; i<len; i++) { Game.coinDrops[i].destroy(); }
-    
-    if(Game.player) {
-        Game.scene.remove(Game.player.mesh);
+        }
+    }
+    
+    // [OTTIMIZZAZIONE 2]: Svuota l'array dei nemici per evitare il loop su cadaveri "Zombie"
+    Game.enemies = [];
+    
+    // Disattiva e nascondi tutto il pool dei nemici, senza cancellarlo dalla memoria
+    if (Game.enemyPool) {
+        for(let i=0; i<Game.enemyPool.length; i++) { 
+            Game.enemyPool[i].active = false; 
+            Game.enemyPool[i].mesh.visible = false; 
+            if(Game.enemyPool[i].shadowMesh) Game.enemyPool[i].shadowMesh.visible = false; 
+        }
+    }
+    
+    for(let i=0, len=Game.projectiles.length; i<len; i++) { Game.projectiles[i].active = false; Game.projectiles[i].group.visible = false; if (Game.projectiles[i].groundGlow) Game.projectiles[i].groundGlow.visible = false; }
+    for(let i=0, len=Game.hazards.length; i<len; i++) { Game.hazards[i].active = false; Game.hazards[i].group.visible = false; }
+    for(let i=0, len=Game.particles.length; i<len; i++) { Game.particles[i].active = false; Game.particles[i].mesh.visible = false; }
+    for(let i=0, len=Game.floatingTexts.length; i<len; i++) { Game.floatingTexts[i].active = false; }
+    for(let i=0, len=Game.decoys.length; i<len; i++) { Game.decoys[i].destroy(); }
+    for(let i=0, len=Game.dashLines.length; i<len; i++) { Game.dashLines[i].active = false; Game.dashLines[i].mesh.visible = false; }
+    for(let i=0, len=Game.essences.length; i<len; i++) { Game.essences[i].destroy(); }
+    for(let i=0, len=Game.extraLivesDrops.length; i<len; i++) { Game.extraLivesDrops[i].destroy(); }
+    for(let i=0, len=Game.coinDrops.length; i<len; i++) { Game.coinDrops[i].destroy(); }
+    
+    if(Game.player) {
+        Game.scene.remove(Game.player.mesh);
         // FIX: Rimuoviamo l'ombra del giocatore vecchio in modo che non si accavalli a quello nuovo
-        if(Game.player.shadowMesh) { 
-            Game.player.shadowMesh.visible = false; 
+        if(Game.player.shadowMesh) { 
+            Game.player.shadowMesh.visible = false; 
             Game.scene.remove(Game.player.shadowMesh); 
         }
-    }
+    }
 }
 
 function respawnPlayer() {

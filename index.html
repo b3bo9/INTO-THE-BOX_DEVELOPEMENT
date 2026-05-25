@@ -2011,7 +2011,28 @@ const UI = {
         
         let eLeft = Math.max(0, Game.floorMaxKills - Game.floorKills); 
         let progressPct = Game.isBossFloor ? ((Game.floorMaxKills - eLeft) / Game.floorMaxKills) * 100 : Math.min(100, (Game.floorKills / Math.max(1, Game.floorMaxKills - 3)) * 100);
-        if (this.cache.progressPct !== progressPct) { this.els.floorProgress.style.width = `${progressPct}%`; this.cache.progressPct = progressPct; }
+        
+        if (this.cache.progressPct !== progressPct) { 
+            this.els.floorProgress.style.width = `${progressPct}%`; 
+            // Aumenta la luminosità statica della barra da 1.0x (inizio) a 2.0x (fine)
+            this.els.floorProgress.style.filter = `brightness(${1 + (progressPct / 100)})`;
+            this.cache.progressPct = progressPct; 
+        }
+        
+        // Effetto Pulsante Dinamico (eseguito ogni frame per massima fluidità)
+        if (progressPct > 0) {
+            let intensity = progressPct / 100; // Valore da 0.0 a 1.0
+            // La velocità del battito accelera man mano che la barra si riempie
+            let pulseSpeed = 4 + (intensity * 8); 
+            let pulse = Math.abs(Math.sin(Game.playTime * pulseSpeed));
+            
+            // Il bagliore (spread) e l'opacità scalano con l'intensità e pulsano
+            let spread = 5 + (intensity * 15) + (pulse * intensity * 25);
+            let alpha = 0.4 + (intensity * 0.6);
+            
+            // Applica l'ombra dinamica sovrascrivendo quella base di Tailwind
+            this.els.floorProgress.style.boxShadow = `0 0 ${spread}px rgba(34,211,238, ${alpha})`;
+        }
         
         let hasEssence = Game.player.essenceList.length > 0 || Game.player.overdrive;
         if (hasEssence) {

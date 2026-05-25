@@ -186,7 +186,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 111</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 112</p>
                 </div>
             </div>
         </div>
@@ -2447,12 +2447,13 @@ let fpsEl = UI.els.fpsValue;
            if (this.corruptedType === 'darkness') { 
                 mutatorText = "OSCURITÀ OPPRIMENTE"; floorColor = "#aa00ff"; 
                 this.scene.fog.color.setHex(0x000000); 
-                // La nebbia inizia ad avvolgere il mondo appena prima del giocatore e diventa impenetrabile poco dopo
-                this.scene.fog.near = camDist - 100; 
-                this.scene.fog.far = camDist + 150; 
+                // Stringiamo ferocemente i bordi per scurire lo schermo attorno al giocatore
+                this.scene.fog.near = camDist - 250; 
+                this.scene.fog.far = camDist + 50; 
                 this.scene.background.setHex(0x000000);
-                if (this.dirLight) this.dirLight.intensity = 0.2; // Abbassa drasticamente la luce esterna
+                if (this.dirLight) this.dirLight.intensity = 0.05; // Luce esterna quasi inesistente
             }
+            else if (this.corruptedType === 'acid_pools') { mutatorText = "POZZE CORROSIVE"; floorColor = "#99ff00"; }
             else if (this.corruptedType === 'unstable') { mutatorText = "PAVIMENTO INSTABILE"; floorColor = "#ff3300"; this.standStillTimer = 0; }
             else if (this.corruptedType === 'volatile') { mutatorText = "ESSENZE VOLATILI"; floorColor = "#33ff00"; }
             else if (this.corruptedType === 'combo') { mutatorText = "COMBO MALEDETTA"; floorColor = "#ff0000"; }
@@ -2593,8 +2594,25 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         InteractiveGrassSystem.uniforms.uWindCount.value = windCount;
         // ----------------------------------------------
 
-        for (let i = 0, len = this.debris.length; i < len; i++) if(this.debris[i].active) this.debris[i].update(dt);
+       for (let i = 0, len = this.debris.length; i < len; i++) if(this.debris[i].active) this.debris[i].update(dt);
         this.frameCount++; this.playTime += dt; 
+
+        // --- POZZE CORROSIVE (Piano Corrotto) ---
+        if (this.isCorrupted && this.corruptedType === 'acid_pools') {
+            if (!this.acidPoolTimer) this.acidPoolTimer = 0;
+            this.acidPoolTimer -= dt;
+            if (this.acidPoolTimer <= 0) {
+                // Spawna una pozza in un raggio attorno al giocatore
+                let rx = this.player.x + MathUtils.randomRange(-300, 300);
+                let ry = this.player.y + MathUtils.randomRange(-300, 300);
+                if (!this.map.isSolid(rx, ry)) {
+                    // Utilizza la logica espansiva di 'nova_ring' colorata di verde acido
+                    let dmg = this.player.stats.maxHp * 0.15;
+                    this.getHazard().spawn(rx, ry, 150, 2.5, dmg, 0x99ff00, 'nova_ring');
+                }
+                this.acidPoolTimer = MathUtils.randomRange(1.5, 3.0);
+            }
+        }
         
         this.animBounce = Math.sin(this.frameCount * 0.4) * 4;
         this.animFloat = Math.sin(this.frameCount * 0.1) * 5;
@@ -4498,16 +4516,16 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         
         let wasDead = this.dead; amount *= this.modifiers.dmgTakenMult; 
         
-       if (this.modifiers.flowMastery && !wasDead) {
+     if (this.modifiers.flowMastery && !wasDead) {
             Game.ultimateCharge = 0;
             amount += this.stats.hp / 2; // Lose half current HP
         } else {
-            if (Game.isCorrupted && Game.corruptedType === 'combo' && Game.combo > 0 && !wasDead) {
-                // Perde un tot di vita pari al contatore Combo accumulato
-                amount += Game.combo;
-                Game.getFloatingText().spawn(this.x, this.y + 30, `-${Math.floor(Game.combo)} COMBO PENALTY!`, '#ff0000', 35, true);
+            if (Game.isCorrupted && Game.corruptedType === 'combo') {
+                // La Combo NON viene resettata. I nemici infliggono +50% danni.
+                amount *= 1.5;
+            } else {
+                Game.resetCombo(); 
             }
-            Game.resetCombo(); 
         }
 
         super.takeDamage(amount, source);
@@ -6069,31 +6087,24 @@ window.prepareFloorScreen = function() {
     let nextIsBoss = ((Game.floor + 1) % 5 === 0);
     let btnNext = document.getElementById('btn-next-floor');
 
-    // Determina se il prossimo piano sarà forzatamente corrotto (20%)
     window.nextIsCorrupted = !nextIsBoss && Math.random() < 0.20;
 
     if (nextIsBoss) {
-        btnNext.className = "w-full bg-gradient-to-t from-amber-900 to-red-900 hover:from-red-800 hover:to-amber-800 text-white font-black py-3 rounded-xl border border-red-500/50 transition-all active:scale-95 uppercase tracking-widest shadow-[0_0_20px_rgba(220,38,38,0.5)]";
-        btnNext.innerHTML = `<span class="text-sm sm:text-base drop-shadow-md">SCENDI PIÙ A FONDO</span><br><span class="text-[10px] text-gray-300 font-bold tracking-normal">Avviso: Nido del Boss</span>`;
+        btnNext.className = "w-full bg-gradient-to-t from-amber-900 to-red-900 hover:from-red-800 hover:to-amber-800 text-white font-black py-4 sm:py-5 rounded-xl border border-red-500/50 transition-all active:scale-95 uppercase tracking-widest shadow-[0_0_20px_rgba(220,38,38,0.5)]";
+        btnNext.innerHTML = `<span class="text-xl sm:text-2xl drop-shadow-md">SCENDI PIÙ A FONDO</span>`;
     } else if (window.nextIsCorrupted) {
-        btnNext.className = "w-full bg-gradient-to-t from-purple-900 to-red-900 hover:from-red-800 hover:to-purple-800 text-white font-black py-2 rounded-xl border border-red-500/80 transition-all active:scale-95 uppercase tracking-wider shadow-[0_0_20px_rgba(220,38,38,0.8)] animate-pulse leading-tight";
+        btnNext.className = "w-full bg-gradient-to-t from-purple-900 to-red-900 hover:from-red-800 hover:to-purple-800 text-white font-black py-3 sm:py-4 rounded-xl border border-red-500/80 transition-all active:scale-95 uppercase tracking-wider shadow-[0_0_30px_rgba(255,0,0,1)] animate-pulse leading-tight";
         
-        let curses = ['darkness', 'unstable', 'combo', 'volatile', 'pursuer'];
+        let curses = ['darkness', 'unstable', 'combo', 'volatile', 'pursuer', 'acid_pools'];
         window.nextCorruptedType = curses[Math.floor(Math.random() * curses.length)];
         window.nextCorruptedReward = Math.random() < 0.5 ? 'coins' : 'relic';
-        
-        let typeText = "";
-        if (window.nextCorruptedType === 'darkness') typeText = "OSCURITÀ OPPRIMENTE";
-        if (window.nextCorruptedType === 'unstable') typeText = "PAVIMENTO INSTABILE";
-        if (window.nextCorruptedType === 'volatile') typeText = "ESSENZE VOLATILI";
-        if (window.nextCorruptedType === 'combo') typeText = "COMBO MALEDETTA";
-        if (window.nextCorruptedType === 'pursuer') typeText = "INSEGUITORE IMPLACABILE";
 
         let rewardText = window.nextCorruptedReward === 'coins' ? "+ DOPPIE MONETE" : "+ RELIQUIA GARANTITA";
-        btnNext.innerHTML = `<span class="text-sm sm:text-base drop-shadow-[0_0_5px_rgba(255,255,255,0.6)]">SCENDI PIÙ A FONDO</span><br><span class="text-[10px] text-red-300 font-bold tracking-normal">Corruzione: ${typeText}</span><br><span class="text-[9px] text-yellow-400 tracking-widest">${rewardText}</span>`;
+        
+        btnNext.innerHTML = `<span class="text-xl sm:text-2xl drop-shadow-[0_0_10px_rgba(255,0,0,0.8)]">SCENDI PIÙ A FONDO</span><br><span class="text-xs text-yellow-400 tracking-widest block mt-1">${rewardText}</span>`;
     } else {
-        btnNext.className = "w-full bg-gradient-to-t from-blue-900 to-cyan-800 hover:from-blue-800 hover:to-cyan-700 text-white font-bold py-3 rounded-xl border border-cyan-500/50 transition-all active:scale-95 uppercase tracking-widest shadow-[0_0_15px_rgba(34,211,238,0.2)]";
-        btnNext.innerHTML = `<span class="text-sm sm:text-base drop-shadow-md">SCENDI PIÙ A FONDO</span><br><span class="text-[10px] text-cyan-200 font-bold tracking-normal">Nessuna Corruzione Rilevata</span>`;
+        btnNext.className = "w-full bg-gradient-to-t from-blue-900 to-cyan-800 hover:from-blue-800 hover:to-cyan-700 text-white font-black py-4 sm:py-5 rounded-xl border border-cyan-500/50 transition-all active:scale-95 uppercase tracking-widest shadow-[0_0_15px_rgba(34,211,238,0.2)]";
+        btnNext.innerHTML = `<span class="text-xl sm:text-2xl drop-shadow-md">SCENDI PIÙ A FONDO</span>`;
     }
 };
 window.nextFloor = function(corrupted = false) {

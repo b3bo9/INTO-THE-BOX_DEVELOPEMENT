@@ -2643,8 +2643,11 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         InteractiveGrassSystem.uniforms.uWindCount.value = windCount;
         // ----------------------------------------------
 
-       for (let i = 0, len = this.debris.length; i < len; i++) if(this.debris[i].active) this.debris[i].update(dt);
+      for (let i = 0, len = this.debris.length; i < len; i++) if(this.debris[i].active) this.debris[i].update(dt);
         this.frameCount++; this.playTime += dt; 
+        
+        // OTTIMIZZAZIONE: Reset dei contatori anti-lag ad ogni frame
+        Game.particlesThisFrame = 0; Game.debrisThisFrame = 0;
 
         // --- POZZE CORROSIVE (Piano Corrotto) ---
         if (this.isCorrupted && this.corruptedType === 'acid_pools') {
@@ -3013,13 +3016,19 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
         let currentFont = "";
         let currentColor = "";
 
+       let textsDrawn = 0;
         for (let i = 0, len = this.floatingTexts.length; i < len; i++) {
             let ft = this.floatingTexts[i]; if (!ft.active) continue;
+            
+            // OTTIMIZZAZIONE: Scrivere sul Canvas 2D è lentissimo. Cappa i testi a schermo.
+            if (textsDrawn > (isTouchDevice ? 12 : 30)) break;
+            
             let pos = toScreenPosition(ft.x, ft.h, ft.y);
             let progress = ft.life / ft.maxLife; 
             
             if(pos.z < 1 && progress > 0.05) {
-                this.uiCtx.globalAlpha = Math.max(0, progress); 
+                textsDrawn++;
+                this.uiCtx.globalAlpha = Math.max(0, progress);
                 let scale = ft.isCrit ? (2.0 - progress) : (1.5 - progress*0.5);
                 let size = Math.floor(Math.max(10, ft.size * scale * (isTouchDevice ? 0.7 : 1)));
                 let fontStr = `900 ${size}px 'Impact', sans-serif`;
@@ -5404,8 +5413,10 @@ class BossEnemy extends Enemy {
         AudioEngine.stopBossMusic();
         AudioEngine.playEnemyDeath();
         Game.player.gainXp(this.xpValue);
-        let pCount = AppSettings.isLow ? 10 : (AppSettings.isUltraPC ? 100 : 50); 
+        // OTTIMIZZAZIONE: Richiede meno particelle di base alla morte su Mobile
+        let pCount = AppSettings.isLow ? 5 : (isTouchDevice ? 15 : (AppSettings.isUltraPC ? 80 : 35)); 
         
+        // Particelle di sangue del colore dell'elemento
         // Particelle di sangue del colore dell'elemento
         let bloodMat = SharedMat.spriteBlood;
         if(this.bossElement === 'blue') bloodMat = SharedMat.spriteBlue;
@@ -5684,6 +5695,10 @@ class Particle {
         this.mesh.visible = false; Game.scene.add(this.mesh); 
     }
     spawn(x, y, z, mat, type='spark', dirAngle=null) {
+        // OTTIMIZZAZIONE: Evita la "Bomba di Particelle" che uccide la CPU
+        if (Game.particlesThisFrame > (isTouchDevice ? 25 : 80)) return;
+        Game.particlesThisFrame = (Game.particlesThisFrame || 0) + 1;
+
         this.active = true; 
         this.type = type;
         this.seed = Math.random() * 100; // Valore univoco per sfasare il battito della lucciola
@@ -5784,8 +5799,11 @@ class Debris {
         this.mesh.receiveShadow = false;
         Game.scene.add(this.mesh);
     }
-    
-    spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, enemyRadius, isElite = false) {
+   spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, enemyRadius, isElite = false) {
+        // OTTIMIZZAZIONE: Limita le Draw Calls dei pezzi di cadavere in 3D
+        if (Game.debrisThisFrame > (isTouchDevice ? 8 : 20)) return;
+        Game.debrisThisFrame = (Game.debrisThisFrame || 0) + 1;
+
         this.active = true;
         
         this.mesh.geometry = geometry;

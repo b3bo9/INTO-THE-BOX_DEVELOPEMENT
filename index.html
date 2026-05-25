@@ -1213,7 +1213,7 @@ const RelicSystem = {
         { id: 'l2', name: "Lama del Giudizio", desc: "Infliggi il DOPPIO dei danni se il nemico ha Meno del 30% di Salute (Esecuzione).", rarity: "legendary", image: "icona_lama_del_giudizio.png", icon: "fa-gavel", apply: (p) => p.modifiers.executioner = true },
         { id: 'l3', name: "Patto Ascetico", desc: "La Ultimate si ricarica passivamente da sola, ma la tua Salute Massima scende del 30%.", rarity: "legendary", image: "icona_patto_ascetico.png", icon: "fa-link", apply: (p) => { p.modifiers.passiveUltCharge = true; p.stats.maxHp = Math.floor(p.stats.maxHp * 0.7); if(p.stats.hp > p.stats.maxHp) p.stats.hp = p.stats.maxHp; } },
         { id: 'l4', name: "Sete di Sangue Eterna", desc: "Ti curi del 5% ogni 10 uccisioni. I nemici NON droppano cuori. I Level Up non danno HP.", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", icon: "fa-droplet", apply: (p) => { p.modifiers.bloodthirst = true; p.modifiers.noHealDrops = true; p.modifiers.noMaxHpLevelUp = true; } },
-        { { 
+        {
     id: 'l5', 
     name: "Maestria del Flow", 
     desc: "Cap Combo raddoppiato. Se Combo > 50, subisci +20% danni. Se Combo < 50, subisci -20% danni.", 

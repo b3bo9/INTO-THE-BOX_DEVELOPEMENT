@@ -585,9 +585,12 @@
                 <div class="health-bar-container h-4 sm:h-5 w-full rounded-full border border-gray-500 shadow-[0_0_10px_rgba(220,38,38,0.4)]"><div id="ui-hp-fill" class="health-bar-fill rounded-full"></div></div>
                 
                <div class="flex justify-between items-end w-full mt-1.5 mb-1">
-                    <span id="ui-floor-text" class="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-gray-300 drop-shadow-md">Piano <span id="ui-floor" class="text-white text-xs sm:text-sm">1</span></span>
-                    <span class="text-xs sm:text-sm font-black text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)] bg-black/50 px-2 py-0.5 rounded border border-yellow-500/30 flex items-center gap-1.5"><i class="fa-solid fa-coins"></i> <span id="ui-coins">0</span></span>
-                </div>
+    <span id="ui-floor-text" class="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-gray-300 drop-shadow-md flex items-center gap-1">
+        Piano <span id="ui-floor" class="text-white text-xs sm:text-sm">1</span>
+        <span id="ui-corruption-label" class="text-red-500 drop-shadow-[0_0_5px_rgba(255,0,0,0.8)] hidden"></span>
+    </span>
+    <span class="text-xs sm:text-sm font-black text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)] bg-black/50 px-2 py-0.5 rounded border border-yellow-500/30 flex items-center gap-1.5"><i class="fa-solid fa-coins"></i> <span id="ui-coins">0</span></span>
+</div>
                 <!-- Barra Progresso Sottile (Viola/Ciano per differenziarla dal rosso HP) -->
                 <div class="w-full h-1.5 sm:h-2 bg-black/80 border border-gray-700 rounded-full overflow-hidden shadow-inner backdrop-blur-md">
                     <div id="ui-floor-progress" class="h-full w-0 bg-gradient-to-r from-purple-900 via-fuchsia-600 to-cyan-400 transition-all duration-300 shadow-[0_0_8px_rgba(34,211,238,0.5)]"></div>
@@ -1953,8 +1956,9 @@ const UI = {
         this.els.coins = document.getElementById('ui-coins');
         this.els.hpFill = document.getElementById('ui-hp-fill'); this.els.hpText = document.getElementById('ui-hp-text');
         this.els.lives = document.getElementById('ui-lives'); this.els.level = document.getElementById('ui-level'); 
-        this.els.xpCircle = document.getElementById('ui-xp-circle');
-        this.els.floor = document.getElementById('ui-floor'); 
+       this.els.xpCircle = document.getElementById('ui-xp-circle');
+        this.els.floor = document.getElementById('ui-floor'); 
+        this.els.corruptionLabel = document.getElementById('ui-corruption-label');
         this.els.floorProgress = document.getElementById('ui-floor-progress');
         this.els.essenceHud = document.getElementById('essence-hud'); this.els.essenceTimer = document.getElementById('essence-timer');
         this.els.overdriveText = document.getElementById('overdrive-text'); this.els.stacks = [document.getElementById('stack-1'), document.getElementById('stack-2'), document.getElementById('stack-3')];
@@ -1979,7 +1983,30 @@ const UI = {
         let xpPct = (Game.player.xp / Game.player.xpNeeded) * 100; 
         if (this.cache.xpPct !== xpPct) { this.els.xpCircle.setAttribute('stroke-dasharray', `${xpPct}, 100`); this.cache.xpPct = xpPct; }
         
-       if (this.cache.floor !== Game.floor) { this.els.floor.innerText = Game.floor; this.cache.floor = Game.floor; }
+      // Aggiorna Piano e Testo Corruzione
+        if (this.cache.floor !== Game.floor || this.cache.corrupted !== Game.isCorrupted) { 
+            this.els.floor.innerText = Game.floor; 
+            
+            if (Game.isCorrupted) {
+                let typeText = "";
+                if (Game.corruptedType === 'darkness') typeText = "OSCURITÀ";
+                if (Game.corruptedType === 'unstable') typeText = "INSTABILE";
+                if (Game.corruptedType === 'volatile') typeText = "VOLATILE";
+                if (Game.corruptedType === 'combo') typeText = "COMBO";
+                if (Game.corruptedType === 'pursuer') typeText = "INSEGUITORE";
+                if (Game.corruptedType === 'acid_pools') typeText = "CORROSIONE";
+                
+                this.els.corruptionLabel.innerText = "- " + typeText;
+                this.els.corruptionLabel.classList.remove('hidden');
+                this.els.corruptionLabel.classList.add('animate-pulse');
+            } else {
+                this.els.corruptionLabel.classList.add('hidden');
+                this.els.corruptionLabel.classList.remove('animate-pulse');
+            }
+
+            this.cache.floor = Game.floor; 
+            this.cache.corrupted = Game.isCorrupted;
+        }
         
         let eLeft = Math.max(0, Game.floorMaxKills - Game.floorKills); 
         let progressPct = Game.isBossFloor ? ((Game.floorMaxKills - eLeft) / Game.floorMaxKills) * 100 : Math.min(100, (Game.floorKills / Math.max(1, Game.floorMaxKills - 3)) * 100);

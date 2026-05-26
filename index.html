@@ -1228,9 +1228,16 @@ const RelicSystem = {
         if (r <= 92) return 'epic';     // 17% 
         return 'legendary';             // 8%  
     },
-    getChoices() {
-        let choices = []; let availablePool = [...this.allRelics];
+   getChoices() {
+        let choices = []; 
+        // Filtra via le reliquie che il giocatore possiede già
+        let availablePool = this.allRelics.filter(r => !Game.player.relics.some(pr => pr.id === r.id));
+        
+        // Sicurezza: se ha svuotato l'intero pool, ritorna vuoto
+        if (availablePool.length === 0) return [];
+
         for(let i=0; i<3; i++) {
+            if (availablePool.length === 0) break; // Ferma il loop se le opzioni sono finite
             let targetRarity = this.getRandomRarity(); let poolForRarity = availablePool.filter(r => r.rarity === targetRarity);
             if (poolForRarity.length === 0) poolForRarity = availablePool;
             let randomIndex = Math.floor(Math.random() * poolForRarity.length); let selectedRelic = poolForRarity[randomIndex];
@@ -1239,6 +1246,13 @@ const RelicSystem = {
     },
     showChoices() {
         const container = document.getElementById('relicCardsContainer'); container.innerHTML = ''; let choices = this.getChoices();
+        
+        // Gestione limite: se il giocatore ha tutte le reliquie, salta la schermata
+        if (choices.length === 0) {
+            Game.state = 'FLOOR_TRANSITION'; window.prepareFloorScreen(); document.getElementById('floorScreen').classList.remove('hidden');
+            return;
+        }
+        
         for(let i=0; i<choices.length; i++) {
             let relic = choices[i];
             let colorClass = "rarity-common bg-green-900/60 text-green-300"; let fallbackIcon = "fa-gem"; let rarityLabel = "COMUNE";
@@ -2922,9 +2936,16 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
                     this.state = 'FLOOR_TRANSITION'; 
                     
                     if (this.isCorrupted && this.corruptedReward === 'relic') {
-                        let dropRelic = RelicSystem.getChoices()[0]; 
-                        dropRelic.apply(this.player); this.player.relics.push(dropRelic);
-                        Game.getFloatingText().spawn(this.player.x, this.player.y, "RELIQUIA OTTENUTA!", '#fbbf24', 50, true);
+                        let choices = RelicSystem.getChoices();
+                        if (choices.length > 0) {
+                            let dropRelic = choices[0]; 
+                            dropRelic.apply(this.player); this.player.relics.push(dropRelic);
+                            Game.getFloatingText().spawn(this.player.x, this.player.y, "RELIQUIA OTTENUTA!", '#fbbf24', 50, true);
+                        } else {
+                            // Riserva: se hai esaurito le reliquie, ti ricompensa in monete
+                            Game.coins += 50;
+                            Game.getFloatingText().spawn(this.player.x, this.player.y, "+50 MONETE (RELIQUIE ESAURITE)!", '#fbbf24', 40, true);
+                        }
                     }
                     window.prepareFloorScreen();
                     document.getElementById('floorScreen').classList.remove('hidden');
@@ -5211,22 +5232,25 @@ class Enemy extends Entity {
         if (this.isElite) {
             Game.getFloatingText().spawn(this.x, this.y, "ELITE SCONFITTO", '#ffaa00', 30, true);
             
-            // --- NUOVO: DROP RELIQUIA A SORPRESA DAGLI ELITE ---
+          // --- NUOVO: DROP RELIQUIA A SORPRESA DAGLI ELITE ---
             // 5% di probabilità di ottenere una reliquia diretta
             if (Math.random() < 0.05) { 
-                // Genera una singola reliquia basata sulle probabilità di rarità
-                let dropRelic = RelicSystem.getChoices()[0]; 
-                
-                // La applica direttamente al giocatore
-                dropRelic.apply(Game.player);
-                Game.player.relics.push(dropRelic);
-                
-                // Effetti visivi e sonori epici
-                Game.getFloatingText().spawn(this.x, this.y + 30, "RELIQUIA TROVATA: " + dropRelic.name.toUpperCase(), '#fbbf24', 45, true);
-                AudioEngine.playLevelUp(); 
-                
-                let pCount = AppSettings.isLow ? 10 : 40;
-                for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteLevel, 'spark');
+                // Genera una singola reliquia (solo se ne sono rimaste!)
+                let choices = RelicSystem.getChoices();
+                if (choices.length > 0) {
+                    let dropRelic = choices[0]; 
+                    
+                    // La applica direttamente al giocatore
+                    dropRelic.apply(Game.player);
+                    Game.player.relics.push(dropRelic);
+                    
+                    // Effetti visivi e sonori epici
+                    Game.getFloatingText().spawn(this.x, this.y + 30, "RELIQUIA TROVATA: " + dropRelic.name.toUpperCase(), '#fbbf24', 45, true);
+                    AudioEngine.playLevelUp(); 
+                    
+                    let pCount = AppSettings.isLow ? 10 : 40;
+                    for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteLevel, 'spark');
+                }
             }
             // ---------------------------------------------------
         }

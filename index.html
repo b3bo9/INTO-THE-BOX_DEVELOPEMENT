@@ -1815,9 +1815,15 @@ class SpatialHashGrid {
         }
         client.gridKeys.length = 0;
     }
-    findNearby(client, radius) {
+   findNearby(client, radius) {
         this._tempResults.length = 0; this._seen.clear();
-        this._clientKeys({ x: client.x, y: client.y, radius: radius || client.radius }, this._tempKeys);
+        // OTTIMIZZAZIONE GC: Usiamo un oggetto pre-allocato invece di crearne uno nuovo ogni frame!
+        if (!this._searchProxy) this._searchProxy = {x: 0, y: 0, radius: 0};
+        this._searchProxy.x = client.x; 
+        this._searchProxy.y = client.y; 
+        this._searchProxy.radius = radius || client.radius || 10;
+        
+        this._clientKeys(this._searchProxy, this._tempKeys);
         for(let i=0; i<this._tempKeys.length; i++) {
             let cell = this.cells.get(this._tempKeys[i]);
             if (cell) { for (const other of cell) { if (client !== other && !this._seen.has(other.id)) { this._seen.add(other.id); this._tempResults.push(other); } } }
@@ -2101,86 +2107,74 @@ const UI = {
         
         // Update Scudo Attivo
         if (Game.player.activeShieldTimer > 0) {
-            if (this.els.btnShield) {
-                this.els.btnShield.classList.add('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]');
-                this.els.btnShield.classList.remove('border-gray-600', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]');
-                if (this.els.btnShieldFill) {
-                    this.els.btnShieldFill.style.height = '100%';
-                    this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-100 pointer-events-none";
+            if (this.cache.shieldActive !== true) {
+                if (this.els.btnShield) {
+                    this.els.btnShield.classList.add('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]');
+                    this.els.btnShield.classList.remove('border-gray-600', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]');
+                    if (this.els.btnShieldFill) {
+                        this.els.btnShieldFill.style.height = '100%';
+                        this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-100 pointer-events-none";
+                    }
                 }
+                this.cache.shieldActive = true;
             }
         } else {
+            this.cache.shieldActive = false;
             if (this.els.btnShield) {
                 let cdPct = Game.player.activeShieldCooldown > 0 ? (1 - (Game.player.activeShieldCooldown / 8.0)) * 100 : 100;
-                if (this.els.btnShieldFill) {
-                    this.els.btnShieldFill.style.height = `${cdPct}%`;
-                    this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-100 pointer-events-none";
+                let roundedPct = Math.round(cdPct); // Arrotonda per ridurre la precisione inutile
+                
+                if (this.cache.shieldPct !== roundedPct) {
+                    if (this.els.btnShieldFill) this.els.btnShieldFill.style.height = `${roundedPct}%`;
+                    this.cache.shieldPct = roundedPct;
                 }
                 
                 if (Game.player.activeShieldCooldown <= 0) {
-                    this.els.btnShield.classList.add('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]');
-                    this.els.btnShield.classList.remove('border-gray-600', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]');
+                    if (this.cache.shieldReady !== true) {
+                        if (this.els.btnShieldFill) this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-100 pointer-events-none";
+                        this.els.btnShield.classList.add('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]');
+                        this.els.btnShield.classList.remove('border-gray-600', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]');
+                        this.cache.shieldReady = true;
+                    }
                 } else {
-                    this.els.btnShield.classList.remove('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]');
-                    this.els.btnShield.classList.add('border-gray-600', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]');
+                    if (this.cache.shieldReady !== false) {
+                        if (this.els.btnShieldFill) this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-100 pointer-events-none";
+                        this.els.btnShield.classList.remove('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]');
+                        this.els.btnShield.classList.add('border-gray-600', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]');
+                        this.cache.shieldReady = false;
+                    }
                 }
             }
         }
 
-       // Update Scatto Attivo (Dash)
+        // Update Scatto Attivo (Dash)
         if (this.els.btnDash) {
             let maxDashCd = 2.0 * Game.player.modifiers.dashCooldownMult; 
             let dashCdPct = Game.player.dashCooldown > 0 ? (1 - (Game.player.dashCooldown / maxDashCd)) * 100 : 100;
-            
-            if (this.els.btnDashFill) {
-                this.els.btnDashFill.style.height = `${dashCdPct}%`;
+            let roundedDashPct = Math.round(dashCdPct); // Rimuove micro-decimali CSS
+
+            if (this.cache.dashPct !== roundedDashPct) {
+                if (this.els.btnDashFill) this.els.btnDashFill.style.height = `${roundedDashPct}%`;
+                this.cache.dashPct = roundedDashPct;
             }
             
             if (Game.player.dashCooldown <= 0) {
-                this.els.btnDash.classList.add('border-yellow-400', 'opacity-100');
-                this.els.btnDash.classList.remove('border-gray-600', 'opacity-75');
-                if (this.els.btnDashFill) this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-yellow-500/50 transition-all duration-100 pointer-events-none";
+                if (this.cache.dashReady !== true) {
+                    this.els.btnDash.classList.add('border-yellow-400', 'opacity-100');
+                    this.els.btnDash.classList.remove('border-gray-600', 'opacity-75');
+                    if (this.els.btnDashFill) this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-yellow-500/50 transition-all duration-100 pointer-events-none";
+                    this.cache.dashReady = true;
+                }
             } else {
-                this.els.btnDash.classList.remove('border-yellow-400', 'opacity-100');
-                this.els.btnDash.classList.add('border-gray-600', 'opacity-75');
-                if (this.els.btnDashFill) this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-yellow-500/50 transition-all duration-100 pointer-events-none";
-            }
-        }else {
-            if (this.els.btnShield) {
-                let cdPct = Game.player.activeShieldCooldown > 0 ? (1 - (Game.player.activeShieldCooldown / 8.0)) * 100 : 100;
-                this.els.btnShieldFill.style.height = `${cdPct}%`;
-                // Colore di riempimento ciano durante la ricarica
-                this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-100 pointer-events-none";
-                
-                if (Game.player.activeShieldCooldown <= 0) {
-                    // PRONTO: Aggiunge Glow e Ciano
-                    this.els.btnShield.classList.add('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]');
-                    this.els.btnShield.classList.remove('border-gray-600', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]');
-                } else {
-                    // IN RICARICA: Rimuove Glow e Ciano, torna grigio con ombra nera
-                    this.els.btnShield.classList.remove('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]');
-                    this.els.btnShield.classList.add('border-gray-600', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]');
+                if (this.cache.dashReady !== false) {
+                    this.els.btnDash.classList.remove('border-yellow-400', 'opacity-100');
+                    this.els.btnDash.classList.add('border-gray-600', 'opacity-75');
+                    if (this.els.btnDashFill) this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-gray-500/50 transition-all duration-100 pointer-events-none";
+                    this.cache.dashReady = false;
                 }
             }
         }
-
-       // Update Scatto Attivo (Dash)
-if (this.els.btnDash) {
-    let maxDashCd = 2.0 * Game.player.modifiers.dashCooldownMult; 
-    let dashCdPct = Game.player.dashCooldown > 0 ? (1 - (Game.player.dashCooldown / maxDashCd)) * 100 : 100;
-    
-    this.els.btnDashFill.style.height = `${dashCdPct}%`;
-    
-    if (Game.player.dashCooldown <= 0) {
-        this.els.btnDash.classList.add('border-yellow-400', 'opacity-100');
-        this.els.btnDash.classList.remove('border-gray-600', 'opacity-75');
-        this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-yellow-500/50 transition-all duration-100 pointer-events-none";
-    } else {
-        this.els.btnDash.classList.remove('border-yellow-400', 'opacity-100');
-        this.els.btnDash.classList.add('border-gray-600', 'opacity-75');
-        this.els.btnDashFill.className = "absolute bottom-0 left-0 w-full bg-gray-500/50 transition-all duration-100 pointer-events-none";
-    }
-}
+    },
     }, 
     
     triggerComboAnim(combo) {

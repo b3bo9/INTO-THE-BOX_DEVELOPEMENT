@@ -1196,10 +1196,10 @@ const RelicSystem = {
 
         // RARE: Meccaniche di combattimento
         { id: 'c5', name: "Runa dell'Agguato", desc: "Infliggi il +30% di danni ai nemici che hanno più dell'80% di Salute.", rarity: "rare", image: "icona_runa_minore.png", icon: "fa-fire", apply: (p) => p.modifiers.openerDmg = true },
-        { id: 'r1', name: "Bussola Dimensionale", desc: "Tutte le Essenze raccolte e la modalità Inferno durano il 50% in più.", rarity: "rare", image: "icona_bussola_dimensionale.png", icon: "fa-compass", apply: (p) => p.modifiers.essenceDurationMult += 0.50 },
+        { id: 'r1', name: "Bussola Dimensionale", desc: "Tutte le Essenze raccolte e l'Overdrive durano il 50% in più.", rarity: "rare", image: "icona_bussola_dimensionale.png", icon: "fa-compass", apply: (p) => p.modifiers.essenceDurationMult += 0.50 },
         { id: 'r3', name: "Scudo dell'Egidio", desc: "Lo Scudo Cinetico si attiva automaticamente ogni 15 sec.", rarity: "rare", image: "icona_scudo_dell_egidio.png", icon: "fa-shield-halved", apply: (p) => p.modifiers.shieldActive = true },
-        { id: 'r4', name: "Spirito Avaro", desc: "Ottieni +50% XP, ma subisci +15% di danni.", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.50; p.modifiers.dmgTakenMult += 0.15; } },
-        { id: 'e5', name: "Zanna del Vampiro", desc: "Raddoppia la probabilità che i nemici rilascino un Cuore Vitale", rarity: "rare", image: "icona_zanna_del_vampiro.png", icon: "fa-tooth", apply: (p) => p.modifiers.healDropMult += 1.0 },
+        { id: 'r4', name: "Apprendimento rapido", desc: "Ottieni +50% XP, ma subisci +15% di danni.", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.50; p.modifiers.dmgTakenMult += 0.15; } },
+        { id: 'e5', name: "Flusso vitale", desc: "Raddoppia la probabilità che i nemici rilascino un Cuore Vitale", rarity: "rare", image: "icona_zanna_del_vampiro.png", icon: "fa-tooth", apply: (p) => p.modifiers.healDropMult += 1.0 },
         { id: 'r6', name: "Sovraccarico Cinetico", desc: "Mentre lo Scudo Cinetico è attivo, la tua Velocità d'Attacco aumenta del +40%.", rarity: "rare", image: "icona_sovraccarico_cinetico.png", icon: "fa-bolt", apply: (p) => p.modifiers.shieldAtkSpeedBonus = 0.40 },
         
         // EPICHE: Sinergie Costruttive (Build Definers)
@@ -1212,7 +1212,7 @@ const RelicSystem = {
         { id: 'e7', name: "Lama del Vento", desc: "Subito dopo uno Scatto, i tuoi prossimi 2 attacchi sono Colpi Critici garantiti.", rarity: "epic", image: "icona_lama_vento.png", icon: "fa-wind", apply: (p) => { p.modifiers.dashCritsEnabled = true; } },
 
         // LEGGENDARIE: Cambiano drasticamente le regole (Trade-offs e Potere)
-        { id: 'l1', name: "Follia Omicida", desc: "I tuoi Colpi Critici infliggono 3X Danni (invece di 2X), ma subisci +25% Danni dai nemici.", rarity: "legendary", image: "icona_follia_omicida.png", icon: "fa-skull", apply: (p) => { p.modifiers.critDmgMult = 3.0; p.modifiers.dmgTakenMult += 0.25; } },
+        { id: 'l1', name: "Follia Omicida", desc: "I tuoi Colpi Critici infliggono danni estremi, ma subisci +25% Danni dai nemici.", rarity: "legendary", image: "icona_follia_omicida.png", icon: "fa-skull", apply: (p) => { p.modifiers.critDmgMult = 2.5; p.modifiers.dmgTakenMult += 0.25; } },
         { id: 'l2', name: "Lama del Giudizio", desc: "Infliggi il DOPPIO dei danni se il nemico ha Meno del 30% di Salute (Esecuzione).", rarity: "legendary", image: "icona_lama_del_giudizio.png", icon: "fa-gavel", apply: (p) => p.modifiers.executioner = true },
         { id: 'l3', name: "Patto Ascetico", desc: "La Ultimate si ricarica passivamente da sola, ma la tua Salute Massima scende del 30%.", rarity: "legendary", image: "icona_patto_ascetico.png", icon: "fa-link", apply: (p) => { p.modifiers.passiveUltCharge = true; p.stats.maxHp = Math.floor(p.stats.maxHp * 0.7); if(p.stats.hp > p.stats.maxHp) p.stats.hp = p.stats.maxHp; } },
         { id: 'l4', name: "Sete di Sangue Eterna", desc: "Ti curi del 5% ogni 10 uccisioni. I nemici NON droppano cuori. I Level Up non danno HP.", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", icon: "fa-droplet", apply: (p) => { p.modifiers.bloodthirst = true; p.modifiers.noHealDrops = true; p.modifiers.noMaxHpLevelUp = true; } },
@@ -1996,7 +1996,7 @@ const UI = {
                 let typeText = "";
                 if (Game.corruptedType === 'darkness') typeText = "OSCURITÀ";
                 if (Game.corruptedType === 'unstable') typeText = "INSTABILE";
-                if (Game.corruptedType === 'volatile') typeText = "VOLATILE";
+                if (Game.corruptedType === 'volatile') typeText = "IMPLOSIONE";
                 if (Game.corruptedType === 'combo') typeText = "COMBO";
                 if (Game.corruptedType === 'pursuer') typeText = "INSEGUITORE";
                 if (Game.corruptedType === 'acid_pools') typeText = "CORROSIONE";

@@ -2475,7 +2475,7 @@ let fpsEl = UI.els.fpsValue;
         this.scene.background = new THREE.Color(0x020205); 
         this.scene.fog = new THREE.Fog(0x020205, camDist - 150, camDist + 500);
         if (this.dirLight) this.dirLight.intensity = 1.4; // Ripristina sempre la luce lunare
-
+        this.difficultyMult = this.baseDifficultyMult;
         if (this.isCorrupted && !this.isBossFloor) {
             this.difficultyMult *= 1.25; // Aumenta globalmente la difficoltà
            if (this.corruptedType === 'darkness') { 
@@ -2571,7 +2571,8 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
   startGame(diffMult) {
         document.getElementById('mainMenu').classList.add('hidden'); document.getElementById('hud').classList.remove('hidden');
         if (isTouchDevice) document.getElementById('mobile-controls').classList.remove('hidden');
-        this.difficultyMult = diffMult || 1.0;
+        this.baseDifficultyMult = diffMult || 1.0;
+        this.difficultyMult = this.baseDifficultyMult;
         this.floor = 1; this.totalKills = 0; this.lives = 3; this.playTime = 0; this.coins = 0;
         if(UI.els.coins) UI.els.coins.innerText = "0";
         this.ultimateCharge = 0; this.ultimateActive = false;
@@ -4415,71 +4416,73 @@ class Player extends Entity {
         // -----------------------------------------------------------------
     }
     
-   flamethrower(dt) {
-        if (Game.frameCount % (isTouchDevice ? 2 : 1) === 0) {
-            // Aumentiamo leggermente il numero di particelle per dare volume al fuoco
-            let pCount = AppSettings.isLow ? 2 : (isTouchDevice ? 4 : (AppSettings.isUltraPC ? 12 : 6));
-            for(let i=0; i<pCount; i++) {
-                // 1. Apriamo il cono visivo a ~90 gradi totali per matchare l'hitbox del danno
-                let spread = MathUtils.randomRange(-0.8, 0.8);
-                let pAngle = this.angle + spread;
+  flamethrower(dt) {
+        if (Game.frameCount % (isTouchDevice ? 2 : 1) === 0) {
+            // Aumentiamo leggermente il numero di particelle per dare volume al fuoco
+            let pCount = AppSettings.isLow ? 2 : (isTouchDevice ? 4 : (AppSettings.isUltraPC ? 12 : 6));
+            for(let i=0; i<pCount; i++) {
+                // 1. Apriamo il cono visivo a ~90 gradi totali per matchare l'hitbox del danno
+                let spread = MathUtils.randomRange(-0.8, 0.8);
+                let pAngle = this.angle + spread;
 
-                // 2. Mescoliamo particelle rosse e bianche/gialle al centro per simulare il calore
-                let mat = (Math.abs(spread) < 0.3 && Math.random() > 0.5) ? SharedMat.spriteWhite : SharedMat.spriteRed;
+                // 2. Mescoliamo particelle rosse e bianche/gialle al centro per simulare il calore
+                let mat = (Math.abs(spread) < 0.3 && Math.random() > 0.5) ? SharedMat.spriteWhite : SharedMat.spriteRed;
 
-                let p = Game.getParticle();
-                p.spawn(this.x + Math.cos(this.angle)*20, 15 + MathUtils.randomRange(-8, 8), this.y + Math.sin(this.angle)*20, mat, 'flame', pAngle);
+                let p = Game.getParticle();
+                p.spawn(this.x + Math.cos(this.angle)*20, 15 + MathUtils.randomRange(-8, 8), this.y + Math.sin(this.angle)*20, mat, 'flame', pAngle);
 
-                // 3. Forziamo la fisica: velocità iniziale alta per raggiungere le 170 unità di distanza
-                let speed = MathUtils.randomRange(500, 750);
-                p.vx = Math.cos(pAngle) * speed;
-                p.vz = Math.sin(pAngle) * speed;
-                p.life = MathUtils.randomRange(0.25, 0.45);
-                p.maxLife = p.life;
-                p.baseSize = MathUtils.randomRange(25, 45); // Le facciamo nascere più voluminose
-            }
-        }
-       if (Game.frameCount % 8 === 0) AudioEngine.playShoot('flame');
-        
-        // SOSTITUZIONE: Hitbox calcolata a 20fps invece di 60fps per salvare la CPU
-        if (Game.frameCount % 3 === 0) {
-            let flameRange = 170; let flameRangeSq = flameRange * flameRange;
-            let nearby = Game.enemyGrid.findNearby(this, flameRange);
-            
-            let cosA = Math.cos(this.angle); let sinA = Math.sin(this.angle); 
-            // Triplichiamo il danno base del tick per compensare i frame saltati (DPS identico)
-            let baseDmg = (this.stats.maxDmg * 1.5 * this.modifiers.dmgMult) * 3.0;
+                // 3. Forziamo la fisica: velocità iniziale alta per raggiungere le 170 unità di distanza
+                let speed = MathUtils.randomRange(500, 750);
+                p.vx = Math.cos(pAngle) * speed;
+                p.vz = Math.sin(pAngle) * speed;
+                p.life = MathUtils.randomRange(0.25, 0.45);
+                p.maxLife = p.life;
+                p.baseSize = MathUtils.randomRange(25, 45); // Le facciamo nascere più voluminose
+            }
+        }
+       if (Game.frameCount % 8 === 0) AudioEngine.playShoot('flame');
+        
+       // FIX: Calcoliamo l'angolo FUORI dall'if per evitare che generi "undefined"
+        let cosA = Math.cos(this.angle); let sinA = Math.sin(this.angle); 
 
-            for(let i=0, len=nearby.length; i<len; i++) {
-                let e = nearby[i]; 
-                let dx = e.x - this.x; let dy = e.y - this.y;
-                let distSq = dx*dx + dy*dy;
-                
-                if (distSq < flameRangeSq) {
-                    let dist = Math.sqrt(distSq);
-                    if (dist > 0) {
-                        let dot = (dx/dist)*cosA + (dy/dist)*sinA;
-                        if (dot > 0.707) {
-                            if (!e.flameHitTimer) e.flameHitTimer = 0; 
-                            e.flameHitTimer -= (dt * 3); // Compensa il delta time triplicato
-                            if (e.flameHitTimer <= 0) { 
-                                e.takeDamage(baseDmg, this, false, true); 
-                                e.flameHitTimer = 0.15; 
-                                e.push(cosA, sinA, 8); 
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        if (!this.flamePoolTimer) this.flamePoolTimer = 0; this.flamePoolTimer -= dt;
-        if (this.flamePoolTimer <= 0) {
-            let poolX = this.x + cosA * MathUtils.randomRange(50, 160); let poolY = this.y + sinA * MathUtils.randomRange(50, 160);
-            if (!Game.map.isSolid(poolX, poolY)) Game.getHazard().spawn(poolX, poolY, 35, 2.5, this.stats.maxDmg * 0.5 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire');
-            this.flamePoolTimer = 0.4;
-        }
-    }
+        // SOSTITUZIONE: Hitbox calcolata a 20fps invece di 60fps per salvare la CPU
+        if (Game.frameCount % 3 === 0) {
+            let flameRange = 170; let flameRangeSq = flameRange * flameRange;
+            let nearby = Game.enemyGrid.findNearby(this, flameRange);
+            
+            // Triplichiamo il danno base del tick per compensare i frame saltati (DPS identico)
+            let baseDmg = (this.stats.maxDmg * 1.5 * this.modifiers.dmgMult) * 3.0;
+
+            for(let i=0, len=nearby.length; i<len; i++) {
+                let e = nearby[i]; 
+                let dx = e.x - this.x; let dy = e.y - this.y;
+                let distSq = dx*dx + dy*dy;
+                
+                if (distSq < flameRangeSq) {
+                    let dist = Math.sqrt(distSq);
+                    if (dist > 0) {
+                        let dot = (dx/dist)*cosA + (dy/dist)*sinA;
+                        if (dot > 0.707) {
+                            if (!e.flameHitTimer) e.flameHitTimer = 0; 
+                            e.flameHitTimer -= (dt * 3); // Compensa il delta time triplicato
+                            if (e.flameHitTimer <= 0) { 
+                                e.takeDamage(baseDmg, this, false, true); 
+                                e.flameHitTimer = 0.15; 
+                                e.push(cosA, sinA, 8); 
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (!this.flamePoolTimer) this.flamePoolTimer = 0; this.flamePoolTimer -= dt;
+        if (this.flamePoolTimer <= 0) {
+            let poolX = this.x + cosA * MathUtils.randomRange(50, 160); let poolY = this.y + sinA * MathUtils.randomRange(50, 160);
+            if (!Game.map.isSolid(poolX, poolY)) Game.getHazard().spawn(poolX, poolY, 35, 2.5, this.stats.maxDmg * 0.5 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire');
+            this.flamePoolTimer = 0.4;
+        }
+    }
     
     attack() {
         let flowCapMult = this.modifiers.flowMastery ? 2 : 1;
@@ -4622,7 +4625,7 @@ if (this.modifiers.flowMastery && !wasDead) {
         super.takeDamage(amount, source);
         this.invincibilityTimer = 0.2; // <-- 0.2 secondi di invincibilità ad ogni hit
         AudioEngine.playHit('player');
-
+        Game.resetCombo();
         // --- FLASH ROSSO SULLO SCHERMO ---
         const vignetteEl = document.getElementById('vignette');
         vignetteEl.classList.remove('damage-flash-active');

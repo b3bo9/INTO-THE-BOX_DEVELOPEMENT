@@ -3356,9 +3356,11 @@ class GameMap {
        // meshDebris.frustumCulled = false;
         let idxDebris = 0;
         
-        // --- 2.6 ALLOCHIAMO GLI ALBERI ---
+       // --- 2.6 ALLOCHIAMO GLI ALBERI ---
         const maxTrees = floorCount * (isTouchDevice ? 1 : 2); 
-        const geoTree = createDarkTreeGeometry();
+        // OTTIMIZZAZIONE CPU: L'albero frattale viene calcolato una sola volta e tenuto in cache
+        if (!window.GLOBAL_TREE_GEO) window.GLOBAL_TREE_GEO = createDarkTreeGeometry();
+        const geoTree = window.GLOBAL_TREE_GEO;
         const matTree = new THREE.MeshStandardMaterial({ color: 0x0a0807, emissive: 0x020101, roughness: 0.9 });
         const meshTrees = new THREE.InstancedMesh(geoTree, matTree, maxTrees);
         meshTrees.receiveShadow = true;
@@ -4716,9 +4718,22 @@ class Enemy extends Entity {
         this.infected = false; this.slowedTimer = 0; this.fireDebuffTimer = 0;
         this.aggroRangeSq = this.aggroRange * this.aggroRange; this.attackRangeSq = this.attackRange * this.attackRange;
         
-        // --- BUGFIX 2: CONTROLLO SCALA ELITE ---
-        // Ricostruisce il modello non solo se cambia il tipo, ma anche se passa da Normal a Elite (o viceversa)
+       // --- BUGFIX 2: PULIZIA PROFONDA DEL POOL (VRAM LEAK FIX) ---
         if (this.currentType !== type || this.wasElite !== this.isElite) {
+            // Eliminiamo correttamente geometrie e materiali dinamici orfani prima di svuotare il gruppo
+            this.mesh.traverse((child) => {
+                if (child.isMesh) {
+                    // Distrugge materiali dinamici (es: Scudo Golem o cloni dell'Inseguitore)
+                    if (child.material && !Object.values(SharedMat).includes(child.material)) {
+                        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                        else child.material.dispose();
+                    }
+                    // Distrugge geometrie esclusive create fuori da SharedGeo (es: Occhi Inseguitore)
+                    if (child.geometry && !Object.values(SharedGeo).includes(child.geometry)) {
+                        child.geometry.dispose();
+                    }
+                }
+            });
             while(this.mesh.children.length > 0){ this.mesh.remove(this.mesh.children[0]); }
             if (this.mat) this.mat.dispose();
 
@@ -5908,8 +5923,8 @@ function clearScene() {
         // [OTTIMIZZAZIONE 1]: Pulizia profonda della memoria GPU (Memory Leak Fix)
         Game.map.mapGroup.traverse((child) => {
             if (child.isMesh || child.isInstancedMesh) {
-                // Elimina le geometrie proteggendo quelle globali e riutilizzabili
-                if (child.geometry && child.geometry !== InteractiveGrassSystem.geo) {
+               // Elimina le geometrie proteggendo quelle globali (Erba e Alberi Frattali)
+                if (child.geometry && child.geometry !== InteractiveGrassSystem.geo && child.geometry !== window.GLOBAL_TREE_GEO) {
                     child.geometry.dispose();
                 }
                 // Elimina i materiali proteggendo quelli globali

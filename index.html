@@ -162,14 +162,10 @@
                     </button>
 
                     <!-- DIFFICOLTA (Occupa 2 colonne su smartphone, 1 colonna su PC) -->
-                    <div class="relative group col-span-2 sm:col-span-1 h-12 sm:h-14">
-                        <select id="gameDifficulty" onmouseenter="AudioEngine.playHover()" class="w-full h-full bg-gradient-to-r from-red-900/20 to-black/40 backdrop-blur-xl text-white border border-red-900/40 hover:border-red-500/50 hover:from-red-900/30 rounded-xl focus:outline-none transition-all appearance-none cursor-pointer text-xs font-bold text-center tracking-widest uppercase shadow-[inset_0_0_15px_rgba(220,38,38,0.05)]">
-                            <option value="0.6" class="text-black bg-white" selected>🟢 NORMALE</option>
-                            <option value="1.0" class="text-black bg-white">🟡 DIFFICILE</option>
-                            <option value="1.6" class="text-black bg-white">🔴 INFERNO</option>
-                        </select>
-                        <i class="fa-solid fa-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-red-500/80 pointer-events-none text-xs group-hover:text-red-400 transition-colors"></i>
-                    </div>
+                    <button id="btnDifficulty" onclick="cycleDifficulty()" onmouseenter="AudioEngine.playHover()" 
+    class="col-span-2 sm:col-span-1 h-12 sm:h-14 bg-gradient-to-r from-red-900/20 to-black/40 backdrop-blur-xl text-white border border-red-900/40 hover:border-red-500/50 hover:from-red-900/30 rounded-xl transition-all active:scale-95 cursor-pointer text-xs font-bold text-center tracking-widest uppercase shadow-[inset_0_0_15px_rgba(220,38,38,0.05)] flex items-center justify-center">
+    <span id="difficultyText">🟢 NORMALE</span>
+</button>
 
                 </div>
 
@@ -6000,8 +5996,11 @@ function goToMainMenu() {
 }
 
 function startGameFromMenu() {
-    let diff = parseFloat(document.getElementById('gameDifficulty').value) || 1.0;
-    AudioEngine.stopMenuMusic(); Game.startGame(diff);
+    AudioEngine.playClick();
+    // Legge il valore dall'oggetto DifficultySettings invece che dall'elemento HTML
+    let diff = DifficultySettings.levels[DifficultySettings.index].val;
+    AudioEngine.stopMenuMusic(); 
+    Game.startGame(diff);
 }
 
 function restartGame() {
@@ -6232,6 +6231,20 @@ setInterval(() => {
         ShopSystem.updateUI();
     }
 }, 500);
+    const DifficultySettings = {
+    levels: [
+        { val: 0.6, label: "🟢 NORMALE" },
+        { val: 1.0, label: "🟡 DIFFICILE" },
+        { val: 1.6, label: "🔴 INFERNO" }
+    ],
+    index: 0
+};
+
+function cycleDifficulty() {
+    AudioEngine.playClick();
+    DifficultySettings.index = (DifficultySettings.index + 1) % DifficultySettings.levels.length;
+    document.getElementById('difficultyText').innerText = DifficultySettings.levels[DifficultySettings.index].label;
+}
     window.onload = () => {
     Preloader.init(); // Avvia il LoadingManager globale
     ScoreManager.init(); Game.init();

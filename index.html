@@ -1056,6 +1056,14 @@ const UIManager = {
     },
     showCollectedRelics() {
         AudioEngine.playClick();
+        
+        // Rimuovi notifica
+        const notif = document.getElementById('relic-notif');
+        if (notif) {
+            notif.remove();
+            Game.lastRelicCount = Game.player.relics.length; // Aggiorna il contatore
+        }
+
         const grid = document.getElementById('collectedRelicsGrid');
         const detailName = document.getElementById('relic-detail-name');
         const detailDesc = document.getElementById('relic-detail-desc');
@@ -2152,7 +2160,7 @@ _dummyScale: new THREE.Vector3(3, 3, 3),
     _vec2: new THREE.Vector2(), _vec3: new THREE.Vector3(), _plane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), _vec3Screen: new THREE.Vector3(),
     _camTarget: new THREE.Vector3(),
     _particleIdx: 0, _projectileIdx: 0, _hazardIdx: 0, _textIdx: 0, _essenceIdx: 0, _extraLifeIdx: 0, _decoyIdx: 0, _dashLineIdx: 0, _coinIdx: 0,
-    lastTime: 0, accumulator: 0, state: 'MENU', floor: 1, floorMaxKills: 0, floorKills: 0, totalKills: 0, coins: 0, frameCount: 0, fpsFrames: 0, fpsLastTime: performance.now(),isBossFloor: false,
+    lastTime: 0, accumulator: 0, state: 'MENU', floor: 1,lastRelicCount: 0, floorMaxKills: 0, floorKills: 0, totalKills: 0, coins: 0, frameCount: 0, fpsFrames: 0, fpsLastTime: performance.now(),isBossFloor: false,
     lastDrawTime: 0, frameInterval: isTouchDevice ? 1000 / 60 : 0,
     hitStop: 0, trauma: 0, combo: 0, comboTimer: 0, comboMaxTime: 5.0, difficultyMult: 1.0, ultimateCharge: 0, ultimateActive: false, ultimateTimer: 0, lives: 3, playTime: 0, bossDefeatedTimer: 0, floorEndTimer: 0, floorEndTriggered: false,
     player: null, map: null, enemyGrid: null, enemies: [], projectiles: [], particles: [], essences: [], extraLivesDrops: [], coinDrops: [], floatingTexts: [], hazards: [], decoys: [], dashLines: [], bloodDecals: [], bloodDecalIndex: 0, _debrisIdx: 0,
@@ -6203,6 +6211,24 @@ window.prepareFloorScreen = function() {
     } else {
         btnNext.className = "w-full bg-gradient-to-t from-blue-900 to-cyan-800 hover:from-blue-800 hover:to-cyan-700 text-white font-black py-4 sm:py-5 rounded-xl border border-cyan-500/50 transition-all active:scale-95 uppercase tracking-widest shadow-[0_0_15px_rgba(34,211,238,0.2)]";
         btnNext.innerHTML = `<span class="text-xl sm:text-2xl drop-shadow-md">SCENDI PIÙ A FONDO</span>`;
+    }
+    
+    // --- CORREZIONE LOGICA NOTIFICA ---
+    const btnRelics = document.querySelector('button[onclick="UIManager.showCollectedRelics()"]');
+    // Rimuovi prima qualsiasi notifica esistente per evitare duplicati
+    const existingNotif = document.getElementById('relic-notif');
+    if (existingNotif) existingNotif.remove();
+
+    // Mostra solo se ci sono VERE nuove reliquie
+    if (Game.player.relics.length > Game.lastRelicCount) {
+        let notif = document.createElement('span');
+        notif.id = 'relic-notif';
+        notif.className = 'text-yellow-400 font-black animate-pulse drop-shadow-[0_0_8px_rgba(250,204,21,1)]';
+        notif.innerText = " (!)";
+        btnRelics.appendChild(notif);
+    } else {
+        // Se non ci sono nuove reliquie, aggiorniamo comunque il contatore per sicurezza
+        Game.lastRelicCount = Game.player.relics.length;
     }
 };
 window.nextFloor = function(corrupted = false) {

@@ -1209,7 +1209,8 @@ const RelicSystem = {
         { id: 'e3', name: "Passo Infernale", desc: "Lo scatto lascia una scia di fuoco. I nemici a fuoco subiscono +25% danni dai tuoi colpi.", rarity: "epic", image: "icona_passo_infernale.png", icon: "fa-fire-flame-curved", apply: (p) => { p.modifiers.fireTrail = true; p.modifiers.fireTrailDebuff = true; } },
         { id: 'e4', name: "Sovraccarico Etereo", desc: "L'Ascensione Finale (Ultimate) dura 4 secondi in più.", rarity: "epic", image: "icona_sovraccarico.png", icon: "fa-bolt-lightning", apply: (p) => p.modifiers.ascensionDurationAdd += 4.0 },
         { id: 'e6', name: "Batteria a Ioni", desc: "Lo Scudo Cinetico dura 2 secondi in più e resiste più a lungo al fuoco nemico.", rarity: "epic", image: "icona_batteria_ioni.png", icon: "fa-battery-full", apply: (p) => p.modifiers.shieldDurationAdd += 2.0   },
-        { id: 'e7', name: "Lama del Vento", desc: "Subito dopo uno Scatto, i tuoi prossimi 2 attacchi sono Colpi Critici garantiti.", rarity: "epic", image: "icona_lama_vento.png", icon: "fa-wind", apply: (p) => { p.modifiers.dashCritsEnabled = true; } },
+       { id: 'e7', name: "Lama del Vento", desc: "Subito dopo uno Scatto, i tuoi prossimi 2 attacchi sono Colpi Critici garantiti.", rarity: "epic", image: "icona_lama_vento.png", icon: "fa-wind", apply: (p) => { p.modifiers.dashCritsEnabled = true; } },
+        { id: 'e8', name: "Patto dell'Avaro", desc: "Le monete non scompaiono col tempo. Raccogliere una moneta ti cura del 2% della Salute Massima.", rarity: "epic", image: "icona_patto_avaro.png", icon: "fa-sack-dollar", apply: (p) => { p.modifiers.miserPact = true; } },
 
         // LEGGENDARIE: Cambiano drasticamente le regole (Trade-offs e Potere)
         { id: 'l1', name: "Follia Omicida", desc: "I tuoi Colpi Critici infliggono danni estremi, ma subisci +25% Danni dai nemici.", rarity: "legendary", image: "icona_follia_omicida.png", icon: "fa-skull", apply: (p) => { p.modifiers.critDmgMult = 2.5; p.modifiers.dmgTakenMult += 0.25; } },
@@ -2857,22 +2858,35 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         }
 
 for(let i = 0, len = this.coinDrops.length; i < len; i++) {
-            let c = this.coinDrops[i];
-            if(c.active) {
-                c.life -= dt;
-                if (c.life <= 0) { c.destroy(); continue; }
-                if (c.life < 3.0) c.group.visible = Math.floor(c.life * 8) % 2 === 0;
+            let c = this.coinDrops[i];
+            if(c.active) {
+                // Se ha il Patto dell'Avaro, la moneta non perde vita e non scompare
+                if (!this.player.modifiers.miserPact) {
+                    c.life -= dt;
+                }
+                
+                if (c.life <= 0) { c.destroy(); continue; }
+                
+                // Lampeggia solo se non ha il Patto e sta per scomparire
+                if (!this.player.modifiers.miserPact && c.life < 3.0) c.group.visible = Math.floor(c.life * 8) % 2 === 0;
                 else c.group.visible = true;
 
                 c.group.rotation.y += dt * 3; c.group.position.y = 12 + this.animFloat;
                 c.group.updateMatrix();
-                if (MathUtils.distanceSq(this.player, c) < pRadiusSq) { 
+                if (MathUtils.distanceSq(this.player, c) < pRadiusSq) { 
                     c.destroy(); AudioEngine.playCoin();
                     Game.coins++; UI.els.coins.innerText = Game.coins;
                     Game.getFloatingText().spawn(this.player.x, this.player.y, "+1", '#ffaa00', 25, true);
+                    
+                    // Cura della Reliquia
+                    if (this.player.modifiers.miserPact) {
+                        let heal = this.player.stats.maxHp * 0.02;
+                        this.player.stats.hp = Math.min(this.player.stats.maxHp, this.player.stats.hp + heal);
+                        Game.getFloatingText().spawn(this.player.x, this.player.y + 15, `+${Math.floor(heal)} HP`, '#00ffaa', 18, true);
+                    }
                 }
-            }
-        }
+            }
+        }
         if (this.isBossFloor && this.bossDefeatedTimer > 0) {
             this.bossDefeatedTimer -= dt;
             if (this.bossDefeatedTimer <= 0 && this.state === 'PLAYING') { this.state = 'RELIC_SELECTION'; RelicSystem.showChoices(); }
@@ -3829,8 +3843,8 @@ class Player extends Entity {
             comboStep: 1, comboDecayAdd: 0, comboDecayRate: 1.0, keepEssenceOnCombo: false, pickupRadiusMult: 1.0,
             passiveUltCharge: false, noHealDrops: false, noMaxHpLevelUp: false, bloodthirst: false, bloodthirstCount: 0, flowMastery: false,
             timeSinceLastHit: 0, explosiveShield: false, shieldDurationAdd: 0, dashCritsEnabled: false, dashCritsStacks: 0, dashLightning: false,
-            // NUOVI TRATTI RELIQUIE E SHOP
-            critGold: false, lowHpAtkSpeed: false, dashInvul: false, regen: 0, openerDmg: false
+           // NUOVI TRATTI RELIQUIE E SHOP
+            critGold: false, lowHpAtkSpeed: false, dashInvul: false, regen: 0, openerDmg: false, miserPact: false
         };
         
         this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}), new THREE.MeshPhongMaterial({color: 0xffff00, emissive: 0xffff00}));

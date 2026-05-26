@@ -18,6 +18,13 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
 
     <style>
+        @keyframes gold-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); text-shadow: 0 0 5px #fbbf24; }
+    50% { opacity: 0.7; transform: scale(1.1); text-shadow: 0 0 15px #fbbf24; }
+}
+.relic-notif {
+    animation: gold-pulse 1.5s infinite;
+}
         /* Flash di danno in faccia al giocatore */
         .damage-flash-active {
             animation: hit-flash 0.25s ease-out forwards !important;
@@ -1054,20 +1061,22 @@ const UIManager = {
         AudioEngine.playClick();
         document.getElementById(id).classList.add('hidden');
     },
-    showCollectedRelics() {
+   showCollectedRelics() {
         AudioEngine.playClick();
         
-        // Rimuovi notifica
+        // 1. Aggiorna il contatore e rimuovi la notifica visiva
+        Game.lastRelicCount = Game.player.relics.length;
         const notif = document.getElementById('relic-notif');
         if (notif) {
             notif.remove();
-            Game.lastRelicCount = Game.player.relics.length; // Aggiorna il contatore
         }
 
+        // 2. Definisci gli elementi UI
         const grid = document.getElementById('collectedRelicsGrid');
         const detailName = document.getElementById('relic-detail-name');
         const detailDesc = document.getElementById('relic-detail-desc');
         
+        // 3. Pulisci la griglia e imposta il titolo
         grid.innerHTML = '';
         detailName.innerText = "IL TUO ARSENALE";
         detailName.className = "text-sm font-black text-gray-300 uppercase tracking-widest mb-1";
@@ -2183,7 +2192,7 @@ _dummyScale: new THREE.Vector3(3, 3, 3),
     width: window.innerWidth, height: window.innerHeight, keys: {}, mouse: { x: 0, y: 0, worldX: 0, worldY: 0, leftDown: false },
     inputs: { left: {x:0, y:0, active:false}, right: {x:0, y:0, active:false} },
     _vec2: new THREE.Vector2(), _vec3: new THREE.Vector3(), _plane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), _vec3Screen: new THREE.Vector3(),
-    _camTarget: new THREE.Vector3(),
+    _camTarget: new THREE.Vector3(),lastRelicCount: 0,
     _particleIdx: 0, _projectileIdx: 0, _hazardIdx: 0, _textIdx: 0, _essenceIdx: 0, _extraLifeIdx: 0, _decoyIdx: 0, _dashLineIdx: 0, _coinIdx: 0,
     lastTime: 0, accumulator: 0, state: 'MENU', floor: 1,lastRelicCount: 0, floorMaxKills: 0, floorKills: 0, totalKills: 0, coins: 0, frameCount: 0, fpsFrames: 0, fpsLastTime: performance.now(),isBossFloor: false,
     lastDrawTime: 0, frameInterval: isTouchDevice ? 1000 / 60 : 0,
@@ -6257,22 +6266,21 @@ window.prepareFloorScreen = function() {
         btnNext.innerHTML = `<span class="text-xl sm:text-2xl drop-shadow-md">SCENDI PIÙ A FONDO</span>`;
     }
     
-    // --- CORREZIONE LOGICA NOTIFICA ---
+   // --- NOTIFICA RELIQUIE (Controllo se il count è aumentato) ---
     const btnRelics = document.querySelector('button[onclick="UIManager.showCollectedRelics()"]');
-    // Rimuovi prima qualsiasi notifica esistente per evitare duplicati
     const existingNotif = document.getElementById('relic-notif');
-    if (existingNotif) existingNotif.remove();
-
-    // Mostra solo se ci sono VERE nuove reliquie
+    
+    // Se ci sono nuove reliquie rispetto all'ultima volta che abbiamo controllato
     if (Game.player.relics.length > Game.lastRelicCount) {
-        let notif = document.createElement('span');
-        notif.id = 'relic-notif';
-        notif.className = 'text-yellow-400 font-black animate-pulse drop-shadow-[0_0_8px_rgba(250,204,21,1)]';
-        notif.innerText = " (!)";
-        btnRelics.appendChild(notif);
-    } else {
-        // Se non ci sono nuove reliquie, aggiorniamo comunque il contatore per sicurezza
-        Game.lastRelicCount = Game.player.relics.length;
+        if (!existingNotif) {
+            let notif = document.createElement('span');
+            notif.id = 'relic-notif';
+            notif.className = 'relic-notif text-yellow-400 font-black ml-2';
+            notif.innerText = "(!)";
+            btnRelics.appendChild(notif);
+        }
+    } else if (existingNotif) {
+        existingNotif.remove();
     }
 };
 window.nextFloor = function(corrupted = false) {

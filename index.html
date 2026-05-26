@@ -1425,8 +1425,8 @@ const SharedMat = {
     hazardPoisonRing: new THREE.MeshBasicMaterial({color: 0xaaffaa, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}), // GIOCATORE: VERDE
     hazardEnemyPlane: new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}), // NEMICO: ROSSO
     hazardEnemyRing: new THREE.MeshBasicMaterial({color: 0xff5555, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}), // NEMICO: ROSSO
-    hazardCrystalPlane: new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}), // NEMICO: ROSSO
-    hazardCrystalRing: new THREE.MeshBasicMaterial({color: 0xff5555, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}), // NEMICO: ROSSO
+    hazardCrystalPlane: new THREE.MeshBasicMaterial({color: 0xaa00ff, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending, depthWrite: false}), // DOPPIO DANNO: VIOLA
+    hazardCrystalRing: new THREE.MeshBasicMaterial({color: 0xcc55ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}), // DOPPIO DANNO: VIOLA
     
     enemyDark: new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9}),
     enemyEye: new THREE.MeshBasicMaterial({color: 0xff0000}),
@@ -1725,9 +1725,10 @@ class Hazard {
                 this.plane.material.opacity = 0.35 + Math.sin(this.life * 10) * 0.1; 
                 this.ring.material.opacity = 0.8 + Math.sin(this.life * 15) * 0.2; 
             }
-           if ((Game.frameCount + this.updateOffset) % 5 === 0 && !isTouchDevice && this.activationTimer <= 0) { 
-                // Le pozze del giocatore (fire/poison) emettono particelle verdi, quelle nemiche particelle rosse
+          if ((Game.frameCount + this.updateOffset) % 5 === 0 && !isTouchDevice && this.activationTimer <= 0) { 
+                // Le pozze del giocatore emettono verde, nemiche rosso, danni doppi (cristallo) viola/rosa
                 let mat = (this.type === 'fire' || this.type === 'poison') ? SharedMat.spriteGreen : SharedMat.spriteRed;
+                if (this.type === 'crystal_fire') mat = SharedMat.spritePink;
                 Game.getParticle().spawn(this.x + MathUtils.randomRange(-this.radius, this.radius), 2, this.y + MathUtils.randomRange(-this.radius, this.radius), mat, 'trail');
             }
             
@@ -5053,8 +5054,8 @@ class Enemy extends Entity {
         if (Game.player.overdrive && Game.player.essence === 'green' && canInfect) this.infected = true;
     }
     onDeath() {
-       if (this.type === 'crystal') {
-            Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xff0000, 'crystal_fire');
+      if (this.type === 'crystal') {
+            Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xaa00ff, 'crystal_fire'); // Spawn color viola
             Game.addTrauma(1.5); let pCount = AppSettings.isLow ? 5 : (AppSettings.isUltraPC ? 40 : 20);
             for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
             AudioEngine.playShoot('explosive_arrow'); 

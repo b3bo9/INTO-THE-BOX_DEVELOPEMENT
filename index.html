@@ -5149,14 +5149,14 @@ class Enemy extends Entity {
                 if (debris) debris.spawn(_pos, _quat, _scale, child.geometry, cHex, this.radius, this.isElite);
             }
         });
-      // --- INIZIO EFFETTI "JUICY" ---
-        // 1. ONDA D'URTO FISICA SUI NEMICI VICINI
+     // --- INIZIO EFFETTI "JUICY" ---
+        // 1. ONDA D'URTO (Micro-stordimento al posto del teletrasporto)
         let nearby = Game.enemyGrid.findNearby(this, 100);
         for(let j=0; j<nearby.length; j++) {
             let other = nearby[j];
             if (!other.dead && other.id !== this.id && !other.isBoss && !other.isPursuer) {
-                let pushAngle = Math.atan2(other.y - this.y, other.x - this.x);
-                other.push(Math.cos(pushAngle), Math.sin(pushAngle), this.isElite ? 60 : 25);
+                // Invece di spostare le coordinate in un singolo frame, stordiamo i nemici
+                other.slowedTimer = Math.max(other.slowedTimer || 0, 0.4);
             }
         }
         

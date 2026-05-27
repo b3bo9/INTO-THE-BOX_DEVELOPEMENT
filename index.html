@@ -191,7 +191,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 116</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 118</p>
                 </div>
             </div>
         </div>
@@ -2005,7 +2005,7 @@ const UI = {
                 if (Game.corruptedType === 'unstable') typeText = "INSTABILE";
                 if (Game.corruptedType === 'volatile') typeText = "IMPLOSIONE";
                 if (Game.corruptedType === 'combo') typeText = "COMBO";
-                if (Game.corruptedType === 'pursuer') typeText = "INSEGUITORE";
+                if (Game.corruptedType === 'pursuer') typeText = "NEMESI";
                 if (Game.corruptedType === 'acid_pools') typeText = "CORROSIONE";
                 
                 this.els.corruptionLabel.innerText = "- " + typeText;
@@ -2321,13 +2321,14 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
     getDecoy() { let d = this.decoys[this._decoyIdx]; this._decoyIdx = (this._decoyIdx + 1) % this.decoys.length; return d; },
     getDashLine() { let d = this.dashLines[this._dashLineIdx]; this._dashLineIdx = (this._dashLineIdx + 1) % this.dashLines.length; return d; },
 
-    addCombo(amount = 1) { 
-        this.combo += amount * (this.player ? this.player.modifiers.comboStep : 1); 
-        this.combo = Math.min(this.combo, 100); 
-        this.comboMaxTime = 5.0 + (this.player ? this.player.modifiers.comboDecayAdd : 0);
-        this.comboTimer = this.comboMaxTime; 
-        UI.triggerComboAnim(this.combo); 
-    },
+    addCombo(amount = 1) { 
+        this.combo += amount * (this.player ? this.player.modifiers.comboStep : 1); 
+        let maxCombo = (this.isCorrupted && this.corruptedType === 'combo') ? 300 : 100;
+        this.combo = Math.min(this.combo, maxCombo); 
+        this.comboMaxTime = 5.0 + (this.player ? this.player.modifiers.comboDecayAdd : 0);
+        this.comboTimer = this.comboMaxTime; 
+        UI.triggerComboAnim(this.combo); 
+    },
     resetCombo() { this.combo = 0; this.comboTimer = 0; },
     addUltimateCharge(amount) { if (!this.ultimateActive) this.ultimateCharge = Math.min(100, this.ultimateCharge + amount); },
 
@@ -2517,10 +2518,10 @@ let fpsEl = UI.els.fpsValue;
                         attempts++; 
                     }
 
-                    let pursuer = this.getEnemy();
+                   let pursuer = this.getEnemy();
                     pursuer.spawn(pos.x * TILE_SIZE + TILE_SIZE/2, pos.y * TILE_SIZE + TILE_SIZE/2, 'golem', this.floor);
                     pursuer.isPursuer = true;
-            pursuer.speed = pursuer.baseSpeed * 0.65; // Lento e implacabile
+            pursuer.speed = pursuer.baseSpeed * 1; // Velocità aumentata per mantenere reale pressione sul giocatore
             pursuer.aggroRange = 9999; pursuer.aggroRangeSq = 9999 * 9999; // Vede il giocatore ovunque
             
             // Crea ed aggancia gli occhi rossi fisici
@@ -2651,9 +2652,11 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
             if (!this.acidPoolTimer) this.acidPoolTimer = 0;
             this.acidPoolTimer -= dt;
             if (this.acidPoolTimer <= 0) {
-                // Spawna una pozza in un raggio attorno al giocatore
-                let rx = this.player.x + MathUtils.randomRange(-300, 300);
-                let ry = this.player.y + MathUtils.randomRange(-300, 300);
+               // Spawna una pozza con una SAFE ZONE (min 80, max 300) per evitare danni inevitabili
+                let angle = Math.random() * Math.PI * 2;
+                let dist = MathUtils.randomRange(80, 300);
+                let rx = this.player.x + Math.cos(angle) * dist;
+                let ry = this.player.y + Math.sin(angle) * dist;
                 if (!this.map.isSolid(rx, ry)) {
                     // Utilizza la logica espansiva di 'nova_ring' colorata di verde acido
                     let dmg = this.player.stats.maxHp * 0.15;
@@ -4620,7 +4623,7 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         
         let wasDead = this.dead; amount *= this.modifiers.dmgTakenMult; 
         
-     // Dentro Player.takeDamage
+   // Dentro Player.takeDamage
 if (this.modifiers.flowMastery && !wasDead) {
     if (Game.combo > 50) {
         // Sei una macchina da guerra, ma fragile
@@ -4633,10 +4636,18 @@ if (this.modifiers.flowMastery && !wasDead) {
     }
 }
 
+if (Game.isCorrupted && Game.corruptedType === 'combo' && !wasDead) {
+    amount *= 1.50; // La Combo Maledetta punisce severamente chi viene colpito (+50% danni)
+    Game.getFloatingText().spawn(this.x, this.y + 40, "CRITICO!", '#aa00ff', 35, true);
+}
+
         super.takeDamage(amount, source);
         this.invincibilityTimer = 0.2; // <-- 0.2 secondi di invincibilità ad ogni hit
         AudioEngine.playHit('player');
-        Game.resetCombo();
+        // REWORK COMBO CORROTTA: La combo non si azzera se vieni colpito!
+        if (!(Game.isCorrupted && Game.corruptedType === 'combo')) {
+            Game.resetCombo();
+        }
         // --- FLASH ROSSO SULLO SCHERMO ---
         const vignetteEl = document.getElementById('vignette');
         vignetteEl.classList.remove('damage-flash-active');

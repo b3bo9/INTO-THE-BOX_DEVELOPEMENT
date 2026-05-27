@@ -2465,10 +2465,9 @@ let fpsEl = UI.els.fpsValue;
         let frameTime = (timestamp - this.lastTime) / 1000; 
         this.lastTime = timestamp;
         if (frameTime > MAX_TIME_STEP) frameTime = MAX_TIME_STEP; 
-        this.accumulator += frameTime;
+       this.accumulator += frameTime;
         while(this.accumulator >= FIXED_TIME_STEP) {
-            if (this.hitStop > 0) this.hitStop -= FIXED_TIME_STEP; 
-            else this.update(FIXED_TIME_STEP);
+            this.update(FIXED_TIME_STEP);
             this.accumulator -= FIXED_TIME_STEP;
         }
         this.draw(); 
@@ -2599,7 +2598,19 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
     },
     
    update(dt) {
-        if (this.state !== 'PLAYING') return;
+        if (this.state !== 'PLAYING') return;
+
+        // --- JUICE: HIT-STOP DINAMICO ---
+        if (this.hitStop > 0) {
+            this.hitStop -= dt;
+            // Continua ad aggiornare SOLO la grafica, congelando la fisica/IA!
+            this.updateCamera(dt);
+            for (let i = 0, len = this.debris.length; i < len; i++) if(this.debris[i].active) this.debris[i].update(dt);
+            for (let i = 0, len = this.particles.length; i < len; i++) if(this.particles[i].active) this.particles[i].update(dt);
+            for (let i = 0, len = this.floatingTexts.length; i < len; i++) if(this.floatingTexts[i].active) this.floatingTexts[i].update(dt);
+            UI.update();
+            return; // Blocca Player, Nemici e Proiettili
+        }
 
         // --- AGGIORNAMENTO SHADER ERBA INTERATTIVA ---
         InteractiveGrassSystem.uniforms.uTime.value = this.playTime;
@@ -5138,12 +5149,19 @@ class Enemy extends Entity {
                 if (debris) debris.spawn(_pos, _quat, _scale, child.geometry, cHex, this.radius, this.isElite);
             }
         });
-        // --- INIZIO EFFETTI "JUICY" ---
-        // 1. Micro screen-shake ad ogni uccisione
-        // Game.addTrauma(0.15); 
-        
-        // 2. Flash di energia al centro dell'esplosione
-        Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'nova');
+      // --- INIZIO EFFETTI "JUICY" ---
+        // 1. ONDA D'URTO FISICA SUI NEMICI VICINI
+        let nearby = Game.enemyGrid.findNearby(this, 100);
+        for(let j=0; j<nearby.length; j++) {
+            let other = nearby[j];
+            if (!other.dead && other.id !== this.id && !other.isBoss && !other.isPursuer) {
+                let pushAngle = Math.atan2(other.y - this.y, other.x - this.x);
+                other.push(Math.cos(pushAngle), Math.sin(pushAngle), this.isElite ? 60 : 25);
+            }
+        }
+        
+        // 2. Flash di energia al centro dell'esplosione
+        Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'nova');
         
         // 3. Scintille veloci invece del sangue
         let energyMat = SharedMat.spriteRed; // Colore base
@@ -5961,15 +5979,24 @@ class Debris {
     }
 }
 class FloatingText {
-    constructor() { this.active = false; }
-    spawn(x, z, text, color, size, isCrit=false) {
-        this.active = true; this.x = x + MathUtils.randomRange(-15, 15); this.y = z; this.h = 40;
-        this.text = text.replace('!', ''); this.color = color; this.size = size; this.isCrit = isCrit;
-        this.life = isCrit ? 1.0 : 0.7; this.maxLife = this.life; this.vy = isCrit ? 60 : 30;
-    }
-    update(dt) { if(!this.active) return; this.h += this.vy * dt; this.vy -= 100*dt; this.life -= dt; if(this.life <= 0) this.active = false; } 
+    constructor() { this.active = false; }
+    spawn(x, z, text, color, size, isCrit=false) {
+        this.active = true; this.x = x + MathUtils.randomRange(-15, 15); this.y = z; this.h = 40;
+        this.text = text.replace('!', ''); this.color = color; this.size = size; this.isCrit = isCrit;
+        this.life = isCrit ? 1.0 : 0.7; this.maxLife = this.life; 
+        // JUICE: Spinta verso l'alto più forte e spinta laterale casuale
+        this.vy = isCrit ? 100 : 70; 
+        this.vx = MathUtils.randomRange(-50, 50);
+    }
+    update(dt) { 
+        if(!this.active) return; 
+        this.x += this.vx * dt; // Moto parabolico orizzontale
+        this.h += this.vy * dt; 
+        this.vy -= 200 * dt; // Gravità più incisiva
+        this.life -= dt; 
+        if(this.life <= 0) this.active = false; 
+    } 
 }
-
 function clearScene() {
     if (Game.map) {
         // [OTTIMIZZAZIONE 1]: Pulizia profonda della memoria GPU (Memory Leak Fix)

@@ -18,12 +18,19 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
 
     <style>
-        @keyframes gold-pulse {
+       @keyframes gold-pulse {
     0%, 100% { opacity: 1; transform: scale(1); text-shadow: 0 0 5px #fbbf24; }
     50% { opacity: 0.7; transform: scale(1.1); text-shadow: 0 0 15px #fbbf24; }
 }
 .relic-notif {
     animation: gold-pulse 1.5s infinite;
+}
+        @keyframes btn-gold-glow {
+    0%, 100% { box-shadow: 0 0 15px rgba(168,85,247,0.3); border-color: rgba(168,85,247,0.5); }
+    50% { box-shadow: 0 0 30px rgba(251,191,36,0.8); border-color: rgba(251,191,36,1); color: #fbbf24; transform: scale(1.02); }
+}
+.btn-relic-pulse {
+    animation: btn-gold-glow 1.5s infinite !important;
 }
         /* Flash di danno in faccia al giocatore */
         .damage-flash-active {
@@ -1068,6 +1075,11 @@ const UIManager = {
         
         // 1. Aggiorna il contatore e rimuovi la notifica visiva
         Game.lastRelicCount = Game.player.relics.length;
+        
+        // Rimuove l'animazione dorata dal bottone
+        const btnRelics = document.querySelector('#floorScreen button[onclick="UIManager.showCollectedRelics()"]');
+        if (btnRelics) btnRelics.classList.remove('btn-relic-pulse');
+
         const notif = document.getElementById('relic-notif');
         if (notif) {
             notif.remove();
@@ -6280,21 +6292,29 @@ window.prepareFloorScreen = function() {
         btnNext.innerHTML = `<span class="text-xl sm:text-2xl drop-shadow-md">SCENDI PIÙ A FONDO</span>`;
     }
     
-  // --- NOTIFICA RELIQUIE (Controllo se il count è aumentato) ---
+ // --- NOTIFICA RELIQUIE (Controllo se il count è aumentato) ---
     const btnRelics = document.querySelector('#floorScreen button[onclick="UIManager.showCollectedRelics()"]');
     const existingNotif = document.getElementById('relic-notif');
     
     // Se ci sono nuove reliquie rispetto all'ultima volta che abbiamo controllato
     if (Game.player.relics.length > Game.lastRelicCount) {
+        // Fa pulsare l'intero bottone
+        btnRelics.classList.add('btn-relic-pulse');
+        
         if (!existingNotif) {
             let notif = document.createElement('span');
             notif.id = 'relic-notif';
-            notif.className = 'relic-notif text-yellow-400 font-black ml-2';
+            // Rimuoviamo l'animazione al testo per lasciarla solo sul bottone
+            notif.className = 'text-yellow-400 font-black ml-2';
             notif.innerText = "(!)";
             btnRelics.appendChild(notif);
         }
-    } else if (existingNotif) {
-        existingNotif.remove();
+    } else {
+        // Rimuove l'animazione se non ci sono nuove reliquie
+        btnRelics.classList.remove('btn-relic-pulse');
+        if (existingNotif) {
+            existingNotif.remove();
+        }
     }
 };
 window.nextFloor = function(corrupted = false) {

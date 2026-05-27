@@ -1606,7 +1606,7 @@ class Hazard {
     spawn(x, z, radius, duration, damage, colorHex, type='fire') {
         this.active = true; this.x = x; this.y = z; this.life = duration; this.maxLife = duration;
         this.damage = damage; this.type = type;
-     for (let key in this.hitCooldown) delete this.hitCooldown[key];
+    this.hitCooldown = Object.create(null);
         // snake_fire si arma dopo 0.6 secondi (ti dà il tempo di allontanarti dalla scia)
         this.activationTimer = (type === 'enemy_fire') ? 1.0 : (type === 'snake_fire' ? 0.6 : 0.0);
         this.group.position.set(x, 0, z);
@@ -2192,7 +2192,7 @@ _dummyScale: new THREE.Vector3(3, 3, 3),
     width: window.innerWidth, height: window.innerHeight, keys: {}, mouse: { x: 0, y: 0, worldX: 0, worldY: 0, leftDown: false },
     inputs: { left: {x:0, y:0, active:false}, right: {x:0, y:0, active:false} },
     _vec2: new THREE.Vector2(), _vec3: new THREE.Vector3(), _plane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), _vec3Screen: new THREE.Vector3(),
-    _camTarget: new THREE.Vector3(),lastRelicCount: 0,
+    _camTarget: new THREE.Vector3(),
     _particleIdx: 0, _projectileIdx: 0, _hazardIdx: 0, _textIdx: 0, _essenceIdx: 0, _extraLifeIdx: 0, _decoyIdx: 0, _dashLineIdx: 0, _coinIdx: 0,
     lastTime: 0, accumulator: 0, state: 'MENU', floor: 1,lastRelicCount: 0, floorMaxKills: 0, floorKills: 0, totalKills: 0, coins: 0, frameCount: 0, fpsFrames: 0, fpsLastTime: performance.now(),isBossFloor: false,
     lastDrawTime: 0, frameInterval: isTouchDevice ? 1000 / 60 : 0,

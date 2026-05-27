@@ -37,10 +37,12 @@
         input { -webkit-user-select: auto; user-select: auto; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #050508; font-family: 'Impact', 'Georgia', serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-       #game-container canvas {
-    /* Contrasto leggermente ridotto per non affogare i neri, saturazione alzata per far brillare le magie */
-    filter: contrast(1.1) saturate(1.3) brightness(1.1);
-}
+     @media (hover: hover) and (pointer: fine) {
+            #game-container canvas {
+                /* Contrasto e saturazione attivi solo su PC per non massacrare le GPU mobile */
+                filter: contrast(1.1) saturate(1.3) brightness(1.1);
+            }
+        }
         #uiCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
         
         .health-bar-container { background: #111; border: 1px solid #444; border-radius: 4px; overflow: hidden; position: relative; box-shadow: 0 0 10px rgba(0,0,0,0.8); }
@@ -4708,12 +4710,16 @@ class Enemy extends Entity {
         this.telegraphTimer = 0; // <-- NUOVO: Inizializza il preavviso d'attacco
         this.isPursuer = false; // Reset di sicurezza per il pool
 
-        // --- BUGFIX 1: RESET DELLO STATO DAL POOL ---
-        // Previene l'esplosione dei poligoni resettando animazioni e stati residui
-        this.state = 'walk';
-        this.leapTimer = 0;
-        this.mesh.position.y = 0;
-        this.mesh.rotation.set(0, 0, 0); 
+       // --- BUGFIX 1: RESET DELLO STATO DAL POOL ---
+        // Previene l'esplosione dei poligoni resettando animazioni e stati residui
+        this.state = 'walk';
+        this.leapTimer = 0;
+        this.mesh.position.y = 0;
+        this.mesh.rotation.set(0, 0, 0); 
+        this.frozenTimer = 0;
+        this.fireDebuffTimer = 0;
+        this.slowedTimer = 0;
+        this.infected = false;
         // -------------------------------------------
         
         let hpMod = 1, dmgMod = 1, spdMod = 1, color = 0x666666, size = 12;
@@ -6070,12 +6076,6 @@ function restartGame() {
     Game.enemies = []; Game.ultimateCharge = 0; Game.ultimateActive = false;
     if(Game.player) { Game.scene.remove(Game.player.mesh); Game.player = null; }
     Game.setupFloor();
-}
-
-function nextFloor() {
-    AudioEngine.playDescendSound(); document.getElementById('floorScreen').classList.add('hidden');
-    clearScene(); Game.state = 'PLAYING'; Game.floor++; Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + 20); 
-    Game.setupFloor(); if (!Game.isBossFloor) { Game.getFloatingText().spawn(Game.player.x, Game.player.y, `DISCESA AL PIANO ${Game.floor}`, '#FF0000', 40, true); }
 }
 
 function submitScore() {

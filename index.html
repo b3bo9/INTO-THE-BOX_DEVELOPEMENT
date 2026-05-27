@@ -2582,8 +2582,8 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         if (isTouchDevice) document.getElementById('mobile-controls').classList.remove('hidden');
         this.baseDifficultyMult = diffMult || 1.0;
         this.difficultyMult = this.baseDifficultyMult;
-        this.floor = 1; this.totalKills = 0; this.lives = 3; this.playTime = 0; this.coins = 0;
-        if(UI.els.coins) UI.els.coins.innerText = "0";
+        this.floor = 1; this.totalKills = 0; this.lives = 3; this.playTime = 0; this.coins = 0; this.lastRelicCount = 0;
+        if(UI.els.coins) UI.els.coins.innerText = "0";
         this.ultimateCharge = 0; this.ultimateActive = false;
         this.floorEndTimer = 0; this.floorEndTriggered = false;
         this.isCorrupted = false; this.corruptedType = ''; this.corruptedReward = ''; this.standStillTimer = 0;
@@ -6266,8 +6266,8 @@ window.prepareFloorScreen = function() {
         btnNext.innerHTML = `<span class="text-xl sm:text-2xl drop-shadow-md">SCENDI PIÙ A FONDO</span>`;
     }
     
-   // --- NOTIFICA RELIQUIE (Controllo se il count è aumentato) ---
-    const btnRelics = document.querySelector('button[onclick="UIManager.showCollectedRelics()"]');
+  // --- NOTIFICA RELIQUIE (Controllo se il count è aumentato) ---
+    const btnRelics = document.querySelector('#floorScreen button[onclick="UIManager.showCollectedRelics()"]');
     const existingNotif = document.getElementById('relic-notif');
     
     // Se ci sono nuove reliquie rispetto all'ultima volta che abbiamo controllato

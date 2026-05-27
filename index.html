@@ -3364,7 +3364,7 @@ class GameMap {
         }
 
        // 2. ALLOCHIAMO LA MEMORIA PER L'ERBA (OTTIMIZZATA PER MOBILE)
-        const maxGrassClusters = floorCount * (isTouchDevice ? 35 : 250);
+        const maxGrassClusters = floorCount * 250;
         const interactiveGrassMesh = new THREE.InstancedMesh(InteractiveGrassSystem.geo, InteractiveGrassSystem.mat, maxGrassClusters);
         interactiveGrassMesh.receiveShadow = true;
         interactiveGrassMesh.castShadow = !isTouchDevice; 

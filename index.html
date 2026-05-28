@@ -1780,6 +1780,10 @@ class Hazard {
                             // EARLY EXIT & INLINE MATH: Taglia i tempi di esecuzione
                             if (Game.playTime < cd) continue;
                             
+                            // --- FIX IMMUNITÀ SLIME ---
+                            // Gli slime (grandi e piccoli) sono immuni alle pozze viola
+                            if (this.type === 'crystal_fire' && (e.type === 'slime' || e.type === 'slime_mini')) continue;
+                            
                             let dx = this.x - e.x; let dy = this.y - e.y;
                             let radSum = this.radius + e.radius;
                             

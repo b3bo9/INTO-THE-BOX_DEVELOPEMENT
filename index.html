@@ -2533,7 +2533,7 @@ let fpsEl = UI.els.fpsValue;
                    let pursuer = this.getEnemy();
                     pursuer.spawn(pos.x * TILE_SIZE + TILE_SIZE/2, pos.y * TILE_SIZE + TILE_SIZE/2, 'golem', this.floor);
                     pursuer.isPursuer = true;
-            pursuer.speed = pursuer.baseSpeed * 1; // Velocità aumentata per mantenere reale pressione sul giocatore
+            pursuer.speed = pursuer.baseSpeed * 1.5; // Velocità aumentata per mantenere reale pressione sul giocatore
             pursuer.aggroRange = 9999; pursuer.aggroRangeSq = 9999 * 9999; // Vede il giocatore ovunque
             
             // Crea ed aggancia gli occhi rossi fisici

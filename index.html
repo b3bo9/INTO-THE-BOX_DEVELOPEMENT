@@ -1851,25 +1851,27 @@ class Decoy {
 }
 
 class SpatialHashGrid {
-   constructor(bounds, dimensions) {
+    constructor(bounds, dimensions) {
         this.bounds = bounds; this.dimensions = dimensions;
-        // AGGIUNTA: Pre-calcolo dell'inverso per moltiplicare al posto di dividere
         this.invDimX = 1 / dimensions[0]; 
         this.invDimY = 1 / dimensions[1];
         this.cells = new Map();
         this._tempKeys = []; this._tempResults = []; this._seen = new Set();
     }
+    
     insert(client) {
         this._clientKeys(client, this._tempKeys); 
         if (!client.gridKeys) client.gridKeys = [];
         client.gridKeys.length = 0; 
         for(let i=0; i<this._tempKeys.length; i++) {
             let k = this._tempKeys[i]; client.gridKeys.push(k);
-            let cell = this.cells.get(k); if (!cell) { cell = new Set(); this.cells.set(k, cell); }
-            cell.add(client);
+            let cell = this.cells.get(k); 
+            if (!cell) { cell = []; this.cells.set(k, cell); } // FIX: Usa Array invece di Set
+            if (cell.indexOf(client) === -1) cell.push(client);
         }
     }
-   updateClient(client) {
+    
+    updateClient(client) {
         this._clientKeys(client, this._tempKeys);
         let changed = false;
         if (!client.gridKeys || client.gridKeys.length !== this._tempKeys.length) {
@@ -1885,22 +1887,27 @@ class SpatialHashGrid {
             client.gridKeys.length = 0;
             for(let i=0; i<this._tempKeys.length; i++) {
                 let k = this._tempKeys[i]; client.gridKeys.push(k);
-                let cell = this.cells.get(k); if (!cell) { cell = new Set(); this.cells.set(k, cell); }
-                cell.add(client);
+                let cell = this.cells.get(k); 
+                if (!cell) { cell = []; this.cells.set(k, cell); }
+                if (cell.indexOf(client) === -1) cell.push(client);
             }
         }
     }
+    
     remove(client) {
         if (!client.gridKeys) return;
         for(let i=0; i<client.gridKeys.length; i++) {
             let k = client.gridKeys[i]; let cell = this.cells.get(k);
-            if (cell) { cell.delete(client); if (cell.size === 0) this.cells.delete(k); }
+            if (cell) { 
+                let idx = cell.indexOf(client);
+                if (idx !== -1) cell.splice(idx, 1); // FIX: Rimozione da Array zero-cost
+            }
         }
         client.gridKeys.length = 0;
     }
-   findNearby(client, radius) {
+    
+    findNearby(client, radius) {
         this._tempResults.length = 0; this._seen.clear();
-        // OTTIMIZZAZIONE GC: Usiamo un oggetto pre-allocato invece di crearne uno nuovo ogni frame!
         if (!this._searchProxy) this._searchProxy = {x: 0, y: 0, radius: 0};
         this._searchProxy.x = client.x; 
         this._searchProxy.y = client.y; 
@@ -1909,13 +1916,22 @@ class SpatialHashGrid {
         this._clientKeys(this._searchProxy, this._tempKeys);
         for(let i=0; i<this._tempKeys.length; i++) {
             let cell = this.cells.get(this._tempKeys[i]);
-            if (cell) { for (const other of cell) { if (client !== other && !this._seen.has(other.id)) { this._seen.add(other.id); this._tempResults.push(other); } } }
+            if (cell) { 
+                // FIX: Ciclo For classico, ZERO spazzatura generata nella RAM!
+                for (let j = 0; j < cell.length; j++) { 
+                    let other = cell[j];
+                    if (client !== other && !this._seen.has(other.id)) { 
+                        this._seen.add(other.id); 
+                        this._tempResults.push(other); 
+                    } 
+                } 
+            }
         }
         return this._tempResults;
     }
-   _clientKeys(client, outKeys) {
+
+    _clientKeys(client, outKeys) {
         const r = client.radius || 10;
-        // SOSTITUZIONE: Moltiplichiamo invece di dividere!
         const startX = Math.floor((client.x - r - this.bounds[0][0]) * this.invDimX);
         const endX = Math.floor((client.x + r - this.bounds[0][0]) * this.invDimX);
         const startY = Math.floor((client.y - r - this.bounds[0][1]) * this.invDimY);
@@ -2621,7 +2637,7 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
            else if (this.corruptedType === 'pursuer') { 
                 mutatorText = "INSEGUITORE IMPLACABILE"; floorColor = "#aa00ff"; 
                 // Evoca un Golem fantasma lontano dal giocatore
-                setTimeout(() => {
+Game.pursuerTimeout = setTimeout(() => {
                     if (this.state !== 'PLAYING') return;
 
                     // FIX: Troviamo un punto di spawn VALIDO e lontano sulla griglia, 
@@ -4940,13 +4956,12 @@ class Enemy extends Entity {
         if (this.currentType !== type || this.wasElite !== this.isElite) {
             // Eliminiamo correttamente geometrie e materiali dinamici orfani prima di svuotare il gruppo
             this.mesh.traverse((child) => {
-                if (child.isMesh) {
-                    // Distrugge materiali dinamici (es: Scudo Golem o cloni dell'Inseguitore)
+                // FIX: Controlliamo ANCHE se è uno Sprite (es. il glow verde dello slime)
+                if (child.isMesh || child.isSprite) {
                     if (child.material && !Object.values(SharedMat).includes(child.material)) {
                         if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
                         else child.material.dispose();
                     }
-                    // Distrugge geometrie esclusive create fuori da SharedGeo (es: Occhi Inseguitore)
                     if (child.geometry && !Object.values(SharedGeo).includes(child.geometry)) {
                         child.geometry.dispose();
                     }
@@ -6222,6 +6237,7 @@ class FloatingText {
 }
 
 function clearScene() {
+    if (Game.pursuerTimeout) clearTimeout(Game.pursuerTimeout);
     if (Game.map) {
        // [OTTIMIZZAZIONE 1 FIX]: Pulizia VERA della memoria GPU
         Game.map.mapGroup.traverse((child) => {

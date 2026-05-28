@@ -1457,10 +1457,27 @@ const ModelFactory = {
     buildEnemy(type, size, mat) {
         let group = new THREE.Group(); let parts = {}; 
         let darkMat = SharedMat.enemyDark;
-        if (type === 'goblin' || type === 'slime' || type === 'slime_mini') {
+       if (type === 'goblin') {
             let body = new THREE.Mesh(SharedGeo.tetrahedron, mat); body.scale.set(size*1.5, size*1.5, size*1.5); body.position.y = size; body.rotation.x = -Math.PI/4;
             let eye = new THREE.Mesh(SharedGeo.box, SharedMat.enemyEye); eye.scale.set(size*0.8, size*0.2, size*0.2); eye.position.set(0, size*1.2, size*0.8);
             group.add(body); group.add(eye);
+        } else if (type === 'slime' || type === 'slime_mini') {
+            // Corpo: una sfera schiacciata a mo' di gelatina
+            let body = new THREE.Mesh(SharedGeo.sphere, mat); 
+            body.scale.set(size * 1.5, size * 0.8, size * 1.5); 
+            body.position.y = size * 0.8;
+            
+            // Occhi: due sfere scure (vuote e inquietanti)
+            let eyeL = new THREE.Mesh(SharedGeo.sphere, darkMat);
+            eyeL.scale.set(size*0.3, size*0.3, size*0.2);
+            eyeL.position.set(-size*0.6, size*1.1, size*1.3);
+            
+            let eyeR = new THREE.Mesh(SharedGeo.sphere, darkMat);
+            eyeR.scale.set(size*0.3, size*0.3, size*0.2);
+            eyeR.position.set(size*0.6, size*1.1, size*1.3);
+
+            group.add(body); group.add(eyeL); group.add(eyeR);
+            parts.body = body; // Salviamo il riferimento al corpo per animare lo "squash & stretch"
         } else if (type === 'orc') {
             let torso = new THREE.Mesh(SharedGeo.box, mat); torso.scale.set(size*1.8, size*1.4, size); torso.position.y = size*1.4;
             let head = new THREE.Mesh(SharedGeo.box, darkMat); head.scale.set(size*0.8, size*0.8, size*0.8); head.position.set(0, size*2.5, size*0.2);
@@ -4879,14 +4896,22 @@ class Enemy extends Entity {
             if (this.mat) this.mat.dispose();
 
             // OTTIMIZZAZIONE GPU: Usiamo Lambert su Touch (luce calcolata per vertice, velocissimo) anziché Phong.
-            const EnemyMatClass = isTouchDevice ? THREE.MeshLambertMaterial : THREE.MeshPhongMaterial;
-            this.mat = type === 'crystal' ? 
-                new EnemyMatClass({color: 0x000000, emissive: color}) : 
-                new EnemyMatClass({
-                    color: color, 
-                    shininess: AppSettings.isUltraPC ? 60 : 30
-                });
+           const EnemyMatClass = isTouchDevice ? THREE.MeshLambertMaterial : THREE.MeshPhongMaterial;
+            this.mat = type === 'crystal' ? 
+                new EnemyMatClass({color: 0x000000, emissive: color}) : 
+                new EnemyMatClass({
+                    color: color, 
+                    shininess: AppSettings.isUltraPC ? 60 : 30
+                });
             if (this.isElite) this.mat.emissive.setHex(0x440000);
+            
+            // --- MODIFICA SLIME: Materiale gelatinoso e fosforescente ---
+            if (type === 'slime' || type === 'slime_mini') {
+                this.mat.emissive.setHex(color);
+                this.mat.emissiveIntensity = 0.35; // Leggero bagliore endogeno
+                this.mat.transparent = true;
+                this.mat.opacity = 0.90; // Rende il modello leggermente traslucido
+            }
 
             let modelData = ModelFactory.buildEnemy(type, size, this.mat);
             this.mesh.add(modelData.group); 
@@ -4970,6 +4995,17 @@ class Enemy extends Entity {
         if (this.type === 'goblin') { this.mesh.rotation.x += dt * 15; this.mesh.rotation.y += dt * 10; }
         if (this.type === 'crystal') { this.modelParts.ring.rotation.x += dt; this.modelParts.gem.rotation.y -= dt; }
         
+        // --- ANIMAZIONE SLIME: Squash & Stretch basato sul tempo ---
+        if (this.type === 'slime' || this.type === 'slime_mini') {
+            if (this.modelParts && this.modelParts.body && this.speed > 0) {
+                // Usa il tempo e il thinkOffset per farli pulsare in modo asincrono l'uno dall'altro
+                let throb = Math.sin(Game.playTime * 12 + this.thinkOffset); 
+                this.modelParts.body.scale.y = (this.radius * 0.8) + (throb * this.radius * 0.2);
+                this.modelParts.body.scale.x = (this.radius * 1.5) - (throb * this.radius * 0.15);
+                this.modelParts.body.scale.z = (this.radius * 1.5) - (throb * this.radius * 0.15);
+            }
+        }
+        
         if (this.slowedTimer > 0) { 
             this.slowedTimer -= dt; 
             this.speed = this.baseSpeed * 0.5; 
@@ -5041,8 +5077,8 @@ class Enemy extends Entity {
         }
         // --- FINE AI STAGGERING ---
 
-        // Rotazione visiva fluida (Eseguita ogni frame)
-        if (this.type === 'leaper' || this.type === 'orc' || this.type === 'skeleton_archer' || this.type === 'fire_demon' || this.type === 'boss') {
+       // Rotazione visiva fluida (Eseguita ogni frame)
+        if (this.type === 'leaper' || this.type === 'orc' || this.type === 'skeleton_archer' || this.type === 'fire_demon' || this.type === 'boss' || this.type === 'slime' || this.type === 'slime_mini') {
             this.mesh.rotation.y = -this.angle + Math.PI / 2;
         } else if (this.type === 'golem') {
             // Il Golem ruota molto lentamente, permettendo al giocatore di agirargli alle spalle

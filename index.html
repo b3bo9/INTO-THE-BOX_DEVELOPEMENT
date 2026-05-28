@@ -5923,17 +5923,18 @@ class Projectile {
         for(let i=0; i<count; i++) Game.getParticle().spawn(this.x, 15, this.y, pMat, 'spark');
         if (this.type === 'fire_shape') Game.getHazard().spawn(this.x, this.y, 45, 8.0, this.damage, 0xff3300, 'enemy_fire');
         if (this.type === 'explosive_arrow') {
-            Game.addTrauma(0.3); let nearby = Game.enemyGrid.findNearby(this, 120);
-            for(let i=0, len=nearby.length; i<len; i++) { let e = nearby[i]; if (!e.dead && MathUtils.distanceSq(this, e) < 120*120) e.takeDamage(this.damage * 1.5, Game.player, false, false); }
-            
-            // --- NUOVO: Spawna sassi volanti dall'esplosione! ---
-            let dCount = AppSettings.isLow ? 2 : (isTouchDevice ? 5 : 10);
-            Game._vec3Screen.set(this.x, 2, this.y); // Ricicliamo la variabile globale
-            for(let d=0; d<dCount; d++) {
-                let deb = Game.getDebris();
-                if (deb) deb.spawn(Game._vec3Screen, Game._dummyQuat, Game._dummyScale, SharedGeo.rockDebris, 0x4a3b2c, 10, false);
-            }
-        }
+                Game.addTrauma(0.3); let nearby = Game.enemyGrid.findNearby(this, 120);
+                for(let i=0, len=nearby.length; i<len; i++) { let e = nearby[i]; if (!e.dead && MathUtils.distanceSq(this, e) < 120*120) e.takeDamage(this.damage * 1.5, Game.player, false, false); }
+                
+                // Sostituiamo i detriti fisici con un'esplosione di particelle per evitare confusione
+                let pCount = AppSettings.isLow ? 4 : (isTouchDevice ? 8 : 15);
+                for(let i=0; i<pCount; i++) {
+                    let a = (Math.PI * 2 / pCount) * i;
+                    Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteRed, 'flame', a);
+                }
+                // Aggiunge un flash di luce centrale
+                Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'nova');
+            }
     }
 }
 class Particle {

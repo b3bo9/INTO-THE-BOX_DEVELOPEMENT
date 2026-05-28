@@ -816,6 +816,36 @@ const AudioEngine = {
             osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination); osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.5);
         });
     },
+    playRelicDrop() {
+        if (!this.ctx || this.sfxMuted) return;
+        let t = this.ctx.currentTime;
+        
+        // Un arpeggio maggiore cristallino e brillante
+        const notes = [440, 554.37, 659.25, 880, 1108.73]; 
+        
+        notes.forEach((freq, i) => {
+            let osc = this.ctx.createOscillator(); 
+            let gain = this.ctx.createGain();
+            osc.type = 'sine'; // Suono puro tipo "campanella/gemma"
+            osc.frequency.value = freq;
+            
+            // Ritardo per ogni nota per creare un arpeggio velocissimo
+            let startTime = t + i * 0.05;
+            
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 1.2); // Risonanza lunga
+            
+            osc.connect(gain); 
+            gain.connect(this.ctx.destination);
+            
+            osc.start(startTime); 
+            osc.stop(startTime + 1.2);
+        });
+        
+        // Aggiungiamo un leggero "whoosh" magico di sottofondo
+        this.playNoise(0.6, 'high', 0.05);
+    },
     playPerfectDodge() {
         if (!this.ctx || this.sfxMuted) return;
         let t = this.ctx.currentTime; let dur = 0.35;
@@ -5448,9 +5478,11 @@ class Enemy extends Entity {
                     dropRelic.apply(Game.player);
                     Game.player.relics.push(dropRelic);
                     
-                    // Effetti visivi e sonori epici
+                   // Effetti visivi e sonori epici
                     Game.getFloatingText().spawn(this.x, this.y + 30, "RELIQUIA TROVATA: " + dropRelic.name.toUpperCase(), '#fbbf24', 45, true);
-                    AudioEngine.playLevelUp(); 
+                    
+                    // FIX: Usa il nuovo suono dedicato!
+                    AudioEngine.playRelicDrop(); 
                     
                     let pCount = AppSettings.isLow ? 10 : 40;
                     for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteLevel, 'spark');

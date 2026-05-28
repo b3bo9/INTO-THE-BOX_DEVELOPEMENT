@@ -2510,11 +2510,12 @@ let fpsEl = UI.els.fpsValue;
            if (this.corruptedType === 'darkness') { 
                 mutatorText = "OSCURITÀ OPPRIMENTE"; floorColor = "#aa00ff"; 
                 this.scene.fog.color.setHex(0x000000); 
-                // Stringiamo ferocemente i bordi per scurire lo schermo attorno al giocatore
-                this.scene.fog.near = camDist - 250; 
-                this.scene.fog.far = camDist + 50; 
+                // FIX: Allontaniamo l'inizio della nebbia per compensare l'angolo della telecamera.
+                // In questo modo il personaggio e la sua testa sono nel centro perfetto della zona pulita.
+                this.scene.fog.near = camDist - 50; 
+                this.scene.fog.far = camDist + 350; 
                 this.scene.background.setHex(0x000000);
-                if (this.dirLight) this.dirLight.intensity = 0.05; // Luce esterna quasi inesistente
+                if (this.dirLight) this.dirLight.intensity = 0.05;
             }
             else if (this.corruptedType === 'acid_pools') { mutatorText = "POZZE CORROSIVE"; floorColor = "#99ff00"; }
             else if (this.corruptedType === 'unstable') { mutatorText = "PAVIMENTO INSTABILE"; floorColor = "#ff3300"; this.standStillTimer = 0; }
@@ -4146,9 +4147,10 @@ class Player extends Entity {
            this.light.intensity = 4.0; // Massima visibilità in modalità Ultimate
             this.staffGemMat.emissive.setHex(0xffffff); 
         }
-        if (Game.isCorrupted && Game.corruptedType === 'darkness') {
-            this.light.intensity *= 0.7; // La teniamo un po' più forte
-            this.light.distance = 600; // Estendiamo il raggio per vedere un'area decente attorno a noi
+       if (Game.isCorrupted && Game.corruptedType === 'darkness') {
+            // FIX: Sovrascriviamo con una luce intensa e raggio ampio per non far inghiottire il modello dal buio
+            this.light.intensity = 2.5; 
+            this.light.distance = isTouchDevice ? 800 : 1200; 
         }
     }
 

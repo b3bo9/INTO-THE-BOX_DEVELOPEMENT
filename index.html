@@ -100,7 +100,12 @@
     animation: pulse-blood-opacity 0.8s infinite ease-in-out;
 }
        
-
+.death-fade-active {
+    opacity: 1 !important;
+    background: rgba(15, 0, 0, 0.95) !important;
+    transition: all 1.5s ease-out !important;
+    z-index: 90 !important;
+}
         @keyframes pulse-blood-opacity {
             0%, 100% { opacity: 0.3; }
             50% { opacity: 1; }
@@ -4668,22 +4673,51 @@ if (Game.isCorrupted && Game.corruptedType === 'combo' && !wasDead) {
         vignetteEl.classList.add('damage-flash-active');
 
         if (!wasDead) {
-            Game.addTrauma(0.8);
-            if (this.stats.hp <= 0) { 
+            Game.addTrauma(0.8);
+            if (this.stats.hp <= 0) {
+                this.dead = true;
+                Game.lives--;
                 AudioEngine.stopAllMusic();
-                Game.lives--; this.dead = true; Game.state = 'DEAD'; 
-                let ds = document.getElementById('deathScreen');
-                ds.classList.remove('hidden'); document.getElementById('score-save-container').classList.add('hidden');
-                if (Game.lives > 0) { 
-                    AudioEngine.playDeathMusic();
-                    ds.style.backgroundImage = "url('bg_morte.png')";
-                    document.getElementById('deathTitle').innerText = "SEI CADUTO"; document.getElementById('deathSubtitle').innerText = `Vite rimaste: ${Game.lives}`; document.getElementById('deathQuote').classList.add('hidden'); document.getElementById('btn-respawn').classList.remove('hidden'); document.getElementById('btn-restart').classList.add('hidden'); 
-                } else {
-                    AudioEngine.playGameOverSound();
-                    ds.style.backgroundImage = "url('bg_box.png')";
-                    document.getElementById('deathTitle').innerText = "R I P"; document.getElementById('deathSubtitle').innerText = `Piano: ${Game.floor} | Demoni: ${Game.totalKills} | Tempo: ${ScoreManager.formatTime(Game.playTime)}`; document.getElementById('deathQuote').innerText = `"${DEATH_QUOTES[Math.floor(Math.random() * DEATH_QUOTES.length)]}"`; document.getElementById('deathQuote').classList.remove('hidden'); document.getElementById('btn-respawn').classList.add('hidden'); document.getElementById('btn-restart').classList.remove('hidden'); document.getElementById('score-save-container').classList.remove('hidden'); document.getElementById('playerName').value = '';
-                    let btnSave = document.getElementById('btn-save-score'); btnSave.innerText = 'SALVA PUNTEGGIO'; btnSave.disabled = false; btnSave.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-700'); btnSave.classList.add('bg-red-900', 'hover:bg-red-700');
+
+                // 1. EFFETTO MORTE DRAMMATICO
+                Game.addTrauma(3.0); // Shake violento della telecamera
+                Game.hitStop = 0.2; // Freeze-frame per enfatizzare l'impatto
+                
+                let pCount = AppSettings.isLow ? 20 : 60;
+                for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
+                Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'nova');
+
+                // 2. Nasconde il giocatore (e la sua luce magica, facendo calare il buio!)
+                this.mesh.children.forEach(child => child.visible = false);
+
+                // 3. Avvia la dissolvenza rossa dello schermo
+                let bloodVig = document.getElementById('blood-vignette');
+                if (bloodVig) {
+                    bloodVig.classList.remove('vignette-low-hp-active');
+                    bloodVig.classList.add('death-fade-active');
                 }
+
+                // 4. Ritardo di 1.5 secondi prima della schermata reale
+                setTimeout(() => {
+                    // Controlla che nel frattempo il player non abbia riavviato dal menu
+                    if (!this.dead) return; 
+                    
+                    Game.state = 'DEAD';
+                    let ds = document.getElementById('deathScreen');
+                    ds.classList.remove('hidden');
+                    document.getElementById('score-save-container').classList.add('hidden');
+
+                    if (Game.lives > 0) {
+                        AudioEngine.playDeathMusic();
+                        ds.style.backgroundImage = "url('bg_morte.png')";
+                        document.getElementById('deathTitle').innerText = "SEI CADUTO"; document.getElementById('deathSubtitle').innerText = `Vite rimaste: ${Game.lives}`; document.getElementById('deathQuote').classList.add('hidden'); document.getElementById('btn-respawn').classList.remove('hidden'); document.getElementById('btn-restart').classList.add('hidden');
+                    } else {
+                        AudioEngine.playGameOverSound();
+                        ds.style.backgroundImage = "url('bg_box.png')";
+                        document.getElementById('deathTitle').innerText = "R I P"; document.getElementById('deathSubtitle').innerText = `Piano: ${Game.floor} | Demoni: ${Game.totalKills} | Tempo: ${ScoreManager.formatTime(Game.playTime)}`; document.getElementById('deathQuote').innerText = `"${DEATH_QUOTES[Math.floor(Math.random() * DEATH_QUOTES.length)]}"`; document.getElementById('deathQuote').classList.remove('hidden'); document.getElementById('btn-respawn').classList.add('hidden'); document.getElementById('btn-restart').classList.remove('hidden'); document.getElementById('score-save-container').classList.remove('hidden'); document.getElementById('playerName').value = '';
+                        let btnSave = document.getElementById('btn-save-score'); btnSave.innerText = 'SALVA PUNTEGGIO'; btnSave.disabled = false; btnSave.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-700'); btnSave.classList.add('bg-red-900', 'hover:bg-red-700');
+                    }
+                }, 1500);
             }
         }
     }
@@ -6059,6 +6093,7 @@ function clearScene() {
 
 function respawnPlayer() {
     document.getElementById('deathScreen').classList.add('hidden');
+    document.getElementById('blood-vignette').classList.remove('death-fade-active');
     let pos = Game.map.getRandomFloorTile(); let attempts = 0;
     while(attempts < 100) {
         let isSafe = true;
@@ -6084,7 +6119,11 @@ function respawnPlayer() {
 }
 
 function goToMainMenu() {
-    document.getElementById('deathScreen').classList.add('hidden'); document.getElementById('hud').classList.add('hidden'); document.getElementById('mobile-controls').classList.add('hidden'); document.getElementById('mainMenu').classList.remove('hidden');
+    document.getElementById('deathScreen').classList.add('hidden');
+    document.getElementById('blood-vignette').classList.remove('death-fade-active');
+    document.getElementById('hud').classList.add('hidden');
+    document.getElementById('mobile-controls').classList.add('hidden');
+    document.getElementById('mainMenu').classList.remove('hidden');
     clearScene(); Game.state = 'MENU'; AudioEngine.stopAllMusic(); AudioEngine.playMenuMusic();
 }
 
@@ -6098,6 +6137,7 @@ function startGameFromMenu() {
 
 function restartGame() {
     document.getElementById('deathScreen').classList.add('hidden');
+    document.getElementById('blood-vignette').classList.remove('death-fade-active');
     clearScene(); Game.state = 'PLAYING'; Game.floor = 1; Game.totalKills = 0; Game.lives = 3; Game.playTime = 0;
     Game.enemies = []; Game.ultimateCharge = 0; Game.ultimateActive = false;
     if(Game.player) { Game.scene.remove(Game.player.mesh); Game.player = null; }

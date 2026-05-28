@@ -6247,24 +6247,24 @@ function clearScene() {
     
     for(let i=0, len=Game.debris.length; i<len; i++) { Game.debris[i].active = false; Game.debris[i].mesh.visible = false; }
     
-   // Pulizia totale e aggressiva per QUALSIASI nemico rimasto a schermo a fine piano/riavvio
+  // Pulizia profonda SOLO per i Boss (che sono istanze uniche, fuori dal pool)
     for(let i=0, len=Game.enemies.length; i<len; i++) { 
         let e = Game.enemies[i];
         
-        // Se non è stato ucciso "ufficialmente" ma stiamo svuotando la scena:
-        e.mesh.traverse(child => {
-            if (child.isMesh) {
-                if (child.geometry && !Object.values(SharedGeo).includes(child.geometry)) child.geometry.dispose();
-                if (child.material && !Object.values(SharedMat).includes(child.material)) {
-                    if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
-                    else child.material.dispose();
+        if (e.isBoss) {
+            e.mesh.traverse(child => {
+                if (child.isMesh) {
+                    if (child.geometry && !Object.values(SharedGeo).includes(child.geometry)) child.geometry.dispose();
+                    if (child.material && !Object.values(SharedMat).includes(child.material)) {
+                        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                        else child.material.dispose();
+                    }
                 }
-            }
-        });
-        
-        if (e.mat) e.mat.dispose(); 
-        Game.scene.remove(e.mesh);
-        if (e.shadowMesh) { e.shadowMesh.visible = false; Game.scene.remove(e.shadowMesh); }
+            });
+            if (e.mat) e.mat.dispose(); 
+            Game.scene.remove(e.mesh);
+            if (e.shadowMesh) { e.shadowMesh.visible = false; Game.scene.remove(e.shadowMesh); }
+        }
     }
     
     // [OTTIMIZZAZIONE 2]: Svuota l'array dei nemici per evitare il loop su cadaveri "Zombie"

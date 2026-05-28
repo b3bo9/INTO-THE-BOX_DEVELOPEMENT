@@ -203,7 +203,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 118</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 120</p>
                 </div>
             </div>
         </div>
@@ -639,7 +639,16 @@ const AppSettings = {
 
 // Essendo modificate dinamicamente, queste variabili non possono essere costanti.
 
+const Haptics = {
+    vibrate(pattern) {
+        // Funziona solo su dispositivi touch con l'API supportata
+        if (isTouchDevice && navigator.vibrate) {
+            try { navigator.vibrate(pattern); } catch(e) {}
+        }
+    }
+};
 
+const AudioEngine = {
 const AudioEngine = {
     ctx: null, musicNode: null, noiseBuffer: null, initialized: false, musicMuted: false, sfxMuted: false,
     menuBGM: (() => { let a = new Audio('The_Iron_Pulse.mp3'); a.loop = true; a.preload = 'auto'; return a; })(),
@@ -1445,7 +1454,7 @@ const ModelFactory = {
     buildEnemy(type, size, mat) {
         let group = new THREE.Group(); let parts = {}; 
         let darkMat = SharedMat.enemyDark;
-        if (type === 'goblin') {
+        if (type === 'goblin' || type === 'slime' || type === 'slime_mini') {
             let body = new THREE.Mesh(SharedGeo.tetrahedron, mat); body.scale.set(size*1.5, size*1.5, size*1.5); body.position.y = size; body.rotation.x = -Math.PI/4;
             let eye = new THREE.Mesh(SharedGeo.box, SharedMat.enemyEye); eye.scale.set(size*0.8, size*0.2, size*0.2); eye.position.set(0, size*1.2, size*0.8);
             group.add(body); group.add(eye);
@@ -2353,6 +2362,7 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         if (this.ultimateCharge >= 100 && !this.ultimateActive) {
             this.ultimateCharge = 0; this.ultimateActive = true; this.ultimateTimer = 10.0 + this.player.modifiers.ascensionDurationAdd; 
             this.addTrauma(1.0); this.hitStop = 0.3; AudioEngine.playUltimate();
+            Haptics.vibrate([50, 30, 50, 30, 80]);
             this.getFloatingText().spawn(this.player.x, this.player.y, "ASCENSIONE!", '#00DDFF', 40, true);
             let pCount = AppSettings.isLow ? 4 : (isTouchDevice ? 10 : (AppSettings.isUltraPC ? 60 : 30));
             for(let i=0; i<pCount; i++) this.getParticle().spawn(this.player.x, 20, this.player.y, SharedMat.spriteBlue, 'trail');
@@ -2396,11 +2406,12 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         // BILANCIAMENTO SPAWN: Progressione molto più dolce
         if (difficulty >= 1 && r > 0.4) type = 'orc';
         if (difficulty >= 1 && r > 0.6) type = 'skeleton_archer'; 
-        if (difficulty > 2.5 && r > 0.75) type = 'mage';            
-        if (difficulty > 3.0 && r > 0.8) type = 'leaper';
-        if (difficulty > 3.5 && r > 0.85) type = 'golem'; 
-        if (difficulty > 4.0 && r > 0.90) type = 'pyromancer';
-        if (difficulty > 5.0 && r > 0.94) type = 'fire_demon';        
+        if (difficulty >= 1.5 && r > 0.70) type = 'slime';
+        if (difficulty > 2.5 && r > 0.80) type = 'mage';            
+        if (difficulty > 3.0 && r > 0.85) type = 'leaper';
+        if (difficulty > 3.5 && r > 0.90) type = 'golem'; 
+        if (difficulty > 4.0 && r > 0.94) type = 'pyromancer';
+        if (difficulty > 5.0 && r > 0.97) type = 'fire_demon';
         
         let enemy = this.getEnemy();
         enemy.spawn(x, y, type, difficulty);
@@ -2460,24 +2471,49 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
             this.lastDrawTime = timestamp - (elapsed % this.frameInterval);
         }
         // --- FINE CAP FPS ---
-// --- INIZIO CALCOLO FPS (AGGIUNGI QUESTO BLOCCO) ---
+// --- INIZIO CALCOLO FPS E RISOLUZIONE DINAMICA ---
         this.fpsFrames++;
         if (timestamp > this.fpsLastTime + 1000) {
             let fps = Math.round((this.fpsFrames * 1000) / (timestamp - this.fpsLastTime));
-let fpsEl = UI.els.fpsValue;
+            let fpsEl = UI.els.fpsValue;
             
             if (fpsEl) {
                 fpsEl.innerText = fps;
-                // Colori dinamici in base alle prestazioni
                 if (fps >= 50) fpsEl.className = "text-green-400";
                 else if (fps >= 30) fpsEl.className = "text-yellow-400";
                 else fpsEl.className = "text-red-500 animate-pulse";
             }
             
+            // DRS: Abbassa la risoluzione se lagga, la rialza se è fluido (solo Mobile)
+            if (isTouchDevice && !AppSettings.isLow) {
+                if (!this.drsHistory) this.drsHistory = [];
+                this.drsHistory.push(fps);
+                if (this.drsHistory.length > 3) this.drsHistory.shift(); // Tieni solo gli ultimi 3 secondi
+                
+                if (this.drsHistory.length === 3) {
+                    let avgFps = (this.drsHistory[0] + this.drsHistory[1] + this.drsHistory[2]) / 3;
+                    let currentRatio = this.renderer.getPixelRatio();
+                    
+                    // Se gli FPS medi sono bassi e possiamo ancora scalare giù
+                    if (avgFps < 45 && currentRatio > 0.5) {
+                        this.renderer.setPixelRatio(Math.max(0.5, currentRatio - 0.2));
+                        this.drsHistory = []; // Reset storico per far stabilizzare
+                    } 
+                    // Se gli FPS sono perfetti e possiamo migliorare la grafica
+                    else if (avgFps >= 58 && currentRatio < 0.9) {
+                        let maxRatio = Math.min(window.devicePixelRatio, 0.9);
+                        if (currentRatio < maxRatio) {
+                            this.renderer.setPixelRatio(Math.min(maxRatio, currentRatio + 0.1));
+                            this.drsHistory = [];
+                        }
+                    }
+                }
+            }
+            
             this.fpsLastTime = timestamp;
             this.fpsFrames = 0;
         }
-        // --- FINE CALCOLO FPS ---
+        // --- FINE CALCOLO FPS E RISOLUZIONE DINAMICA ---
         if (!this.lastTime) this.lastTime = timestamp; 
         let frameTime = (timestamp - this.lastTime) / 1000; 
         this.lastTime = timestamp;
@@ -3814,6 +3850,7 @@ class Entity {
         
         if (source === Game.player) {
             AudioEngine.playHit(isCrit ? 'crit' : 'enemy');
+            Haptics.vibrate(isCrit ? [20, 10, 20] : 15);
         }
 
         if (isCrit && source === Game.player) {Game.addTrauma(0.5); Game.addCombo(); } else if (source === Game.player) { Game.addCombo(); }
@@ -4664,6 +4701,7 @@ if (Game.isCorrupted && Game.corruptedType === 'combo' && !wasDead) {
         super.takeDamage(amount, source);
         this.invincibilityTimer = 0.2; // <-- 0.2 secondi di invincibilità ad ogni hit
         AudioEngine.playHit('player');
+       Haptics.vibrate([40, 30, 40]);
         // REWORK COMBO CORROTTA: La combo non si azzera se vieni colpito!
         if (!(Game.isCorrupted && Game.corruptedType === 'combo')) {
             Game.resetCombo();
@@ -4785,6 +4823,8 @@ class Enemy extends Entity {
         let hpMod = 1, dmgMod = 1, spdMod = 1, color = 0x666666, size = 12;
         
         if (type === 'goblin') { color = 0x33FF00; size = 10; spdMod = 1.8; hpMod = 0.5; dmgMod = 1.2; this.aggroRange = 500; this.attackRange = 40; } 
+        else if (type === 'slime') { color = 0x00FF66; size = 15; spdMod = 0.9; hpMod = 0.9; dmgMod = 1.0; this.aggroRange = 500; this.attackRange = 40; } 
+        else if (type === 'slime_mini') { color = 0x33FF99; size = 8; spdMod = 1.5; hpMod = 0.3; dmgMod = 0.5; this.aggroRange = 600; this.attackRange = 30; } 
         else if (type === 'orc') { color = 0x8c564b; size = 18; spdMod = 0.8; hpMod = 1.6; dmgMod = 2.5; this.aggroRange = 450; this.attackRange = 55; } 
         else if (type === 'skeleton_archer') { color = 0xaaaaaa; size = 14; spdMod = 1.1; hpMod = 0.4; dmgMod = 1.5; this.aggroRange = 700; this.attackRange = 400; } 
         else if (type === 'leaper') { color = 0xaa00aa; size = 12; spdMod = 0.7; hpMod = 1.0; dmgMod = 2.2; this.aggroRange = 600; this.attackRange = 250; this.leapCooldown = 0; this.state = 'walk'; } 
@@ -5189,6 +5229,21 @@ class Enemy extends Entity {
                 if (debris) debris.spawn(_pos, _quat, _scale, child.geometry, cHex, this.radius, this.isElite);
             }
         });
+        // --- SPLIT DELLO SLIME ---
+        if (this.type === 'slime') {
+            for (let i = 0; i < 2; i++) {
+                let sx = this.x + MathUtils.randomRange(-15, 15);
+                let sy = this.y + MathUtils.randomRange(-15, 15);
+                if (!Game.map.isSolid(sx, sy)) {
+                    let mini = Game.getEnemy();
+                    mini.spawn(sx, sy, 'slime_mini', this.level);
+                    Game.enemies.push(mini); 
+                    Game.enemyGrid.insert(mini);
+                    Game.floorMaxKills++; // Aggiunge le kill extra necessarie per aprire il portale!
+                }
+            }
+        }
+        
         // --- INIZIO EFFETTI "JUICY" ---
         // 1. Micro screen-shake ad ogni uccisione
         // Game.addTrauma(0.15); 

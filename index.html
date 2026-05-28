@@ -5274,16 +5274,16 @@ class Enemy extends Entity {
                 if (debris) debris.spawn(_pos, _quat, _scale, child.geometry, cHex, this.radius, this.isElite);
             }
         });
-        // --- SPLIT E POZZA DELLO SLIME ---
+       // --- SPLIT E POZZA DELLO SLIME ---
         if (this.type === 'slime' || this.type === 'slime_mini') {
-            // 1. Entrambi (grandi e piccoli) lasciano una pozza acida a terra
-            // La pozza del grande è più larga. Dura 4 secondi e rallenta/danneggia il giocatore.
+            // 1. Entrambi (grandi e piccoli) lasciano una pozza viola a terra
+            // Usiamo 'crystal_fire' che danneggia sia i nemici (poolDamage) sia il giocatore.
             let poolRadius = this.type === 'slime' ? 45 : 25;
             let poolDamage = this.stats.maxDmg * 0.4; 
-            Game.getHazard().spawn(this.x, this.y, poolRadius, 4.0, poolDamage, 0x33FF00, 'poison');
+            Game.getHazard().spawn(this.x, this.y, poolRadius, 4.0, poolDamage, 0xaa00ff, 'crystal_fire');
             
-            // Scoppio visivo e sonoro verde acido
-            Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteGreen, 'nova');
+            // Scoppio visivo e sonoro (usiamo lo sprite rosa/viola per abbinarlo all'hazard)
+            Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spritePink, 'nova');
             AudioEngine.playShoot('flame');
 
             // 2. Solo lo Slime GRANDE si divide in due piccoli

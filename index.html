@@ -5418,11 +5418,16 @@ class Enemy extends Entity {
         if (Game.lives > 3) lifeChance = lifeChance / (1 + (Game.lives - 3) * 0.5);
         if (Game.player.modifiers.noHealDrops) lifeChance = 0;
         
-        // --- NUOVO SISTEMA DROP E SCATTER ANTISOVRAPPOSIZIONE ---
+       // --- NUOVO SISTEMA DROP E SCATTER ANTISOVRAPPOSIZIONE ---
         let itemsToSpawn = [];
+        
+        // Identifichiamo se il nemico è un mini-slime
+        let isMini = (this.type === 'slime_mini');
 
         // 1. Calcolo Monete (Migliorate per supportare il nuovo negozio scalabile)
-       let coinChance = this.isBoss ? 1.0 : (this.isElite ? 0.70 : 0.20);
+        // Se è un mini-slime, la probabilità crolla dal 20% al 5%
+        let coinChance = this.isBoss ? 1.0 : (this.isElite ? 0.70 : (isMini ? 0.05 : 0.20));
+        
         if (Math.random() < coinChance) {
             let count = this.isBoss ? MathUtils.randomInt(2, 4) : (this.isElite ? MathUtils.randomInt(1, 3) : 1);
             if (Game.isCorrupted && Game.corruptedReward === 'coins') count *= 2; // DOPPIE MONETE!
@@ -5430,10 +5435,12 @@ class Enemy extends Entity {
         }
 
         // 2. Calcolo Vita / Essenze (mutuamente esclusivi per non inondare lo schermo)
-        if (Math.random() < lifeChance) { 
+        // I mini-slime non possono droppare cuori vitale (!isMini) per evitare farming di cure
+        if (Math.random() < lifeChance && !isMini) { 
             itemsToSpawn.push('life'); 
         } else {
-            let essenceChance = this.isElite ? 1.0 : (0.15 + (Game.combo * 0.004));
+            // La probabilità di droppare essenze per i mini scende al 2%
+            let essenceChance = this.isElite ? 1.0 : (isMini ? 0.02 : (0.15 + (Game.combo * 0.004)));
             if (Math.random() < essenceChance) { 
                 itemsToSpawn.push('essence'); 
                 if (this.isElite && Math.random() < 0.4) itemsToSpawn.push('essence');

@@ -2544,9 +2544,10 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
                 else fpsEl.className = "text-red-500 animate-pulse";
             }
             
-            // DRS: Abbassa la risoluzione se lagga, la rialza se è fluido (solo Mobile)
+           // DRS: Abbassa la risoluzione se lagga, la rialza se è fluido (solo Mobile)
             if (isTouchDevice && !AppSettings.isLow) {
-                if (!this.drsHistory) this.drsHistory.length = 0;
+                // FIX: Inizializza l'array correttamente la prima volta
+                if (!this.drsHistory) this.drsHistory = []; 
                 this.drsHistory.push(fps);
                 if (this.drsHistory.length > 3) this.drsHistory.shift(); // Tieni solo gli ultimi 3 secondi
                 
@@ -2557,7 +2558,7 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
                     // Se gli FPS medi sono bassi e possiamo ancora scalare giù
                     if (avgFps < 45 && currentRatio > 0.5) {
                         this.renderer.setPixelRatio(Math.max(0.5, currentRatio - 0.2));
-                        this.drsHistory.length = 0; // Reset storico per far stabilizzare
+                        this.drsHistory.length = 0; // Reset storico per far stabilizzare (QUI è corretto usare .length = 0)
                     } 
                     // Se gli FPS sono perfetti e possiamo migliorare la grafica
                     else if (avgFps >= 58 && currentRatio < 0.9) {

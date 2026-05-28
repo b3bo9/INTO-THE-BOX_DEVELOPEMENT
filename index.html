@@ -2546,7 +2546,7 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
             
             // DRS: Abbassa la risoluzione se lagga, la rialza se è fluido (solo Mobile)
             if (isTouchDevice && !AppSettings.isLow) {
-                if (!this.drsHistory) this.drsHistory = [];
+                if (!this.drsHistory) this.drsHistory.length = 0;
                 this.drsHistory.push(fps);
                 if (this.drsHistory.length > 3) this.drsHistory.shift(); // Tieni solo gli ultimi 3 secondi
                 
@@ -2557,14 +2557,14 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
                     // Se gli FPS medi sono bassi e possiamo ancora scalare giù
                     if (avgFps < 45 && currentRatio > 0.5) {
                         this.renderer.setPixelRatio(Math.max(0.5, currentRatio - 0.2));
-                        this.drsHistory = []; // Reset storico per far stabilizzare
+                        this.drsHistory.length = 0; // Reset storico per far stabilizzare
                     } 
                     // Se gli FPS sono perfetti e possiamo migliorare la grafica
                     else if (avgFps >= 58 && currentRatio < 0.9) {
                         let maxRatio = Math.min(window.devicePixelRatio, 0.9);
                         if (currentRatio < maxRatio) {
                             this.renderer.setPixelRatio(Math.min(maxRatio, currentRatio + 0.1));
-                            this.drsHistory = [];
+                            this.drsHistory.length = 0;
                         }
                     }
                 }
@@ -3568,37 +3568,39 @@ class GameMap {
         const tintRock = 0x5c5c6e;  // Ardesia schiarita
         const tintWall = 0x3a3a48;
 
-const matDirt = new MapMaterialClass({ 
-    map: texDirt, color: tintDirt, 
-    shininess: 5, roughness: 0.6, // <--- Mettili entrambi!
-    bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5 
-});
-       const matGrass = new MapMaterialClass({ 
-    map: texGrass, color: tintGrass, 
-    shininess: 2, roughness: 0.7, // <--- Mettili entrambi!
-    bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, 
-    alphaMap: alphaTex, transparent: true, depthWrite: false 
-});
-  const matRock = new MapMaterialClass({ 
-    map: texRock, color: tintRock, 
-    shininess: 40, roughness: 0.4, metalness: 0.3, // <--- Mettili tutti!
-    bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, 
-    alphaMap: alphaTex, transparent: true, depthWrite: false 
-});
+// FIX MEMORY LEAK: Creiamo i materiali UNA SOLA VOLTA e li riutilizziamo per tutto il gioco
+        if (!window.GLOBAL_MAP_MATS) {
+            window.GLOBAL_MAP_MATS = {
+                dirt: new MapMaterialClass({ 
+                    map: texDirt, color: tintDirt, shininess: 5, roughness: 0.6,
+                    bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5 
+                }),
+                grass: new MapMaterialClass({ 
+                    map: texGrass, color: tintGrass, shininess: 2, roughness: 0.7,
+                    bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, 
+                    alphaMap: alphaTex, transparent: true, depthWrite: false 
+                }),
+                rock: new MapMaterialClass({ 
+                    map: texRock, color: tintRock, shininess: 40, roughness: 0.4, metalness: 0.3,
+                    bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, 
+                    alphaMap: alphaTex, transparent: true, depthWrite: false 
+                }),
+                wall: new MapMaterialClass({ 
+                    map: texWall, color: tintWall, shininess: 15, roughness: 0.5, metalness: 0.2,
+                    bumpMap: isHighQ ? texWall : null, bumpScale: 3.0 
+                })
+            };
+        }
+        
+        this.floorMat = window.GLOBAL_MAP_MATS.dirt; // Mantiene compatibilità col tuo codice grafico
+        this.wallMat = window.GLOBAL_MAP_MATS.wall;
 
-      
-        const meshDirt = new THREE.InstancedMesh(floorGeo, matDirt, floorCount);
-        const meshGrass = new THREE.InstancedMesh(floorGeo, matGrass, floorCount);
-        const meshRock = new THREE.InstancedMesh(floorGeo, matRock, floorCount);
+        const meshDirt = new THREE.InstancedMesh(floorGeo, window.GLOBAL_MAP_MATS.dirt, floorCount);
+        const meshGrass = new THREE.InstancedMesh(floorGeo, window.GLOBAL_MAP_MATS.grass, floorCount);
+        const meshRock = new THREE.InstancedMesh(floorGeo, window.GLOBAL_MAP_MATS.rock, floorCount);
         meshDirt.renderOrder = -10; meshGrass.renderOrder = -9; meshRock.renderOrder = -8;
-       
-
+        
         const wallGeo = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
-      this.wallMat = new MapMaterialClass({ 
-    map: texWall, color: tintWall, 
-    shininess: 15, roughness: 0.5, metalness: 0.2, // <--- Mettili tutti!
-    bumpMap: isHighQ ? texWall : null, bumpScale: 3.0 
-});
 
         const wallMesh = new THREE.InstancedMesh(wallGeo, this.wallMat, wallCount);
         const baseGeo = new THREE.BoxGeometry(35, 15, 35);
@@ -6220,35 +6222,48 @@ class FloatingText {
 
 function clearScene() {
     if (Game.map) {
-        // [OTTIMIZZAZIONE 1]: Pulizia profonda della memoria GPU (Memory Leak Fix)
+       // [OTTIMIZZAZIONE 1 FIX]: Pulizia VERA della memoria GPU
         Game.map.mapGroup.traverse((child) => {
             if (child.isMesh || child.isInstancedMesh) {
-               // Elimina le geometrie proteggendo quelle globali (Erba e Alberi Frattali)
-                if (child.geometry && child.geometry !== InteractiveGrassSystem.geo && child.geometry !== window.GLOBAL_TREE_GEO) {
+                // Elimina le geometrie proteggendo SOLO i singleton esatti
+                if (child.geometry && child.geometry !== InteractiveGrassSystem.geo && child.geometry !== window.GLOBAL_TREE_GEO && !Object.values(SharedGeo).includes(child.geometry)) {
                     child.geometry.dispose();
                 }
-                // Elimina i materiali proteggendo quelli globali
-                if (child.material && child.material !== InteractiveGrassSystem.mat && child.material !== SharedMat.blobShadow) {
-                    if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
-                    else child.material.dispose();
+                
+                // FIX CRITICO: Non eliminare i materiali del terreno/muro, perché li abbiamo resi globali!
+                // Li stiamo per rendere globali nel prossimo passaggio. 
+                // Eliminiamo solo la nebbia dinamica.
+                if (child.material && child === Game.map.fogMesh) {
+                     child.material.dispose();
                 }
-                // Libera i buffer interni degli InstancedMesh
+                
                 if (child.dispose) child.dispose();
             }
         });
         Game.scene.remove(Game.map.mapGroup);
+        Game.map.fogMesh = null; // Stacca i riferimenti
     }
     
     for(let i=0, len=Game.debris.length; i<len; i++) { Game.debris[i].active = false; Game.debris[i].mesh.visible = false; }
     
-    // I boss e altri nemici rimasti attivi vengono spenti
+   // Pulizia totale e aggressiva per QUALSIASI nemico rimasto a schermo a fine piano/riavvio
     for(let i=0, len=Game.enemies.length; i<len; i++) { 
         let e = Game.enemies[i];
-        if(e.isBoss) {
-            if (e.mat) e.mat.dispose(); 
-            Game.scene.remove(e.mesh);
-            if (e.shadowMesh) { e.shadowMesh.visible = false; Game.scene.remove(e.shadowMesh); }
-        }
+        
+        // Se non è stato ucciso "ufficialmente" ma stiamo svuotando la scena:
+        e.mesh.traverse(child => {
+            if (child.isMesh) {
+                if (child.geometry && !Object.values(SharedGeo).includes(child.geometry)) child.geometry.dispose();
+                if (child.material && !Object.values(SharedMat).includes(child.material)) {
+                    if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                    else child.material.dispose();
+                }
+            }
+        });
+        
+        if (e.mat) e.mat.dispose(); 
+        Game.scene.remove(e.mesh);
+        if (e.shadowMesh) { e.shadowMesh.visible = false; Game.scene.remove(e.shadowMesh); }
     }
     
     // [OTTIMIZZAZIONE 2]: Svuota l'array dei nemici per evitare il loop su cadaveri "Zombie"

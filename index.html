@@ -4852,17 +4852,25 @@ class Enemy extends Entity {
         
         let hpMod = 1, dmgMod = 1, spdMod = 1, color = 0x666666, size = 12;
         
-        if (type === 'goblin') { color = 0x33FF00; size = 10; spdMod = 1.8; hpMod = 0.5; dmgMod = 1.2; this.aggroRange = 500; this.attackRange = 40; } 
-        else if (type === 'slime') { color = 0x00FF66; size = 15; spdMod = 0.9; hpMod = 0.9; dmgMod = 1.0; this.aggroRange = 500; this.attackRange = 40; } 
-        else if (type === 'slime_mini') { color = 0x33FF99; size = 8; spdMod = 1.5; hpMod = 0.3; dmgMod = 0.5; this.aggroRange = 600; this.attackRange = 30; } 
-        else if (type === 'orc') { color = 0x8c564b; size = 18; spdMod = 0.8; hpMod = 1.6; dmgMod = 2.5; this.aggroRange = 450; this.attackRange = 55; } 
-        else if (type === 'skeleton_archer') { color = 0xaaaaaa; size = 14; spdMod = 1.1; hpMod = 0.4; dmgMod = 1.5; this.aggroRange = 700; this.attackRange = 400; } 
-        else if (type === 'leaper') { color = 0xaa00aa; size = 12; spdMod = 0.7; hpMod = 1.0; dmgMod = 2.2; this.aggroRange = 600; this.attackRange = 250; this.leapCooldown = 0; this.state = 'walk'; } 
-        else if (type === 'pyromancer') { color = 0xff3300; size = 12; spdMod = 0.6; hpMod = 0.8; dmgMod = 2.2; this.aggroRange = 650; this.attackRange = 450; }
-        else if (type === 'fire_demon') { color = 0xff5500; size = 14; spdMod = 1.0; hpMod = 1.1; dmgMod = 3.0; this.aggroRange = 800; this.attackRange = 600; } 
-        else if (type === 'golem') { color = 0x8899aa; size = 20; spdMod = 0.4; hpMod = 4.0; dmgMod = 2.0; this.aggroRange = 600; this.attackRange = 60; }
-        else if (type === 'mage') { color = 0x0055ff; size = 12; spdMod = 0.6; hpMod = 0.7; dmgMod = 2.8; this.aggroRange = 700; this.attackRange = 450; }
-        else if (type === 'crystal') { color = 0xff00ff; size = 12; this.aggroRange = 0; this.speed = 0; hpMod = 0.001; }
+       // Fazione Fisica (Spenti)
+        if (type === 'goblin') { color = 0x4a5e3a; /* Verde fango */ ... } 
+        else if (type === 'orc') { color = 0x5c4033; /* Marrone scuro */ ... } 
+        else if (type === 'skeleton_archer') { color = 0x888888; /* Grigio osso */ ... } 
+        
+        // Fazione Infernale (Rosso/Arancio)
+        else if (type === 'pyromancer') { color = 0xff3300; ... }
+        else if (type === 'fire_demon') { color = 0xff4400; ... } 
+        
+        // Fazione Magica (Azzurro)
+        else if (type === 'mage') { color = 0x00aaff; ... }
+        else if (type === 'golem') { color = 0x00aaff; /* Mantieni lo scudo ciano */ ... }
+        
+        // Fazione Tossica (Viola/Magenta)
+        else if (type === 'leaper') { color = 0xaa00ff; ... } 
+        else if (type === 'crystal') { color = 0xff00ff; ... }
+        // Rendiamo lo slime coerente con la sua pozza!
+        else if (type === 'slime') { color = 0xaa00ff; ... } 
+        else if (type === 'slime_mini') { color = 0xcc33ff; ... }
         else if (type === 'boss') { color = 0x550000; size = 35; }
         
         this.isElite = false;
@@ -4981,8 +4989,8 @@ class Enemy extends Entity {
             // L'emissivo pulsa velocemente (effetto ghiaccio magico)
             let intensity = 0.5 + Math.sin(Game.playTime * 15) * 0.5;
             for (let i=0; i<this.flashMats.length; i++) {
-                this.flashMats[i].emissive.setHex(0x00aaff); 
-                this.flashMats[i].emissiveIntensity = intensity * 3.0;
+                this.flashMats[i].emissive.setHex(this.mat.color.getHex()); 
+                this.flashMats[i].emissiveIntensity = 3.0;
             }
             
             // Aggiungiamo un leggero "fumo" freddo che sale dai piedi

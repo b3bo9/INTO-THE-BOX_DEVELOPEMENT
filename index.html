@@ -3970,9 +3970,14 @@ class Player extends Entity {
         this.glacialShieldMesh.visible = false;
         this.mesh.add(this.glacialShieldMesh);
         // FAKE BLOOM: Un alone 2D leggerissimo per simulare il bagliore su Smartphone
+       // FAKE BLOOM: Un alone 2D leggerissimo per simulare il bagliore su Smartphone
         this.fakeBloom = new THREE.Sprite(SharedMat.spriteWhite);
-        this.fakeBloom.scale.set(18, 18, 1);
-        this.modelParts.staffGem.add(this.fakeBloom);
+        // Lo facciamo un po' più grande per fargli avvolgere bene i piedi
+        this.fakeBloom.scale.set(25, 25, 1); 
+        // X e Z a 0 lo centrano perfettamente. Y a 2 lo alza appena sopra al pavimento
+        this.fakeBloom.position.set(0, 2, 0); 
+        // Lo agganciamo alla radice del giocatore, non più al bastone!
+        this.mesh.add(this.fakeBloom);
         // Attiva e scala l'ombra per il giocatore
         this.shadowMesh.scale.set(32, 32, 1);
         // La mostriamo solo se le ombre reali sono disattivate, per non sovrapporle!

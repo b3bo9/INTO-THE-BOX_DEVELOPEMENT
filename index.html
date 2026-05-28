@@ -6231,7 +6231,19 @@ function respawnPlayer() {
     Game.player.x = pos.x * TILE_SIZE + TILE_SIZE/2; Game.player.y = pos.y * TILE_SIZE + TILE_SIZE/2;
     Game.player.mesh.position.set(Game.player.x, 0, Game.player.y); Game.player.stats.hp = Game.player.stats.maxHp; Game.player.dead = false; Game.player.invincibilityTimer = 3.0; 
     if (Game.player.modifiers.shieldActive) Game.player.modifiers.autoShieldTimer = 0;
-    Game.player.mesh.children.forEach(child => { if (child !== Game.player.light && child !== Game.player.shieldMesh) child.visible = true; }); 
+    
+    // --- BUGFIX LUCE: Riaccendiamo tutto esplicitamente ---
+    Game.player.mesh.children.forEach(child => { 
+        child.visible = true; 
+    }); 
+    // Spegniamo manualmente solo gli scudi per non averli attivi al respawn
+    Game.player.shieldMesh.visible = false;
+    Game.player.glacialShieldMesh.visible = false;
+    
+    // Forza il ricalcolo dei colori e dell'opacità in base alle essenze attuali
+    Game.player.updateAppearance();
+    // ------------------------------------------------------
+
     Game.snapCamera(); Game.state = 'PLAYING';
     if (Game.isBossFloor) AudioEngine.playBossMusic(); else AudioEngine.playGameMusic();
     Game.getFloatingText().spawn(Game.player.x, Game.player.y, "RESPAWN!", '#ff66bb', 40, true);
@@ -6240,7 +6252,6 @@ function respawnPlayer() {
     Game.player.activeShieldTimer = 0;
     Game.player.activeShieldCooldown = 0;
     Game.player.shieldAbsorbed = 0;
-    Game.player.shieldMesh.visible = false;
 }
 
 function goToMainMenu() {

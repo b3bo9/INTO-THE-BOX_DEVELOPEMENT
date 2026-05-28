@@ -4852,25 +4852,22 @@ class Enemy extends Entity {
         
         let hpMod = 1, dmgMod = 1, spdMod = 1, color = 0x666666, size = 12;
         
-       // Fazione Fisica (Spenti)
-        if (type === 'goblin') { color = 0x4a5e3a; /* Verde fango */ ... } 
-        else if (type === 'orc') { color = 0x5c4033; /* Marrone scuro */ ... } 
-        else if (type === 'skeleton_archer') { color = 0x888888; /* Grigio osso */ ... } 
-        
+       // Fazione Fisica (Colori spenti/terre)
+        if (type === 'goblin') { color = 0x4a5e3a; size = 10; spdMod = 1.8; hpMod = 0.5; dmgMod = 1.2; this.aggroRange = 500; this.attackRange = 40; } 
+        else if (type === 'orc') { color = 0x5c4033; size = 18; spdMod = 0.8; hpMod = 1.6; dmgMod = 2.5; this.aggroRange = 450; this.attackRange = 55; } 
+        else if (type === 'skeleton_archer') { color = 0x888888; size = 14; spdMod = 1.1; hpMod = 0.4; dmgMod = 1.5; this.aggroRange = 700; this.attackRange = 400; } 
+        // Fazione Tossica/Vuoto (Viola/Magenta)
+        else if (type === 'slime') { color = 0xaa00ff; size = 15; spdMod = 0.9; hpMod = 0.9; dmgMod = 1.0; this.aggroRange = 500; this.attackRange = 40; } 
+        else if (type === 'slime_mini') { color = 0xcc33ff; size = 8; spdMod = 1.5; hpMod = 0.3; dmgMod = 0.5; this.aggroRange = 600; this.attackRange = 30; } 
+        else if (type === 'leaper') { color = 0xaa00ff; size = 12; spdMod = 0.7; hpMod = 1.0; dmgMod = 2.2; this.aggroRange = 600; this.attackRange = 250; this.leapCooldown = 0; this.state = 'walk'; } 
+        else if (type === 'crystal') { color = 0xff00ff; size = 12; this.aggroRange = 0; this.speed = 0; hpMod = 0.001; }
         // Fazione Infernale (Rosso/Arancio)
-        else if (type === 'pyromancer') { color = 0xff3300; ... }
-        else if (type === 'fire_demon') { color = 0xff4400; ... } 
-        
-        // Fazione Magica (Azzurro)
-        else if (type === 'mage') { color = 0x00aaff; ... }
-        else if (type === 'golem') { color = 0x00aaff; /* Mantieni lo scudo ciano */ ... }
-        
-        // Fazione Tossica (Viola/Magenta)
-        else if (type === 'leaper') { color = 0xaa00ff; ... } 
-        else if (type === 'crystal') { color = 0xff00ff; ... }
-        // Rendiamo lo slime coerente con la sua pozza!
-        else if (type === 'slime') { color = 0xaa00ff; ... } 
-        else if (type === 'slime_mini') { color = 0xcc33ff; ... }
+        else if (type === 'pyromancer') { color = 0xff3300; size = 12; spdMod = 0.6; hpMod = 0.8; dmgMod = 2.2; this.aggroRange = 650; this.attackRange = 450; }
+        else if (type === 'fire_demon') { color = 0xff4400; size = 14; spdMod = 1.0; hpMod = 1.1; dmgMod = 3.0; this.aggroRange = 800; this.attackRange = 600; } 
+        // Fazione Magica/Ghiaccio (Azzurro/Ciano)
+        else if (type === 'mage') { color = 0x00aaff; size = 12; spdMod = 0.6; hpMod = 0.7; dmgMod = 2.8; this.aggroRange = 700; this.attackRange = 450; }
+        else if (type === 'golem') { color = 0x00aaff; size = 20; spdMod = 0.4; hpMod = 4.0; dmgMod = 2.0; this.aggroRange = 600; this.attackRange = 60; }
+        // Boss
         else if (type === 'boss') { color = 0x550000; size = 35; }
         
         this.isElite = false;

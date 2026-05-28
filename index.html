@@ -3969,15 +3969,13 @@ class Player extends Entity {
         this.glacialShieldMesh.position.y = 12;
         this.glacialShieldMesh.visible = false;
         this.mesh.add(this.glacialShieldMesh);
-        // FAKE BLOOM: Un alone 2D leggerissimo per simulare il bagliore su Smartphone
        // FAKE BLOOM: Un alone 2D leggerissimo per simulare il bagliore su Smartphone
         this.fakeBloom = new THREE.Sprite(SharedMat.spriteWhite);
-        // Lo facciamo un po' più grande per fargli avvolgere bene i piedi
-        this.fakeBloom.scale.set(25, 25, 1); 
-        // X e Z a 0 lo centrano perfettamente. Y a 2 lo alza appena sopra al pavimento
-        this.fakeBloom.position.set(0, 2, 0); 
-        // Lo agganciamo alla radice del giocatore, non più al bastone!
-        this.mesh.add(this.fakeBloom);
+        this.fakeBloom.scale.set(20, 20, 1); // Dimensione bilanciata per la punta
+        this.fakeBloom.position.set(0, 0, 0); // Zero locale: sta esattamente dentro la gemma
+        
+        // Riagganciamo il bloom alla bacchetta magica
+        this.modelParts.staffGem.add(this.fakeBloom);
         // Attiva e scala l'ombra per il giocatore
         this.shadowMesh.scale.set(32, 32, 1);
         // La mostriamo solo se le ombre reali sono disattivate, per non sovrapporle!
@@ -4425,19 +4423,28 @@ class Player extends Entity {
                 this.mesh.position.y = 0; 
             }
             
-            // --- NUOVO: Pendolo Fisico della Lanterna (VISIBILE) ---
-            let swingSpeed = isMoving ? 12 : 3; // Oscilla veloce se corri, lento se respiri fermo
-            let swingAmount = isMoving ? 3 : 0.8; 
-            let swingY = isMoving ? Math.abs(Math.sin(Game.playTime * swingSpeed)) * 2.5 : 0;
+           // --- PENDOLO FISICO E FLUIDO DELLA LANTERNA ---
+            // Inizializziamo le variabili di fase se non esistono
+            if (this.swingPhase === undefined) { this.swingPhase = 0; this.currentSwingSpd = 3; }
             
-            // 1. Dondoliamo fisicamente il modello 3D dell'arma (tilt e sussulto)
-            this.modelParts.weaponGroup.position.x = 12 + Math.sin(Game.playTime * swingSpeed) * swingAmount;
-            this.modelParts.weaponGroup.position.y = 16 + swingY;
-            this.modelParts.weaponGroup.rotation.z = Math.sin(Game.playTime * swingSpeed) * (isMoving ? 0.2 : 0.05);
+            // Transizione fluida della velocità di dondolio per non causare "scatti"
+            let targetSwingSpd = isMoving ? 10.0 : 2.5; 
+            this.currentSwingSpd += (targetSwingSpd - this.currentSwingSpd) * dt * 5.0; 
+            this.swingPhase += this.currentSwingSpd * dt;
+            
+            // Calcoliamo i target desiderati in base al respiro/passo
+            let targetX = 12 + Math.sin(this.swingPhase) * (isMoving ? 2.5 : 0.5);
+            let targetY = 16 + Math.abs(Math.cos(this.swingPhase)) * (isMoving ? 1.5 : 0.3);
+            let targetRotZ = Math.sin(this.swingPhase) * (isMoving ? 0.15 : 0.03);
 
-            // 2. Allineiamo la luce magica per farla viaggiare assieme all'arma
-            this.light.position.x = this.modelParts.weaponGroup.position.x;
-            this.light.position.y = this.modelParts.weaponGroup.position.y + 10;
+            // 1. Applichiamo i movimenti all'arma usando il Lerp: dona un senso di "peso" al modello
+            this.modelParts.weaponGroup.position.x += (targetX - this.modelParts.weaponGroup.position.x) * dt * 12;
+            this.modelParts.weaponGroup.position.y += (targetY - this.modelParts.weaponGroup.position.y) * dt * 12;
+            this.modelParts.weaponGroup.rotation.z += (targetRotZ - this.modelParts.weaponGroup.rotation.z) * dt * 12;
+
+            // 2. La luce reale segue la bacchetta con un lievissimo ritardo (elastico)
+            this.light.position.x += (this.modelParts.weaponGroup.position.x - this.light.position.x) * dt * 15;
+            this.light.position.y += (this.modelParts.weaponGroup.position.y + 10 - this.light.position.y) * dt * 15;
             // --------------------------------------------------------
 
             // Assicuriamoci che la scala torni normale quando non scatta

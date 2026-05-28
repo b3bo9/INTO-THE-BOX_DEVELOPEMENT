@@ -641,12 +641,16 @@ const AppSettings = {
 
 const Haptics = {
     vibrate(pattern) {
-        // Funziona solo su dispositivi touch con l'API supportata
-        if (isTouchDevice && navigator.vibrate) {
-            try { navigator.vibrate(pattern); } catch(e) {}
+        // Verifica che l'API esista nel browser e che non siamo su un PC
+        if (isTouchDevice && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+            try { 
+                navigator.vibrate(pattern); 
+            } catch(e) {
+                // Silenziamo l'errore: alcuni browser restrittivi bloccano l'API a runtime
+            }
         }
     }
-};
+};;
 
 const AudioEngine = {
     ctx: null, musicNode: null, noiseBuffer: null, initialized: false, musicMuted: false, sfxMuted: false,

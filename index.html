@@ -5457,10 +5457,28 @@ class Enemy extends Entity {
         if (Math.random() < lifeChance && !isMini) { 
             itemsToSpawn.push('life'); 
         } else {
-            // La probabilità di droppare essenze per i mini scende al 2%
-            let essenceChance = this.isElite ? 1.0 : (isMini ? 0.02 : (0.15 + (Game.combo * 0.004)));
+            // --- FIX: BILANCIAMENTO DROP ESSENZE (Densità vs Reward) ---
+            
+            // 1. Base abbassata al 10%
+            let baseEssence = 0.10;
+            
+            // 2. Il bonus combo sale più lentamente ed è CAPPATO a un +10% massimo
+            // (evita che a 100+ hit il 50% dei nemici droppi essenze)
+            let comboBonus = Math.min(0.10, Game.combo * 0.0015);
+            
+            // 3. Nerf da densità: ai piani alti ci sono decine di nemici in più. 
+            // Scaliamo il drop rate globale verso il basso man mano che si scende (fino a un limite del 40%)
+            let densityScale = Math.max(0.40, 1.0 - (Game.floor * 0.025));
+            
+            // Calcolo finale per i nemici normali
+            let normalEssenceChance = (baseEssence + comboBonus) * densityScale;
+            
+            // Applichiamo la formula rispettando Elite e Mini-slime (ulteriormente nerfati all'1%)
+            let essenceChance = this.isElite ? 1.0 : (isMini ? 0.01 : normalEssenceChance);
+            
             if (Math.random() < essenceChance) { 
                 itemsToSpawn.push('essence'); 
+                // Gli Elite hanno il 40% di droppare una SECONDA essenza
                 if (this.isElite && Math.random() < 0.4) itemsToSpawn.push('essence');
             }
         }

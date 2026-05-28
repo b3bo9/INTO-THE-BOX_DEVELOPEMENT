@@ -5699,7 +5699,30 @@ class BossEnemy extends Enemy {
             }
         }
     }
-    
+    takeDamage(amount, source, isCrit = false, canInfect = true) {
+        // 1. Resistenza Base: Il boss ha la pelle dura e ignora il 30% dei danni standard
+        amount *= 0.80;
+        
+        // 2. Protezione Ascensione: Mitiga il picco di DPS dell'Ultimate del 50%
+        if (Game.ultimateActive) {
+            amount *= 0.50; 
+        }
+        
+        // 3. Anti-Burst (Soft Cap): Se un singolo hit supera il 4% della sua Vita Massima,
+        // il danno in eccesso "scivola" via ed è ridotto dell'80%. Previene i One-Shot.
+        let burstCap = this.stats.maxHp * 0.05;
+        if (amount > burstCap) {
+            amount = burstCap + (amount - burstCap) * 0.20;
+            
+            // Feedback visivo per farti capire che il Boss ha "parato" il colpo critico devastante
+            if (Game.frameCount % 2 === 0) {
+                Game.getParticle().spawn(this.x, 40, this.y, SharedMat.spriteWhite, 'spark');
+            }
+        }
+        
+        // Richiama la normale logica di ricezione danno della classe base
+        super.takeDamage(amount, source, isCrit, canInfect);
+    }
     onDeath() {
         this.shadowMesh.visible = false; // <-- FIX: Nascondi l'ombra del boss
         AudioEngine.stopBossMusic();

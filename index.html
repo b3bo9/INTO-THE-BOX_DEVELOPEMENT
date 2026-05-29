@@ -1540,8 +1540,11 @@ const ModelFactory = {
             eyeR.scale.set(size*0.3, size*0.3, size*0.2);
             eyeR.position.set(size*0.6, size*1.1, size*1.3);
 
-            // GLOW OTTIMIZZATO: Usiamo lo sprite verde già in memoria (costo prestazioni: zero)
-            let glow = new THREE.Sprite(SharedMat.spriteGreen);
+           // GLOW OTTIMIZZATO: Creiamo e mettiamo in cache uno sprite viola dedicato
+            if (!SharedMat.spritePurple) {
+                SharedMat.spritePurple = new THREE.SpriteMaterial({color: 0xaa00ff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false});
+            }
+            let glow = new THREE.Sprite(SharedMat.spritePurple);
             glow.scale.set(size * 5, size * 5, 1);
             glow.position.y = size * 0.8;
 

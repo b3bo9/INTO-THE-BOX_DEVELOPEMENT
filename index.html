@@ -1243,12 +1243,12 @@ const RelicSystem = {
         // COMUNI: Utility & Traits (Ex statistiche pure)
         { id: 'c1', name: "Prisma dell'Avarizia", desc: "I tuoi colpi critici hanno il 20% di probabilità di generare 1 Moneta.", rarity: "common", image: "icona_prisma.png", icon: "fa-gem", apply: (p) => p.modifiers.critGold = true },
         { id: 'c2', name: "Siero Adrenalinico", desc: "Se i tuoi HP scendono sotto il 30%, la Velocità d'Attacco aumenta del +30%.", rarity: "common", image: "icona_adrenalina.png", icon: "fa-bolt", apply: (p) => p.modifiers.lowHpAtkSpeed = true },
-        { id: 'c3', name: "Piuma Spettrale", desc: "Dopo aver eseguito uno Scatto, ottieni invulnerabilità totale per 0.4 secondi.", rarity: "common", image: "icona_piuma.png", icon: "fa-feather", apply: (p) => p.modifiers.dashInvul = true },
+        { id: 'c3', name: "Piuma Spettrale", desc: "Dopo aver eseguito uno Scatto, ottieni invulnerabilità totale per 0.4 secondi e +20% velocità per 2 sec.", rarity: "common", image: "icona_piuma.png", icon: "fa-feather", apply: (p) => { p.modifiers.dashInvul = true; p.modifiers.dashSpeedBuff = true; } },
         { id: 'c4', name: "Cristallo Rigenerante", desc: "Rigeneri passivamente 2% della Salute Max ogni 3 secondi.", rarity: "common", image: "icona_cristallo_vitale.png", icon: "fa-heart", apply: (p) => p.modifiers.regen = 0.02 },
         { id: 'r5', name: "Magnete delle Anime", desc: "Raggio di raccolta di Monete ed Essenze raddoppiato.", rarity: "common", image: "icona_magnete_delle_anime.png", icon: "fa-magnet", apply: (p) => p.modifiers.pickupRadiusMult += 1.0 },
 
         // RARE: Meccaniche di combattimento
-        { id: 'c5', name: "Runa dell'Agguato", desc: "Infliggi il +30% di danni ai nemici che hanno più dell'80% di Salute.", rarity: "rare", image: "icona_runa_minore.png", icon: "fa-fire", apply: (p) => p.modifiers.openerDmg = true },
+       { id: 'c5', name: "Runa dell'Agguato", desc: "Infliggi il +20% di danni ai nemici che hanno più dell'80% di Salute.", rarity: "rare", image: "icona_runa_minore.png", icon: "fa-fire", apply: (p) => p.modifiers.openerDmg = true },
         { id: 'r1', name: "Bussola Dimensionale", desc: "Tutte le Essenze raccolte e l'Overdrive durano il 50% in più.", rarity: "rare", image: "icona_bussola_dimensionale.png", icon: "fa-compass", apply: (p) => p.modifiers.essenceDurationMult += 0.50 },
         { id: 'r3', name: "Scudo dell'Egidio", desc: "Lo Scudo Cinetico si attiva automaticamente ogni 15 sec.", rarity: "rare", image: "icona_scudo_dell_egidio.png", icon: "fa-shield-halved", apply: (p) => p.modifiers.shieldActive = true },
         { id: 'r4', name: "Apprendimento rapido", desc: "Ottieni +50% XP, ma subisci +15% di danni.", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.50; p.modifiers.dmgTakenMult += 0.15; } },
@@ -1256,7 +1256,7 @@ const RelicSystem = {
         { id: 'r6', name: "Sovraccarico Cinetico", desc: "Mentre lo Scudo Cinetico è attivo, la tua Velocità d'Attacco aumenta del +40%.", rarity: "rare", image: "icona_sovraccarico_cinetico.png", icon: "fa-bolt", apply: (p) => p.modifiers.shieldAtkSpeedBonus = 0.40 },
         
         // EPICHE: Sinergie Costruttive (Build Definers)
-        { id: 'r2', name: "Calzari di Mercurio", desc: "Il Cooldown dello Scatto è ridotto del 40%.", rarity: "epic", image: "icona_mercurio.png", icon: "fa-shoe-prints", apply: (p) => p.modifiers.dashCooldownMult -= 0.40 },
+       { id: 'r2', name: "Calzari di Mercurio", desc: "Il Cooldown dello Scatto è ridotto del 20%. Dopo lo scatto subisci -20% danni per 3s.", rarity: "epic", image: "icona_mercurio.png", icon: "fa-shoe-prints", apply: (p) => { p.modifiers.dashCooldownMult -= 0.20; p.modifiers.dashResist = true; } },
         { id: 'e1', name: "Ritmo di Battaglia", desc: "La Combo sale di +2 a colpo e decade più lentamente.", rarity: "epic", image: "icona_ritmo_di_battaglia.png", icon: "fa-drum", apply: (p) => { p.modifiers.comboStep += 1; p.modifiers.comboDecayAdd += 1.0; } },
         { id: 'e2', name: "Riciclo Magico", desc: "Quando usi un'Essenza Overdrive, non consumi l'ultima raccolta.", rarity: "epic", image: "icona_riciclo_magico.png", icon: "fa-recycle", apply: (p) => p.modifiers.keepEssenceOnCombo = true },
         { id: 'e3', name: "Passo Infernale", desc: "Lo scatto lascia una scia di fuoco. I nemici a fuoco subiscono +25% danni dai tuoi colpi.", rarity: "epic", image: "icona_passo_infernale.png", icon: "fa-fire-flame-curved", apply: (p) => { p.modifiers.fireTrail = true; p.modifiers.fireTrailDebuff = true; } },
@@ -1270,7 +1270,7 @@ const RelicSystem = {
         { id: 'l2', name: "Lama del Giudizio", desc: "Infliggi il DOPPIO dei danni se il nemico ha Meno del 30% di Salute (Esecuzione).", rarity: "legendary", image: "icona_lama_del_giudizio.png", icon: "fa-gavel", apply: (p) => p.modifiers.executioner = true },
         { id: 'l3', name: "Patto Ascetico", desc: "La Ultimate si ricarica passivamente da sola, ma la tua Salute Massima scende del 30%.", rarity: "legendary", image: "icona_patto_ascetico.png", icon: "fa-link", apply: (p) => { p.modifiers.passiveUltCharge = true; p.stats.maxHp = Math.floor(p.stats.maxHp * 0.7); if(p.stats.hp > p.stats.maxHp) p.stats.hp = p.stats.maxHp; } },
         { id: 'l4', name: "Sete di Sangue Eterna", desc: "Ti curi del 5% ogni 10 uccisioni. I nemici NON droppano cuori. I Level Up non danno HP.", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", icon: "fa-droplet", apply: (p) => { p.modifiers.bloodthirst = true; p.modifiers.noHealDrops = true; p.modifiers.noMaxHpLevelUp = true; } },
-        { id: 'l5', name: "Maestria del Flow", desc: "Cap Combo raddoppiato. Se Combo > 50, subisci +20% danni. Se Combo < 50, subisci -20% danni.", rarity: "legendary", image: "icona_maestria_del_flow.png", icon: "fa-infinity",  apply: (p) => {  p.modifiers.flowMastery = true; p.modifiers.comboDecayRate *= 0.5;  } },
+        { id: 'l5', name: "Maestria del Flow", desc: "Cap Combo raddoppiato. Se Combo > 50, fai e subisci +20% danni. Se < 50, fai e subisci -20% danni.", rarity: "legendary", image: "icona_maestria_del_flow.png", icon: "fa-infinity",  apply: (p) => {  p.modifiers.flowMastery = true; p.modifiers.comboDecayRate *= 0.5;  } },
         { id: 'l6', name: "Aegis del Guardiano", desc: "Lo Scudo esplode quando finisce. Il danno e l'area scalano in base ai colpi bloccati.", rarity: "legendary", image: "fa_shieldx.png", icon: "fa-shield", apply: (p) => { p.modifiers.explosiveShield = true; } },
         { id: 'l7', name: "Impatto Tonante", desc: "Lo scatto crea un fulmine all'arrivo che danneggia e stordisce i nemici per 2s.", rarity: "legendary", image: "icona_impatto_tonante.png", icon: "fa-bolt", apply: (p) => { p.modifiers.dashLightning = true; } },
     ],
@@ -4022,16 +4022,18 @@ class Player extends Entity {
         this.activeShieldCooldown = 0;
         this.shieldAbsorbed = 0;
         this.shockSpeedTimer = 0;
+        this.dashSpeedTimer = 0; // NUOVO: Timer velocità post-scatto
+        this.dashResistTimer = 0; // NUOVO: Timer resistenza post-scatto
         
-        this.modifiers = { 
+        this.modifiers = {
             critChance: 0.10, bonusCritChance: 0, dmgMult: 1.0, speedMult: 1.0, atkSpeedMult: 1.0, bonusAtkSpeed: 0, dashCooldownMult: 1.0, vampirismMaxHp: 0, 
             fireTrail: false, fireTrailDebuff: false, ascensionDurationAdd: 0, dmgTakenMult: 1.0, xpMult: 1.0, healDropMult: 1.0, 
             executioner: false, shieldActive: false, shieldConsumed: false, essenceDurationMult: 1.0, critDmgMult: 1.5,
             comboStep: 1, comboDecayAdd: 0, comboDecayRate: 1.0, keepEssenceOnCombo: false, pickupRadiusMult: 1.0,
             passiveUltCharge: false, noHealDrops: false, noMaxHpLevelUp: false, bloodthirst: false, bloodthirstCount: 0, flowMastery: false,
             timeSinceLastHit: 0, explosiveShield: false, shieldDurationAdd: 0, dashCritsEnabled: false, dashCritsStacks: 0, dashLightning: false,
-           // NUOVI TRATTI RELIQUIE E SHOP
-            critGold: false, lowHpAtkSpeed: false, dashInvul: false, regen: 0, openerDmg: false, miserPact: false
+          // NUOVI TRATTI RELIQUIE E SHOP
+            critGold: false, lowHpAtkSpeed: false, dashInvul: false, regen: 0, openerDmg: false, miserPact: false, dashSpeedBuff: false, dashResist: false
         };
         
         this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}), new THREE.MeshPhongMaterial({color: 0xffff00, emissive: 0xffff00}));
@@ -4472,11 +4474,17 @@ class Player extends Entity {
                 Game.getParticle().spawn(this.x + Math.cos(a)*15, 5 + Math.random()*20, this.y + Math.sin(a)*15, SharedMat.spriteBlue, 'spark');
             }
         }
-        let shockSpdMult = this.shockSpeedTimer > 0 ? 1.20 : 1.0; // +20% Velocità
+       let shockSpdMult = this.shockSpeedTimer > 0 ? 1.20 : 1.0; // +20% Velocità
+        // ---------------------------------------------
+
+        // --- GESTIONE TIMER BUFF DELLO SCATTO ---
+        if (this.dashSpeedTimer > 0) this.dashSpeedTimer -= dt;
+        if (this.dashResistTimer > 0) this.dashResistTimer -= dt;
+        let dashSpdMult = this.dashSpeedTimer > 0 ? 1.20 : 1.0; // +20% velocità per 2 sec
         // ---------------------------------------------
 
         let flowCapMult = this.modifiers.flowMastery ? 2 : 1;
-        let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult * shockSpdMult;
+        let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult * shockSpdMult * dashSpdMult;
         if (Game.ultimateActive) currentSpeed *= 1.5; currentSpeed = Math.min(currentSpeed, Game.ultimateActive ? 750 : 550);
         
         if (Game.ultimateActive && Game.frameCount % (isTouchDevice ? 8 : 3) === 0) Game.getParticle().spawn(this.x + MathUtils.randomRange(-15, 15), 15, this.y + MathUtils.randomRange(-15, 15), SharedMat.spriteBlue, 'trail');
@@ -4705,7 +4713,14 @@ class Player extends Entity {
         let critChance = this.modifiers.critChance + this.modifiers.bonusCritChance + Math.min(Game.combo * 0.005, 0.5 * flowCapMult); let isCrit = Math.random() < critChance;
         if (this.modifiers.dashCritsStacks > 0) { isCrit = true; this.modifiers.dashCritsStacks--; }
         let baseDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * (1 + Math.min(Game.combo * 0.04, 2.0 * flowCapMult)) * this.modifiers.dmgMult;
-if (Game.ultimateActive) baseDmg *= 2.0;
+        
+        // Applicazione Maestria del Flow sul danno INFLITTO
+        if (this.modifiers.flowMastery) {
+            if (Game.combo > 50) baseDmg *= 1.20; // Fai +20% danni
+            else baseDmg *= 0.80; // Fai -20% danni
+        }
+
+        if (Game.ultimateActive) baseDmg *= 2.0;
 if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         let projType = 'player_arrow'; if (this.essence === 'red') projType = 'explosive_arrow'; if (this.essence === 'blue') projType = 'chain_lightning'; if (this.essence === 'green') projType = 'homing_arrow';
         let piercing = (this.overdrive && this.essence === 'blue'); AudioEngine.playShoot(projType, isCrit);
@@ -4776,17 +4791,30 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         if (this.modifiers.dashInvul) {
             this.invincibilityTimer = Math.max(this.invincibilityTimer, 0.4); // 0.4s di invincibilità post-scatto
         }
-        if (this.essence === 'green') { Game.getDecoy().spawn(this.x, this.y); Game.getHazard().spawn(this.x, this.y, 40, 3.0, this.stats.maxDmg * 0.5 * this.modifiers.dmgMult, ESSENCE_COLORS.green, 'poison'); }
+        if (this.modifiers.dashSpeedBuff) {
+            this.dashSpeedTimer = 2.0; // Attiva buff velocità della Piuma
+        }
+        if (this.modifiers.dashResist) {
+            this.dashResistTimer = 3.0; // Attiva buff resistenza dei Calzari
+        }
+
+        if (this.essence === 'green') { Game.getDecoy().spawn(this.x, this.y); Game.getHazard().spawn(this.x, this.y, 40, 3.0, this.stats.maxDmg * 0.5 * this.modifiers.dmgMult, ESSENCE_COLORS.green, 'poison'); }
         if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); }
     }
     
-   takeDamage(amount, source) {
+  takeDamage(amount, source) {
         if (this.invincibilityTimer > 0) return; 
         
         // Riduzione del 25% se lo Scudo Cinetico base è attivo
         if (this.activeShieldTimer > 0) {
             amount *= 0.75;
         }
+        
+        // NUOVO: Riduzione del 20% dai Calzari di Mercurio
+        if (this.dashResistTimer > 0) {
+            amount *= 0.80;
+        }
+
         if (Game.ultimateActive) {
             amount *= 0.75;
         }
@@ -4818,11 +4846,11 @@ if (this.modifiers.flowMastery && !wasDead) {
     if (Game.combo > 50) {
         // Sei una macchina da guerra, ma fragile
         amount *= 1.20;
-        Game.getFloatingText().spawn(this.x, this.y + 30, "FRAGILE!", '#ff0000', 30, true);
+        Game.getFloatingText().spawn(this.x, this.y + 30, "SOVRACCARICO!", '#ff0000', 30, true);
     } else {
         // Sei in fase di ricarica/difesa
         amount *= 0.80;
-        Game.getFloatingText().spawn(this.x, this.y + 30, "RESISTENZA!", '#00DDFF', 30, true);
+        Game.getFloatingText().spawn(this.x, this.y + 30, "DIFESA!", '#00DDFF', 30, true);
     }
 }
 
@@ -5358,8 +5386,8 @@ class Enemy extends Entity {
         // Esecuzione (Lama del Giudizio)
         if (source === Game.player && Game.player.modifiers.executioner && (this.stats.hp / this.stats.maxHp) < 0.3) amount *= 2.0;
         
-        // NUOVO: Runa Minore (Danni Opener)
-        if (source === Game.player && Game.player.modifiers.openerDmg && (this.stats.hp / this.stats.maxHp) >= 0.8) amount *= 1.3;
+       // NUOVO: Runa Minore (Danni Opener)
+        if (source === Game.player && Game.player.modifiers.openerDmg && (this.stats.hp / this.stats.maxHp) >= 0.8) amount *= 1.2;
         
         // NUOVO: Prisma (Crit Gold)
         if (isCrit && source === Game.player && Game.player.modifiers.critGold && Math.random() < 0.20) {

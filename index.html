@@ -4803,12 +4803,25 @@ if (Game.isCorrupted && Game.corruptedType === 'combo' && !wasDead) {
         void vignetteEl.offsetWidth; // Triggera il reflow per riavviare l'animazione CSS
         vignetteEl.classList.add('damage-flash-active');
 
-        if (!wasDead) {
+       if (!wasDead) {
             Game.addTrauma(0.8);
             if (this.stats.hp <= 0) {
                 this.dead = true;
                 Game.lives--;
+                
+               // --- PENALITÀ MONETE: Dimezza i risparmi del giocatore ---
+                Game.lastCoinsLost = Game.coins - Math.floor(Game.coins / 2); // Salviamo il dato per il respawn
+                Game.coins = Math.floor(Game.coins / 2);
+                if(UI.els.coins) UI.els.coins.innerText = Game.coins;
+                
                 AudioEngine.stopAllMusic();
+                
+                // --- ANTICIPO AUDIO: I suoni partono PRIMA del timeout, insieme al blackout ---
+                if (Game.lives > 0) {
+                    AudioEngine.playDeathMusic();
+                } else {
+                    AudioEngine.playGameOverSound();
+                }
 
                 // 1. EFFETTO MORTE DRAMMATICO
                 Game.addTrauma(3.0); // Shake violento della telecamera
@@ -4838,12 +4851,11 @@ if (Game.isCorrupted && Game.corruptedType === 'combo' && !wasDead) {
                     ds.classList.remove('hidden');
                     document.getElementById('score-save-container').classList.add('hidden');
 
+                    // I suoni sono stati rimossi da qui, gestiamo solo la Grafica/UI
                     if (Game.lives > 0) {
-                        AudioEngine.playDeathMusic();
                         ds.style.backgroundImage = "url('bg_morte.png')";
                         document.getElementById('deathTitle').innerText = "SEI CADUTO"; document.getElementById('deathSubtitle').innerText = `Vite rimaste: ${Game.lives}`; document.getElementById('deathQuote').classList.add('hidden'); document.getElementById('btn-respawn').classList.remove('hidden'); document.getElementById('btn-restart').classList.add('hidden');
                     } else {
-                        AudioEngine.playGameOverSound();
                         ds.style.backgroundImage = "url('bg_box.png')";
                         document.getElementById('deathTitle').innerText = "R I P"; document.getElementById('deathSubtitle').innerText = `Piano: ${Game.floor} | Demoni: ${Game.totalKills} | Tempo: ${ScoreManager.formatTime(Game.playTime)}`; document.getElementById('deathQuote').innerText = `"${DEATH_QUOTES[Math.floor(Math.random() * DEATH_QUOTES.length)]}"`; document.getElementById('deathQuote').classList.remove('hidden'); document.getElementById('btn-respawn').classList.add('hidden'); document.getElementById('btn-restart').classList.remove('hidden'); document.getElementById('score-save-container').classList.remove('hidden'); document.getElementById('playerName').value = '';
                         let btnSave = document.getElementById('btn-save-score'); btnSave.innerText = 'SALVA PUNTEGGIO'; btnSave.disabled = false; btnSave.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-700'); btnSave.classList.add('bg-red-900', 'hover:bg-red-700');
@@ -6371,6 +6383,17 @@ function respawnPlayer() {
     Game.snapCamera(); Game.state = 'PLAYING';
     if (Game.isBossFloor) AudioEngine.playBossMusic(); else AudioEngine.playGameMusic();
     Game.getFloatingText().spawn(Game.player.x, Game.player.y, "RESPAWN!", '#ff66bb', 40, true);
+    
+    // --- NUOVO: MOSTRA LE MONETE PERSE AL RESPAWN ---
+    if (Game.lastCoinsLost && Game.lastCoinsLost > 0) {
+        setTimeout(() => {
+            if (Game.player && !Game.player.dead) {
+                Game.getFloatingText().spawn(Game.player.x, Game.player.y + 25, `-${Game.lastCoinsLost} MONETE`, '#ff3300', 35, true);
+                Game.lastCoinsLost = 0; // Resetta la variabile
+            }
+        }, 600); // Leggero ritardo per non accavallarsi visivamente alla scritta "RESPAWN!"
+    }
+    // ------------------------------------------------
     
     // Reset completo e pulito dello scudo
     Game.player.activeShieldTimer = 0;

@@ -622,7 +622,7 @@ const AppSettings = {
                 if (Game.composer) Game.composer.setPixelRatio(pr);
             }
         }
-        if (Game.bloomPass) { Game.bloomPass.strength = this.isUltraPC ? 1.8 : 1.3; Game.bloomPass.radius = this.isUltraPC ? 0.8 : 0.6; }
+       if (Game.bloomPass) { Game.bloomPass.strength = this.isUltraPC ? 1.1 : 0.8; Game.bloomPass.radius = this.isUltraPC ? 0.6 : 0.4; }
         if (Game.map) {
             if (Game.map.floorMat) { Game.map.floorMat.roughness = this.isUltraPC ? 0.65 : 0.9; Game.map.floorMat.metalness = this.isUltraPC ? 0.25 : 0.1; Game.map.floorMat.bumpScale = this.isUltraPC ? 3.0 : 1.5; Game.map.floorMat.needsUpdate = true; }
             if (Game.map.wallMat) { Game.map.wallMat.roughness = this.isUltraPC ? 0.5 : 0.8; Game.map.wallMat.metalness = this.isUltraPC ? 0.5 : 0.3; Game.map.wallMat.bumpScale = this.isUltraPC ? 4.0 : 2.0; Game.map.wallMat.needsUpdate = true; }
@@ -2419,9 +2419,8 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         this.scene.add(this.dirLight.target);
 
         const renderScene = new THREE.RenderPass(this.scene, this.camera);
-        
-        let initialStrength = AppSettings.isUltraPC ? 1.8 : 1.3;
-        let initialRadius = AppSettings.isUltraPC ? 0.8 : 0.6;
+        let initialStrength = AppSettings.isUltraPC ? 1.1 : 0.8;
+        let initialRadius = AppSettings.isUltraPC ? 0.6 : 0.4;
         // FIX BLOOM GPU: Calcoliamo il bagliore a un quarto (1/4) della risoluzione!
         // Salva il 75% del calcolo sui frammenti senza perdere qualità visibile.
         this.bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(this.width / 4, this.height / 4), initialStrength, initialRadius, 0.35);

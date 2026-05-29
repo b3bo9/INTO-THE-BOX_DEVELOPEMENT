@@ -1861,13 +1861,20 @@ class Hazard {
                     }
                 }
                if ((this.type === 'enemy_fire' || this.type === 'crystal_fire' || this.type === 'snake_fire') && (Game.frameCount + this.updateOffset) % 6 === 0) {
-                    // SOSTITUZIONE: Uso delle parentesi quadre invece di .get()
                     let pCd = this.hitCooldown['player'] || 0;
                     if (Game.playTime >= pCd && MathUtils.distanceSq(this, Game.player) < (this.radius + Game.player.radius)**2) { 
-                        let playerDmg = this.type === 'crystal_fire' ? 35 * Game.difficultyMult : this.damage;
-                        Game.player.takeDamage(playerDmg, null); 
-                        // SOSTITUZIONE: Uso delle parentesi quadre invece di .set()
-                        this.hitCooldown['player'] = Game.playTime + 1.0; 
+                        
+                        // --- FIX: IMMUNITÀ POZZE CON SCUDO CINETICO ---
+                        if (Game.player.activeShieldTimer > 0) {
+                            // Lo scudo è attivo: blocca il danno ambientale.
+                            // Generiamo una piccola scintilla azzurra per far capire al giocatore che lo scudo sta lavorando.
+                            Game.getParticle().spawn(Game.player.x, 15, Game.player.y, SharedMat.spriteBlue, 'spark');
+                        } else {
+                            // Nessuno scudo: applica i danni normalmente
+                            let playerDmg = this.type === 'crystal_fire' ? 35 * Game.difficultyMult : this.damage;
+                            Game.player.takeDamage(playerDmg, null); 
+                            this.hitCooldown['player'] = Game.playTime + 1.0; 
+                        }
                     }
                 }
             }

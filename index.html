@@ -1885,7 +1885,7 @@ class Hazard {
                 }
             }
             }
-            }
+            
         
         // --- LOGICA VECCHIA DELLE POZZE STATICHE ---
         else {
@@ -2152,16 +2152,15 @@ const TouchControls = {
             
             if (distance > maxR) { dx = nx * maxR; dy = ny * maxR; }
             
-            // OTTIMIZZAZIONE DOM: Previene il ricalcolo CSS selvaggio usando rAF
-            if (!stick.ticking) {
-                window.requestAnimationFrame(() => {
-                    stick.style.transform = `translate(-50%, -50%) translate(${dx}px, ${dy}px)`;
-                    stick.ticking = false;
-                });
-                stick.ticking = true;
-            }
+            // ZERO-ALLOCATION DOM: I browser moderni raggruppano già le modifiche CSS.
+            // Usare rAF con una Arrow Function creava "spazzatura" in RAM 120 volte al secondo!
+            stick.style.transform = `translate(-50%, -50%) translate(${dx}px, ${dy}px)`;
             
-            Game.inputs[side] = { x: nx, y: ny, active: true };
+            // ZERO-ALLOCATION INPUT: Aggiorniamo le proprietà dell'oggetto preesistente
+            // invece di usare `Game.inputs[side] = { ... }` che crea un nuovo oggetto ogni millisecondo.
+            Game.inputs[side].x = nx;
+            Game.inputs[side].y = ny;
+            Game.inputs[side].active = true;
         };
 
         zone.addEventListener('touchstart', onStart, {passive: false}); 
@@ -3257,14 +3256,23 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
            }
        }
 
-       let activeOffScreen = this._offScreenEnemies.slice(0, offCount);
-       activeOffScreen.sort((a, b) => a.dist - b.dist);
+       // ZERO-ALLOCATION SORT: Evitiamo .slice() e .sort() che generano array e funzioni temporanee ad ogni frame.
+       // Eseguiamo un velocissimo "Insertion Sort" direttamente sull'array pre-allocato.
+       for (let i = 1; i < offCount; i++) {
+           let key = this._offScreenEnemies[i];
+           let j = i - 1;
+           while (j >= 0 && this._offScreenEnemies[j].dist > key.dist) {
+               this._offScreenEnemies[j + 1] = this._offScreenEnemies[j];
+               j = j - 1;
+           }
+           this._offScreenEnemies[j + 1] = key;
+       }
        
        let maxArrows = 5; 
        this.uiCtx.fillStyle = 'rgba(255, 0, 0, 0.3)'; 
        
        for(let i=0; i<Math.min(maxArrows, offCount); i++) {
-           let e = activeOffScreen[i].enemy;
+           let e = this._offScreenEnemies[i].enemy; // Peschiamo dall'array originale ordinato
            let padding = 20;
            let cx = this.width / 2; let cy = this.height / 2;
            let angle = Math.atan2(e.y - this.player.y, e.x - this.player.x);
@@ -3288,11 +3296,18 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
         let currentColor = "";
 
        let textsDrawn = 0;
-        for (let i = 0, len = this.floatingTexts.length; i < len; i++) {
-            let ft = this.floatingTexts[i]; if (!ft.active) continue;
-            
-            // OTTIMIZZAZIONE: Scrivere sul Canvas 2D è lentissimo. Cappa i testi a schermo.
-            if (textsDrawn > (isTouchDevice ? 12 : 30)) break;
+       for (let i = 0, len = this.floatingTexts.length; i < len; i++) {
+           let ft = this.floatingTexts[i]; 
+           if (!ft.active) continue;
+           
+           // Rileviamo se il testo fluttuante è fuori dalla visuale per ignorare il rendering
+           if (ft.x < this.camera.position.x - 1000 || ft.x > this.camera.position.x + 1000 || 
+               ft.y < this.camera.position.z - 1500 || ft.y > this.camera.position.z + 500) {
+               continue; 
+           }
+
+           // OTTIMIZZAZIONE: Scrivere sul Canvas 2D è lentissimo. Cappa i testi a schermo.
+           if (textsDrawn > (isTouchDevice ? 12 : 30)) break;
             
             let pos = toScreenPosition(ft.x, ft.h, ft.y);
             let progress = ft.life / ft.maxLife; 

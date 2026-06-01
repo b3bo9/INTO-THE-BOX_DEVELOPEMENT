@@ -3548,40 +3548,37 @@ class GameMap {
 
        // --- 2.5 ALLOCHIAMO I DETRITI ---
         const maxDebris = floorCount * (isTouchDevice ? 8 : 20);
-        const geoDebris = new THREE.DodecahedronGeometry(2.5, 0);
-        const matDebris = new THREE.MeshStandardMaterial({ color: 0x1a1a22, roughness: 0.9, metalness: 0.1 });
-        const meshDebris = new THREE.InstancedMesh(geoDebris, matDebris, maxDebris);
+        if (!window.GLOBAL_DEBRIS_GEO) window.GLOBAL_DEBRIS_GEO = new THREE.DodecahedronGeometry(2.5, 0);
+        if (!window.GLOBAL_DEBRIS_MAT) window.GLOBAL_DEBRIS_MAT = new THREE.MeshStandardMaterial({ color: 0x1a1a22, roughness: 0.9, metalness: 0.1 });
+        const meshDebris = new THREE.InstancedMesh(window.GLOBAL_DEBRIS_GEO, window.GLOBAL_DEBRIS_MAT, maxDebris);
         meshDebris.receiveShadow = true;
-        // Le piccole pietre fanno ombra solo su Ultra (per massime prestazioni)
         meshDebris.castShadow = AppSettings.isUltraPC; 
-       // meshDebris.frustumCulled = false;
         let idxDebris = 0;
         
        // --- 2.6 ALLOCHIAMO GLI ALBERI ---
         const maxTrees = floorCount * (isTouchDevice ? 1 : 2); 
-        // OTTIMIZZAZIONE CPU: L'albero frattale viene calcolato una sola volta e tenuto in cache
         if (!window.GLOBAL_TREE_GEO) window.GLOBAL_TREE_GEO = createDarkTreeGeometry();
-        const geoTree = window.GLOBAL_TREE_GEO;
-        const matTree = new THREE.MeshStandardMaterial({ color: 0x0a0807, emissive: 0x020101, roughness: 0.9 });
-        const meshTrees = new THREE.InstancedMesh(geoTree, matTree, maxTrees);
+        if (!window.GLOBAL_TREE_MAT) window.GLOBAL_TREE_MAT = new THREE.MeshStandardMaterial({ color: 0x0a0807, emissive: 0x020101, roughness: 0.9 });
+        const meshTrees = new THREE.InstancedMesh(window.GLOBAL_TREE_GEO, window.GLOBAL_TREE_MAT, maxTrees);
         meshTrees.receiveShadow = true;
         meshTrees.castShadow = AppSettings.shadowsEnabled; 
-       // meshTrees.frustumCulled = false;
         
         // --- NUOVO: FAKE SHADOWS PER GLI ALBERI ---
-        const treeShadowGeo = new THREE.PlaneGeometry(1, 1);
-        treeShadowGeo.rotateX(-Math.PI / 2); // La sdraiamo a terra
-        const meshTreeShadows = new THREE.InstancedMesh(treeShadowGeo, SharedMat.blobShadow, maxTrees);
-      //  meshTreeShadows.frustumCulled = false;
+        if (!window.GLOBAL_TREE_SHADOW_GEO) {
+            window.GLOBAL_TREE_SHADOW_GEO = new THREE.PlaneGeometry(1, 1);
+            window.GLOBAL_TREE_SHADOW_GEO.rotateX(-Math.PI / 2);
+        }
+        const meshTreeShadows = new THREE.InstancedMesh(window.GLOBAL_TREE_SHADOW_GEO, SharedMat.blobShadow, maxTrees);
         // ------------------------------------------
+
        // --- NUOVO: SANGUE PERMANENTE SUL PAVIMENTO ---
-        Game.maxBlood = isTouchDevice ? 60 : 150; // Quante macchie max prima di riciclare
-        const bloodGeo = new THREE.PlaneGeometry(12, 12);
-        bloodGeo.rotateX(-Math.PI / 2);
-        const bloodMat = new THREE.MeshBasicMaterial({ map: BLOOD_TEX, transparent: true, opacity: 0.7, depthWrite: false, color: 0x4a0000 });
-        Game.bloodMesh = new THREE.InstancedMesh(bloodGeo, bloodMat, Game.maxBlood);
-       // Game.bloodMesh.frustumCulled = false;
-        // Nascondiamo tutte le macchie sottoterra all'inizio
+        Game.maxBlood = isTouchDevice ? 60 : 150; 
+        if (!window.GLOBAL_BLOOD_GEO) {
+            window.GLOBAL_BLOOD_GEO = new THREE.PlaneGeometry(12, 12);
+            window.GLOBAL_BLOOD_GEO.rotateX(-Math.PI / 2);
+            window.GLOBAL_BLOOD_MAT = new THREE.MeshBasicMaterial({ map: BLOOD_TEX, transparent: true, opacity: 0.7, depthWrite: false, color: 0x4a0000 });
+        }
+        Game.bloodMesh = new THREE.InstancedMesh(window.GLOBAL_BLOOD_GEO, window.GLOBAL_BLOOD_MAT, Game.maxBlood);
         let hideMatrix = new THREE.Matrix4().makeTranslation(0, -100, 0);
         for(let i=0; i<Game.maxBlood; i++) Game.bloodMesh.setMatrixAt(i, hideMatrix);
         Game.bloodIdx = 0;
@@ -3661,16 +3658,16 @@ class GameMap {
         const meshRock = new THREE.InstancedMesh(floorGeo, window.GLOBAL_MAP_MATS.rock, floorCount);
         meshDirt.renderOrder = -10; meshGrass.renderOrder = -9; meshRock.renderOrder = -8;
         
-        const wallGeo = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
-
-        const wallMesh = new THREE.InstancedMesh(wallGeo, this.wallMat, wallCount);
-        const baseGeo = new THREE.BoxGeometry(35, 15, 35);
-        const shaftGeo = new THREE.CylinderGeometry(12, 14, TILE_SIZE * 1.5, 8);
-        const capGeo = new THREE.CylinderGeometry(20, 12, 10, 4);
-
-        const pillarBaseMesh = new THREE.InstancedMesh(baseGeo, this.wallMat, pillarCount);
-        const pillarShaftMesh = new THREE.InstancedMesh(shaftGeo, this.wallMat, pillarCount);
-        const pillarCapMesh = new THREE.InstancedMesh(capGeo, this.wallMat, pillarCount);
+       if (!window.GLOBAL_WALL_GEO) {
+            window.GLOBAL_WALL_GEO = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
+            window.GLOBAL_BASE_GEO = new THREE.BoxGeometry(35, 15, 35);
+            window.GLOBAL_SHAFT_GEO = new THREE.CylinderGeometry(12, 14, TILE_SIZE * 1.5, 8);
+            window.GLOBAL_CAP_GEO = new THREE.CylinderGeometry(20, 12, 10, 4);
+        }
+        const wallMesh = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, this.wallMat, wallCount);
+        const pillarBaseMesh = new THREE.InstancedMesh(window.GLOBAL_BASE_GEO, this.wallMat, pillarCount);
+        const pillarShaftMesh = new THREE.InstancedMesh(window.GLOBAL_SHAFT_GEO, this.wallMat, pillarCount);
+        const pillarCapMesh = new THREE.InstancedMesh(window.GLOBAL_CAP_GEO, this.wallMat, pillarCount);
 
         meshDirt.receiveShadow = true; meshGrass.receiveShadow = true; meshRock.receiveShadow = true;
         wallMesh.castShadow = true; wallMesh.receiveShadow = false; 
@@ -3872,20 +3869,14 @@ class GameMap {
 
             // Meno banchi su mobile per performance, ma grandi per riempire la mappa
             const fogCount = isTouchDevice ? 15 : 40; 
-            const fogGeo = new THREE.PlaneGeometry(350, 350); 
-            fogGeo.rotateX(-Math.PI / 2); // Sdraiamo la geometria parallela al suolo
-
-            const fogMat = new THREE.MeshBasicMaterial({
-    map: texSmoke,           // Usa la tua immagine fumo
-    color: 0x667799,         // Un colore grigio-azzurro freddo
-    transparent: true,
-    opacity: 0.35,           // Regola questo valore per la densità (0.1 a 0.5)
-    depthWrite: false,       // Fondamentale per non avere "buchi" nel terreno
-    depthTest: true,
-    blending: THREE.NormalBlending // Usa NormalBlending invece di Additive se vuoi che il fumo "copra" il suolo
-});
-
-this.fogMesh = new THREE.InstancedMesh(fogGeo, fogMat, fogCount);
+            if (!window.GLOBAL_FOG_GEO) {
+                window.GLOBAL_FOG_GEO = new THREE.PlaneGeometry(350, 350); 
+                window.GLOBAL_FOG_GEO.rotateX(-Math.PI / 2);
+                window.GLOBAL_FOG_MAT = new THREE.MeshBasicMaterial({
+                    map: texSmoke, color: 0x667799, transparent: true, opacity: 0.35, depthWrite: false, depthTest: true, blending: THREE.NormalBlending
+                });
+            }
+            this.fogMesh = new THREE.InstancedMesh(window.GLOBAL_FOG_GEO, window.GLOBAL_FOG_MAT, fogCount);
 this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (renderOrder alto = disegnato dopo)
             for(let i = 0; i < fogCount; i++) {
                 // Posizioni casuali su tutta la mappa
@@ -6386,26 +6377,39 @@ class FloatingText {
 function clearScene() {
     if (Game.pursuerTimeout) clearTimeout(Game.pursuerTimeout);
     if (Game.map) {
-       // [OTTIMIZZAZIONE 1 FIX]: Pulizia VERA della memoria GPU
         Game.map.mapGroup.traverse((child) => {
             if (child.isMesh || child.isInstancedMesh) {
-                // Elimina le geometrie proteggendo SOLO i singleton esatti
-                if (child.geometry && child.geometry !== InteractiveGrassSystem.geo && child.geometry !== window.GLOBAL_TREE_GEO && !Object.values(SharedGeo).includes(child.geometry)) {
+                if (child.geometry && 
+                    child.geometry !== InteractiveGrassSystem.geo && 
+                    child.geometry !== window.GLOBAL_TREE_GEO && 
+                    child.geometry !== window.GLOBAL_DEBRIS_GEO && 
+                    child.geometry !== window.GLOBAL_TREE_SHADOW_GEO && 
+                    child.geometry !== window.GLOBAL_BLOOD_GEO && 
+                    child.geometry !== window.GLOBAL_WALL_GEO && 
+                    child.geometry !== window.GLOBAL_BASE_GEO && 
+                    child.geometry !== window.GLOBAL_SHAFT_GEO && 
+                    child.geometry !== window.GLOBAL_CAP_GEO && 
+                    child.geometry !== window.GLOBAL_FOG_GEO && 
+                    !Object.values(SharedGeo).includes(child.geometry)) {
                     child.geometry.dispose();
                 }
                 
-                // FIX CRITICO: Non eliminare i materiali del terreno/muro, perché li abbiamo resi globali!
-                // Li stiamo per rendere globali nel prossimo passaggio. 
-                // Eliminiamo solo la nebbia dinamica.
-                if (child.material && child === Game.map.fogMesh) {
-                     child.material.dispose();
+                if (child.material && 
+                    child.material !== window.GLOBAL_DEBRIS_MAT && 
+                    child.material !== window.GLOBAL_TREE_MAT && 
+                    child.material !== window.GLOBAL_BLOOD_MAT && 
+                    child.material !== window.GLOBAL_FOG_MAT && 
+                    !Object.values(window.GLOBAL_MAP_MATS || {}).includes(child.material) && 
+                    !Object.values(SharedMat).includes(child.material)) {
+                    if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                    else child.material.dispose();
                 }
                 
-                if (child.dispose) child.dispose();
+                if (child.dispose) child.dispose(); // Svuota i buffer instanced
             }
         });
         Game.scene.remove(Game.map.mapGroup);
-        Game.map.fogMesh = null; // Stacca i riferimenti
+        Game.map.fogMesh = null;
     }
     
     for(let i=0, len=Game.debris.length; i<len; i++) { Game.debris[i].active = false; Game.debris[i].mesh.visible = false; }

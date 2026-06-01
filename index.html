@@ -2642,12 +2642,23 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         this.lastTime = timestamp;
         if (frameTime > MAX_TIME_STEP) frameTime = MAX_TIME_STEP; 
         this.accumulator += frameTime;
-        while(this.accumulator >= FIXED_TIME_STEP) {
-            if (this.hitStop > 0) this.hitStop -= FIXED_TIME_STEP; 
+        
+        // OTTIMIZZAZIONE CPU: Evita lo "Spiral of Death". 
+        // Su mobile, se il telefono lagga, limitiamo i ricalcoli di fisica a massimo 3 per frame.
+        // È meglio scartare una frazione di secondo (drop frame) piuttosto che freezare il gioco.
+        let updateCount = 0;
+        while(this.accumulator >= FIXED_TIME_STEP) {
+            if (this.hitStop > 0) this.hitStop -= FIXED_TIME_STEP; 
             else this.update(FIXED_TIME_STEP);
-            this.accumulator -= FIXED_TIME_STEP;
-        }
-        this.draw(); 
+            this.accumulator -= FIXED_TIME_STEP;
+            
+            updateCount++;
+            if (updateCount >= (isTouchDevice ? 3 : 5)) {
+                this.accumulator = 0; // Scarta il tempo extra
+                break;
+            }
+        }
+        this.draw();
         requestAnimationFrame(this._boundLoop);
     },
 
@@ -5443,9 +5454,12 @@ class Enemy extends Entity {
         let cHex = this.mat.color.getHex();
         this.mesh.updateMatrixWorld(true);
 
-        const _pos = new THREE.Vector3();
-        const _quat = new THREE.Quaternion();
-        const _scale = new THREE.Vector3();
+        // OTTIMIZZAZIONE RAM: Zero-Allocation.
+        // Invece di creare nuovi vettori, ricicliamo quelli globali già presenti nell'oggetto Game.
+        // Evita i microuscatti (GC Stutters) quando fai saltare in aria gruppi numerosi di nemici.
+        const _pos = Game._vec3;
+        const _quat = Game._dummyQuat;
+        const _scale = Game._dummyScale;
 
         this.mesh.traverse((child) => {
             if (child.isMesh && child.geometry && child.material !== SharedMat.enemyEye) {
@@ -6079,18 +6093,27 @@ class Projectile {
                 if (!this.hitEnemies.has(e.id)) {
                     let exactRadSq = (this.radius + e.radius) * (this.radius + e.radius);
                     
-                    if (MathUtils.distanceSq(this, e) < exactRadSq) {
-                        e.takeDamage(this.damage, Game.player, this.isCrit, this.canInfect); 
+                    // OTTIMIZZAZIONE CPU: "Inlining" del calcolo della distanza.
+                    // Evita l'overhead della chiamata a funzione MathUtils in un loop critico annidato.
+                    let dx = e.x - this.x;
+                    let dy = e.y - this.y;
+                    let distSq = (dx * dx) + (dy * dy);
+                    
+                    if (distSq < exactRadSq) {
+                        e.takeDamage(this.damage, Game.player, this.isCrit, this.canInfect);
                         if(this.type === 'homing_arrow') e.slowedTimer = 2.0; 
                         this.handleHit(e);
                     }
                 }
             }
-       } else {
+      } else {
             let effectivePlayerRadius = (Game.player.activeShieldTimer > 0 && this.type !== 'fire_shape') ? Game.player.radius + 15 : Game.player.radius;
             let pRadCheck = (this.radius + effectivePlayerRadius) * (this.radius + effectivePlayerRadius);
             
-            if (MathUtils.distanceSq(this, Game.player) < pRadCheck) {
+            let dx = Game.player.x - this.x;
+            let dy = Game.player.y - this.y;
+            
+            if ((dx * dx) + (dy * dy) < pRadCheck) {
                 if (Game.player.activeShieldTimer > 0 && this.type !== 'fire_shape') {
                     Game.player.shieldAbsorbed++;
                     Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'spark');

@@ -1741,22 +1741,24 @@ class Hazard {
         this.activationTimer = (type === 'enemy_fire') ? 1.0 : (type === 'snake_fire' ? 0.6 : 0.0);
         this.group.position.set(x, 0, z);
         
-        if (type === 'nova_ring') {
+       if (type === 'nova_ring' || type === 'crystal_nova_ring') {
             // Nuova logica: parte piccola e si espanderà nell'update
             this.maxRadius = radius;
             this.radius = 5; 
-            this.expansionSpeed = radius / duration; // Es. 300 / 0.6 = 500 unità/s
-            this.plane.visible = false; // Nascondiamo il disco interno, mostriamo solo l'anello
-            this.ring.material = SharedMat.hazardNovaRing;
+            this.expansionSpeed = radius / duration; 
+            this.plane.visible = false; 
+            // Usa l'anello viola per la versione neutrale, verde per la classica
+            this.ring.material = type === 'crystal_nova_ring' ? SharedMat.hazardCrystalRing : SharedMat.hazardNovaRing;
         } else {
             // Logica Classica per fuoco e veleno a terra
             this.radius = radius;
             this.plane.visible = true;
             this.plane.scale.set(this.radius, 0.1, this.radius); 
             this.ring.scale.set(this.radius, this.radius, 1);
-           if (type === 'poison') { this.plane.material = SharedMat.hazardPoisonPlane; this.ring.material = SharedMat.hazardPoisonRing; }
-            else if (type === 'enemy_fire' || type === 'snake_fire') { this.plane.material = SharedMat.hazardEnemyPlane; this.ring.material = SharedMat.hazardEnemyRing; }
-            else if (type === 'crystal_fire') { this.plane.material = SharedMat.hazardCrystalPlane; this.ring.material = SharedMat.hazardCrystalRing; }
+            if (type === 'poison') { this.plane.material = SharedMat.hazardPoisonPlane; this.ring.material = SharedMat.hazardPoisonRing; }
+            else if (type === 'enemy_fire') { this.plane.material = SharedMat.hazardEnemyPlane; this.ring.material = SharedMat.hazardEnemyRing; }
+            // FIX: il serpente instabile ora usa i materiali viola del crystal_fire
+            else if (type === 'crystal_fire' || type === 'snake_fire') { this.plane.material = SharedMat.hazardCrystalPlane; this.ring.material = SharedMat.hazardCrystalRing; }
             else { this.plane.material = SharedMat.hazardFirePlane; this.ring.material = SharedMat.hazardFireRing; }
         }
         
@@ -1768,21 +1770,76 @@ class Hazard {
         if (!this.active) return;
         this.life -= dt;
         
-        // --- LOGICA DELL'ANELLO IN ESPANSIONE ---
-        if (this.type === 'nova_ring') {
+       // --- LOGICA DELL'ANELLO IN ESPANSIONE ---
+        if (this.type === 'nova_ring' || this.type === 'crystal_nova_ring') {
             this.radius += this.expansionSpeed * dt;
             this.ring.scale.set(this.radius, this.radius, 1.5);
             this.ring.updateMatrix();
             this.ring.material.opacity = (this.life / this.maxLife) * 0.9;
             
-            // Effetto grafico: scintille che viaggiano sul perimetro
             if (Game.frameCount % 2 === 0 && !isTouchDevice) {
                 let angle = Math.random() * Math.PI * 2;
-                Game.getParticle().spawn(this.x + Math.cos(angle)*this.radius, 5, this.y + Math.sin(angle)*this.radius, SharedMat.spriteGreen, 'flame');
-                Game.getParticle().spawn(this.x + Math.cos(angle)*this.radius, 5, this.y + Math.sin(angle)*this.radius, SharedMat.spriteRed, 'spark');
+                // FIX: Colora le particelle sul bordo in base al tipo
+                let matFlame = this.type === 'crystal_nova_ring' ? SharedMat.spritePink : SharedMat.spriteGreen;
+                let matSpark = this.type === 'crystal_nova_ring' ? SharedMat.spritePink : SharedMat.spriteRed;
+                Game.getParticle().spawn(this.x + Math.cos(angle)*this.radius, 5, this.y + Math.sin(angle)*this.radius, matFlame, 'flame');
+                Game.getParticle().spawn(this.x + Math.cos(angle)*this.radius, 5, this.y + Math.sin(angle)*this.radius, matSpark, 'spark');
             }
 
-            // --- NUOVO: SBUFFI DI POLVERE LUNGO L'ANELLO ---
+            if (Game.frameCount % 4 === 0) {
+                 let angle = Math.random() * Math.PI * 2;
+                 Game.getParticle().spawn(this.x + Math.cos(angle) * this.radius, 2, this.y + Math.sin(angle) * this.radius, SharedMat.spriteDust, 'dust');
+            }
+            
+            // Collisione Nemici
+            let nearby = Game.enemyGrid.findNearby(this, this.radius + 30);
+            for (let i=0, len=nearby.length; i<len; i++) {
+                let e = nearby[i];
+                let cd = this.hitCooldown[e.id] || 0;
+                
+                if (Game.playTime < cd) continue; 
+                
+                let dx = this.x - e.x; let dy = this.y - e.y;
+                let distSq = dx*dx + dy*dy;
+                
+                let outerRad = this.radius + e.radius + 15;
+                let innerRad = Math.max(0, this.radius - e.radius - 15);
+                
+                if (distSq <= outerRad * outerRad && distSq >= innerRad * innerRad) {
+                    e.takeDamage(this.damage, Game.player, true, true);
+                    e.infected = true;
+                    e.slowedTimer = 2.0;
+                    
+                    let angleToEnemy = Math.atan2(-dy, -dx);
+                    e.push(Math.cos(angleToEnemy), Math.sin(angleToEnemy), 80);
+                    if (Math.random() < 0.3) { 
+                        let p = Game.getProjectile();
+                        p.spawn(e.x, e.y, Math.random() * Math.PI * 2, 400, this.damage * 0.5, 'player', 'homing_arrow');
+                        p.canInfect = false;
+                    }
+                    this.hitCooldown[e.id] = Game.playTime + 1.0; 
+                }
+            }
+
+            // FIX: Collisione Giocatore esclusiva per l'anello Corrotto
+            if (this.type === 'crystal_nova_ring') {
+                let pCd = this.hitCooldown['player'] || 0;
+                if (Game.playTime >= pCd) {
+                    let dx = this.x - Game.player.x; let dy = this.y - Game.player.y;
+                    let distSq = dx*dx + dy*dy;
+                    let outerRad = this.radius + Game.player.radius + 15;
+                    let innerRad = Math.max(0, this.radius - Game.player.radius - 15);
+                    if (distSq <= outerRad * outerRad && distSq >= innerRad * innerRad) {
+                        if (Game.player.activeShieldTimer > 0) {
+                            Game.getParticle().spawn(Game.player.x, 15, Game.player.y, SharedMat.spriteBlue, 'spark');
+                        } else {
+                            Game.player.takeDamage(this.damage, null);
+                        }
+                        this.hitCooldown['player'] = Game.playTime + 1.0; 
+                    }
+                }
+            }
+        }
             // Spawniamo particelle di polvere sul bordo dell'anello ogni 4 frame
             if (Game.frameCount % 4 === 0) {
                  let angle = Math.random() * Math.PI * 2;
@@ -1838,10 +1895,7 @@ class Hazard {
                 this.plane.material.opacity = 0.35 + Math.sin(this.life * 10) * 0.1; 
                 this.ring.material.opacity = 0.8 + Math.sin(this.life * 15) * 0.2; 
             }
-          if ((Game.frameCount + this.updateOffset) % 5 === 0 && !isTouchDevice && this.activationTimer <= 0) { 
-                // Le pozze del giocatore emettono verde, nemiche rosso, danni doppi (cristallo) viola/rosa
-                let mat = (this.type === 'fire' || this.type === 'poison') ? SharedMat.spriteGreen : SharedMat.spriteRed;
-                if (this.type === 'crystal_fire') mat = SharedMat.spritePink;
+         if (this.type === 'crystal_fire' || this.type === 'snake_fire') mat = SharedMat.spritePink;
                 Game.getParticle().spawn(this.x + MathUtils.randomRange(-this.radius, this.radius), 2, this.y + MathUtils.randomRange(-this.radius, this.radius), mat, 'trail');
             }
             
@@ -2846,9 +2900,9 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
                 let rx = this.player.x + Math.cos(angle) * dist;
                 let ry = this.player.y + Math.sin(angle) * dist;
                 if (!this.map.isSolid(rx, ry)) {
-                    // Utilizza la logica espansiva di 'nova_ring' colorata di verde acido
+                    // FIX: Utilizza il nuovo anello espansivo viola che colpisce tutto
                     let dmg = this.player.stats.maxHp * 0.15;
-                    this.getHazard().spawn(rx, ry, 150, 2.5, dmg, 0x99ff00, 'nova_ring');
+                    this.getHazard().spawn(rx, ry, 150, 2.5, dmg, 0xaa00ff, 'crystal_nova_ring');
                 }
                 this.acidPoolTimer = MathUtils.randomRange(1.5, 3.0);
             }
@@ -4512,8 +4566,8 @@ class Player extends Entity {
                     if (!this.snakeTrailTimer) this.snakeTrailTimer = 0;
                     this.snakeTrailTimer += dt;
                     if (this.snakeTrailTimer >= 0.2) {
-                        // Raggio 22, dura 4 secondi, fa il 40% del danno max (bilanciato per hit multipli)
-                        Game.getHazard().spawn(this.x, this.y, 22, 4.0, this.stats.maxDmg * 0.4, 0xff3300, 'snake_fire');
+                        // FIX: Colore aggiornato al viola (0xaa00ff) per coerenza visiva
+                        Game.getHazard().spawn(this.x, this.y, 22, 4.0, this.stats.maxDmg * 0.4, 0xaa00ff, 'snake_fire');
                         this.snakeTrailTimer = 0;
                     }
                 }

@@ -1523,11 +1523,8 @@ const ModelFactory = {
         let darkMat = SharedMat.enemyDark;
        if (type === 'goblin') {
             let body = new THREE.Mesh(SharedGeo.tetrahedron, mat); body.scale.set(size*1.5, size*1.5, size*1.5); body.position.y = size; body.rotation.x = -Math.PI/4;
-            
-            // FIX VISIBILITÀ: Occhio più spesso e largo per far risaltare il rosso
-            let eye = new THREE.Mesh(SharedGeo.box, SharedMat.enemyEye); eye.scale.set(size*1.2, size*0.4, size*0.3); eye.position.set(0, size*1.2, size*0.8);
-            
-            // FIX VISIBILITÀ: Aggiungiamo un alone di avvertimento rosso/arancio dietro al modello
+
+            // Rimosso l'occhio fisico: manteniamo solo l'alone di avvertimento rosso per visibilità e performance
             if (!SharedMat.spriteGoblinGlow) {
                 SharedMat.spriteGoblinGlow = new THREE.SpriteMaterial({color: 0xff4400, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false});
             }
@@ -1535,9 +1532,9 @@ const ModelFactory = {
             glow.scale.set(size * 4.5, size * 4.5, 1);
             glow.position.y = size;
 
-            group.add(body); group.add(eye); group.add(glow);
-       
-       } else if (type === 'slime' || type === 'slime_mini') {
+            group.add(body); group.add(glow);
+       }
+        else if (type === 'slime' || type === 'slime_mini') {
             // Corpo: una sfera schiacciata a mo' di gelatina
             let body = new THREE.Mesh(SharedGeo.sphere, mat); 
             body.scale.set(size * 1.5, size * 0.8, size * 1.5); 
@@ -2188,17 +2185,10 @@ const UI = {
             this.cache.progressPct = progressPct; 
         }
         
-       // OTTIMIZZAZIONE DOM: L'animazione dinamica del box-shadow è fatale per il layout mobile.
-        if (progressPct > 0 && Game.frameCount % 6 === 0 && !isTouchDevice) {
-            let intensity = progressPct / 100; 
-            let pulseSpeed = 4 + (intensity * 8); 
-            let pulse = Math.abs(Math.sin(Game.playTime * pulseSpeed));
-            
-            let spread = 5 + (intensity * 15) + (pulse * intensity * 25);
-            let alpha = 0.4 + (intensity * 0.6);
-            
-            this.els.floorProgress.style.boxShadow = `0 0 ${spread}px rgba(34,211,238, ${alpha})`;
-        }
+     // OTTIMIZZAZIONE DOM REALE: Alterare il box-shadow via JS causa "Layout Thrashing" anche su PC.
+       // Abbiamo già l'alterazione del "brightness" accelerata via hardware poche righe sopra. 
+       // Lasciamo che sia il CSS statico a gestire le ombre, spegnendo questo loop dannoso.
+       /* Blocco JS Box-Shadow eliminato per preservare il framerate */
         
         let hasEssence = Game.player.essenceList.length > 0 || Game.player.overdrive;
         if (hasEssence) {
@@ -3244,18 +3234,20 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
                 textsDrawn++;
                 this.uiCtx.globalAlpha = Math.max(0, progress); 
                 
-                // OTTIMIZZAZIONE: Dimensione base fissa per non ri-compilare la stringa font!
-                let scale = ft.isCrit ? (2.0 - progress) : (1.5 - progress*0.5);
-                let baseSize = Math.floor(ft.size * (isTouchDevice ? 0.7 : 1));
-                let fontStr = `900 ${baseSize}px 'Impact', sans-serif`;
+               // OTTIMIZZAZIONE REALE: Manteniamo il font rigorosamente statico.
+                // Gestiamo le variazioni dinamiche calcolando il rapporto di scala (dynamicScale).
+                let targetSize = ft.size * (isTouchDevice ? 0.7 : 1);
+                let dynamicScale = targetSize / 40.0; // 40px è la nostra base fissa
+                let finalScale = (ft.isCrit ? (2.0 - progress) : (1.5 - progress*0.5)) * dynamicScale;
+                
+                let fontStr = `900 40px 'Impact', sans-serif`; // Stringa statica!
                 
                 if (currentFont !== fontStr) { this.uiCtx.font = fontStr; currentFont = fontStr; }
                 if (currentColor !== ft.color) { this.uiCtx.fillStyle = ft.color; currentColor = ft.color; }
                 
-                // Usiamo la matrice hardware per scalare, eliminando il carico sulla CPU
                 this.uiCtx.save();
                 this.uiCtx.translate(pos.x, pos.y);
-                this.uiCtx.scale(scale, scale);
+                this.uiCtx.scale(finalScale, finalScale);
                 this.uiCtx.strokeText(ft.text, 0, 0); 
                 this.uiCtx.fillText(ft.text, 0, 0); 
                 this.uiCtx.restore();

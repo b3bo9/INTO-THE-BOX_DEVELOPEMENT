@@ -1523,8 +1523,20 @@ const ModelFactory = {
         let darkMat = SharedMat.enemyDark;
        if (type === 'goblin') {
             let body = new THREE.Mesh(SharedGeo.tetrahedron, mat); body.scale.set(size*1.5, size*1.5, size*1.5); body.position.y = size; body.rotation.x = -Math.PI/4;
-            let eye = new THREE.Mesh(SharedGeo.box, SharedMat.enemyEye); eye.scale.set(size*0.8, size*0.2, size*0.2); eye.position.set(0, size*1.2, size*0.8);
-            group.add(body); group.add(eye);
+            
+            // FIX VISIBILITÀ: Occhio più spesso e largo per far risaltare il rosso
+            let eye = new THREE.Mesh(SharedGeo.box, SharedMat.enemyEye); eye.scale.set(size*1.2, size*0.4, size*0.3); eye.position.set(0, size*1.2, size*0.8);
+            
+            // FIX VISIBILITÀ: Aggiungiamo un alone di avvertimento rosso/arancio dietro al modello
+            if (!SharedMat.spriteGoblinGlow) {
+                SharedMat.spriteGoblinGlow = new THREE.SpriteMaterial({color: 0xff4400, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false});
+            }
+            let glow = new THREE.Sprite(SharedMat.spriteGoblinGlow);
+            glow.scale.set(size * 4.5, size * 4.5, 1);
+            glow.position.y = size;
+
+            group.add(body); group.add(eye); group.add(glow);
+       }
        } else if (type === 'slime' || type === 'slime_mini') {
             // Corpo: una sfera schiacciata a mo' di gelatina
             let body = new THREE.Mesh(SharedGeo.sphere, mat); 
@@ -4990,7 +5002,8 @@ class Enemy extends Entity {
         let hpMod = 1, dmgMod = 1, spdMod = 1, color = 0x666666, size = 12;
         
        // Fazione Fisica (Colori spenti/terre)
-        if (type === 'goblin') { color = 0x4a5e3a; size = 10; spdMod = 1.8; hpMod = 0.5; dmgMod = 1.2; this.aggroRange = 500; this.attackRange = 40; } 
+       // FIX VISIBILITÀ: Colore base del goblin reso verde acido brillante anziché verde scuro
+       if (type === 'goblin') { color = 0x99dd22; size = 10; spdMod = 1.8; hpMod = 0.5; dmgMod = 1.2; this.aggroRange = 500; this.attackRange = 40; }
         else if (type === 'orc') { color = 0x5c4033; size = 18; spdMod = 0.8; hpMod = 1.6; dmgMod = 2.5; this.aggroRange = 450; this.attackRange = 55; } 
         else if (type === 'skeleton_archer') { color = 0x888888; size = 14; spdMod = 1.1; hpMod = 0.4; dmgMod = 1.5; this.aggroRange = 700; this.attackRange = 400; } 
         // Fazione Tossica/Vuoto (Viola/Magenta)

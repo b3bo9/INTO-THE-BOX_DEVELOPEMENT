@@ -1602,9 +1602,22 @@ const ModelFactory = {
             let hood = new THREE.Mesh(SharedGeo.sphere, mat); hood.scale.set(size*0.8, size*0.8, size*0.8); hood.position.y = size*2.8;
             let crystals = new THREE.Group(); crystals.position.y = size*1.5;
             
-           if (type === 'dark_prophet') {
+          if (type === 'dark_prophet') {
                 // Il Profeta Oscuro ha un Libro aperto e un Bastone incrociati
                 let staff = new THREE.Mesh(SharedGeo.cylinder, darkMat); staff.scale.set(size*0.2, size*3, size*0.2); staff.position.set(-size, size*1.5, size*0.5); staff.rotation.x = Math.PI/4;
+                
+                // NUOVO ESTETICA: Gemma e Bagliore Arancione in cima al bastone
+                let staffGem = new THREE.Mesh(SharedGeo.icosahedron, mat);
+                staffGem.scale.set(size*0.4, size*0.4, size*0.4);
+                staffGem.position.set(0, size*1.5, 0); // La mettiamo sulla punta alta del cilindro
+                
+                let staffGlow = new THREE.Sprite(SharedMat.prophetSpriteGlow);
+                staffGlow.scale.set(size*3, size*3, 1);
+                staffGlow.position.set(0, size*1.5, 0);
+                
+                staff.add(staffGem);
+                staff.add(staffGlow);
+
                 let book = new THREE.Mesh(SharedGeo.box, mat); book.scale.set(size*0.8, size*0.2, size*0.6); book.position.set(size, size*1.5, size*0.8); book.rotation.z = Math.PI/4;
                 crystals.add(staff); crystals.add(book);
                 
@@ -4368,12 +4381,16 @@ class Player extends Entity {
             }
         }
         
+        // FIX BUG IMMORTALITÀ: Ripristinato il timer di 3 secondi per la reliquia Cristallo Rigenerante
         if (this.modifiers.regen > 0) {
             if (!this.regenTimer) this.regenTimer = 0;
+            this.regenTimer += dt;
+            if (this.regenTimer >= 3.0) { 
                 let healAmount = this.stats.maxHp * this.modifiers.regen;
                 this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
                 this.regenTimer = 0;
             }
+        }
         
         this.modelParts.halo.rotation.z += dt; this.modelParts.staffGem.rotation.y += dt;
         if (this.activeShieldCooldown > 0) this.activeShieldCooldown -= dt;
@@ -5297,16 +5314,19 @@ class Enemy extends Entity {
             this.distToTargetSq = dx*dx + dy*dy;
             this.angle = Math.atan2(dy, dx);
             this.isTargetingPlayer = (target === Game.player);
+            
             if (this.shadowMesh.visible) {
-            this.shadowMesh.position.set(this.x, 0.2, this.y);
-            this.shadowMesh.updateMatrix();
-        }
+                this.shadowMesh.position.set(this.x, 0.2, this.y);
+                this.shadowMesh.updateMatrix();
+            }
+            
             // Inizializza i vettori di movimento in base all'angolo del bersaglio
             this.moveX = Math.cos(this.angle);
             this.moveY = Math.sin(this.angle);
-           // --- AI: PROFETA OSCURO DOPPIO BUFF ---
+            
+            // --- AI: PROFETA OSCURO DOPPIO BUFF ---
             if (this.type === 'dark_prophet') {
-                // 1. Pulisce i target morti o usciti fuori range (Range aumentato a 1800 per evitare lo "yo-yo effect")
+                // 1. Pulisce i target morti o usciti fuori range (Range a 1800 per evitare lo "yo-yo effect")
                 for (let i = this.buffTargets.length - 1; i >= 0; i--) {
                     let target = this.buffTargets[i];
                     if (target.dead || MathUtils.distanceSq(this, target) > 1800*1800) {
@@ -5315,7 +5335,7 @@ class Enemy extends Entity {
                     }
                 }
                 
-                // 2. Cerca nuovi target se c'è spazio (Max 2)
+                // 2. Cerca nuovi target se c'è spazio (Max 2 alleati contemporaneamente)
                 if (this.buffTargets.length < 2) {
                     let nearby = Game.enemyGrid.findNearby(this, 600);
                     for (let i = 0; i < nearby.length && this.buffTargets.length < 2; i++) {
@@ -5328,53 +5348,12 @@ class Enemy extends Entity {
                     }
                 }
                 
-                // 3. Aggiorna i 2 slot dei raggi e scudi
-                for (let i = 0; i < 2; i++) {
-                    if (i < this.buffTargets.length) {
-                        let target = this.buffTargets[i];
-                        let dx = target.x - this.x; let dz = target.y - this.y;
-                        let dist = Math.sqrt(dx*dx + dz*dz); let angle = Math.atan2(dz, dx);
-                        
-                        this.beams[i].position.set(this.x + dx/2, 10, this.y + dz/2);
-                        this.beams[i].scale.set(dist, 1.5, 1.5);
-                        this.beams[i].rotation.y = -angle;
-                        this.beams[i].updateMatrix();
-                        this.beams[i].visible = true;
-
-                        this.beamGlows[i].position.set(this.x + dx/2, 10, this.y + dz/2);
-                        this.beamGlows[i].scale.set(dist, 5.0, 5.0);
-                        this.beamGlows[i].rotation.y = -angle;
-                        this.beamGlows[i].updateMatrix();
-                        this.beamGlows[i].visible = true;
-                        
-                       // TARGET SHIELD (MESH 3D SFERICA)
-                        let shieldPulse = 1.0 + Math.sin(Game.playTime * 10) * 0.05; // Pulsazione leggera
-                        // Scale 3D: diametro circa 2.5x il raggio del bersaglio
-                        let shieldSize = target.radius * 2.5 * shieldPulse; 
-                        
-                        this.targetShields[i].position.set(target.x, target.radius * 0.8, target.y);
-                        this.targetShields[i].scale.set(shieldSize, shieldSize, shieldSize);
-                        
-                        // Ruotiamo dolcemente lo scudo per un effetto energetico caotico
-                        this.targetShields[i].rotation.y += dt * 2.0;
-                        this.targetShields[i].rotation.z += dt * 1.5;
-                        
-                        this.targetShields[i].updateMatrix();
-                        this.targetShields[i].visible = true;
-                    } else {
-                        this.beams[i].visible = false;
-                        this.beamGlows[i].visible = false;
-                        this.targetShields[i].visible = false;
-                    }
-                }
-                
-                // 4. Kiting e posizionamento tattico
+                // 3. Kiting elastico (Seguono l'alleato per evitare di spezzare il legame)
                 if (this.distToTargetSq < 400*400) { 
                     this.moveX = -this.moveX; this.moveY = -this.moveY; // Scappa dal player
                 } else if (this.buffTargets.length > 0) {
-                    // FIX: Il profeta segue il suo primo target se si allontana troppo, per non spezzare il legame
                     let pTarget = this.buffTargets[0];
-                    if (MathUtils.distanceSq(this, pTarget) > 500*500) {
+                    if (MathUtils.distanceSq(this, pTarget) > 450*450) {
                         let a = Math.atan2(pTarget.y - this.y, pTarget.x - this.x);
                         this.moveX = Math.cos(a); this.moveY = Math.sin(a);
                     } else {
@@ -5386,7 +5365,6 @@ class Enemy extends Entity {
             }
             // --- FINE AI PROFETA ---
             
-            // Logica di Separazione (evita che si compenetrino)
             // Logica di Separazione (evita che si compenetrino)
             if (this.distToTargetSq > this.attackRangeSq && this.distToTargetSq < this.aggroRangeSq) {
                 let nearby = Game.enemyGrid.findNearby(this, 35); 
@@ -5407,6 +5385,47 @@ class Enemy extends Entity {
             }
         }
         // --- FINE AI STAGGERING ---
+
+        // --- AGGIORNAMENTO VISIVO A 60 FPS (Nessun Lag/Stuttering sui Raggi) ---
+        if (this.type === 'dark_prophet' && this.buffTargets) {
+            for (let i = 0; i < 2; i++) {
+                if (i < this.buffTargets.length) {
+                    let target = this.buffTargets[i];
+                    let dx = target.x - this.x; let dz = target.y - this.y;
+                    let dist = Math.sqrt(dx*dx + dz*dz); let angle = Math.atan2(dz, dx);
+                    
+                    // Raggio solido
+                    this.beams[i].position.set(this.x + dx/2, 10, this.y + dz/2);
+                    this.beams[i].scale.set(dist, 1.5, 1.5);
+                    this.beams[i].rotation.y = -angle;
+                    this.beams[i].updateMatrix();
+                    this.beams[i].visible = true;
+
+                    // Raggio con alone morbido
+                    this.beamGlows[i].position.set(this.x + dx/2, 10, this.y + dz/2);
+                    this.beamGlows[i].scale.set(dist, 5.0, 5.0);
+                    this.beamGlows[i].rotation.y = -angle;
+                    this.beamGlows[i].updateMatrix();
+                    this.beamGlows[i].visible = true;
+                    
+                    // VERI SCUDI SFERICI 3D PULSANTI SU OGNI NEMICO
+                    let shieldPulse = 1.0 + Math.sin(Game.playTime * 10) * 0.06;
+                    let shieldSize = target.radius * 2.6 * shieldPulse; 
+                    
+                    this.targetShields[i].position.set(target.x, target.radius * 0.8, target.y);
+                    this.targetShields[i].scale.set(shieldSize, shieldSize, shieldSize);
+                    this.targetShields[i].rotation.y += dt * 2.0;
+                    this.targetShields[i].rotation.z += dt * 1.5;
+                    this.targetShields[i].updateMatrix();
+                    this.targetShields[i].visible = true;
+                } else {
+                    this.beams[i].visible = false;
+                    this.beamGlows[i].visible = false;
+                    this.targetShields[i].visible = false;
+                }
+            }
+        }
+        // -----------------------------------------------------------------------
 
        // Rotazione visiva fluida (Eseguita ogni frame)
         if (this.type === 'leaper' || this.type === 'orc' || this.type === 'skeleton_archer' || this.type === 'fire_demon' || this.type === 'boss' || this.type === 'slime' || this.type === 'slime_mini') {

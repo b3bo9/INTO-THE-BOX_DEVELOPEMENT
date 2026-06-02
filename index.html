@@ -1612,14 +1612,14 @@ const ModelFactory = {
                 let staff = new THREE.Mesh(SharedGeo.cylinder, darkMat); 
                 staff.scale.set(size*0.2, size*3, size*0.2); 
                 
-                // NUOVA ESTETICA: Palla arancione incandescente
+                // NUOVA ESTETICA: Palla arancione incandescente (Rimpicciolita)
                 let gemMat = new THREE.MeshBasicMaterial({color: 0xff5500}); // Materiale non affetto dalle ombre
                 let staffGem = new THREE.Mesh(SharedGeo.sphere, gemMat);
-                staffGem.scale.set(size*0.6, size*0.6, size*0.6);
+                staffGem.scale.set(size*0.35, size*0.35, size*0.35); // Dimensione sfera ridotta
                 staffGem.position.set(0, size*1.5, 0); // Sulla punta
                 
                 let staffGlow = new THREE.Sprite(SharedMat.prophetSpriteGlow);
-                staffGlow.scale.set(size*4.5, size*4.5, 1);
+                staffGlow.scale.set(size*2.5, size*2.5, 1); // Bagliore ridotto di conseguenza
                 staffGlow.position.set(0, size*1.5, 0);
                 
                 // Assembliamo il bastone nel gruppo

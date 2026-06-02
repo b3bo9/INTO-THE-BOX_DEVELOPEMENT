@@ -1514,8 +1514,9 @@ const SharedMat = {
    // REWORK COLORI & GLOW: Cambiato in Arancio Eldritch. prophetGlow crea un raggio esterno additivo e soffice
     prophetBeam: new THREE.MeshBasicMaterial({color: 0xff5500, transparent: true, opacity: 0.8, depthWrite: false}), 
     prophetGlow: new THREE.MeshBasicMaterial({color: 0xff7700, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false}),
-    // FIX SCUDO & GLOW: Materiale dedicato per gli Sprite, usa GLOW_TEX per evitare l'effetto "rettangolo"
     prophetSpriteGlow: new THREE.SpriteMaterial({color: 0xff5500, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
+    // FIX SCUDO PROFETA: Una sfera tridimensionale semitrasparente e additiva come quella della glaciazione
+    prophetShield: new THREE.MeshBasicMaterial({color: 0xff5500, transparent: true, opacity: 0.35, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false}),
     
     enemyDark: new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9}),
     enemyEye: new THREE.MeshBasicMaterial({color: 0xff0000}),
@@ -2579,8 +2580,11 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         if (difficulty > 4.0 && r > 0.94) type = 'pyromancer';
         if (difficulty > 5.0 && r > 0.97) type = 'fire_demon';
         
-        // PROFETA OSCURO: Spawn raro (circa 5% di probabilità) dai livelli medio-alti
-        if (difficulty > 3.5 && Math.random() < 0.05) type = 'dark_prophet';
+        // PROFETA OSCURO: Max 2 profeti contemporaneamente per livello per evitare troppi raggi arancioni!
+        if (difficulty > 3.5 && Math.random() < 0.05 && this.floorProphets < 4) { 
+            type = 'dark_prophet'; 
+            this.floorProphets++; 
+        }
         
         let enemy = this.getEnemy();
         enemy.spawn(x, y, type, difficulty);
@@ -2710,8 +2714,9 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
     },
 
     setupFloor() {
-        this.bossDefeatedTimer = 0; this.isBossFloor = (this.floor % 5 === 0);
+       this.bossDefeatedTimer = 0; this.isBossFloor = (this.floor % 5 === 0);
         this.floorEndTimer = 0; this.floorEndTriggered = false;
+        this.floorProphets = 0; // CAP PROFETI: Inizializza il contatore
         this.enemyGrid = new SpatialHashGrid([[-1000, -1000], [CHUNK_SIZE*TILE_SIZE+1000, CHUNK_SIZE*TILE_SIZE+1000]], [200, 200]);
         this.map = new GameMap(CHUNK_SIZE, CHUNK_SIZE); this.map.generate(this.isBossFloor);
         
@@ -4101,6 +4106,9 @@ class Player extends Entity {
         this.activeShieldCooldown = 0;
         this.shieldAbsorbed = 0;
         this.shockSpeedTimer = 0;
+        this.chaosHoTTimer = 0;      // Cura nel tempo: Caos Elementale
+        this.chaosHoTAmount = 0;     // Totale da curare
+        this.chaosHoTTickTimer = 0;  // Per il testo visivo
         this.dashSpeedTimer = 0; // NUOVO: Timer velocità post-scatto
         this.dashResistTimer = 0; // NUOVO: Timer resistenza post-scatto
         
@@ -4284,10 +4292,16 @@ class Player extends Entity {
                     Game.getParticle().spawn(this.x, 30, this.y, mat, 'spark', angle + 0.1); 
                 }
                 
-                AudioEngine.playShoot('explosive_arrow'); AudioEngine.playShoot('chain_lightning');
-                let healAmount = this.stats.maxHp * 0.20;
-                this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount); 
-                Game.getFloatingText().spawn(this.x, this.y + 20, `+${Math.floor(healAmount)} HP`, '#00DDFF', 25);
+               AudioEngine.playShoot('explosive_arrow'); AudioEngine.playShoot('chain_lightning');
+                
+                // CAOS ELEMENTALE - REWORK CURA: 10% Istantaneo, 20% spalmato su 4 secondi (HoT)
+                let instantHeal = this.stats.maxHp * 0.10;
+                this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + instantHeal); 
+                Game.getFloatingText().spawn(this.x, this.y + 20, `+${Math.floor(instantHeal)} HP`, '#00DDFF', 25, true);
+                
+                this.chaosHoTTimer = 4.0;
+                this.chaosHoTAmount = this.stats.maxHp * 0.20;
+                this.chaosHoTTickTimer = 0;
             }
             
             Game.getFloatingText().spawn(this.x, this.y, comboName, color, 60, true);
@@ -4338,10 +4352,24 @@ class Player extends Entity {
 
     update(dt) {
         if (this.dead) return; this.updateFlash(dt);
-       if (this.modifiers.regen > 0) {
+      // --- HOt: CURA NEL TEMPO CAOS ELEMENTALE ---
+        if (this.chaosHoTTimer > 0) {
+            this.chaosHoTTimer -= dt;
+            let healChunk = (this.chaosHoTAmount / 4.0) * dt; // Cura spalmata per frame
+            this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healChunk);
+            
+            // Ogni 0.5 secondi mostra un numeretto verde fluttuante minuscolo
+            this.chaosHoTTickTimer -= dt;
+            if (this.chaosHoTTickTimer <= 0) {
+                this.chaosHoTTickTimer = 0.5;
+                let tickVal = Math.floor((this.chaosHoTAmount / 4.0) * 0.5);
+                if (tickVal > 0) Game.getFloatingText().spawn(this.x, this.y + 10, `+${tickVal}`, '#00ffaa', 15);
+                Game.getParticle().spawn(this.x + MathUtils.randomRange(-10, 10), 15, this.y + MathUtils.randomRange(-10, 10), SharedMat.spriteGreen, 'spark');
+            }
+        }
+        
+        if (this.modifiers.regen > 0) {
             if (!this.regenTimer) this.regenTimer = 0;
-            this.regenTimer += dt;
-            if (this.regenTimer >= 3.0) { // Rigenera in %
                 let healAmount = this.stats.maxHp * this.modifiers.regen;
                 this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
                 this.regenTimer = 0;
@@ -5041,23 +5069,24 @@ class Enemy extends Entity {
         this.buffTargets = []; // NUOVO: Array per gestire bersagli multipli
         this._wasBuffedLastFrame = false; 
         
-       // FIX MEMORY/CPU: Creiamo le mesh dei raggi SOLO se l'unità è effettivamente un Profeta!
+      // FIX MEMORY/CPU: Creiamo le mesh dei raggi e gli SCUDI 3D solo se è un profeta
         if (type === 'dark_prophet') {
             if (!this.beams) {
-                this.beams = []; this.beamGlows = []; this.targetGlows = [];
+                this.beams = []; this.beamGlows = []; this.targetShields = [];
                 for (let i = 0; i < 2; i++) { 
                     let bm = new THREE.Mesh(SharedGeo.box, SharedMat.prophetBeam); bm.matrixAutoUpdate = false; Game.scene.add(bm); this.beams.push(bm);
                     let bgm = new THREE.Mesh(SharedGeo.box, SharedMat.prophetGlow); bgm.matrixAutoUpdate = false; Game.scene.add(bgm); this.beamGlows.push(bgm);
-                    let tgs = new THREE.Sprite(SharedMat.prophetSpriteGlow); tgs.matrixAutoUpdate = false; Game.scene.add(tgs); this.targetGlows.push(tgs);
+                    // Usa la Sfera 3D di Base invece dello sprite 2D
+                    let ts = new THREE.Mesh(SharedGeo.sphere, SharedMat.prophetShield); ts.matrixAutoUpdate = false; Game.scene.add(ts); this.targetShields.push(ts);
                 }
             }
         }
-        // Resetta la visibilità di tutti gli slot (solo se esistono nel nemico)
+        // Resetta la visibilità di tutti gli slot
         if (this.beams) {
             for (let i = 0; i < 2; i++) {
                 this.beams[i].visible = false;
                 this.beamGlows[i].visible = false;
-                this.targetGlows[i].visible = false;
+                this.targetShields[i].visible = false;
             }
         }
         
@@ -5318,17 +5347,24 @@ class Enemy extends Entity {
                         this.beamGlows[i].updateMatrix();
                         this.beamGlows[i].visible = true;
                         
-                        let shieldPulse = 1.0 + Math.sin(Game.playTime * 15) * 0.15;
-                        let shieldSize = target.radius * 9 * shieldPulse; 
+                       // TARGET SHIELD (MESH 3D SFERICA)
+                        let shieldPulse = 1.0 + Math.sin(Game.playTime * 10) * 0.05; // Pulsazione leggera
+                        // Scale 3D: diametro circa 2.5x il raggio del bersaglio
+                        let shieldSize = target.radius * 2.5 * shieldPulse; 
                         
-                        this.targetGlows[i].position.set(target.x, target.radius * 1.5, target.y);
-                        this.targetGlows[i].scale.set(shieldSize, shieldSize, 1);
-                        this.targetGlows[i].updateMatrix();
-                        this.targetGlows[i].visible = true;
+                        this.targetShields[i].position.set(target.x, target.radius * 0.8, target.y);
+                        this.targetShields[i].scale.set(shieldSize, shieldSize, shieldSize);
+                        
+                        // Ruotiamo dolcemente lo scudo per un effetto energetico caotico
+                        this.targetShields[i].rotation.y += dt * 2.0;
+                        this.targetShields[i].rotation.z += dt * 1.5;
+                        
+                        this.targetShields[i].updateMatrix();
+                        this.targetShields[i].visible = true;
                     } else {
                         this.beams[i].visible = false;
                         this.beamGlows[i].visible = false;
-                        this.targetGlows[i].visible = false;
+                        this.targetShields[i].visible = false;
                     }
                 }
                 

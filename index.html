@@ -1511,9 +1511,11 @@ const SharedMat = {
     hazardEnemyRing: new THREE.MeshBasicMaterial({color: 0xff5555, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}), // NEMICO: ROSSO
     hazardCrystalPlane: new THREE.MeshBasicMaterial({color: 0xaa00ff, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending, depthWrite: false}), // DOPPIO DANNO: VIOLA
    hazardCrystalRing: new THREE.MeshBasicMaterial({color: 0xcc55ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}), // DOPPIO DANNO: VIOLA
-    // REWORK COLORI & GLOW: Cambiato in Arancio Eldritch. prophetGlow crea un raggio esterno additivo e soffice
+   // REWORK COLORI & GLOW: Cambiato in Arancio Eldritch. prophetGlow crea un raggio esterno additivo e soffice
     prophetBeam: new THREE.MeshBasicMaterial({color: 0xff5500, transparent: true, opacity: 0.8, depthWrite: false}), 
     prophetGlow: new THREE.MeshBasicMaterial({color: 0xff7700, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false}),
+    // FIX SCUDO & GLOW: Materiale dedicato per gli Sprite, usa GLOW_TEX per evitare l'effetto "rettangolo"
+    prophetSpriteGlow: new THREE.SpriteMaterial({color: 0xff5500, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
     
     enemyDark: new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9}),
     enemyEye: new THREE.MeshBasicMaterial({color: 0xff0000}),
@@ -1605,8 +1607,9 @@ const ModelFactory = {
                 let book = new THREE.Mesh(SharedGeo.box, mat); book.scale.set(size*0.8, size*0.2, size*0.6); book.position.set(size, size*1.5, size*0.8); book.rotation.z = Math.PI/4;
                 crystals.add(staff); crystals.add(book);
                 
-                // EFFETTO VISIVO: Aggiungiamo un alone Arancio Eldritch persistente attorno al Profeta
-                let selfGlow = new THREE.Sprite(SharedMat.prophetGlow);
+               // EFFETTO VISIVO: Aggiungiamo un alone Arancio Eldritch persistente attorno al Profeta
+                // FIX: Usiamo prophetSpriteGlow per far funzionare correttamente la texture
+                let selfGlow = new THREE.Sprite(SharedMat.prophetSpriteGlow);
                 selfGlow.scale.set(size * 6, size * 6, 1);
                 selfGlow.position.y = size * 1.5;
                 group.add(selfGlow);
@@ -5092,9 +5095,10 @@ class Enemy extends Entity {
             this.beamGlowMesh.matrixAutoUpdate = false;
             Game.scene.add(this.beamGlowMesh);
         }
-        // ALLOCAZIONE CACHE: Sprite per il mostro bersaglio (creato una sola volta e riciclato)
+       // ALLOCAZIONE CACHE: Sprite per lo scudo del mostro bersaglio (creato una sola volta e riciclato)
         if (!this.targetGlowSprite) {
-            this.targetGlowSprite = new THREE.Sprite(SharedMat.prophetGlow);
+            // FIX: Usiamo prophetSpriteGlow
+            this.targetGlowSprite = new THREE.Sprite(SharedMat.prophetSpriteGlow);
             this.targetGlowSprite.matrixAutoUpdate = false;
             Game.scene.add(this.targetGlowSprite);
         }
@@ -5357,9 +5361,14 @@ class Enemy extends Entity {
                     this.beamGlowMesh.rotation.y = -angle;
                     this.beamGlowMesh.updateMatrix();
                     
-                    // TARGET GLOW: Posiziona l'alone direttamente sopra il nemico bersaglio
-                    this.targetGlowSprite.position.set(this.buffTarget.x, 15, this.buffTarget.y);
-                    this.targetGlowSprite.scale.set(this.buffTarget.radius * 7, this.buffTarget.radius * 7, 1);
+                   // TARGET SHIELD GLOW: Avvolge completamente il nemico creando un effetto scudo
+                    // Calcola una leggera pulsazione basata sul tempo per dare l'effetto di energia
+                    let shieldPulse = 1.0 + Math.sin(Game.playTime * 15) * 0.15;
+                    let shieldSize = this.buffTarget.radius * 8 * shieldPulse; 
+                    
+                    // Posiziona lo scudo al centro esatto della massa del nemico
+                    this.targetGlowSprite.position.set(this.buffTarget.x, this.buffTarget.radius, this.buffTarget.y);
+                    this.targetGlowSprite.scale.set(shieldSize, shieldSize, 1);
                     this.targetGlowSprite.updateMatrix();
                     this.targetGlowSprite.visible = true;
                     

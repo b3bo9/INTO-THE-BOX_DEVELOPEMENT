@@ -5088,19 +5088,24 @@ class Enemy extends Entity {
         
         // FIX MEMORY/CPU: Creiamo le mesh dei raggi e gli SCUDI 3D solo se è un profeta
         if (type === 'dark_prophet') {
+            // SCALING DIFFICOLTÀ: 1 link (base), 2 link (livello > 8), 3 link (livello > 14)
+            this.maxLinks = 1;
+            if (level >= 8) this.maxLinks = 2;
+            if (level >= 14) this.maxLinks = 3;
+
             if (!this.beams) {
                 this.beams = []; this.beamGlows = []; this.targetShields = [];
-                for (let i = 0; i < 2; i++) { 
+                // Pre-alloca sempre il massimo assoluto (3 slot) per il Zero-Allocation
+                for (let i = 0; i < 3; i++) { 
                     let bm = new THREE.Mesh(SharedGeo.box, SharedMat.prophetBeam); bm.matrixAutoUpdate = false; Game.scene.add(bm); this.beams.push(bm);
                     let bgm = new THREE.Mesh(SharedGeo.box, SharedMat.prophetGlow); bgm.matrixAutoUpdate = false; Game.scene.add(bgm); this.beamGlows.push(bgm);
-                    // Usa la Sfera 3D di Base
                     let ts = new THREE.Mesh(SharedGeo.sphere, SharedMat.prophetShield); ts.matrixAutoUpdate = false; Game.scene.add(ts); this.targetShields.push(ts);
                 }
             }
         }
         // Resetta la visibilità di tutti gli slot
         if (this.beams) {
-            for (let i = 0; i < 2; i++) {
+            for (let i = 0; i < 3; i++) {
                 this.beams[i].visible = false;
                 this.beamGlows[i].visible = false;
                 this.targetShields[i].visible = false;
@@ -5335,10 +5340,10 @@ class Enemy extends Entity {
                     }
                 }
                 
-                // 2. Cerca nuovi target se c'è spazio (Max 2 alleati contemporaneamente)
-                if (this.buffTargets.length < 2) {
+               // 2. Cerca nuovi target se c'è spazio in base alla difficoltà
+                if (this.buffTargets.length < this.maxLinks) {
                     let nearby = Game.enemyGrid.findNearby(this, 600);
-                    for (let i = 0; i < nearby.length && this.buffTargets.length < 2; i++) {
+                    for (let i = 0; i < nearby.length && this.buffTargets.length < this.maxLinks; i++) {
                         let e = nearby[i];
                         if (!e.dead && e.type !== 'dark_prophet' && e.type !== 'crystal' && !e.isProphetBuffed && !this.buffTargets.includes(e)) {
                             this.buffTargets.push(e);
@@ -5386,9 +5391,9 @@ class Enemy extends Entity {
         }
         // --- FINE AI STAGGERING ---
 
-        // --- AGGIORNAMENTO VISIVO A 60 FPS (Nessun Lag/Stuttering sui Raggi) ---
+       // --- AGGIORNAMENTO VISIVO A 60 FPS (Nessun Lag/Stuttering sui Raggi) ---
         if (this.type === 'dark_prophet' && this.buffTargets) {
-            for (let i = 0; i < 2; i++) {
+            for (let i = 0; i < 3; i++) {
                 if (i < this.buffTargets.length) {
                     let target = this.buffTargets[i];
                     let dx = target.x - this.x; let dz = target.y - this.y;
@@ -5600,9 +5605,10 @@ class Enemy extends Entity {
         if (Game.player.overdrive && Game.player.essence === 'green' && canInfect) this.infected = true;
     }
 onDeath() {
+       onDeath() {
         // Se muore il Profeta, spezza i raggi, spegne i glow e ripulisce tutti i bersagli
         if (this.beams) {
-            for(let i = 0; i < 2; i++) {
+            for(let i = 0; i < 3; i++) {
                 this.beams[i].visible = false;
                 this.beamGlows[i].visible = false;
                 // FIX CRITICO PER IL FREEZE: Deve spegnere gli Scudi 3D, NON gli sprite!
@@ -6664,8 +6670,8 @@ function clearScene() {
             ep.active = false; 
             ep.mesh.visible = false; 
             if(ep.shadowMesh) ep.shadowMesh.visible = false; 
-            if(ep.beams) {
-                for(let j=0; j<2; j++) {
+           if(ep.beams) {
+                for(let j=0; j<3; j++) {
                     ep.beams[j].visible = false;
                     ep.beamGlows[j].visible = false;
                     // FIX CRITICO PER IL FREEZE: Spegne gli Scudi 3D!

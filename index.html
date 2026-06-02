@@ -1279,7 +1279,7 @@ const RelicSystem = {
         { id: 'e4', name: "Sovraccarico Etereo", desc: "L'Ascensione Finale (Ultimate) dura 4 secondi in più.", rarity: "epic", image: "icona_sovraccarico.png", icon: "fa-bolt-lightning", apply: (p) => p.modifiers.ascensionDurationAdd += 4.0 },
         { id: 'e6', name: "Batteria a Ioni", desc: "Lo Scudo Cinetico dura 2 secondi in più e resiste più a lungo al fuoco nemico.", rarity: "epic", image: "icona_batteria_ioni.png", icon: "fa-battery-full", apply: (p) => p.modifiers.shieldDurationAdd += 2.0   },
        { id: 'e7', name: "Lama del Vento", desc: "Subito dopo uno Scatto, i tuoi prossimi 2 attacchi sono Colpi Critici garantiti.", rarity: "epic", image: "icona_lama_vento.png", icon: "fa-wind", apply: (p) => { p.modifiers.dashCritsEnabled = true; } },
-        { id: 'e8', name: "Patto dell'Avaro", desc: "Le monete non scompaiono col tempo. Raccogliere una moneta ti cura del 2% della Salute Massima.", rarity: "epic", image: "icona_patto_avaro.png", icon: "fa-sack-dollar", apply: (p) => { p.modifiers.miserPact = true; } },
+        { id: 'e8', name: "Patto dell'Avaro", desc: "Le monete non scompaiono col tempo. Ogni moneta raccolta aumenta velocità di attacco e movimento per 3 sec.", rarity: "epic", image: "icona_patto_avaro.png", icon: "fa-sack-dollar", apply: (p) => { p.modifiers.miserPact = true; } },
 
         // LEGGENDARIE: Cambiano drasticamente le regole (Trade-offs e Potere)
         { id: 'l1', name: "Follia Omicida", desc: "I tuoi Colpi Critici infliggono danni estremi, ma subisci +25% Danni dai nemici.", rarity: "legendary", image: "icona_follia_omicida.png", icon: "fa-skull", apply: (p) => { p.modifiers.critDmgMult = 2.5; p.modifiers.dmgTakenMult += 0.25; } },
@@ -3097,11 +3097,12 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
                     Game.coins++; UI.els.coins.innerText = Game.coins;
                     Game.getFloatingText().spawn(this.player.x, this.player.y, "+1", '#ffaa00', 25, true);
                     
-                    // Cura della Reliquia
+                    // REWORK: La raccolta monete ora accumula stack di velocità d'attacco e movimento (Max 5 stack: +30%)
                     if (this.player.modifiers.miserPact) {
-                        let heal = this.player.stats.maxHp * 0.02;
-                        this.player.stats.hp = Math.min(this.player.stats.maxHp, this.player.stats.hp + heal);
-                        Game.getFloatingText().spawn(this.player.x, this.player.y + 15, `+${Math.floor(heal)} HP`, '#00ffaa', 18, true);
+                        if (this.player.miserBuffStacks === undefined) { this.player.miserBuffStacks = 0; this.player.miserBuffTimer = 0; }
+                        this.player.miserBuffTimer = 3.0;
+                        this.player.miserBuffStacks = Math.min(5, this.player.miserBuffStacks + 1); 
+                        Game.getFloatingText().spawn(this.player.x, this.player.y + 15, `FRENESIA x${this.player.miserBuffStacks}`, '#ffd700', 18, true);
                     }
                 }
             }
@@ -4511,14 +4512,22 @@ class Player extends Entity {
        let shockSpdMult = this.shockSpeedTimer > 0 ? 1.20 : 1.0; // +20% Velocità
         // ---------------------------------------------
 
-        // --- GESTIONE TIMER BUFF DELLO SCATTO ---
+       // --- GESTIONE TIMER BUFF DELLO SCATTO ---
         if (this.dashSpeedTimer > 0) this.dashSpeedTimer -= dt;
         if (this.dashResistTimer > 0) this.dashResistTimer -= dt;
         let dashSpdMult = this.dashSpeedTimer > 0 ? 1.20 : 1.0; // +20% velocità per 2 sec
+        
+        // TIMING REWORK RELIQUIA: Riduce il tempo del buff e azzera gli stack allo scadere dei 3 secondi
+        if (this.miserBuffTimer === undefined) { this.miserBuffTimer = 0; this.miserBuffStacks = 0; }
+        if (this.miserBuffTimer > 0) {
+            this.miserBuffTimer -= dt;
+            if (this.miserBuffTimer <= 0) this.miserBuffStacks = 0;
+        }
+        let miserSpdBonus = 1.0 + (this.miserBuffStacks * 0.06); // +6% velocità per stack (max +30% a 5 stack)
         // ---------------------------------------------
 
         let flowCapMult = this.modifiers.flowMastery ? 2 : 1;
-        let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult * shockSpdMult * dashSpdMult;
+        let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult * shockSpdMult * dashSpdMult * miserSpdBonus;
         if (Game.ultimateActive) currentSpeed *= 1.5; currentSpeed = Math.min(currentSpeed, Game.ultimateActive ? 750 : 550);
         
         if (Game.ultimateActive && Game.frameCount % (isTouchDevice ? 8 : 3) === 0) Game.getParticle().spawn(this.x + MathUtils.randomRange(-15, 15), 15, this.y + MathUtils.randomRange(-15, 15), SharedMat.spriteBlue, 'trail');
@@ -4736,7 +4745,13 @@ class Player extends Entity {
         let adrenalineSpeed = (this.modifiers.lowHpAtkSpeed && (this.stats.hp / this.stats.maxHp) < 0.3) ? 1.3 : 1.0;
         // Calcolo velocità con il bonus dello scudo
         let shieldSpeed = (this.activeShieldTimer > 0 && this.modifiers.shieldAtkSpeedBonus) ? this.modifiers.shieldAtkSpeedBonus : 0;
-        let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult * shopSpeed * adrenalineSpeed * (1 + shieldSpeed);
+        
+        // MODIFICA VELOCITÀ D'ATTACCO: +30% se l'Onda d'Urto è attiva (shockSpeedTimer) 
+        // e +6% a stack per ogni moneta raccolta (miserBuffStacks)
+        let shockAtkSpeed = this.shockSpeedTimer > 0 ? 1.30 : 1.0;
+        let miserAtkSpeedBonus = 1.0 + ((this.miserBuffStacks || 0) * 0.06);
+        
+        let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult * shopSpeed * adrenalineSpeed * (1 + shieldSpeed) * shockAtkSpeed * miserAtkSpeedBonus;
         if (this.overdrive && this.essence === 'blue') spdMult *= 3.0; 
         
         // --- MODIFICA CADENZA ARMA ROSSA ---

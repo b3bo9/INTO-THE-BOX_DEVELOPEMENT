@@ -2898,8 +2898,10 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
                 
                 setTimeout(() => { 
                     if (this.dirLight) {
-                        this.dirLight.intensity = 1.5; 
-                        this.dirLight.color.setHex(0x556688); 
+                        // FIX: Controlla in che piano siamo e ripristina la luminosità corretta (0.05 se Oscurità)
+                        this.dirLight.intensity = (this.isCorrupted && this.corruptedType === 'darkness') ? 0.05 : 1.4; 
+                        // Ripristina il colore della luna originale
+                        this.dirLight.color.setHex(0x335577); 
                     }
                 }, 180); // Durata raddoppiata (180ms): diventa un "pulsare" invece che uno "sfarfallio"
             }

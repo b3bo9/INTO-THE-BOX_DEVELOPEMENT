@@ -1510,7 +1510,8 @@ const SharedMat = {
     hazardEnemyPlane: new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}), // NEMICO: ROSSO
     hazardEnemyRing: new THREE.MeshBasicMaterial({color: 0xff5555, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}), // NEMICO: ROSSO
     hazardCrystalPlane: new THREE.MeshBasicMaterial({color: 0xaa00ff, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending, depthWrite: false}), // DOPPIO DANNO: VIOLA
-    hazardCrystalRing: new THREE.MeshBasicMaterial({color: 0xcc55ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}), // DOPPIO DANNO: VIOLA
+   hazardCrystalRing: new THREE.MeshBasicMaterial({color: 0xcc55ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}), // DOPPIO DANNO: VIOLA
+    prophetBeam: new THREE.MeshBasicMaterial({color: 0xff00ff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false}), // Raggio Profeta
     
     enemyDark: new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9}),
     enemyEye: new THREE.MeshBasicMaterial({color: 0xff0000}),
@@ -1591,11 +1592,19 @@ const ModelFactory = {
             let skull = new THREE.Mesh(SharedGeo.sphere, mat); skull.scale.set(size*0.7, size*0.7, size*0.7); skull.position.y = size*2.8;
             let bow = new THREE.Mesh(SharedGeo.torus, darkMat); bow.scale.set(size*1.2, size*1.2, size*0.2); bow.position.set(size, size*1.5, size); bow.rotation.y = Math.PI/2;
             group.add(spine); group.add(ribs); group.add(skull); group.add(bow);
-        } else if (type === 'mage' || type === 'pyromancer') {
+        } else if (type === 'mage' || type === 'pyromancer' || type === 'dark_prophet') {
             let robe = new THREE.Mesh(SharedGeo.cone, darkMat); robe.scale.set(size*1.2, size*2.5, size*1.2); robe.position.y = size*1.2;
             let hood = new THREE.Mesh(SharedGeo.sphere, mat); hood.scale.set(size*0.8, size*0.8, size*0.8); hood.position.y = size*2.8;
             let crystals = new THREE.Group(); crystals.position.y = size*1.5;
-            for(let i=0; i<3; i++) { let c = new THREE.Mesh(SharedGeo.icosahedron, mat); c.scale.set(size*0.4, size*0.6, size*0.4); c.position.set(Math.cos(i*Math.PI*2/3)*size*1.5, 0, Math.sin(i*Math.PI*2/3)*size*1.5); crystals.add(c); }
+            
+            if (type === 'dark_prophet') {
+                // Il Profeta Oscuro ha un Libro aperto e un Bastone incrociati
+                let staff = new THREE.Mesh(SharedGeo.cylinder, darkMat); staff.scale.set(size*0.2, size*3, size*0.2); staff.position.set(-size, size*1.5, size*0.5); staff.rotation.x = Math.PI/4;
+                let book = new THREE.Mesh(SharedGeo.box, mat); book.scale.set(size*0.8, size*0.2, size*0.6); book.position.set(size, size*1.5, size*0.8); book.rotation.z = Math.PI/4;
+                crystals.add(staff); crystals.add(book);
+            } else {
+                for(let i=0; i<3; i++) { let c = new THREE.Mesh(SharedGeo.icosahedron, mat); c.scale.set(size*0.4, size*0.6, size*0.4); c.position.set(Math.cos(i*Math.PI*2/3)*size*1.5, 0, Math.sin(i*Math.PI*2/3)*size*1.5); crystals.add(c); }
+            }
             group.add(robe); group.add(hood); group.add(crystals); parts.crystals = crystals;
         } else if (type === 'leaper') {
             let body = new THREE.Mesh(SharedGeo.sphere, mat); body.scale.set(size*1.2, size*1.2, size*1.2); body.position.y = size*1.2;
@@ -2551,12 +2560,15 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         // BILANCIAMENTO SPAWN: Progressione molto più dolce
         if (difficulty >= 1 && r > 0.4) type = 'orc';
         if (difficulty >= 1 && r > 0.6) type = 'skeleton_archer'; 
-        if (difficulty >= 1.5 && r > 0.70) type = 'slime';
+       if (difficulty >= 1.5 && r > 0.70) type = 'slime';
         if (difficulty > 2.5 && r > 0.80) type = 'mage';            
         if (difficulty > 3.0 && r > 0.85) type = 'leaper';
         if (difficulty > 3.5 && r > 0.90) type = 'golem'; 
         if (difficulty > 4.0 && r > 0.94) type = 'pyromancer';
         if (difficulty > 5.0 && r > 0.97) type = 'fire_demon';
+        
+        // PROFETA OSCURO: Spawn raro (circa 5% di probabilità) dai livelli medio-alti
+        if (difficulty > 3.5 && Math.random() < 0.05) type = 'dark_prophet';
         
         let enemy = this.getEnemy();
         enemy.spawn(x, y, type, difficulty);
@@ -5055,11 +5067,23 @@ class Enemy extends Entity {
         // Fazione Infernale (Rosso/Arancio)
         else if (type === 'pyromancer') { color = 0xff3300; size = 12; spdMod = 0.6; hpMod = 0.8; dmgMod = 2.2; this.aggroRange = 650; this.attackRange = 450; }
         else if (type === 'fire_demon') { color = 0xff4400; size = 14; spdMod = 1.0; hpMod = 1.1; dmgMod = 3.0; this.aggroRange = 800; this.attackRange = 600; } 
-        // Fazione Magica/Ghiaccio (Azzurro/Ciano)
+       // Fazione Magica/Ghiaccio (Azzurro/Ciano)
         else if (type === 'mage') { color = 0x00aaff; size = 12; spdMod = 0.6; hpMod = 0.7; dmgMod = 2.8; this.aggroRange = 700; this.attackRange = 450; }
         else if (type === 'golem') { color = 0x00aaff; size = 20; spdMod = 0.4; hpMod = 4.0; dmgMod = 2.0; this.aggroRange = 600; this.attackRange = 60; }
-       // Boss
+        // Fazione Oscura
+        else if (type === 'dark_prophet') { color = 0xaa00ff; size = 12; spdMod = 0.3; hpMod = 1.5; dmgMod = 0; this.aggroRange = 800; this.attackRange = 0; }
+        // Boss
         else if (type === 'boss') { color = 0x550000; size = 35; }
+        
+        // Reset dei buff ricevuti o dati
+        this.isProphetBuffed = false;
+        this.buffTarget = null;
+        if (!this.beamMesh) {
+            this.beamMesh = new THREE.Mesh(SharedGeo.box, SharedMat.prophetBeam);
+            this.beamMesh.matrixAutoUpdate = false;
+            Game.scene.add(this.beamMesh);
+        }
+        this.beamMesh.visible = false;
         
         this.isElite = false;
         if (type !== 'boss' && type !== 'crystal' && type !== 'leaper') {
@@ -5227,7 +5251,16 @@ class Enemy extends Entity {
         }
         // -------------------------------------------
         this.updateFlash(dt);
-        if (this.type === 'mage' || this.type === 'pyromancer') { this.mesh.rotation.y += dt; this.mesh.position.y = Game.animFloat; if(this.modelParts.crystals) this.modelParts.crystals.rotation.y += dt*2; }
+       if (this.type === 'mage' || this.type === 'pyromancer' || this.type === 'dark_prophet') { this.mesh.rotation.y += dt; this.mesh.position.y = Game.animFloat; if(this.modelParts.crystals) this.modelParts.crystals.rotation.y += dt*2; }
+        
+        // --- EFFETTO VISIVO PER I NEMICI BUFFATI ---
+        if (this.isProphetBuffed) {
+            this.speed = this.baseSpeed * 1.8; // Diventano rapidissimi
+            let pulse = 1.0 + Math.sin(Game.playTime * 15) * 0.5;
+            for(let i=0; i<this.flashMats.length; i++) { this.flashMats[i].emissive.setHex(0xff00ff); this.flashMats[i].emissiveIntensity = pulse; }
+        } else if (this.slowedTimer <= 0 && this.frozenTimer <= 0 && !this.isEnraged) {
+            this.speed = this.baseSpeed; // Torna normale
+        }
         if (this.type === 'goblin') { this.mesh.rotation.x += dt * 15; this.mesh.rotation.y += dt * 10; }
         if (this.type === 'crystal') { this.modelParts.ring.rotation.x += dt; this.modelParts.gem.rotation.y -= dt; }
         
@@ -5291,7 +5324,55 @@ class Enemy extends Entity {
             // Inizializza i vettori di movimento in base all'angolo del bersaglio
             this.moveX = Math.cos(this.angle);
             this.moveY = Math.sin(this.angle);
+            // --- AI: PROFETA OSCURO ---
+            if (this.type === 'dark_prophet') {
+                if (!this.buffTarget || this.buffTarget.dead) {
+                    this.beamMesh.visible = false;
+                    let bestTarget = null;
+                    let minDist = 600*600;
+                    
+                    let nearby = Game.enemyGrid.findNearby(this, 600);
+                    for (let i = 0; i < nearby.length; i++) {
+                        let e = nearby[i];
+                        // Sceglie il nemico più vicino (escludendo cristalli, altri profeti o chi è già buffato)
+                        if (!e.dead && e.type !== 'dark_prophet' && e.type !== 'crystal' && !e.isProphetBuffed) {
+                            let dSq = MathUtils.distanceSq(this, e);
+                            if (dSq < minDist) { minDist = dSq; bestTarget = e; }
+                        }
+                    }
+                    if (bestTarget) {
+                        this.buffTarget = bestTarget;
+                        bestTarget.isProphetBuffed = true;
+                        this.beamMesh.visible = true;
+                        Game.getFloatingText().spawn(bestTarget.x, bestTarget.y + 20, "FURENTE!", '#ff00ff', 35, true);
+                    }
+                }
+                
+                if (this.buffTarget && !this.buffTarget.dead) {
+                    let dx = this.buffTarget.x - this.x; let dz = this.buffTarget.y - this.y;
+                    let dist = Math.sqrt(dx*dx + dz*dz); let angle = Math.atan2(dz, dx);
+                    
+                    // Disegna e allunga il raggio magico
+                    this.beamMesh.position.set(this.x + dx/2, 10, this.y + dz/2);
+                    this.beamMesh.scale.set(dist, 2, 2);
+                    this.beamMesh.rotation.y = -angle;
+                    this.beamMesh.updateMatrix();
+                    
+                    if (dist > 700) {
+                        // Rompe il legame se troppo lontani
+                        this.buffTarget.isProphetBuffed = false; this.buffTarget = null; this.beamMesh.visible = false;
+                    } else {
+                        // Il profeta scappa dal giocatore se si avvicina troppo (Kiting)
+                        if (this.distToTargetSq < 400*400) { this.moveX = -this.moveX; this.moveY = -this.moveY; } 
+                        else { this.moveX = 0; this.moveY = 0; }
+                    }
+                } else {
+                    this.moveX = -this.moveX; this.moveY = -this.moveY; // Scappa dal giocatore se non ha alleati
+                }
+            }
+            // --- FINE AI PROFETA ---
             
+            // Logica di Separazione (evita che si compenetrino)
             // Logica di Separazione (evita che si compenetrino)
             if (this.distToTargetSq > this.attackRangeSq && this.distToTargetSq < this.aggroRangeSq) {
                 let nearby = Game.enemyGrid.findNearby(this, 35); 
@@ -5395,34 +5476,35 @@ class Enemy extends Entity {
         }
     }
 
-    executeAttack() {
-        // BILANCIAMENTO DINAMICO:
-        // A Normale i nemici ricaricano molto più lentamente (x1.66) e sparano proiettili leggermente più lenti (0.9x).
-        // Ad Inferno diventano mitragliatrici letali (ricarica x0.62) e sparano missili (1.15x).
+  executeAttack() {
         let cdMult = Math.max(0.4, 1.0 / Game.difficultyMult); 
         let spdMult = 0.75 + (Game.difficultyMult * 0.25);     
         
+        // FIX PROFETA: Raddoppia i danni e dimezza il cooldown (velocità d'attacco raddoppiata) se buffato
+        let buffDmgMult = this.isProphetBuffed ? 2.0 : 1.0; 
+        if (this.isProphetBuffed) cdMult *= 0.5;
+        
         this.attackCooldown = 0.9 * cdMult; 
+        let actualDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * buffDmgMult;
         
         if (this.type === 'skeleton_archer') { 
-            Game.getProjectile().spawn(this.x, this.y, this.angle, 250 * spdMult, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg), 'enemy', 'arrow'); 
+            Game.getProjectile().spawn(this.x, this.y, this.angle, 250 * spdMult, actualDmg, 'enemy', 'arrow'); 
             this.attackCooldown = 1.0 * cdMult; 
         } 
         else if (this.type === 'mage') { 
-            Game.getProjectile().spawn(this.x, this.y, this.angle, 180 * spdMult, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * 1.5, 'enemy', 'enemy_bolt'); 
+            Game.getProjectile().spawn(this.x, this.y, this.angle, 180 * spdMult, actualDmg * 1.5, 'enemy', 'enemy_bolt'); 
             this.attackCooldown = 1.2 * cdMult; 
         } 
         else if (this.type === 'fire_demon') { 
-            Game.getProjectile().spawn(this.x, this.y, this.angle, 100 * spdMult, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * 3.0, 'enemy', 'enemy_fireball'); 
+            Game.getProjectile().spawn(this.x, this.y, this.angle, 100 * spdMult, actualDmg * 3.0, 'enemy', 'enemy_fireball'); 
             this.attackCooldown = 2.5 * cdMult; 
         } 
         else if (this.type === 'pyromancer') { 
-            Game.getProjectile().spawn(this.x, this.y, this.angle, 130 * spdMult, MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * 1.5, 'enemy', 'fire_shape'); 
+            Game.getProjectile().spawn(this.x, this.y, this.angle, 130 * spdMult, actualDmg * 1.5, 'enemy', 'fire_shape'); 
             this.attackCooldown = 2.0 * cdMult; 
         } 
-       else if (this.type !== 'leaper') { 
-            // Se è l'inseguitore, ti fa il 30% della TUA vita massima a botta.
-            let dmg = this.isPursuer ? (Game.player.stats.maxHp * 0.3) : MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg);
+        else if (this.type !== 'leaper' && this.type !== 'dark_prophet') { 
+            let dmg = this.isPursuer ? (Game.player.stats.maxHp * 0.3) : actualDmg;
             Game.player.takeDamage(dmg, this); 
             this.push(Math.cos(this.angle), Math.sin(this.angle), this.type === 'golem' ? 3 : 18); 
         }
@@ -5438,6 +5520,7 @@ class Enemy extends Entity {
           }
           return; 
       }
+     if (this.isProphetBuffed) amount *= 0.2;
         // Esecuzione (Lama del Giudizio)
         if (source === Game.player && Game.player.modifiers.executioner && (this.stats.hp / this.stats.maxHp) < 0.3) amount *= 2.0;
         
@@ -5484,6 +5567,11 @@ class Enemy extends Entity {
         if (Game.player.overdrive && Game.player.essence === 'green' && canInfect) this.infected = true;
     }
     onDeath() {
+        if (this.beamMesh) this.beamMesh.visible = false;
+        if (this.type === 'dark_prophet' && this.buffTarget) {
+            this.buffTarget.isProphetBuffed = false;
+            this.buffTarget = null;
+        }
       if (this.type === 'crystal') {
             Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xaa00ff, 'crystal_fire'); // Spawn color viola
             Game.addTrauma(1.5); let pCount = AppSettings.isLow ? 5 : (AppSettings.isUltraPC ? 40 : 20);

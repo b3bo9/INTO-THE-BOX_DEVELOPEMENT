@@ -5024,7 +5024,7 @@ class Enemy extends Entity {
         this.mat = null;
     }
 
-    spawn(x, y, type, level) {
+   spawn(x, y, type, level) {
         this.active = true;
         this.dead = false;
         this.thinkOffset = Math.floor(Math.random() * 5);
@@ -5066,17 +5066,17 @@ class Enemy extends Entity {
         
         // Reset dei buff ricevuti o dati
         this.isProphetBuffed = false;
-        this.buffTargets = []; // NUOVO: Array per gestire bersagli multipli
+        this.buffTargets = []; // Array per gestire bersagli multipli
         this._wasBuffedLastFrame = false; 
         
-      // FIX MEMORY/CPU: Creiamo le mesh dei raggi e gli SCUDI 3D solo se è un profeta
+        // FIX MEMORY/CPU: Creiamo le mesh dei raggi e gli SCUDI 3D solo se è un profeta
         if (type === 'dark_prophet') {
             if (!this.beams) {
                 this.beams = []; this.beamGlows = []; this.targetShields = [];
                 for (let i = 0; i < 2; i++) { 
                     let bm = new THREE.Mesh(SharedGeo.box, SharedMat.prophetBeam); bm.matrixAutoUpdate = false; Game.scene.add(bm); this.beams.push(bm);
                     let bgm = new THREE.Mesh(SharedGeo.box, SharedMat.prophetGlow); bgm.matrixAutoUpdate = false; Game.scene.add(bgm); this.beamGlows.push(bgm);
-                    // Usa la Sfera 3D di Base invece dello sprite 2D
+                    // Usa la Sfera 3D di Base
                     let ts = new THREE.Mesh(SharedGeo.sphere, SharedMat.prophetShield); ts.matrixAutoUpdate = false; Game.scene.add(ts); this.targetShields.push(ts);
                 }
             }
@@ -5580,13 +5580,14 @@ class Enemy extends Entity {
         super.takeDamage(amount, source, isCrit); 
         if (Game.player.overdrive && Game.player.essence === 'green' && canInfect) this.infected = true;
     }
- onDeath() {
+onDeath() {
         // Se muore il Profeta, spezza i raggi, spegne i glow e ripulisce tutti i bersagli
         if (this.beams) {
             for(let i = 0; i < 2; i++) {
                 this.beams[i].visible = false;
                 this.beamGlows[i].visible = false;
-                this.targetGlows[i].visible = false;
+                // FIX CRITICO PER IL FREEZE: Deve spegnere gli Scudi 3D, NON gli sprite!
+                this.targetShields[i].visible = false; 
             }
         }
         if (this.type === 'dark_prophet' && this.buffTargets) {
@@ -6648,7 +6649,8 @@ function clearScene() {
                 for(let j=0; j<2; j++) {
                     ep.beams[j].visible = false;
                     ep.beamGlows[j].visible = false;
-                    ep.targetGlows[j].visible = false;
+                    // FIX CRITICO PER IL FREEZE: Spegne gli Scudi 3D!
+                    ep.targetShields[j].visible = false; 
                 }
             }
         }

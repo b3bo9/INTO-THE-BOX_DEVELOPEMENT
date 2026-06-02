@@ -5318,10 +5318,10 @@ class Enemy extends Entity {
             this.moveY = Math.sin(this.angle);
            // --- AI: PROFETA OSCURO DOPPIO BUFF ---
             if (this.type === 'dark_prophet') {
-                // 1. Pulisce i target morti o usciti fuori range
+                // 1. Pulisce i target morti o usciti fuori range (Range aumentato a 1800 per evitare lo "yo-yo effect")
                 for (let i = this.buffTargets.length - 1; i >= 0; i--) {
                     let target = this.buffTargets[i];
-                    if (target.dead || MathUtils.distanceSq(this, target) > 700*700) {
+                    if (target.dead || MathUtils.distanceSq(this, target) > 1800*1800) {
                         target.isProphetBuffed = false;
                         this.buffTargets.splice(i, 1);
                     }
@@ -5332,7 +5332,6 @@ class Enemy extends Entity {
                     let nearby = Game.enemyGrid.findNearby(this, 600);
                     for (let i = 0; i < nearby.length && this.buffTargets.length < 2; i++) {
                         let e = nearby[i];
-                        // Sceglie un nemico valido che non sia già buffato e non sia già nella sua lista
                         if (!e.dead && e.type !== 'dark_prophet' && e.type !== 'crystal' && !e.isProphetBuffed && !this.buffTargets.includes(e)) {
                             this.buffTargets.push(e);
                             e.isProphetBuffed = true;
@@ -5360,7 +5359,6 @@ class Enemy extends Entity {
                         this.beamGlows[i].updateMatrix();
                         this.beamGlows[i].visible = true;
                         
-                        // FIX SCUDO ARANCIONE: Reso molto più grande (x9) e alzato sull'asse Y per non sparire nel terreno
                         let shieldPulse = 1.0 + Math.sin(Game.playTime * 15) * 0.15;
                         let shieldSize = target.radius * 9 * shieldPulse; 
                         
@@ -5369,7 +5367,6 @@ class Enemy extends Entity {
                         this.targetGlows[i].updateMatrix();
                         this.targetGlows[i].visible = true;
                     } else {
-                        // Spegne gli slot vuoti
                         this.beams[i].visible = false;
                         this.beamGlows[i].visible = false;
                         this.targetGlows[i].visible = false;
@@ -5377,9 +5374,20 @@ class Enemy extends Entity {
                 }
                 
                 // 4. Kiting e posizionamento tattico
-                if (this.distToTargetSq < 400*400) { this.moveX = -this.moveX; this.moveY = -this.moveY; } 
-                else if (this.buffTargets.length === 0) { this.moveX = -this.moveX; this.moveY = -this.moveY; } 
-                else { this.moveX = 0; this.moveY = 0; }
+                if (this.distToTargetSq < 400*400) { 
+                    this.moveX = -this.moveX; this.moveY = -this.moveY; // Scappa dal player
+                } else if (this.buffTargets.length > 0) {
+                    // FIX: Il profeta segue il suo primo target se si allontana troppo, per non spezzare il legame
+                    let pTarget = this.buffTargets[0];
+                    if (MathUtils.distanceSq(this, pTarget) > 500*500) {
+                        let a = Math.atan2(pTarget.y - this.y, pTarget.x - this.x);
+                        this.moveX = Math.cos(a); this.moveY = Math.sin(a);
+                    } else {
+                        this.moveX = 0; this.moveY = 0;
+                    }
+                } else { 
+                    this.moveX = -this.moveX; this.moveY = -this.moveY; 
+                }
             }
             // --- FINE AI PROFETA ---
             
@@ -6566,6 +6574,7 @@ class FloatingText {
         this.active = true; this.x = x + MathUtils.randomRange(-15, 15); this.y = z; this.h = 40;
         this.text = text.replace('!', ''); this.color = color; this.size = size; this.isCrit = isCrit;
         this.life = isCrit ? 1.0 : 0.7; this.maxLife = this.life; this.vy = isCrit ? 60 : 30;
+        this.targetId = null; // FIX MEMORY/LOGIC: Ripulisce l'id per evitare che un testo riciclato dal pool assorba i danni sbagliati
     }
     update(dt) { if(!this.active) return; this.h += this.vy * dt; this.vy -= 100*dt; this.life -= dt; if(this.life <= 0) this.active = false; } 
 }

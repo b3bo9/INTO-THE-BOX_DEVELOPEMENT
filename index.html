@@ -203,7 +203,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 121</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 122</p>
                 </div>
             </div>
         </div>
@@ -2810,6 +2810,9 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         clearScene(); // <--- ORA PULISCE PRIMA DI AZZERARE GLI ARRAY
         this.enemies = []; 
         this.setupFloor(); this.state = 'PLAYING';
+        
+        // FIX DANNO ISTANTANEO: Invincibilità iniziale anche al primo piano
+        if (this.player) this.player.invincibilityTimer = 1.5;
     },
     
    update(dt) {
@@ -6849,6 +6852,10 @@ window.prepareFloorScreen = function() {
 window.nextFloor = function(corrupted = false) {
     AudioEngine.playDescendSound(); document.getElementById('floorScreen').classList.add('hidden');
     clearScene(); Game.state = 'PLAYING'; Game.floor++; Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + 20); 
+    
+    // FIX DANNO ISTANTANEO: Diamo al giocatore 1.5 secondi di invincibilità all'ingresso di ogni piano.
+    // Evita danni ingiusti da nemici spawnati troppo vicini o da trappole istantanee.
+    Game.player.invincibilityTimer = 1.5;
     
     Game.isCorrupted = corrupted;
     if (corrupted) {

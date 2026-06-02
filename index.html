@@ -5038,48 +5038,43 @@ class Enemy extends Entity {
         this.type = type; 
         this.level = level; 
         this.attackCooldown = 0;
-        this.telegraphTimer = 0; // <-- NUOVO: Inizializza il preavviso d'attacco
-        this.isPursuer = false; // Reset di sicurezza per il pool
-        this.isGolden = false;  // Reset per l'Elite Dorato
+        this.telegraphTimer = 0; 
+        this.isPursuer = false; 
+        this.isGolden = false;  
 
-       // --- BUGFIX 1: RESET DELLO STATO DAL POOL ---
-        // Previene l'esplosione dei poligoni resettando animazioni e stati residui
+        // Reset pulito dello stato per prevenire glitch dal Pool
         this.state = 'walk';
-        this.leapTimer = 0;
-        this.mesh.position.y = 0;
-        this.mesh.rotation.set(0, 0, 0); 
-        this.frozenTimer = 0;
-        this.fireDebuffTimer = 0;
-        this.slowedTimer = 0;
-        this.infected = false;
-        // -------------------------------------------
+        this.leapTimer = 0;
+        this.mesh.position.y = 0;
+        this.mesh.rotation.set(0, 0, 0); 
+        this.frozenTimer = 0;
+        this.fireDebuffTimer = 0;
+        this.slowedTimer = 0;
+        this.infected = false;
         
         let hpMod = 1, dmgMod = 1, spdMod = 1, color = 0x666666, size = 12;
         
-       // Fazione Fisica (Colori spenti/terre)
-       // FIX VISIBILITÀ: Colore base del goblin reso verde acido brillante anziché verde scuro
-       if (type === 'goblin') { color = 0x99dd22; size = 10; spdMod = 1.8; hpMod = 0.5; dmgMod = 1.2; this.aggroRange = 500; this.attackRange = 40; }
+        // Fazioni e Statistiche
+        if (type === 'goblin') { color = 0x99dd22; size = 10; spdMod = 1.8; hpMod = 0.5; dmgMod = 1.2; this.aggroRange = 500; this.attackRange = 40; }
         else if (type === 'orc') { color = 0x5c4033; size = 18; spdMod = 0.8; hpMod = 1.6; dmgMod = 2.5; this.aggroRange = 450; this.attackRange = 55; } 
         else if (type === 'skeleton_archer') { color = 0x888888; size = 14; spdMod = 1.1; hpMod = 0.4; dmgMod = 1.5; this.aggroRange = 700; this.attackRange = 400; } 
-        // Fazione Tossica/Vuoto (Viola/Magenta)
         else if (type === 'slime') { color = 0xaa00ff; size = 15; spdMod = 0.9; hpMod = 0.9; dmgMod = 1.0; this.aggroRange = 500; this.attackRange = 40; } 
         else if (type === 'slime_mini') { color = 0xcc33ff; size = 8; spdMod = 1.5; hpMod = 0.3; dmgMod = 0.5; this.aggroRange = 600; this.attackRange = 30; } 
         else if (type === 'leaper') { color = 0xaa00ff; size = 12; spdMod = 0.7; hpMod = 1.0; dmgMod = 2.2; this.aggroRange = 600; this.attackRange = 250; this.leapCooldown = 0; this.state = 'walk'; } 
         else if (type === 'crystal') { color = 0xff00ff; size = 12; this.aggroRange = 0; this.speed = 0; hpMod = 0.001; }
-        // Fazione Infernale (Rosso/Arancio)
         else if (type === 'pyromancer') { color = 0xff3300; size = 12; spdMod = 0.6; hpMod = 0.8; dmgMod = 2.2; this.aggroRange = 650; this.attackRange = 450; }
         else if (type === 'fire_demon') { color = 0xff4400; size = 14; spdMod = 1.0; hpMod = 1.1; dmgMod = 3.0; this.aggroRange = 800; this.attackRange = 600; } 
-       // Fazione Magica/Ghiaccio (Azzurro/Ciano)
         else if (type === 'mage') { color = 0x00aaff; size = 12; spdMod = 0.6; hpMod = 0.7; dmgMod = 2.8; this.aggroRange = 700; this.attackRange = 450; }
-       else if (type === 'golem') { color = 0x00aaff; size = 20; spdMod = 0.4; hpMod = 4.0; dmgMod = 2.0; this.aggroRange = 600; this.attackRange = 60; }
+        else if (type === 'golem') { color = 0x00aaff; size = 20; spdMod = 0.4; hpMod = 4.0; dmgMod = 2.0; this.aggroRange = 600; this.attackRange = 60; }
         else if (type === 'dark_prophet') { color = 0xff5500; size = 12; spdMod = 0.3; hpMod = 1.5; dmgMod = 0; this.aggroRange = 800; this.attackRange = 0; }
-        // Boss
+        else if (type === 'boss') { color = 0x550000; size = 35; }
         
+        // Reset dei buff ricevuti o dati
         this.isProphetBuffed = false;
         this.buffTarget = null;
-        this._wasBuffedLastFrame = false; // Flag di sicurezza per ripristino istantaneo
+        this._wasBuffedLastFrame = false; 
         
-        // Inizializzazione controllata e in cache di raggio + alone luminoso (Zero-Allocation)
+        // Inizializzazione controllata e in cache di raggio + alone (Zero-Allocation)
         if (!this.beamMesh) {
             this.beamMesh = new THREE.Mesh(SharedGeo.box, SharedMat.prophetBeam);
             this.beamMesh.matrixAutoUpdate = false;
@@ -5092,29 +5087,13 @@ class Enemy extends Entity {
         }
         this.beamMesh.visible = false;
         this.beamGlowMesh.visible = false;
-        else if (type === 'boss') { color = 0x550000; size = 35; }
-        
-        // Reset dei buff ricevuti o dati
-        this.isProphetBuffed = false;
-        this.buffTarget = null;
-        if (!this.beamMesh) {
-            this.beamMesh = new THREE.Mesh(SharedGeo.box, SharedMat.prophetBeam);
-            this.beamMesh.matrixAutoUpdate = false;
-            Game.scene.add(this.beamMesh);
-        }
-        this.beamMesh.visible = false;
         
         this.isElite = false;
         if (type !== 'boss' && type !== 'crystal' && type !== 'leaper') {
             if (Math.random() < 0.05) { 
                 this.isElite = true; size *= 1.5; hpMod *= 6.0; dmgMod *= 1.5; spdMod *= 1.2; 
-                
-                // 10% di probabilità che l'Elite sia un Elite Dorato
                 if (Math.random() < 0.1) {
-                    this.isGolden = true;
-                    color = 0xffd700; // Giallo Oro
-                    hpMod *= 1.5; // Pelle ancora più dura per compensare la valanga di monete
-                    spdMod *= 1.3; // È molto veloce, cerca di scappare/muoversi freneticamente
+                    this.isGolden = true; color = 0xffd700; hpMod *= 1.5; spdMod *= 1.3; 
                 }
             }
         }
@@ -5130,14 +5109,11 @@ class Enemy extends Entity {
         this.speed = this.baseSpeed;
         this.xpValue = Math.floor(20 * hpMod * level) * (this.isElite ? 3 : 1); 
         
-        this.infected = false; this.slowedTimer = 0; this.fireDebuffTimer = 0;
         this.aggroRangeSq = this.aggroRange * this.aggroRange; this.attackRangeSq = this.attackRange * this.attackRange;
         
-       // --- BUGFIX 2: PULIZIA PROFONDA DEL POOL (VRAM LEAK FIX) ---
+        // Pulizia profonda (VRAM Leak Fix)
         if (this.currentType !== type || this.wasElite !== this.isElite) {
-            // Eliminiamo correttamente geometrie e materiali dinamici orfani prima di svuotare il gruppo
             this.mesh.traverse((child) => {
-                // FIX: Controlliamo ANCHE se è uno Sprite (es. il glow verde dello slime)
                 if (child.isMesh || child.isSprite) {
                     if (child.material && !Object.values(SharedMat).includes(child.material)) {
                         if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
@@ -5151,29 +5127,16 @@ class Enemy extends Entity {
             while(this.mesh.children.length > 0){ this.mesh.remove(this.mesh.children[0]); }
             if (this.mat) this.mat.dispose();
 
-          // OTTIMIZZAZIONE GPU: Usiamo Lambert su Touch (luce calcolata per vertice, velocissimo) anziché Phong.
-           const EnemyMatClass = isTouchDevice ? THREE.MeshLambertMaterial : THREE.MeshPhongMaterial;
+            const EnemyMatClass = isTouchDevice ? THREE.MeshLambertMaterial : THREE.MeshPhongMaterial;
             this.mat = type === 'crystal' ? 
                 new EnemyMatClass({color: 0x000000, emissive: color}) : 
-                new EnemyMatClass({
-                    color: color, 
-                    shininess: AppSettings.isUltraPC ? 60 : 30
-                });
+                new EnemyMatClass({ color: color, shininess: AppSettings.isUltraPC ? 60 : 30 });
                 
-            // Applica l'emissione visiva
-            if (this.isGolden) {
-                this.mat.emissive.setHex(0xffaa00);
-                this.mat.emissiveIntensity = 2.0; // Glow fortissimo!
-            } else if (this.isElite) {
-                this.mat.emissive.setHex(0x440000);
-            }
+            if (this.isGolden) { this.mat.emissive.setHex(0xffaa00); this.mat.emissiveIntensity = 2.0; } 
+            else if (this.isElite) { this.mat.emissive.setHex(0x440000); }
             
-            // --- MODIFICA SLIME: Materiale gelatinoso e fosforescente ---
             if (type === 'slime' || type === 'slime_mini') {
-                this.mat.emissive.setHex(color);
-                this.mat.emissiveIntensity = 0.35; // Leggero bagliore endogeno
-                this.mat.transparent = true;
-                this.mat.opacity = 0.90; // Rende il modello leggermente traslucido
+                this.mat.emissive.setHex(color); this.mat.emissiveIntensity = 0.35; this.mat.transparent = true; this.mat.opacity = 0.90; 
             }
 
             let modelData = ModelFactory.buildEnemy(type, size, this.mat);
@@ -5181,41 +5144,21 @@ class Enemy extends Entity {
             this.modelParts = modelData.parts;
             this.currentType = type;
             this.wasElite = this.isElite; 
-            this.wasGolden = this.isGolden; // <-- Salviamo per la pulizia cache
+            this.wasGolden = this.isGolden; 
 
             this.flashMats = [];
             if (type !== 'crystal') { this.mesh.traverse(c => { if(c.isMesh && c.material === this.mat) this.flashMats.push(c.material); }); }
         } else {
-            // Se ricicliamo un modello già in memoria (Object Pool)
-            if (this.type === 'crystal') {
-                this.mat.emissive.setHex(color);
-                this.mat.emissiveIntensity = 1.0;
-            } else if (this.isGolden) {
-                this.mat.color.setHex(0xffd700);
-                this.mat.emissive.setHex(0xffaa00);
-                this.mat.emissiveIntensity = 2.0;
-            } else if (this.isElite) {
-                this.mat.color.setHex(color);
-                this.mat.emissive.setHex(0x440000);
-                this.mat.emissiveIntensity = 1.0;
-            } else {
-                this.mat.color.setHex(color);
-                this.mat.emissive.setHex(0x000000);
-                this.mat.emissiveIntensity = 1.0;
-            }
-            // ------------------------------------------------
-
-            // Resetta l'animazione delle braccia in caso fosse morto mid-animazione
-            if (this.modelParts && this.modelParts.armL) {
-                this.modelParts.armL.rotation.x = 0;
-                this.modelParts.armR.rotation.x = 0;
-            }
+            if (this.type === 'crystal') { this.mat.emissive.setHex(color); this.mat.emissiveIntensity = 1.0; } 
+            else if (this.isGolden) { this.mat.color.setHex(0xffd700); this.mat.emissive.setHex(0xffaa00); this.mat.emissiveIntensity = 2.0; } 
+            else if (this.isElite) { this.mat.color.setHex(color); this.mat.emissive.setHex(0x440000); this.mat.emissiveIntensity = 1.0; } 
+            else { this.mat.color.setHex(color); this.mat.emissive.setHex(0x000000); this.mat.emissiveIntensity = 1.0; }
+            if (this.modelParts && this.modelParts.armL) { this.modelParts.armL.rotation.x = 0; this.modelParts.armR.rotation.x = 0; }
         }
 
         this.mesh.position.set(x, 0, y); 
         this.mesh.visible = true;
         
-        // FIX: Allinea l'ombra alle coordinate attuali immediatamente allo spawn
         this.shadowMesh.position.set(x, 0.2, y);
         this.shadowMesh.scale.set(size * 2.8, size * 2.8, 1);
         this.shadowMesh.updateMatrix();

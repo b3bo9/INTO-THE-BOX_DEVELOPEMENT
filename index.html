@@ -4165,7 +4165,7 @@ class Player extends Entity {
         this.updateAppearance(); AudioEngine.playCollect();
         if (this.essenceList.length === 3) this.evaluateCombinations();
     }
-    evaluateCombinations() {
+  evaluateCombinations() {
         let counts = { red: 0, blue: 0, green: 0 };
         this.essenceList.forEach(e => counts[e]++);
         
@@ -4174,165 +4174,122 @@ class Player extends Entity {
         else if (counts.green === 3) { this.essence = 'green'; this.triggerOverdrive(); } 
         else {
             Game.addTrauma(1.5); let comboName = ""; let color = '#ffffff';
-         if (counts.red > 0 && counts.blue > 0 && counts.green === 0) {
+            
+            // ONDA D'URTO
+            if (counts.red > 0 && counts.blue > 0 && counts.green === 0) {
                 comboName = "ONDA D'URTO!"; color = "#00AAFF"; 
                 let shockRange = 250; 
                 let shockRangeSq = shockRange * shockRange;
-                
-                // Attiva il Buff Velocità
                 this.shockSpeedTimer = 3.0;
                 
-                // 1. Respingi e Rallenta Nemici
                 let nearby = Game.enemyGrid.findNearby(this, shockRange);
-                nearby.forEach(e => { 
+                // ZERO-ALLOCATION FIX: Ciclo For al posto del forEach
+                for (let i=0; i<nearby.length; i++) { 
+                    let e = nearby[i];
                     if (MathUtils.distanceSq(this, e) < shockRangeSq) { 
                         e.slowedTimer = 4.0; 
                         e.slowType = 'blue'; 
                         e.takeDamage(this.stats.maxDmg * 0.15 * this.modifiers.dmgMult, this, false, false); 
                         let angleToEnemy = Math.atan2(e.y - this.y, e.x - this.x);
-                        e.push(Math.cos(angleToEnemy), Math.sin(angleToEnemy), 200); // Push potenziato
-                        
-                        // FIX ESTETICO: Esplosione di luce su ogni singolo nemico travolto
+                        e.push(Math.cos(angleToEnemy), Math.sin(angleToEnemy), 200);
                         Game.getParticle().spawn(e.x, 20, e.y, SharedMat.spriteWhite, 'nova');
                     } 
-                });
+                }
 
-                // 2. Distruzione Proiettili con Feedback Visivo
                 for (let i = 0; i < Game.projectiles.length; i++) {
                     let p = Game.projectiles[i];
                     if (p.active && p.owner !== 'player' && MathUtils.distanceSq(this, p) < shockRangeSq) {
-                        let overload = Game.getParticle();
-                        overload.spawn(p.x, 15, p.y, SharedMat.spriteWhite, 'nova');
-                        overload.baseSize = 45;
-                        p.destroy(); 
+                        let overload = Game.getParticle(); overload.spawn(p.x, 15, p.y, SharedMat.spriteWhite, 'nova'); overload.baseSize = 45; p.destroy(); 
                     }
                 }
 
-                // 3. EFFETTI VISIVI POTENZIATI (Rework Estetico)
-                Game.hitStop = 0.25; // Freeze-frame più lungo per enfatizzare l'impatto
-                Game.addTrauma(2.5); // Shake dello schermo violento
-                
-                // Evoca un vero anello 3D ciano che spazza lo schermo in 0.4 secondi (danno = 0, puramente visivo)
+                Game.hitStop = 0.25; Game.addTrauma(2.5);
                 Game.getHazard().spawn(this.x, this.y, shockRange, 0.4, 0, 0x00AAFF, 'nova_ring');
-                
-                // Esplosione centrale abbagliante
                 let novaW = Game.getParticle(); novaW.spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'nova'); novaW.baseSize = 400;
                 
-                AudioEngine.playShoot('explosive_arrow');
-                setTimeout(() => { AudioEngine.playShoot('chain_lightning'); }, 50); 
-            }
+                AudioEngine.playShoot('explosive_arrow'); setTimeout(() => { AudioEngine.playShoot('chain_lightning'); }, 50); 
+            } 
             
-             else if (counts.blue > 0 && counts.green > 0 && counts.red === 0) {
+            // GLACIAZIONE
+            else if (counts.blue > 0 && counts.green > 0 && counts.red === 0) {
                 comboName = "GLACIAZIONE!"; color = "#00ffaa"; 
-                let freezeRange = 300; 
-                let freezeRangeSq = freezeRange * freezeRange;
+                let freezeRange = 300; let freezeRangeSq = freezeRange * freezeRange;
                 
-                // 1. Congelamento Nemici
                 let nearby = Game.enemyGrid.findNearby(this, freezeRange);
-                nearby.forEach(e => { 
+                // ZERO-ALLOCATION FIX
+                for (let i=0; i<nearby.length; i++) { 
+                    let e = nearby[i];
                     if (MathUtils.distanceSq(this, e) < freezeRangeSq) { 
-                        e.frozenTimer = 4.0;
-                        e.takeDamage(this.stats.maxDmg * 0.15 * this.modifiers.dmgMult, this, true, false); 
+                        e.frozenTimer = 4.0; e.takeDamage(this.stats.maxDmg * 0.15 * this.modifiers.dmgMult, this, true, false); 
                     } 
-                }); 
+                } 
 
-                // 2. Scudo Vita Temporanea
                 this.tempHp = this.stats.maxHp * 0.20;
-                this.glacialShieldMesh.material.color.setHex(0x00ffaa); // Colore sfera
-                this.glacialShieldMesh.visible = true; // Attiva SOLO la sfera glaciale
-
-                // 3. EFFETTO "FROST NOVA" POTENZIATO
-                Game.addTrauma(1.2); // Shake più forte
+                this.glacialShieldMesh.material.color.setHex(0x00ffaa); this.glacialShieldMesh.visible = true; 
+                Game.addTrauma(1.2); 
                 
-                // Nova principale che si espande dal giocatore
-                let nova = Game.getParticle(); 
-                nova.spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'nova'); 
-                nova.baseSize = 400; // Esplosione visiva enorme
-                
-                // Effetto "ghiaccio a terra" (Particelle radiali)
+                let nova = Game.getParticle(); nova.spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'nova'); nova.baseSize = 400; 
                 let pCount = AppSettings.isLow ? 20 : 60;
                 for(let i=0; i<pCount; i++) { 
-                    let a = (Math.PI * 2 / pCount) * i; 
-                    let p = Game.getParticle();
+                    let a = (Math.PI * 2 / pCount) * i; let p = Game.getParticle();
                     p.spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'trail', a);
-                    p.vx = Math.cos(a) * 800; // Molto veloci verso l'esterno
-                    p.vz = Math.sin(a) * 800;
-                    p.life = 0.5;
+                    p.vx = Math.cos(a) * 800; p.vz = Math.sin(a) * 800; p.life = 0.5;
                 }
-                
-                AudioEngine.playShoot('chain_lightning');
-                Game.addTrauma(0.8);
-           } else if (counts.red > 0 && counts.green > 0 && counts.blue === 0) {
+                AudioEngine.playShoot('chain_lightning'); Game.addTrauma(0.8);
+            } 
+            
+            // NOVA TOSSICA
+            else if (counts.red > 0 && counts.green > 0 && counts.blue === 0) {
                 comboName = "NOVA TOSSICA!"; color = "#99FF00"; 
-                // Evoca un anello dinamico tramite la classe Hazard
-                // Raggio finale: 250, Durata: 1.5s 
                 Game.getHazard().spawn(this.x, this.y, 250, 1.5, this.stats.maxDmg * 1.5 * this.modifiers.dmgMult, 0x99FF00, 'nova_ring');
                 
-                // Effetti centrali esplosivi istantanei
                 let pCount = AppSettings.isLow ? 15 : (AppSettings.isUltraPC ? 80 : 40);
                 for(let i=0; i<pCount; i++) { let a = (Math.PI * 2 / pCount) * i; Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'trail', a); }
-                if (!AppSettings.isLow) {
-                    let flash = Game.getParticle(); flash.spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'flame'); flash.baseSize = 90;
-                }
+                if (!AppSettings.isLow) { let flash = Game.getParticle(); flash.spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'flame'); flash.baseSize = 90; }
                 AudioEngine.playShoot('explosive_arrow');
             }
-          else if (counts.red === 1 && counts.blue === 1 && counts.green === 1) {
+            
+            // CAOS ELEMENTALE
+            else if (counts.red === 1 && counts.blue === 1 && counts.green === 1) {
                 comboName = "CAOS ELEMENTALE!"; color = "#ffffff"; 
-                // Aumentiamo il trauma per uno screen-shake devastante
                 Game.addTrauma(3.0); 
                 
                 let range = 300; let nearby = Game.enemyGrid.findNearby(this, range);
-                nearby.forEach(e => { 
+                // ZERO-ALLOCATION FIX
+                for (let i=0; i<nearby.length; i++) { 
+                    let e = nearby[i];
                     if (MathUtils.distanceSq(this, e) < range * range) { 
                         e.slowedTimer = 4.0; e.infected = true; 
                         e.takeDamage(this.stats.maxDmg * 1.5 * this.modifiers.dmgMult, this, true, true); 
                     } 
-                });
+                }
 
-                // --- EFFETTO ESPLOSIONE COLORATA ULTRA-ACCENTUATO ---
                 let pCount = AppSettings.isLow ? 30 : (AppSettings.isUltraPC ? 120 : 60);
-                
                 if (!AppSettings.isLow) {
-                    // 1. Nova Tripla Espansiva (Rosso, Verde e Blu sovrapposti a scale diverse)
                     let novaR = Game.getParticle(); novaR.spawn(this.x, 20, this.y, SharedMat.spriteRed, 'nova'); novaR.baseSize = 280;
                     let novaG = Game.getParticle(); novaG.spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'nova'); novaG.baseSize = 240;
                     let novaB = Game.getParticle(); novaB.spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'nova'); novaB.baseSize = 200;
                     
-                    // 2. Flash di luce globale abbagliante (sovrascrive temporaneamente il cielo)
                     if (Game.dirLight) {
-                        let oldInt = Game.dirLight.intensity;
-                        let oldCol = Game.dirLight.color.getHex();
-                        Game.dirLight.intensity = 6.0;
-                        Game.dirLight.color.setHex(0xffffff);
-                        
-                        // Torna alla normalità dopo 150 millisecondi
-                        setTimeout(() => {
-                            if (Game.dirLight) {
-                                Game.dirLight.intensity = oldInt;
-                                Game.dirLight.color.setHex(oldCol);
-                            }
-                        }, 150);
+                        let oldInt = Game.dirLight.intensity; let oldCol = Game.dirLight.color.getHex();
+                        Game.dirLight.intensity = 6.0; Game.dirLight.color.setHex(0xffffff);
+                        setTimeout(() => { if (Game.dirLight) { Game.dirLight.intensity = oldInt; Game.dirLight.color.setHex(oldCol); } }, 150);
                     }
                 }
 
-                // 3. Pioggia di Scintille e Fiamme in Radiale RGB (pattern perfetto)
                 for(let i=0; i<pCount; i++) { 
                     let mat = [SharedMat.spriteRed, SharedMat.spriteBlue, SharedMat.spriteGreen][i % 3]; 
-                    let angle = (Math.PI * 2 / pCount) * i; // Distribuzione radiale a 360°
-                    
-                    // Fiamme esplodono verso l'esterno, scintille volano in alto
+                    let angle = (Math.PI * 2 / pCount) * i; 
                     Game.getParticle().spawn(this.x, 20, this.y, mat, 'flame', angle); 
                     Game.getParticle().spawn(this.x, 30, this.y, mat, 'spark', angle + 0.1); 
                 }
-                // -----------------------------------------------------
                 
-                AudioEngine.playShoot('explosive_arrow'); 
-                AudioEngine.playShoot('chain_lightning');
-                
+                AudioEngine.playShoot('explosive_arrow'); AudioEngine.playShoot('chain_lightning');
                 let healAmount = this.stats.maxHp * 0.20;
                 this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount); 
                 Game.getFloatingText().spawn(this.x, this.y + 20, `+${Math.floor(healAmount)} HP`, '#00DDFF', 25);
             }
+            
             Game.getFloatingText().spawn(this.x, this.y, comboName, color, 60, true);
             let kept = this.modifiers.keepEssenceOnCombo ? this.essenceList[this.essenceList.length - 1] : null;
             this.essenceList = []; this.essence = null; 
@@ -5084,22 +5041,24 @@ class Enemy extends Entity {
         this.buffTargets = []; // NUOVO: Array per gestire bersagli multipli
         this._wasBuffedLastFrame = false; 
         
-        // Inizializzazione controllata in cache di raggi + aloni multipli (Zero-Allocation)
-        if (!this.beams) {
-            this.beams = [];
-            this.beamGlows = [];
-            this.targetGlows = [];
-            for (let i = 0; i < 2; i++) { // Instanziamo 2 slot completi
-                let bm = new THREE.Mesh(SharedGeo.box, SharedMat.prophetBeam); bm.matrixAutoUpdate = false; Game.scene.add(bm); this.beams.push(bm);
-                let bgm = new THREE.Mesh(SharedGeo.box, SharedMat.prophetGlow); bgm.matrixAutoUpdate = false; Game.scene.add(bgm); this.beamGlows.push(bgm);
-                let tgs = new THREE.Sprite(SharedMat.prophetSpriteGlow); tgs.matrixAutoUpdate = false; Game.scene.add(tgs); this.targetGlows.push(tgs);
+       // FIX MEMORY/CPU: Creiamo le mesh dei raggi SOLO se l'unità è effettivamente un Profeta!
+        if (type === 'dark_prophet') {
+            if (!this.beams) {
+                this.beams = []; this.beamGlows = []; this.targetGlows = [];
+                for (let i = 0; i < 2; i++) { 
+                    let bm = new THREE.Mesh(SharedGeo.box, SharedMat.prophetBeam); bm.matrixAutoUpdate = false; Game.scene.add(bm); this.beams.push(bm);
+                    let bgm = new THREE.Mesh(SharedGeo.box, SharedMat.prophetGlow); bgm.matrixAutoUpdate = false; Game.scene.add(bgm); this.beamGlows.push(bgm);
+                    let tgs = new THREE.Sprite(SharedMat.prophetSpriteGlow); tgs.matrixAutoUpdate = false; Game.scene.add(tgs); this.targetGlows.push(tgs);
+                }
             }
         }
-        // Resetta la visibilità di tutti gli slot
-        for (let i = 0; i < 2; i++) {
-            this.beams[i].visible = false;
-            this.beamGlows[i].visible = false;
-            this.targetGlows[i].visible = false;
+        // Resetta la visibilità di tutti gli slot (solo se esistono nel nemico)
+        if (this.beams) {
+            for (let i = 0; i < 2; i++) {
+                this.beams[i].visible = false;
+                this.beamGlows[i].visible = false;
+                this.targetGlows[i].visible = false;
+            }
         }
         
         this.isElite = false;

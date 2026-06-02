@@ -1602,27 +1602,37 @@ const ModelFactory = {
             let hood = new THREE.Mesh(SharedGeo.sphere, mat); hood.scale.set(size*0.8, size*0.8, size*0.8); hood.position.y = size*2.8;
             let crystals = new THREE.Group(); crystals.position.y = size*1.5;
             
-          if (type === 'dark_prophet') {
-                // Il Profeta Oscuro ha un Libro aperto e un Bastone incrociati
-                let staff = new THREE.Mesh(SharedGeo.cylinder, darkMat); staff.scale.set(size*0.2, size*3, size*0.2); staff.position.set(-size, size*1.5, size*0.5); staff.rotation.x = Math.PI/4;
+      if (type === 'dark_prophet') {
+                // FIX BUG SCALATURA: Usiamo un Gruppo per evitare che la palla erediti lo stretch del cilindro
+                let staffGroup = new THREE.Group();
+                staffGroup.position.set(-size, size*1.5, size*0.5);
+                staffGroup.rotation.x = Math.PI/4;
                 
-                // NUOVO ESTETICA: Gemma e Bagliore Arancione in cima al bastone
-                let staffGem = new THREE.Mesh(SharedGeo.icosahedron, mat);
-                staffGem.scale.set(size*0.4, size*0.4, size*0.4);
-                staffGem.position.set(0, size*1.5, 0); // La mettiamo sulla punta alta del cilindro
+                // Il bastone vero e proprio
+                let staff = new THREE.Mesh(SharedGeo.cylinder, darkMat); 
+                staff.scale.set(size*0.2, size*3, size*0.2); 
+                
+                // NUOVA ESTETICA: Palla arancione incandescente
+                let gemMat = new THREE.MeshBasicMaterial({color: 0xff5500}); // Materiale non affetto dalle ombre
+                let staffGem = new THREE.Mesh(SharedGeo.sphere, gemMat);
+                staffGem.scale.set(size*0.6, size*0.6, size*0.6);
+                staffGem.position.set(0, size*1.5, 0); // Sulla punta
                 
                 let staffGlow = new THREE.Sprite(SharedMat.prophetSpriteGlow);
-                staffGlow.scale.set(size*3, size*3, 1);
+                staffGlow.scale.set(size*4.5, size*4.5, 1);
                 staffGlow.position.set(0, size*1.5, 0);
                 
-                staff.add(staffGem);
-                staff.add(staffGlow);
+                // Assembliamo il bastone nel gruppo
+                staffGroup.add(staff);
+                staffGroup.add(staffGem);
+                staffGroup.add(staffGlow);
 
                 let book = new THREE.Mesh(SharedGeo.box, mat); book.scale.set(size*0.8, size*0.2, size*0.6); book.position.set(size, size*1.5, size*0.8); book.rotation.z = Math.PI/4;
-                crystals.add(staff); crystals.add(book);
+                
+                // Aggiungiamo il gruppo (invece della singola mesh) ai cristalli del mago
+                crystals.add(staffGroup); crystals.add(book);
                 
                // EFFETTO VISIVO: Aggiungiamo un alone Arancio Eldritch persistente attorno al Profeta
-                // FIX: Usiamo prophetSpriteGlow per far funzionare correttamente la texture
                 let selfGlow = new THREE.Sprite(SharedMat.prophetSpriteGlow);
                 selfGlow.scale.set(size * 6, size * 6, 1);
                 selfGlow.position.y = size * 1.5;

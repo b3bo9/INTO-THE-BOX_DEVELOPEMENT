@@ -600,13 +600,17 @@ let ESSENCE_COLORS = { 'red': 0xFF1133, 'blue': 0x00AAFF, 'green': 0x33FF00 };
 const ESSENCE_NAMES = { 'red': 'INFERNO', 'blue': 'TEMPESTA', 'green': 'PANDEMIA' };
 const ESSENCE_TYPES = ['red', 'blue', 'green'];
 const AppSettings = {
-    mode: 1, 
+    mode: 1, 
     colorblind: false,
-    get isLow() { return this.mode === 0; },
-    get isUltra() { return this.mode === 2; },
-    get isUltraPC() { return this.mode === 2 && !isTouchDevice; },
-    get shadowsEnabled() { return this.mode === 2 || (this.mode === 1 && !isTouchDevice); },
-   toggleGraphics() {
+    get isLow() { return this.mode === 0; },
+    get isUltra() { return this.mode === 2; },
+    get isUltraPC() { return this.mode === 2 && !isTouchDevice; },
+    
+    // OTTIMIZZAZIONE PC: Ombre attive SOLO su Ultra.
+    // La modalità "Bilanciata" ora spegnerà le ombre dinamiche usando le blob-shadows, raddoppiando gli FPS sui laptop.
+    get shadowsEnabled() { return this.mode === 2; },
+    
+    toggleGraphics() {
         this.mode = (this.mode + 1) % 3;
         const vignette = document.getElementById('vignette');
         if (this.mode === 0) vignette.style.opacity = '0';
@@ -614,15 +618,28 @@ const AppSettings = {
 
         if(Game.renderer) {
             Game.renderer.shadowMap.enabled = this.shadowsEnabled;
-            // FIX PIXEL RATIO: Limita il supersampling su PC per evitare collassi di VRAM su schermi 4K/Retina
+            
+            // OTTIMIZZAZIONE PC: Scalabilità del Pixel Ratio (Sub-sampling)
             if (!isTouchDevice) {
-                let pr = this.isUltra ? Math.min(window.devicePixelRatio, 1.5) : 1.0;
+                let pr = 1.0;
+                if (this.mode === 2) pr = Math.min(window.devicePixelRatio, 1.5); // Ultra: Super sampling
+                else if (this.mode === 1) pr = Math.min(window.devicePixelRatio, 1.0); // Bilanciata: Nativo 1:1
+                else pr = 0.75; // Performance: Render al 75% della risoluzione per salvare la GPU
+                
                 Game.renderer.setPixelRatio(pr);
-                // Aggiorna anche il composer se la grafica cambia in-game
                 if (Game.composer) Game.composer.setPixelRatio(pr);
             }
+            
+            // Accendi/Spegni le ombre finte a terra in tempo reale
+            let showFakeShadows = !this.shadowsEnabled;
+            if (Game.player && Game.player.shadowMesh) Game.player.shadowMesh.visible = showFakeShadows;
+            for(let i=0; i<Game.enemies.length; i++) if (Game.enemies[i].shadowMesh) Game.enemies[i].shadowMesh.visible = showFakeShadows;
+            if (Game.map && Game.map.mapGroup) {
+                let treeShadows = Game.map.mapGroup.children.find(c => c.geometry === window.GLOBAL_TREE_SHADOW_GEO);
+                if (treeShadows) treeShadows.visible = showFakeShadows;
+            }
         }
-       if (Game.bloomPass) { Game.bloomPass.strength = this.isUltraPC ? 1.1 : 0.8; Game.bloomPass.radius = this.isUltraPC ? 0.6 : 0.4; }
+        if (Game.bloomPass) { Game.bloomPass.strength = this.isUltraPC ? 1.1 : 0.8; Game.bloomPass.radius = this.isUltraPC ? 0.6 : 0.4; }
         if (Game.map) {
             if (Game.map.floorMat) { Game.map.floorMat.roughness = this.isUltraPC ? 0.65 : 0.9; Game.map.floorMat.metalness = this.isUltraPC ? 0.25 : 0.1; Game.map.floorMat.bumpScale = this.isUltraPC ? 3.0 : 1.5; Game.map.floorMat.needsUpdate = true; }
             if (Game.map.wallMat) { Game.map.wallMat.roughness = this.isUltraPC ? 0.5 : 0.8; Game.map.wallMat.metalness = this.isUltraPC ? 0.5 : 0.3; Game.map.wallMat.bumpScale = this.isUltraPC ? 4.0 : 2.0; Game.map.wallMat.needsUpdate = true; }
@@ -632,11 +649,10 @@ const AppSettings = {
     toggleColorblind() {
         this.colorblind = !this.colorblind;
         if(this.colorblind) {
-            ESSENCE_COLORS = { 'red': 0xFF6600, 'blue': 0x00AADD, 'green': 0xFFFF00 }; // Arancione, Azzurro, Giallo (alta visibilità)
+            ESSENCE_COLORS = { 'red': 0xFF6600, 'blue': 0x00AADD, 'green': 0xFFFF00 }; 
         } else {
-            ESSENCE_COLORS = { 'red': 0xFF1133, 'blue': 0x00AAFF, 'green': 0x33FF00 }; // Originali
+            ESSENCE_COLORS = { 'red': 0xFF1133, 'blue': 0x00AAFF, 'green': 0x33FF00 }; 
         }
-        // Aggiorna sprite e ui se il gioco è in corso
         SharedMat.spriteRed.color.setHex(ESSENCE_COLORS.red);
         SharedMat.spriteBlue.color.setHex(ESSENCE_COLORS.blue);
         SharedMat.spriteGreen.color.setHex(ESSENCE_COLORS.green);
@@ -2376,16 +2392,19 @@ _dummyScale: new THREE.Vector3(3, 3, 3),
    init() {
         UI.init(); TouchControls.init(); const container = document.getElementById('game-container');
         this.scene = new THREE.Scene(); this.scene.fog = new THREE.Fog(0x050508, 400, 1800); 
-        this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 1, 3000);
-        // FIX PIXEL RATIO INIZIALE: Capping robusto per PC
-        const pixelRatio = isTouchDevice ? 0.9 : (AppSettings.isUltra ? Math.min(window.devicePixelRatio, 1.5) : 1.0);
+       this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 1, 3000);
+        
+        // OTTIMIZZAZIONE PC: Assegnazione corretta della risoluzione al lancio
+        let pixelRatio = 1.0;
+        if (isTouchDevice) pixelRatio = 0.9;
+        else if (AppSettings.isUltra) pixelRatio = Math.min(window.devicePixelRatio, 1.5);
+        else if (AppSettings.isLow) pixelRatio = 0.75;
         
        this.renderer = new THREE.WebGLRenderer({ 
-    antialias: !isTouchDevice, 
-    alpha: false, 
-    powerPreference: "high-performance" 
-    // Rimuovi la riga 'precision: "mediump"' per farlo tornare al default "highp"
-});
+            antialias: !isTouchDevice, 
+            alpha: false, 
+            powerPreference: "high-performance" 
+        });
         this.renderer.setPixelRatio(pixelRatio); this.renderer.setSize(this.width, this.height);
        this.renderer.outputEncoding = THREE.sRGBEncoding; 
         // FIX LUMINOSITÀ: Rimuoviamo ACESFilmic per un look "arcade" più vibrante e luminoso
@@ -2903,34 +2922,37 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
 
         this.updateMouseWorld(); this.player.update(dt); this.updateCamera(dt);
 
-       // --- AGGIORNAMENTO DERIVA DELLA NEBBIA BASSA ---
+      // --- AGGIORNAMENTO DERIVA DELLA NEBBIA BASSA ---
         if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
-            let dummyFog = this._dummyFog;
-            let mapW = this.map.width * TILE_SIZE;
-            let mapH = this.map.height * TILE_SIZE;
+            // OTTIMIZZAZIONE CPU: Ricalcola il matrix buffer a frame alterni su Mobile E sui PC non in Ultra.
+            // Dimezza letteralmente il carico della CPU impiegato a comunicare con WebGL.
+            if (AppSettings.isUltraPC || Game.frameCount % 2 === 0) {
+                let dummyFog = this._dummyFog;
+                let mapW = this.map.width * TILE_SIZE;
+                let mapH = this.map.height * TILE_SIZE;
+                let timeScale = AppSettings.isUltraPC ? dt : (dt * 2);
 
-            for(let i=0; i<this.map.fogData.length; i++) {
-                let d = this.map.fogData[i];
-            
-                // Movimento lineare senza dipendenza dalla posizione del giocatore
-                d.x += d.vx * dt;
-                d.z += d.vz * dt;
+                for(let i=0; i<this.map.fogData.length; i++) {
+                    let d = this.map.fogData[i];
                 
-                // ---WRAP MATEMATICO (Modulo)---
-                // Se supera il bordo, rientra istantaneamente dall'altro lato
-                // L'effetto sarà invisibile perché la nebbia è semi-trasparente
-                if (d.x < 0) d.x += mapW;
-                if (d.x > mapW) d.x -= mapW;
-                if (d.z < 0) d.z += mapH;
-                if (d.z > mapH) d.z -= mapH;
+                    // Movimento lineare
+                    d.x += d.vx * timeScale;
+                    d.z += d.vz * timeScale;
+                    
+                    // ---WRAP MATEMATICO (Modulo)---
+                    if (d.x < 0) d.x += mapW;
+                    if (d.x > mapW) d.x -= mapW;
+                    if (d.z < 0) d.z += mapH;
+                    if (d.z > mapH) d.z -= mapH;
 
-                dummyFog.position.set(d.x, d.y, d.z);
-                dummyFog.scale.set(d.scale, 1, d.scale);
-                dummyFog.rotation.y = d.rot; // Mantiene la rotazione originale
-                dummyFog.updateMatrix();
-                this.map.fogMesh.setMatrixAt(i, dummyFog.matrix);
+                    dummyFog.position.set(d.x, d.y, d.z);
+                    dummyFog.scale.set(d.scale, 1, d.scale);
+                    dummyFog.rotation.y = d.rot;
+                    dummyFog.updateMatrix();
+                    this.map.fogMesh.setMatrixAt(i, dummyFog.matrix);
+                }
+                this.map.fogMesh.instanceMatrix.needsUpdate = true;
             }
-            this.map.fogMesh.instanceMatrix.needsUpdate = true;
         }
       
 

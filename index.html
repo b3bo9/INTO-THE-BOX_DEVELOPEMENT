@@ -2713,8 +2713,11 @@ Game.pursuerTimeout = setTimeout(() => {
                    let pursuer = this.getEnemy();
                     pursuer.spawn(pos.x * TILE_SIZE + TILE_SIZE/2, pos.y * TILE_SIZE + TILE_SIZE/2, 'golem', this.floor);
                     pursuer.isPursuer = true;
-            pursuer.speed = pursuer.baseSpeed * 1.5; // Velocità aumentata per mantenere reale pressione sul giocatore
-            pursuer.aggroRange = 9999; pursuer.aggroRangeSq = 9999 * 9999; // Vede il giocatore ovunque
+                    // FIX NEMESI: Aumento drastico della velocità (da 1.5x a 4.0x) per renderlo un vero predatore. 
+                    // Essendo il Golem molto lento di base, così raggiungerà quasi la velocità di corsa del giocatore.
+                    pursuer.baseSpeed = pursuer.baseSpeed * 4.0; 
+                    pursuer.speed = pursuer.baseSpeed; 
+                    pursuer.aggroRange = 9999; pursuer.aggroRangeSq = 9999 * 9999; // Vede il giocatore ovunque
             
             // Crea ed aggancia gli occhi rossi fisici
             let eyeGeo = new THREE.BoxGeometry(4, 4, 4);
@@ -5400,8 +5403,16 @@ class Enemy extends Entity {
         }
     }
     
-  takeDamage(amount, source, isCrit = false, canInfect = true) {
-      if (this.isPursuer) return; // L'inseguitore non può subire alcun danno
+ takeDamage(amount, source, isCrit = false, canInfect = true) {
+      if (this.isPursuer) {
+          // FIX NEMESI: Mostra la scritta IMMUNE.
+          // Il timer evita che le armi a fuoco rapido (fiamme, veleno) spardino scritte all'infinito uccidendo la CPU.
+          if (!this.immuneTimer || Game.playTime > this.immuneTimer) {
+              Game.getFloatingText().spawn(this.x, this.y + 20, "IMMUNE", '#aa00ff', 35, true);
+              this.immuneTimer = Game.playTime + 0.5;
+          }
+          return; 
+      }
         // Esecuzione (Lama del Giudizio)
         if (source === Game.player && Game.player.modifiers.executioner && (this.stats.hp / this.stats.maxHp) < 0.3) amount *= 2.0;
         

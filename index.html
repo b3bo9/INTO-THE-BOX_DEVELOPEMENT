@@ -4146,7 +4146,7 @@ class Player extends Entity {
         else if (counts.green === 3) { this.essence = 'green'; this.triggerOverdrive(); } 
         else {
             Game.addTrauma(1.5); let comboName = ""; let color = '#ffffff';
-          if (counts.red > 0 && counts.blue > 0 && counts.green === 0) {
+         if (counts.red > 0 && counts.blue > 0 && counts.green === 0) {
                 comboName = "ONDA D'URTO!"; color = "#00AAFF"; 
                 let shockRange = 250; 
                 let shockRangeSq = shockRange * shockRange;
@@ -4163,6 +4163,9 @@ class Player extends Entity {
                         e.takeDamage(this.stats.maxDmg * 0.15 * this.modifiers.dmgMult, this, false, false); 
                         let angleToEnemy = Math.atan2(e.y - this.y, e.x - this.x);
                         e.push(Math.cos(angleToEnemy), Math.sin(angleToEnemy), 200); // Push potenziato
+                        
+                        // FIX ESTETICO: Esplosione di luce su ogni singolo nemico travolto
+                        Game.getParticle().spawn(e.x, 20, e.y, SharedMat.spriteWhite, 'nova');
                     } 
                 });
 
@@ -4177,41 +4180,21 @@ class Player extends Entity {
                     }
                 }
 
-                // 3. EFFETTI VISIVI POTENZIATI
-                Game.hitStop = 0.2; // Freeze-frame più lungo per dare impatto
-                Game.addTrauma(1.5); // Shake violento
+                // 3. EFFETTI VISIVI POTENZIATI (Rework Estetico)
+                Game.hitStop = 0.25; // Freeze-frame più lungo per enfatizzare l'impatto
+                Game.addTrauma(2.5); // Shake dello schermo violento
                 
-                // Tripla Nova: Espansione brutale
-                let novaB = Game.getParticle(); novaB.spawn(this.x, 15, this.y, SharedMat.spriteBlue, 'nova'); novaB.baseSize = 450;
-                let novaW = Game.getParticle(); novaW.spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'nova'); novaW.baseSize = 300;
-                let novaCyan = Game.getParticle(); novaCyan.spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'nova'); novaCyan.baseSize = 150; novaCyan.mesh.material.color.setHex(0x00ffff);
-
-                // Anello di fulmini ed energia cinetica ad altissima velocità
-                let pCount = AppSettings.isLow ? 20 : (isTouchDevice ? 40 : 80);
-                for(let i=0; i<pCount; i++) {
-                    let a = (Math.PI * 2 / pCount) * i;
-                    
-                    // Scia elettrica azzurra scagliata violentemente all'esterno
-                    let spark = Game.getParticle();
-                    spark.spawn(this.x, 15, this.y, SharedMat.spriteBlue, 'spark');
-                    spark.vx = Math.cos(a) * 1500; 
-                    spark.vz = Math.sin(a) * 1500;
-                    spark.life = 0.2; 
-                    
-                    // Aggiungi anello di polvere denso
-                    if (i % 3 === 0) {
-                        let dust = Game.getParticle();
-                        dust.spawn(this.x + Math.cos(a)*20, 2, this.y + Math.sin(a)*20, SharedMat.spriteDust, 'dust');
-                        dust.vx = Math.cos(a) * 800;
-                        dust.vz = Math.sin(a) * 800;
-                        dust.baseSize = 35;
-                    }
-                }
+                // Evoca un vero anello 3D ciano che spazza lo schermo in 0.4 secondi (danno = 0, puramente visivo)
+                Game.getHazard().spawn(this.x, this.y, shockRange, 0.4, 0, 0x00AAFF, 'nova_ring');
                 
-                AudioEngine.playShoot('chain_lightning');
-                setTimeout(() => { AudioEngine.playShoot('explosive_arrow'); }, 50); 
+                // Esplosione centrale abbagliante
+                let novaW = Game.getParticle(); novaW.spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'nova'); novaW.baseSize = 400;
+                
+                AudioEngine.playShoot('explosive_arrow');
+                setTimeout(() => { AudioEngine.playShoot('chain_lightning'); }, 50); 
+            }
             
-            } else if (counts.blue > 0 && counts.green > 0 && counts.red === 0) {
+             else if (counts.blue > 0 && counts.green > 0 && counts.red === 0) {
                 comboName = "GLACIAZIONE!"; color = "#00ffaa"; 
                 let freezeRange = 300; 
                 let freezeRangeSq = freezeRange * freezeRange;

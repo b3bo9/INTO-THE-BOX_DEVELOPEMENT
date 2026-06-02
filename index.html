@@ -203,7 +203,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 120</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 121</p>
                 </div>
             </div>
         </div>
@@ -2693,9 +2693,9 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
             }
             else if (this.corruptedType === 'acid_pools') { mutatorText = "POZZE CORROSIVE"; floorColor = "#99ff00"; }
             else if (this.corruptedType === 'unstable') { mutatorText = "PAVIMENTO INSTABILE"; floorColor = "#ff3300"; this.standStillTimer = 0; }
-            else if (this.corruptedType === 'volatile') { mutatorText = "ESSENZE VOLATILI"; floorColor = "#33ff00"; }
-            else if (this.corruptedType === 'combo') { mutatorText = "COMBO MALEDETTA"; floorColor = "#ff0000"; }
-           else if (this.corruptedType === 'pursuer') { 
+           else if (this.corruptedType === 'volatile') { mutatorText = "ESSENZE VOLATILI"; floorColor = "#33ff00"; }
+            else if (this.corruptedType === 'retaliation') { mutatorText = "RAPPRESAGLIA"; floorColor = "#ff00ff"; }
+            else if (this.corruptedType === 'pursuer') {
                 mutatorText = "INSEGUITORE IMPLACABILE"; floorColor = "#aa00ff"; 
                 // Evoca un Golem fantasma lontano dal giocatore
 Game.pursuerTimeout = setTimeout(() => {
@@ -2884,14 +2884,10 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         }
         // --------------------------------------------------------
 
+       // Decadimento normale della Combo
        if (this.combo > 0) { 
-            if (!(this.isCorrupted && this.corruptedType === 'combo')) {
-                this.comboTimer -= dt * (this.player ? this.player.modifiers.comboDecayRate : 1.0); 
-                if (this.comboTimer <= 0) this.resetCombo(); 
-            } else {
-                // Nella Combo Maledetta, il contatore non scende mai!
-                this.comboTimer = this.comboMaxTime;
-            }
+            this.comboTimer -= dt * (this.player ? this.player.modifiers.comboDecayRate : 1.0); 
+            if (this.comboTimer <= 0) this.resetCombo(); 
         }
         if (this.ultimateActive) { this.ultimateTimer -= dt; if (this.ultimateTimer <= 0) this.ultimateActive = false; }
 
@@ -4882,19 +4878,13 @@ if (this.modifiers.flowMastery && !wasDead) {
     }
 }
 
-if (Game.isCorrupted && Game.corruptedType === 'combo' && !wasDead) {
-    amount *= 1.50; // La Combo Maledetta punisce severamente chi viene colpito (+50% danni)
-    Game.getFloatingText().spawn(this.x, this.y + 40, "CRITICO!", '#aa00ff', 35, true);
-}
 
         super.takeDamage(amount, source);
         this.invincibilityTimer = 0.2; // <-- 0.2 secondi di invincibilità ad ogni hit
         AudioEngine.playHit('player');
        Haptics.vibrate([40, 30, 40]);
-        // REWORK COMBO CORROTTA: La combo non si azzera se vieni colpito!
-        if (!(Game.isCorrupted && Game.corruptedType === 'combo')) {
-            Game.resetCombo();
-        }
+      // La combo si spezza sempre quando vieni colpito
+        Game.resetCombo();
         // --- FLASH ROSSO SULLO SCHERMO ---
         const vignetteEl = document.getElementById('vignette');
         vignetteEl.classList.remove('damage-flash-active');
@@ -5691,6 +5681,20 @@ class Enemy extends Entity {
                 }
             }
             // ---------------------------------------------------
+        }
+
+        // --- PIANO CORROTTO: RAPPRESAGLIA (BULLET HELL) ---
+        // Se muore un nemico (non boss e non cristallo), spara una raggiera di proiettili
+        if (Game.isCorrupted && Game.corruptedType === 'retaliation' && !this.isBoss && this.type !== 'crystal') {
+            let projCount = 8;
+            let speed = 250 * Game.difficultyMult;
+            let dmg = this.stats.maxDmg * 0.6; // Danno mitigato al 60% per bilanciare il caos
+            
+            for (let i = 0; i < projCount; i++) {
+                let a = (Math.PI * 2 / projCount) * i;
+                // Usiamo 'enemy_bolt' (sfere viola) per un look pulito che non ingombra troppo lo schermo
+                Game.getProjectile().spawn(this.x, this.y, a, speed, dmg, 'enemy', 'enemy_bolt');
+            }
         }
     }
 }
@@ -6772,7 +6776,7 @@ window.prepareFloorScreen = function() {
     } else if (window.nextIsCorrupted) {
         btnNext.className = "w-full bg-gradient-to-t from-purple-900 to-red-900 hover:from-red-800 hover:to-purple-800 text-white font-black py-3 sm:py-4 rounded-xl border border-red-500/80 transition-all active:scale-95 uppercase tracking-wider shadow-[0_0_30px_rgba(255,0,0,1)] animate-pulse leading-tight";
         
-        let curses = ['darkness', 'unstable', 'combo', 'volatile', 'pursuer', 'acid_pools'];
+       let curses = ['darkness', 'unstable', 'retaliation', 'volatile', 'pursuer', 'acid_pools'];
         window.nextCorruptedType = curses[Math.floor(Math.random() * curses.length)];
         window.nextCorruptedReward = Math.random() < 0.5 ? 'coins' : 'relic';
 
@@ -6784,29 +6788,29 @@ window.prepareFloorScreen = function() {
         btnNext.innerHTML = `<span class="text-xl sm:text-2xl drop-shadow-md">SCENDI PIÙ A FONDO</span>`;
     }
     
- // --- NOTIFICA RELIQUIE (Controllo se il count è aumentato) ---
+ // --- NOTIFICA RELIQUIE (Mostra il numero esatto) ---
     const btnRelics = document.querySelector('#floorScreen button[onclick="UIManager.showCollectedRelics()"]');
     const existingNotif = document.getElementById('relic-notif');
     
-    // Se ci sono nuove reliquie rispetto all'ultima volta che abbiamo controllato
-    if (Game.player.relics.length > Game.lastRelicCount) {
-        // Fa pulsare l'intero bottone
+    // Calcoliamo esattamente quante reliquie nuove ci sono
+    let newRelicsCount = Game.player.relics.length - Game.lastRelicCount;
+
+    if (newRelicsCount > 0) {
         btnRelics.classList.add('btn-relic-pulse');
         
         if (!existingNotif) {
             let notif = document.createElement('span');
             notif.id = 'relic-notif';
-            // Rimuoviamo l'animazione al testo per lasciarla solo sul bottone
-            notif.className = 'text-yellow-400 font-black ml-2';
-            notif.innerText = "(!)";
+            notif.className = 'text-yellow-400 font-black ml-2 drop-shadow-md';
+            notif.innerText = `(+${newRelicsCount})`;
             btnRelics.appendChild(notif);
+        } else {
+            // Aggiorna il numero se il badge esiste già
+            existingNotif.innerText = `(+${newRelicsCount})`;
         }
     } else {
-        // Rimuove l'animazione se non ci sono nuove reliquie
         btnRelics.classList.remove('btn-relic-pulse');
-        if (existingNotif) {
-            existingNotif.remove();
-        }
+        if (existingNotif) existingNotif.remove();
     }
 };
 window.nextFloor = function(corrupted = false) {

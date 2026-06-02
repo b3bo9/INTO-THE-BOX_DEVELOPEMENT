@@ -5604,7 +5604,6 @@ class Enemy extends Entity {
         super.takeDamage(amount, source, isCrit); 
         if (Game.player.overdrive && Game.player.essence === 'green' && canInfect) this.infected = true;
     }
-onDeath() {
        onDeath() {
         // Se muore il Profeta, spezza i raggi, spegne i glow e ripulisce tutti i bersagli
         if (this.beams) {

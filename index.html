@@ -5081,31 +5081,26 @@ class Enemy extends Entity {
         
         // Reset dei buff ricevuti o dati
         this.isProphetBuffed = false;
-        this.buffTarget = null;
+        this.buffTargets = []; // NUOVO: Array per gestire bersagli multipli
         this._wasBuffedLastFrame = false; 
         
-        // Inizializzazione controllata e in cache di raggio + alone (Zero-Allocation)
-        if (!this.beamMesh) {
-            this.beamMesh = new THREE.Mesh(SharedGeo.box, SharedMat.prophetBeam);
-            this.beamMesh.matrixAutoUpdate = false;
-            Game.scene.add(this.beamMesh);
+        // Inizializzazione controllata in cache di raggi + aloni multipli (Zero-Allocation)
+        if (!this.beams) {
+            this.beams = [];
+            this.beamGlows = [];
+            this.targetGlows = [];
+            for (let i = 0; i < 2; i++) { // Instanziamo 2 slot completi
+                let bm = new THREE.Mesh(SharedGeo.box, SharedMat.prophetBeam); bm.matrixAutoUpdate = false; Game.scene.add(bm); this.beams.push(bm);
+                let bgm = new THREE.Mesh(SharedGeo.box, SharedMat.prophetGlow); bgm.matrixAutoUpdate = false; Game.scene.add(bgm); this.beamGlows.push(bgm);
+                let tgs = new THREE.Sprite(SharedMat.prophetSpriteGlow); tgs.matrixAutoUpdate = false; Game.scene.add(tgs); this.targetGlows.push(tgs);
+            }
         }
-      if (!this.beamGlowMesh) {
-            this.beamGlowMesh = new THREE.Mesh(SharedGeo.box, SharedMat.prophetGlow);
-            this.beamGlowMesh.matrixAutoUpdate = false;
-            Game.scene.add(this.beamGlowMesh);
+        // Resetta la visibilità di tutti gli slot
+        for (let i = 0; i < 2; i++) {
+            this.beams[i].visible = false;
+            this.beamGlows[i].visible = false;
+            this.targetGlows[i].visible = false;
         }
-       // ALLOCAZIONE CACHE: Sprite per lo scudo del mostro bersaglio (creato una sola volta e riciclato)
-        if (!this.targetGlowSprite) {
-            // FIX: Usiamo prophetSpriteGlow
-            this.targetGlowSprite = new THREE.Sprite(SharedMat.prophetSpriteGlow);
-            this.targetGlowSprite.matrixAutoUpdate = false;
-            Game.scene.add(this.targetGlowSprite);
-        }
-        
-        this.beamMesh.visible = false;
-        this.beamGlowMesh.visible = false;
-        this.targetGlowSprite.visible = false;
         
         this.isElite = false;
         if (type !== 'boss' && type !== 'crystal' && type !== 'leaper') {
@@ -5321,72 +5316,70 @@ class Enemy extends Entity {
             // Inizializza i vettori di movimento in base all'angolo del bersaglio
             this.moveX = Math.cos(this.angle);
             this.moveY = Math.sin(this.angle);
-            // --- AI: PROFETA OSCURO ---
+           // --- AI: PROFETA OSCURO DOPPIO BUFF ---
             if (this.type === 'dark_prophet') {
-                if (!this.buffTarget || this.buffTarget.dead) {
-                    this.beamMesh.visible = false;
-                    let bestTarget = null;
-                    let minDist = 600*600;
-                    
-                    let nearby = Game.enemyGrid.findNearby(this, 600);
-                    for (let i = 0; i < nearby.length; i++) {
-                        let e = nearby[i];
-                        // Sceglie il nemico più vicino (escludendo cristalli, altri profeti o chi è già buffato)
-                        if (!e.dead && e.type !== 'dark_prophet' && e.type !== 'crystal' && !e.isProphetBuffed) {
-                            let dSq = MathUtils.distanceSq(this, e);
-                            if (dSq < minDist) { minDist = dSq; bestTarget = e; }
-                        }
-                    }
-                    if (bestTarget) {
-                        this.buffTarget = bestTarget;
-                        bestTarget.isProphetBuffed = true;
-                        this.beamMesh.visible = true;
-                        Game.getFloatingText().spawn(bestTarget.x, bestTarget.y + 20, "FURENTE!", '#ff00ff', 35, true);
+                // 1. Pulisce i target morti o usciti fuori range
+                for (let i = this.buffTargets.length - 1; i >= 0; i--) {
+                    let target = this.buffTargets[i];
+                    if (target.dead || MathUtils.distanceSq(this, target) > 700*700) {
+                        target.isProphetBuffed = false;
+                        this.buffTargets.splice(i, 1);
                     }
                 }
                 
-               if (this.buffTarget && !this.buffTarget.dead) {
-                    let dx = this.buffTarget.x - this.x; let dz = this.buffTarget.y - this.y;
-                    let dist = Math.sqrt(dx*dx + dz*dz); let angle = Math.atan2(dz, dx);
-                    
-                    // Disegna il nucleo solido del raggio
-                    this.beamMesh.position.set(this.x + dx/2, 10, this.y + dz/2);
-                    this.beamMesh.scale.set(dist, 1.5, 1.5);
-                    this.beamMesh.rotation.y = -angle;
-                    this.beamMesh.updateMatrix();
-
-                   // GLOW EFFECT TRIDIMENSIONALE: Posiziona la seconda guaina additiva a scala maggiorata (5x5)
-                    this.beamGlowMesh.position.set(this.x + dx/2, 10, this.y + dz/2);
-                    this.beamGlowMesh.scale.set(dist, 5.0, 5.0);
-                    this.beamGlowMesh.rotation.y = -angle;
-                    this.beamGlowMesh.updateMatrix();
-                    
-                   // TARGET SHIELD GLOW: Avvolge completamente il nemico creando un effetto scudo
-                    // Calcola una leggera pulsazione basata sul tempo per dare l'effetto di energia
-                    let shieldPulse = 1.0 + Math.sin(Game.playTime * 15) * 0.15;
-                    let shieldSize = this.buffTarget.radius * 8 * shieldPulse; 
-                    
-                    // Posiziona lo scudo al centro esatto della massa del nemico
-                    this.targetGlowSprite.position.set(this.buffTarget.x, this.buffTarget.radius, this.buffTarget.y);
-                    this.targetGlowSprite.scale.set(shieldSize, shieldSize, 1);
-                    this.targetGlowSprite.updateMatrix();
-                    this.targetGlowSprite.visible = true;
-                    
-                    if (dist > 700) {
-                        // Rompe il legame e notifica istantaneamente lo switch di stato alla vittima
-                        this.buffTarget.isProphetBuffed = false; 
-                        this.buffTarget = null; 
-                        this.beamMesh.visible = false;
-                        this.beamGlowMesh.visible = false;
-                        this.targetGlowSprite.visible = false;
-                    } else {
-                        // Il profeta scappa dal giocatore se si avvicina troppo (Kiting)
-                        if (this.distToTargetSq < 400*400) { this.moveX = -this.moveX; this.moveY = -this.moveY; } 
-                        else { this.moveX = 0; this.moveY = 0; }
+                // 2. Cerca nuovi target se c'è spazio (Max 2)
+                if (this.buffTargets.length < 2) {
+                    let nearby = Game.enemyGrid.findNearby(this, 600);
+                    for (let i = 0; i < nearby.length && this.buffTargets.length < 2; i++) {
+                        let e = nearby[i];
+                        // Sceglie un nemico valido che non sia già buffato e non sia già nella sua lista
+                        if (!e.dead && e.type !== 'dark_prophet' && e.type !== 'crystal' && !e.isProphetBuffed && !this.buffTargets.includes(e)) {
+                            this.buffTargets.push(e);
+                            e.isProphetBuffed = true;
+                            Game.getFloatingText().spawn(e.x, e.y + 20, "FURENTE!", '#ff5500', 35, true);
+                        }
                     }
-                } else {
-                    this.moveX = -this.moveX; this.moveY = -this.moveY; // Scappa dal giocatore se non ha alleati
                 }
+                
+                // 3. Aggiorna i 2 slot dei raggi e scudi
+                for (let i = 0; i < 2; i++) {
+                    if (i < this.buffTargets.length) {
+                        let target = this.buffTargets[i];
+                        let dx = target.x - this.x; let dz = target.y - this.y;
+                        let dist = Math.sqrt(dx*dx + dz*dz); let angle = Math.atan2(dz, dx);
+                        
+                        this.beams[i].position.set(this.x + dx/2, 10, this.y + dz/2);
+                        this.beams[i].scale.set(dist, 1.5, 1.5);
+                        this.beams[i].rotation.y = -angle;
+                        this.beams[i].updateMatrix();
+                        this.beams[i].visible = true;
+
+                        this.beamGlows[i].position.set(this.x + dx/2, 10, this.y + dz/2);
+                        this.beamGlows[i].scale.set(dist, 5.0, 5.0);
+                        this.beamGlows[i].rotation.y = -angle;
+                        this.beamGlows[i].updateMatrix();
+                        this.beamGlows[i].visible = true;
+                        
+                        // FIX SCUDO ARANCIONE: Reso molto più grande (x9) e alzato sull'asse Y per non sparire nel terreno
+                        let shieldPulse = 1.0 + Math.sin(Game.playTime * 15) * 0.15;
+                        let shieldSize = target.radius * 9 * shieldPulse; 
+                        
+                        this.targetGlows[i].position.set(target.x, target.radius * 1.5, target.y);
+                        this.targetGlows[i].scale.set(shieldSize, shieldSize, 1);
+                        this.targetGlows[i].updateMatrix();
+                        this.targetGlows[i].visible = true;
+                    } else {
+                        // Spegne gli slot vuoti
+                        this.beams[i].visible = false;
+                        this.beamGlows[i].visible = false;
+                        this.targetGlows[i].visible = false;
+                    }
+                }
+                
+                // 4. Kiting e posizionamento tattico
+                if (this.distToTargetSq < 400*400) { this.moveX = -this.moveX; this.moveY = -this.moveY; } 
+                else if (this.buffTargets.length === 0) { this.moveX = -this.moveX; this.moveY = -this.moveY; } 
+                else { this.moveX = 0; this.moveY = 0; }
             }
             // --- FINE AI PROFETA ---
             
@@ -5584,14 +5577,20 @@ class Enemy extends Entity {
         super.takeDamage(amount, source, isCrit); 
         if (Game.player.overdrive && Game.player.essence === 'green' && canInfect) this.infected = true;
     }
-  onDeath() {
-        // Se muore il Profeta, spezza il raggio, spegne il glow e ripulisce il bersaglio
-        if (this.beamMesh) this.beamMesh.visible = false;
-        if (this.beamGlowMesh) this.beamGlowMesh.visible = false;
-        if (this.targetGlowSprite) this.targetGlowSprite.visible = false;
-        if (this.type === 'dark_prophet' && this.buffTarget) {
-            this.buffTarget.isProphetBuffed = false;
-            this.buffTarget = null;
+ onDeath() {
+        // Se muore il Profeta, spezza i raggi, spegne i glow e ripulisce tutti i bersagli
+        if (this.beams) {
+            for(let i = 0; i < 2; i++) {
+                this.beams[i].visible = false;
+                this.beamGlows[i].visible = false;
+                this.targetGlows[i].visible = false;
+            }
+        }
+        if (this.type === 'dark_prophet' && this.buffTargets) {
+            for(let i = 0; i < this.buffTargets.length; i++) {
+                this.buffTargets[i].isProphetBuffed = false;
+            }
+            this.buffTargets = [];
         }
       if (this.type === 'crystal') {
             Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xaa00ff, 'crystal_fire'); // Spawn color viola
@@ -6634,15 +6633,20 @@ function clearScene() {
     // [OTTIMIZZAZIONE 2]: Svuota l'array dei nemici per evitare il loop su cadaveri "Zombie"
     Game.enemies = [];
     
-  // Disattiva e nascondi tutto il pool dei nemici, azzerando i raggi per evitare memory leak visivi o orfani
+ // Disattiva e nascondi tutto il pool dei nemici, azzerando gli array dei raggi per evitare memory leak visivi
     if (Game.enemyPool) {
         for(let i=0; i<Game.enemyPool.length; i++) { 
-            Game.enemyPool[i].active = false; 
-            Game.enemyPool[i].mesh.visible = false; 
-            if(Game.enemyPool[i].shadowMesh) Game.enemyPool[i].shadowMesh.visible = false; 
-            if(Game.enemyPool[i].beamMesh) Game.enemyPool[i].beamMesh.visible = false;
-            if(Game.enemyPool[i].beamGlowMesh) Game.enemyPool[i].beamGlowMesh.visible = false;
-            if(Game.enemyPool[i].targetGlowSprite) Game.enemyPool[i].targetGlowSprite.visible = false;
+            let ep = Game.enemyPool[i];
+            ep.active = false; 
+            ep.mesh.visible = false; 
+            if(ep.shadowMesh) ep.shadowMesh.visible = false; 
+            if(ep.beams) {
+                for(let j=0; j<2; j++) {
+                    ep.beams[j].visible = false;
+                    ep.beamGlows[j].visible = false;
+                    ep.targetGlows[j].visible = false;
+                }
+            }
         }
     }
     

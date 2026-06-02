@@ -4374,7 +4374,7 @@ class Player extends Entity {
                 this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
                 this.regenTimer = 0;
             }
-        }
+        
         this.modelParts.halo.rotation.z += dt; this.modelParts.staffGem.rotation.y += dt;
         if (this.activeShieldCooldown > 0) this.activeShieldCooldown -= dt;
         if (this.shadowMesh.visible) {

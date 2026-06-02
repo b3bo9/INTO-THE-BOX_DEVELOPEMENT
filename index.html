@@ -1599,11 +1599,17 @@ const ModelFactory = {
             let hood = new THREE.Mesh(SharedGeo.sphere, mat); hood.scale.set(size*0.8, size*0.8, size*0.8); hood.position.y = size*2.8;
             let crystals = new THREE.Group(); crystals.position.y = size*1.5;
             
-            if (type === 'dark_prophet') {
+           if (type === 'dark_prophet') {
                 // Il Profeta Oscuro ha un Libro aperto e un Bastone incrociati
                 let staff = new THREE.Mesh(SharedGeo.cylinder, darkMat); staff.scale.set(size*0.2, size*3, size*0.2); staff.position.set(-size, size*1.5, size*0.5); staff.rotation.x = Math.PI/4;
                 let book = new THREE.Mesh(SharedGeo.box, mat); book.scale.set(size*0.8, size*0.2, size*0.6); book.position.set(size, size*1.5, size*0.8); book.rotation.z = Math.PI/4;
                 crystals.add(staff); crystals.add(book);
+                
+                // EFFETTO VISIVO: Aggiungiamo un alone Arancio Eldritch persistente attorno al Profeta
+                let selfGlow = new THREE.Sprite(SharedMat.prophetGlow);
+                selfGlow.scale.set(size * 6, size * 6, 1);
+                selfGlow.position.y = size * 1.5;
+                group.add(selfGlow);
             } else {
                 for(let i=0; i<3; i++) { let c = new THREE.Mesh(SharedGeo.icosahedron, mat); c.scale.set(size*0.4, size*0.6, size*0.4); c.position.set(Math.cos(i*Math.PI*2/3)*size*1.5, 0, Math.sin(i*Math.PI*2/3)*size*1.5); crystals.add(c); }
             }
@@ -2189,10 +2195,11 @@ const UI = {
                 let typeText = "";
                 if (Game.corruptedType === 'darkness') typeText = "OSCURITÀ";
                 if (Game.corruptedType === 'unstable') typeText = "INSTABILE";
-                if (Game.corruptedType === 'volatile') typeText = "IMPLOSIONE";
+               if (Game.corruptedType === 'volatile') typeText = "IMPLOSIONE";
                 if (Game.corruptedType === 'combo') typeText = "COMBO";
                 if (Game.corruptedType === 'pursuer') typeText = "NEMESI";
                 if (Game.corruptedType === 'acid_pools') typeText = "CORROSIONE";
+                if (Game.corruptedType === 'retaliation') typeText = "RAPPRESAGLIA";
                 
                 this.els.corruptionLabel.innerText = "- " + typeText;
                 this.els.corruptionLabel.classList.remove('hidden');
@@ -5080,13 +5087,21 @@ class Enemy extends Entity {
             this.beamMesh.matrixAutoUpdate = false;
             Game.scene.add(this.beamMesh);
         }
-        if (!this.beamGlowMesh) {
+      if (!this.beamGlowMesh) {
             this.beamGlowMesh = new THREE.Mesh(SharedGeo.box, SharedMat.prophetGlow);
             this.beamGlowMesh.matrixAutoUpdate = false;
             Game.scene.add(this.beamGlowMesh);
         }
+        // ALLOCAZIONE CACHE: Sprite per il mostro bersaglio (creato una sola volta e riciclato)
+        if (!this.targetGlowSprite) {
+            this.targetGlowSprite = new THREE.Sprite(SharedMat.prophetGlow);
+            this.targetGlowSprite.matrixAutoUpdate = false;
+            Game.scene.add(this.targetGlowSprite);
+        }
+        
         this.beamMesh.visible = false;
         this.beamGlowMesh.visible = false;
+        this.targetGlowSprite.visible = false;
         
         this.isElite = false;
         if (type !== 'boss' && type !== 'crystal' && type !== 'leaper') {
@@ -5336,11 +5351,17 @@ class Enemy extends Entity {
                     this.beamMesh.rotation.y = -angle;
                     this.beamMesh.updateMatrix();
 
-                    // GLOW EFFECT TRIDIMENSIONALE: Posiziona la seconda guaina additiva a scala maggiorata (5x5)
+                   // GLOW EFFECT TRIDIMENSIONALE: Posiziona la seconda guaina additiva a scala maggiorata (5x5)
                     this.beamGlowMesh.position.set(this.x + dx/2, 10, this.y + dz/2);
                     this.beamGlowMesh.scale.set(dist, 5.0, 5.0);
                     this.beamGlowMesh.rotation.y = -angle;
                     this.beamGlowMesh.updateMatrix();
+                    
+                    // TARGET GLOW: Posiziona l'alone direttamente sopra il nemico bersaglio
+                    this.targetGlowSprite.position.set(this.buffTarget.x, 15, this.buffTarget.y);
+                    this.targetGlowSprite.scale.set(this.buffTarget.radius * 7, this.buffTarget.radius * 7, 1);
+                    this.targetGlowSprite.updateMatrix();
+                    this.targetGlowSprite.visible = true;
                     
                     if (dist > 700) {
                         // Rompe il legame e notifica istantaneamente lo switch di stato alla vittima
@@ -5348,6 +5369,7 @@ class Enemy extends Entity {
                         this.buffTarget = null; 
                         this.beamMesh.visible = false;
                         this.beamGlowMesh.visible = false;
+                        this.targetGlowSprite.visible = false;
                     } else {
                         // Il profeta scappa dal giocatore se si avvicina troppo (Kiting)
                         if (this.distToTargetSq < 400*400) { this.moveX = -this.moveX; this.moveY = -this.moveY; } 
@@ -5553,10 +5575,11 @@ class Enemy extends Entity {
         super.takeDamage(amount, source, isCrit); 
         if (Game.player.overdrive && Game.player.essence === 'green' && canInfect) this.infected = true;
     }
-    onDeath() {
+  onDeath() {
         // Se muore il Profeta, spezza il raggio, spegne il glow e ripulisce il bersaglio
         if (this.beamMesh) this.beamMesh.visible = false;
         if (this.beamGlowMesh) this.beamGlowMesh.visible = false;
+        if (this.targetGlowSprite) this.targetGlowSprite.visible = false;
         if (this.type === 'dark_prophet' && this.buffTarget) {
             this.buffTarget.isProphetBuffed = false;
             this.buffTarget = null;
@@ -5799,7 +5822,7 @@ class Enemy extends Entity {
         // --- PIANO CORROTTO: RAPPRESAGLIA (BULLET HELL) ---
         // Se muore un nemico (non boss e non cristallo), spara una raggiera di proiettili
         if (Game.isCorrupted && Game.corruptedType === 'retaliation' && !this.isBoss && this.type !== 'crystal') {
-            let projCount = 8;
+            let projCount = 4; // BILANCIAMENTO: Ridotti da 8 a 4 per non rendere i cluster di nemici impossibili da schivare
             let speed = 250 * Game.difficultyMult;
             let dmg = this.stats.maxDmg * 0.6; // Danno mitigato al 60% per bilanciare il caos
             
@@ -6602,7 +6625,7 @@ function clearScene() {
     // [OTTIMIZZAZIONE 2]: Svuota l'array dei nemici per evitare il loop su cadaveri "Zombie"
     Game.enemies = [];
     
-   // Disattiva e nascondi tutto il pool dei nemici, azzerando i raggi per evitare memory leak visivi o orfani
+  // Disattiva e nascondi tutto il pool dei nemici, azzerando i raggi per evitare memory leak visivi o orfani
     if (Game.enemyPool) {
         for(let i=0; i<Game.enemyPool.length; i++) { 
             Game.enemyPool[i].active = false; 
@@ -6610,6 +6633,7 @@ function clearScene() {
             if(Game.enemyPool[i].shadowMesh) Game.enemyPool[i].shadowMesh.visible = false; 
             if(Game.enemyPool[i].beamMesh) Game.enemyPool[i].beamMesh.visible = false;
             if(Game.enemyPool[i].beamGlowMesh) Game.enemyPool[i].beamGlowMesh.visible = false;
+            if(Game.enemyPool[i].targetGlowSprite) Game.enemyPool[i].targetGlowSprite.visible = false;
         }
     }
     

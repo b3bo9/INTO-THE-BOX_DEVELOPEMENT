@@ -1339,7 +1339,6 @@ const RelicSystem = {
         { id: 'r1', name: "Bussola Dimensionale", desc: "Tutte le Essenze raccolte e l'Overdrive durano il 50% in più.", rarity: "rare", image: "icona_bussola_dimensionale.png", icon: "fa-compass", apply: (p) => p.modifiers.essenceDurationMult += 0.50 },
         { id: 'r3', name: "Scudo dell'Egidio", desc: "Lo Scudo Cinetico si attiva automaticamente ogni 15 sec.", rarity: "rare", image: "icona_scudo_dell_egidio.png", icon: "fa-shield-halved", apply: (p) => p.modifiers.shieldActive = true },
         { id: 'r4', name: "Apprendimento rapido", desc: "Ottieni +50% XP, ma subisci +15% di danni.", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.50; p.modifiers.dmgTakenMult += 0.15; } },
-        { id: 'e5', name: "Flusso vitale", desc: "Raddoppia la probabilità che i nemici rilascino un Cuore Vitale", rarity: "rare", image: "icona_zanna_del_vampiro.png", icon: "fa-tooth", apply: (p) => p.modifiers.healDropMult += 1.0 },
         { id: 'r6', name: "Sovraccarico Cinetico", desc: "Mentre lo Scudo Cinetico è attivo, la tua Velocità d'Attacco aumenta del +40%.", rarity: "rare", image: "icona_sovraccarico_cinetico.png", icon: "fa-bolt", apply: (p) => p.modifiers.shieldAtkSpeedBonus = 0.40 },
         
         // EPICHE: Sinergie Costruttive (Build Definers)
@@ -1347,7 +1346,9 @@ const RelicSystem = {
         { id: 'e1', name: "Ritmo di Battaglia", desc: "La Combo sale di +2 a colpo e decade più lentamente.", rarity: "epic", image: "icona_ritmo_di_battaglia.png", icon: "fa-drum", apply: (p) => { p.modifiers.comboStep += 1; p.modifiers.comboDecayAdd += 1.0; } },
         { id: 'e2', name: "Riciclo Magico", desc: "Quando usi un'Essenza Overdrive, non consumi l'ultima raccolta.", rarity: "epic", image: "icona_riciclo_magico.png", icon: "fa-recycle", apply: (p) => p.modifiers.keepEssenceOnCombo = true },
         { id: 'e3', name: "Passo Infernale", desc: "Lo scatto lascia una scia di fuoco. I nemici a fuoco subiscono +25% danni dai tuoi colpi.", rarity: "epic", image: "icona_passo_infernale.png", icon: "fa-fire-flame-curved", apply: (p) => { p.modifiers.fireTrail = true; p.modifiers.fireTrailDebuff = true; } },
-        { id: 'e4', name: "Sovraccarico Etereo", desc: "L'Ascensione Finale (Ultimate) dura 4 secondi in più.", rarity: "epic", image: "icona_sovraccarico.png", icon: "fa-bolt-lightning", apply: (p) => p.modifiers.ascensionDurationAdd += 4.0 },
+        { id: 'e4', name: "Sovraccarico Etereo", desc: "La durata dell'Ascensione Finale aumenta di 0.5s ogni 15 nemici uccisi.", rarity: "epic", image: "icona_sovraccarico.png", icon: "fa-bolt-lightning", apply: (p) => p.modifiers.ultDurationPerKill = true },
+        { id: 'e5', name: "Sovraccarico Sismico", desc: "Attivare lo Scudo genera un'onda d'urto che respinge i nemici infliggendo lievi danni.", rarity: "rare", image: "icona_zanna_del_vampiro.png", icon: "fa-wifi", apply: (p) => p.modifiers.seismicShield = true },
+        { id: 'e9', name: "Gemelli Cinetici", desc: "Mentre lo Scudo è attivo, spari 2 proiettili alla volta (danno ridotto al 70%).", rarity: "epic", image: "icona_lama_vento.png", icon: "fa-clone", apply: (p) => p.modifiers.twinKinetic = true },
         { id: 'e6', name: "Batteria a Ioni", desc: "Lo Scudo Cinetico dura 2 secondi in più e resiste più a lungo al fuoco nemico.", rarity: "epic", image: "icona_batteria_ioni.png", icon: "fa-battery-full", apply: (p) => p.modifiers.shieldDurationAdd += 2.0   },
        { id: 'e7', name: "Lama del Vento", desc: "Subito dopo uno Scatto, i tuoi prossimi 2 attacchi sono Colpi Critici garantiti.", rarity: "epic", image: "icona_lama_vento.png", icon: "fa-wind", apply: (p) => { p.modifiers.dashCritsEnabled = true; } },
         { id: 'e8', name: "Patto dell'Avaro", desc: "Le monete non scompaiono col tempo. Ogni moneta raccolta aumenta velocità di attacco e movimento per 3 sec.", rarity: "epic", image: "icona_patto_avaro.png", icon: "fa-sack-dollar", apply: (p) => { p.modifiers.miserPact = true; } },
@@ -1958,7 +1959,8 @@ class Hazard {
                     let outerRad = this.radius + Game.player.radius + 15;
                     let innerRad = Math.max(0, this.radius - Game.player.radius - 15);
                     if (distSq <= outerRad * outerRad && distSq >= innerRad * innerRad) {
-                        if (Game.player.activeShieldTimer > 0) {
+                       if (Game.player.activeShieldTimer > 0) {
+                            Game.player.shieldAbsorbed++; // <-- POTENZIAMENTO AEGIS!
                             Game.getParticle().spawn(Game.player.x, 15, Game.player.y, SharedMat.spriteBlue, 'spark');
                         } else {
                             Game.player.takeDamage(this.damage, null);
@@ -2009,8 +2011,9 @@ class Hazard {
                 }
                 if ((this.type === 'enemy_fire' || this.type === 'crystal_fire' || this.type === 'snake_fire') && (Game.frameCount + this.updateOffset) % 6 === 0) {
                     let pCd = this.hitCooldown['player'] || 0;
-                    if (Game.playTime >= pCd && MathUtils.distanceSq(this, Game.player) < (this.radius + Game.player.radius)**2) { 
+                   if (Game.playTime >= pCd && MathUtils.distanceSq(this, Game.player) < (this.radius + Game.player.radius)**2) { 
                         if (Game.player.activeShieldTimer > 0) {
+                            Game.player.shieldAbsorbed++; // <-- POTENZIAMENTO AEGIS!
                             Game.getParticle().spawn(Game.player.x, 15, Game.player.y, SharedMat.spriteBlue, 'spark');
                         } else {
                             let playerDmg = this.type === 'crystal_fire' ? 35 * Game.difficultyMult : this.damage;
@@ -4302,7 +4305,8 @@ class Player extends Entity {
             passiveUltCharge: false, noHealDrops: false, noMaxHpLevelUp: false, bloodthirst: false, bloodthirstCount: 0, flowMastery: false,
             timeSinceLastHit: 0, explosiveShield: false, shieldDurationAdd: 0, dashCritsEnabled: false, dashCritsStacks: 0, dashLightning: false,
           // NUOVI TRATTI RELIQUIE E SHOP
-            critGold: false, lowHpAtkSpeed: false, dashInvul: false, regen: 0, openerDmg: false, miserPact: false, dashSpeedBuff: false, dashResist: false
+            critGold: false, lowHpAtkSpeed: false, dashInvul: false, regen: 0, openerDmg: false, miserPact: false, dashSpeedBuff: false, dashResist: false,
+            seismicShield: false, ultDurationPerKill: false, ultKillCount: 0, twinKinetic: false
         };
         
         this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}), new THREE.MeshPhongMaterial({color: 0xffff00, emissive: 0xffff00}));
@@ -4657,8 +4661,11 @@ class Player extends Entity {
                 this.shieldMesh.visible = true;
                 this.shieldMesh.material.color.setHex(0x00DDFF);
                 this.shieldMesh.material.opacity = 0.6;
-                this.autoShieldActive = true;
-                AudioEngine.playCollect();
+                this.autoShieldActive = true;
+                AudioEngine.playCollect();
+                if (this.modifiers.seismicShield) {
+                    Game.getHazard().spawn(this.x, this.y, 250, 0.4, this.stats.maxDmg * 0.2, 0xffffff, 'nova_ring');
+                }
                 Game.getFloatingText().spawn(this.x, this.y, "EGIDA!", '#00DDFF', 30, true);
             }
         }
@@ -4823,9 +4830,14 @@ class Player extends Entity {
                 this.isDashing = false; 
                 this.mesh.scale.set(1, 1, 1); // Reset immediato e di sicurezza a fine scatto
                 if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); Game.addTrauma(0.5); } 
-                if (this.modifiers.dashLightning) {
+               if (this.modifiers.dashLightning) {
                     Game.addTrauma(0.6);
-                    Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlue, 'nova');
+                    // Pilastro di luce del fulmine!
+                    for(let j=0; j<5; j++) {
+                        let spark = Game.getParticle();
+                        spark.spawn(this.x, 20 + (j*45), this.y, SharedMat.spriteBlue, 'nova');
+                        spark.baseSize = 100 - (j*15); // Si stringe verso l'alto
+                    }
                     AudioEngine.playShoot('chain_lightning');
                     let nearby = Game.enemyGrid.findNearby(this, 120);
                     nearby.forEach(e => {
@@ -4982,14 +4994,22 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         let piercing = (this.overdrive && this.essence === 'blue'); AudioEngine.playShoot(projType, isCrit);
         
         // Calcola la velocità: 500 per il rosso, 1000 per tutti gli altri
-        let projSpeed = (projType === 'explosive_arrow') ? 500 : 1000;
-        
-        let p1 = Game.getProjectile(); p1.spawn(this.x, this.y, this.angle, projSpeed, baseDmg, 'player', projType, piercing, isCrit); p1.canInfect = true;
-        if (this.overdrive && this.essence === 'green') {
-            let p2 = Game.getProjectile(); p2.spawn(this.x, this.y, this.angle - 0.4, 800, baseDmg, 'player', 'homing_arrow', false, isCrit); p2.canInfect = true;
-            let p3 = Game.getProjectile(); p3.spawn(this.x, this.y, this.angle + 0.4, 800, baseDmg, 'player', 'homing_arrow', false, isCrit); p3.canInfect = true;
+       let projSpeed = (projType === 'explosive_arrow') ? 500 : 1000;
+        
+        // NUOVO: Gemelli Cinetici
+        if (this.activeShieldTimer > 0 && this.modifiers.twinKinetic) {
+            let twinDmg = baseDmg * 0.70;
+            let p1 = Game.getProjectile(); p1.spawn(this.x, this.y, this.angle - 0.15, projSpeed, twinDmg, 'player', projType, piercing, isCrit); p1.canInfect = true;
+            let p2 = Game.getProjectile(); p2.spawn(this.x, this.y, this.angle + 0.15, projSpeed, twinDmg, 'player', projType, piercing, isCrit); p2.canInfect = true;
+        } else {
+            let p1 = Game.getProjectile(); p1.spawn(this.x, this.y, this.angle, projSpeed, baseDmg, 'player', projType, piercing, isCrit); p1.canInfect = true;
         }
-    }
+
+        if (this.overdrive && this.essence === 'green') {
+            let p2 = Game.getProjectile(); p2.spawn(this.x, this.y, this.angle - 0.4, 800, baseDmg, 'player', 'homing_arrow', false, isCrit); p2.canInfect = true;
+            let p3 = Game.getProjectile(); p3.spawn(this.x, this.y, this.angle + 0.4, 800, baseDmg, 'player', 'homing_arrow', false, isCrit); p3.canInfect = true;
+        }
+    }
     
     dash() {
         if (this.dashCooldown > 0 && !(this.overdrive && this.essence === 'blue')) return; 
@@ -5180,9 +5200,12 @@ if (this.modifiers.flowMastery && !wasDead) {
             AudioEngine.playLevelUp();
         }
     }
-    activateShield() {
-        if (this.activeShieldCooldown <= 0 && this.activeShieldTimer <= 0) {
-            this.activeShieldTimer = 2.0 + this.modifiers.shieldDurationAdd; // <--- MODIFICATO QUI
+   activateShield() {
+        if (this.activeShieldCooldown <= 0 && this.activeShieldTimer <= 0) {
+            this.activeShieldTimer = 2.0 + this.modifiers.shieldDurationAdd; 
+            if (this.modifiers.seismicShield) {
+                Game.getHazard().spawn(this.x, this.y, 250, 0.4, this.stats.maxDmg * 0.2, 0xffffff, 'nova_ring');
+            }
             this.shieldAbsorbed = 0;
             this.shieldMesh.visible = true;
             this.shieldMesh.material.color.setHex(0x00DDFF); // Forza il ciano originale
@@ -5866,7 +5889,16 @@ Game.scene.add(this.telegraphMesh);
       
         this.shadowMesh.visible = false;
         AudioEngine.playEnemyDeath();
-        Game.player.gainXp(this.xpValue);
+       Game.player.gainXp(this.xpValue);
+        // NUOVO: Sovraccarico Etereo (Scala Ultimate)
+        if (Game.player.modifiers.ultDurationPerKill) {
+            Game.player.modifiers.ultKillCount++;
+            if (Game.player.modifiers.ultKillCount >= 15) {
+                Game.player.modifiers.ultKillCount = 0;
+                Game.player.modifiers.ascensionDurationAdd += 0.5;
+                Game.getFloatingText().spawn(Game.player.x, Game.player.y + 30, "+0.5s ULTIMATE!", '#00DDFF', 25, true);
+            }
+        }
         let cHex = this.mat.color.getHex();
         this.mesh.updateMatrixWorld(true);
 

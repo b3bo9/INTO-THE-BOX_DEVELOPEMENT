@@ -2688,10 +2688,15 @@ prewarmShaders() {
         do {
             let p = this.particles[this._particleIdx];
             this._particleIdx = (this._particleIdx + 1) % this.particles.length;
-            if (!p.active) return p;
+            if (!p.active) return p; 
         } while (this._particleIdx !== startIdx);
         
-        return { spawn: () => {}, mesh: { scale: { set: () => {} } } }; 
+        // FIX RAM: Creiamo il manichino staticamente una sola volta in memoria. 
+        // Zero allocazioni di memoria nei momenti di stress!
+        if (!this._dummyParticle) {
+            this._dummyParticle = { spawn: () => {}, mesh: { scale: { set: () => {} } } };
+        }
+        return this._dummyParticle; 
     },
     getProjectile() { let p = this.projectiles[this._projectileIdx]; this._projectileIdx = (this._projectileIdx + 1) % this.projectiles.length; return p; },
     getFloatingText() { let f = this.floatingTexts[this._textIdx]; this._textIdx = (this._textIdx + 1) % this.floatingTexts.length; return f; },
@@ -5947,13 +5952,14 @@ Game.scene.add(this.telegraphMesh);
         }
         // ----------------------------------------
 
-        // CLEANUP MATERIALI CLONATI (Es. Pursuer)
-        this.mesh.traverse(child => {
-            if (child.isMesh && child.material && child.material !== this.mat && !SharedMatSet.has(child.material)) {
-                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
-                else child.material.dispose();
-            }
-        });
+      // CLEANUP MATERIALI CLONATI (Es. Pursuer)
+        this.mesh.traverse(child => {
+            // FIX VRAM: Aggiunto "|| child.isSprite" per non far leakare l'aura dello scudo del Nemesi!
+            if ((child.isMesh || child.isSprite) && child.material && child.material !== this.mat && !SharedMatSet.has(child.material)) {
+                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                else child.material.dispose();
+            }
+        });
         
         this.active = false; this.mesh.visible = false;
            
@@ -6342,11 +6348,15 @@ class BossEnemy extends Enemy {
         
         
        this.mesh.traverse(child => {
-            if (child.isMesh && child.material && child.material !== this.mat && !SharedMatSet.has(child.material)) {
-                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
-                else child.material.dispose();
-            }
-        });
+            // FIX VRAM: Assicuriamoci che anche i Boss distruggano eventuali Sprite assegnati
+            if (child.isMesh || child.isSprite) {
+                if (child.geometry && !SharedGeoSet.has(child.geometry)) child.geometry.dispose();
+                if (child.material && !SharedMatSet.has(child.material)) {
+                    if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                    else child.material.dispose();
+                }
+            }
+        });
         this.mat.dispose(); Game.scene.remove(this.mesh); Game.addTrauma(2.0); AudioEngine.playShoot('explosive_arrow');
         
         // Esplosione di loot a raggiera
@@ -6908,13 +6918,14 @@ function clearScene() {
     for(let i=0, len=Game.coinDrops.length; i<len; i++) { Game.coinDrops[i].destroy(); }
     
    if(Game.player) {
-        // OTTIMIZZAZIONE 4: Pulizia profonda del Giocatore (Previene il leak dei materiali al riavvio)
-        Game.player.mesh.traverse((child) => {
-            if (child.isMesh && child.material) {
-                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
-                else child.material.dispose();
-            }
-        });
+     // OTTIMIZZAZIONE 4: Pulizia profonda del Giocatore (Previene il leak dei materiali al riavvio)
+        Game.player.mesh.traverse((child) => {
+            // FIX VRAM: Aggiunto "|| child.isSprite" per non far leakare il glow della bacchetta!
+            if ((child.isMesh || child.isSprite) && child.material) {
+                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                else child.material.dispose();
+            }
+        });
         
         Game.scene.remove(Game.player.mesh);
         if(Game.player.shadowMesh) { 

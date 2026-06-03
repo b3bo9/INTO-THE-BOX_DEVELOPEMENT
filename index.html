@@ -203,7 +203,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 122</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 123</p>
                 </div>
             </div>
         </div>
@@ -725,6 +725,16 @@ const AudioEngine = {
     init() {
         if (this.initialized) return; window.AudioContext = window.AudioContext || window.webkitAudioContext;
         this.ctx = new AudioContext(); this.initialized = true; 
+        
+        // LIMITER/COMPRESSOR GLOBALE: Previene distorsione (clipping) e crash dell'audio thread
+        this.masterCompressor = this.ctx.createDynamicsCompressor();
+        this.masterCompressor.threshold.setValueAtTime(-15, this.ctx.currentTime); // Inizia a comprimere a -15dB
+        this.masterCompressor.knee.setValueAtTime(10, this.ctx.currentTime);
+        this.masterCompressor.ratio.setValueAtTime(12, this.ctx.currentTime); // Compressione forte
+        this.masterCompressor.attack.setValueAtTime(0.003, this.ctx.currentTime); // Istantaneo
+        this.masterCompressor.release.setValueAtTime(0.25, this.ctx.currentTime);
+        this.masterCompressor.connect(this.ctx.destination);
+        
         this.createNoiseBuffer();
         this.playMenuMusic();
     },
@@ -2012,13 +2022,17 @@ class SpatialHashGrid {
         }
     }
     
-    remove(client) {
+   remove(client) {
         if (!client.gridKeys) return;
         for(let i=0; i<client.gridKeys.length; i++) {
             let k = client.gridKeys[i]; let cell = this.cells.get(k);
             if (cell) { 
                 let idx = cell.indexOf(client);
-                if (idx !== -1) cell.splice(idx, 1); // FIX: Rimozione da Array zero-cost
+                // VERO ZERO-COST: Swap-and-pop invece di splice (evita la riallocazione dell'array)
+                if (idx !== -1) {
+                    cell[idx] = cell[cell.length - 1]; 
+                    cell.pop(); 
+                }
             }
         }
         client.gridKeys.length = 0;
@@ -2202,6 +2216,8 @@ const UI = {
         this.els.btnShieldFill = document.getElementById('btn-shield-fill');
         this.els.btnDash = document.getElementById('btn-dash');
         this.els.btnDashFill = document.getElementById('btn-dash-fill');
+        this.els.vignette = document.getElementById('vignette');
+        this.els.bloodVignette = document.getElementById('blood-vignette');
     },
     update() {
         if (!Game.player) return;
@@ -4044,6 +4060,7 @@ class Entity {
     constructor(x, y, radius, speed) {
         this.id = Math.random().toString(36).substr(2, 9); this.x = x; this.y = y; this.radius = radius; this.speed = speed;
         this.angle = 0; this.dead = false; this.mesh = new THREE.Group(); this.stats = { hp: 100, maxHp: 100, minDmg: 5, maxDmg: 10 };
+        this.mesh.matrixAutoUpdate = false; // OTTIMIZZAZIONE GPU MASSICCIA: Disabilita il calcolo matriciale automatico
         this.flashTimer = 0; this.flashMats = []; 
         // --- INIZIO FAKE SHADOW ---
         this.shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), SharedMat.blobShadow);
@@ -4062,6 +4079,7 @@ class Entity {
             if (dy !== 0) { let testY = dy > 0 ? newY + r : newY - r; if (!Game.map.isSolid(this.x - r, testY) && !Game.map.isSolid(this.x + r, testY)) this.y = newY; }
         }
         this.mesh.position.set(this.x, this.mesh.position.y, this.y);
+        this.mesh.updateMatrix();
     }
     push(nx, ny, dist) {
         if (this.isPursuer) return; // L'inseguitore non viene mai sbalzato
@@ -4072,6 +4090,7 @@ class Entity {
             if (ny !== 0) { let testY = ny > 0 ? newY + r : newY - r; if (!Game.map.isSolid(this.x - r, testY) && !Game.map.isSolid(this.x + r, testY)) this.y = newY; }
         }
         this.mesh.position.set(this.x, this.mesh.position.y, this.y);
+        this.mesh.updateMatrix();
     }
     takeDamage(amount, source, isCrit = false) {
         if (this.dead) return; this.stats.hp -= amount;
@@ -4707,6 +4726,7 @@ class Player extends Entity {
         // L'alone visivo per mobile si espande impercettibilmente, senza accecare
         let baseOpacity = this.overdrive ? 1.0 : (this.essence ? 0.8 : 0.5);
         this.fakeBloom.material.opacity = Math.max(0.1, Math.min(1.0, baseOpacity + (flicker * 0.5)));
+        this.mesh.updateMatrix();
         // -----------------------------------------------------------------
     }
     
@@ -4950,47 +4970,34 @@ if (this.modifiers.flowMastery && !wasDead) {
       // La combo si spezza sempre quando vieni colpito
         Game.resetCombo();
         // --- FLASH ROSSO SULLO SCHERMO ---
-        const vignetteEl = document.getElementById('vignette');
-        vignetteEl.classList.remove('damage-flash-active');
-        void vignetteEl.offsetWidth; // Triggera il reflow per riavviare l'animazione CSS
-        vignetteEl.classList.add('damage-flash-active');
+        UI.els.vignette.classList.remove('damage-flash-active');
+        void UI.els.vignette.offsetWidth; // Triggera il reflow
+        UI.els.vignette.classList.add('damage-flash-active');
 
-       if (!wasDead) {
+        if (!wasDead) {
             Game.addTrauma(0.8);
             if (this.stats.hp <= 0) {
                 this.dead = true;
                 Game.lives--;
                 
-               // --- PENALITÀ MONETE: Dimezza i risparmi del giocatore ---
-                Game.lastCoinsLost = Game.coins - Math.floor(Game.coins / 2); // Salviamo il dato per il respawn
+                Game.lastCoinsLost = Game.coins - Math.floor(Game.coins / 2);
                 Game.coins = Math.floor(Game.coins / 2);
                 if(UI.els.coins) UI.els.coins.innerText = Game.coins;
                 
                 AudioEngine.stopAllMusic();
-                
-                // --- ANTICIPO AUDIO: I suoni partono PRIMA del timeout, insieme al blackout ---
-                if (Game.lives > 0) {
-                    AudioEngine.playDeathMusic();
-                } else {
-                    AudioEngine.playGameOverSound();
-                }
+                if (Game.lives > 0) AudioEngine.playDeathMusic(); else AudioEngine.playGameOverSound();
 
-                // 1. EFFETTO MORTE DRAMMATICO
-                Game.addTrauma(3.0); // Shake violento della telecamera
-                Game.hitStop = 0.2; // Freeze-frame per enfatizzare l'impatto
-                
+                Game.addTrauma(3.0); Game.hitStop = 0.2; 
                 let pCount = AppSettings.isLow ? 20 : 60;
                 for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
                 Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'nova');
 
-                // 2. Nasconde il giocatore (e la sua luce magica, facendo calare il buio!)
                 this.mesh.children.forEach(child => child.visible = false);
 
-                // 3. Avvia la dissolvenza rossa dello schermo
-                let bloodVig = document.getElementById('blood-vignette');
-                if (bloodVig) {
-                    bloodVig.classList.remove('vignette-low-hp-active');
-                    bloodVig.classList.add('death-fade-active');
+                // Usa il riferimento in cache per il sangue
+                if (UI.els.bloodVignette) {
+                    UI.els.bloodVignette.classList.remove('vignette-low-hp-active');
+                    UI.els.bloodVignette.classList.add('death-fade-active');
                 }
 
                 // 4. Ritardo di 1.5 secondi prima della schermata reale
@@ -5346,7 +5353,8 @@ class Enemy extends Entity {
                     let target = this.buffTargets[i];
                     if (target.dead || MathUtils.distanceSq(this, target) > 1800*1800) {
                         target.isProphetBuffed = false;
-                        this.buffTargets.splice(i, 1);
+                        this.buffTargets[i] = this.buffTargets[this.buffTargets.length - 1];
+                        this.buffTargets.pop();
                     }
                 }
                 
@@ -5468,6 +5476,7 @@ class Enemy extends Entity {
                 this.mesh.rotation.y = -this.leapAngle + Math.PI / 2;
                 this.mesh.rotation.x = -Math.cos(progress * Math.PI) * 0.8;
             }
+            this.mesh.updateMatrix();
             return;
         }
         
@@ -5513,6 +5522,7 @@ class Enemy extends Entity {
                 else if (this.attackCooldown <= 0 && this.isTargetingPlayer) { this.attack(); }
             }
         }
+       this.mesh.updateMatrix();
     }
     attack() {
         let isMelee = (this.type === 'goblin' || this.type === 'orc' || this.type === 'golem'); // <-- AGGIUNTO GOLEM
@@ -6008,6 +6018,7 @@ class BossEnemy extends Enemy {
                     this.mesh.rotation.x = -Math.cos(progress * Math.PI) * 0.5;
                 }
             }
+            this.mesh.updateMatrix();
             return; 
         }
 
@@ -6719,7 +6730,7 @@ function clearScene() {
 
 function respawnPlayer() {
     document.getElementById('deathScreen').classList.add('hidden');
-    document.getElementById('blood-vignette').classList.remove('death-fade-active');
+    UI.els.bloodVignette.classList.remove('death-fade-active');
     let pos = Game.map.getRandomFloorTile(); let attempts = 0;
     while(attempts < 100) {
         let isSafe = true;
@@ -6731,6 +6742,7 @@ function respawnPlayer() {
     }
     Game.player.x = pos.x * TILE_SIZE + TILE_SIZE/2; Game.player.y = pos.y * TILE_SIZE + TILE_SIZE/2;
     Game.player.mesh.position.set(Game.player.x, 0, Game.player.y); Game.player.stats.hp = Game.player.stats.maxHp; Game.player.dead = false; Game.player.invincibilityTimer = 3.0; 
+    Game.player.mesh.updateMatrix();
     if (Game.player.modifiers.shieldActive) Game.player.modifiers.autoShieldTimer = 0;
     
     // --- BUGFIX LUCE: Riaccendiamo tutto esplicitamente ---
@@ -6768,7 +6780,7 @@ function respawnPlayer() {
 
 function goToMainMenu() {
     document.getElementById('deathScreen').classList.add('hidden');
-    document.getElementById('blood-vignette').classList.remove('death-fade-active');
+    UI.els.bloodVignette.classList.remove('death-fade-active');
     document.getElementById('hud').classList.add('hidden');
     document.getElementById('mobile-controls').classList.add('hidden');
     document.getElementById('mainMenu').classList.remove('hidden');

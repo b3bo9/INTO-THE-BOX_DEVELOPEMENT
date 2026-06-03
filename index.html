@@ -525,39 +525,64 @@
             FPS: <span id="fps-value" class="text-green-400">0</span>
         </div>
         <!-- FINE FPS COUNTER -->
-       <div class="absolute top-3 left-3 sm:top-6 sm:left-6 flex items-start gap-3 pointer-events-none w-full">
-            <!-- Cerchio Livello/XP -->
-            <div class="relative w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center bg-black/80 rounded-full border-2 border-gray-700 shadow-[0_0_15px_rgba(0,0,0,0.8)] backdrop-blur-md shrink-0">
-                <svg class="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                    <path class="text-gray-800" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"/>
-                    <path id="ui-xp-circle" class="text-amber-500 transition-all duration-300" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"/>
-                </svg>
-                <div class="absolute flex flex-col items-center">
-                    <span class="text-[8px] sm:text-[10px] text-gray-400 font-bold leading-none mt-1">LIV</span>
-                    <span id="ui-level" class="text-sm sm:text-xl font-black text-white leading-none">1</span>
+   <!-- TACTICAL HUD (Top-Left) -->
+        <div class="absolute top-3 left-3 sm:top-6 sm:left-6 flex flex-col gap-2.5 pointer-events-none w-full max-w-[260px] sm:max-w-[320px] z-50">
+            
+            <!-- MAIN VITALS PANEL -->
+            <div class="bg-black/50 backdrop-blur-xl border border-gray-600/40 rounded-2xl p-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] flex items-center gap-3.5">
+                
+                <!-- LEVEL RING -->
+                <div class="relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center bg-black/80 rounded-full border-2 border-gray-700/80 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] shrink-0">
+                    <svg class="absolute inset-0 w-full h-full transform -rotate-90 drop-shadow-[0_0_3px_rgba(34,211,238,0.5)]" viewBox="0 0 36 36">
+                        <path class="text-gray-800" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="2.5"/>
+                        <path id="ui-xp-circle" class="text-cyan-400 transition-all duration-300" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                    </svg>
+                    <div class="absolute flex flex-col items-center mt-0.5">
+                        <span class="text-[7px] sm:text-[9px] text-cyan-200 font-black tracking-[0.2em] leading-none mb-0.5">LVL</span>
+                        <span id="ui-level" class="text-base sm:text-xl font-black text-white leading-none">1</span>
+                    </div>
+                </div>
+
+                <!-- HP & LIVES CONTAINER -->
+                <div class="flex flex-col flex-1 gap-1.5 pr-1">
+                    <div class="flex justify-between items-end">
+                        <span id="ui-hp-text" class="text-xs sm:text-sm font-black text-white tracking-widest drop-shadow-[0_0_5px_rgba(220,38,38,0.8)]">100 / 100</span>
+                        <div id="ui-lives" class="flex gap-1 items-center text-[10px] sm:text-xs">
+                            <!-- Cuori popolati via JS -->
+                        </div>
+                    </div>
+                    <!-- HEALTH BAR -->
+                    <div class="w-full h-3 sm:h-3.5 bg-black/90 rounded-full border border-gray-900 shadow-[inset_0_0_8px_rgba(0,0,0,0.9)] overflow-hidden relative">
+                        <div id="ui-hp-fill" class="h-full bg-gradient-to-r from-red-800 via-red-600 to-red-400 shadow-[0_0_15px_rgba(220,38,38,1)] rounded-full transition-all duration-150"></div>
+                        <!-- Glossy overlay (Riflesso tipo vetro) -->
+                        <div class="absolute top-0 left-0 w-full h-[40%] bg-white/20 rounded-full"></div>
+                    </div>
                 </div>
             </div>
-            <!-- HP & Barra Progresso Orizzontale -->
-            <div class="flex flex-col gap-1.5 w-[45vw] max-w-[200px] sm:max-w-[250px] mt-1">
-                <div class="flex justify-between items-end mb-0.5">
-                    <span id="ui-lives" class="text-[10px] sm:text-sm tracking-widest drop-shadow-md">❤️❤️❤️</span>
-                    <!-- Testo HP ingrandito e con un leggero alone rosso -->
-                    <span id="ui-hp-text" class="text-xs sm:text-sm font-black text-white drop-shadow-[0_0_5px_rgba(220,38,38,0.8)]">100/100</span>
-                </div>
-                <!-- Barra HP più spessa (h-4) e visibile -->
-                <div class="health-bar-container h-4 sm:h-5 w-full rounded-full border border-gray-500 shadow-[0_0_10px_rgba(220,38,38,0.4)]"><div id="ui-hp-fill" class="health-bar-fill rounded-full"></div></div>
+
+            <!-- SECONDARY INFO PANEL (Floor Context & Economy) -->
+            <div class="flex gap-2.5 pl-2 w-full">
                 
-               <div class="flex justify-between items-end w-full mt-1.5 mb-1">
-    <span id="ui-floor-text" class="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-gray-300 drop-shadow-md flex items-center gap-1">
-        Piano <span id="ui-floor" class="text-white text-xs sm:text-sm">1</span>
-        <span id="ui-corruption-label" class="text-red-500 drop-shadow-[0_0_5px_rgba(255,0,0,0.8)] hidden"></span>
-    </span>
-    <span class="text-xs sm:text-sm font-black text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)] bg-black/50 px-2 py-0.5 rounded border border-yellow-500/30 flex items-center gap-1.5"><i class="fa-solid fa-coins"></i> <span id="ui-coins">0</span></span>
-</div>
-                <!-- Barra Progresso Sottile (Viola/Ciano per differenziarla dal rosso HP) -->
-                <div class="w-full h-1.5 sm:h-2 bg-black/80 border border-gray-700 rounded-full overflow-hidden shadow-inner backdrop-blur-md">
-                    <div id="ui-floor-progress" class="h-full w-0 bg-gradient-to-r from-purple-900 via-fuchsia-600 to-cyan-400 transition-all duration-300 shadow-[0_0_8px_rgba(34,211,238,0.5)]"></div>
+                <!-- FLOOR PROGRESS -->
+                <div class="flex-1 bg-black/50 backdrop-blur-xl border border-gray-600/30 rounded-xl p-2 sm:p-2.5 shadow-[0_4px_15px_rgba(0,0,0,0.4)] flex flex-col justify-center">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span id="ui-floor-text" class="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center">
+                            <i class="fa-solid fa-layer-group text-gray-500 mr-1.5"></i> Piano <span id="ui-floor" class="text-white ml-1">1</span>
+                        </span>
+                        <span id="ui-corruption-label" class="text-[8px] sm:text-[9px] font-black tracking-widest text-purple-300 drop-shadow-[0_0_5px_rgba(168,85,247,0.8)] hidden bg-purple-900/40 px-1.5 py-0.5 rounded border border-purple-500/40 uppercase"></span>
+                    </div>
+                    <!-- PROGRESS BAR -->
+                    <div class="w-full h-1.5 sm:h-2 bg-gray-900/90 rounded-full border border-gray-800 shadow-inner overflow-hidden relative">
+                        <div id="ui-floor-progress" class="h-full w-0 bg-gradient-to-r from-purple-800 via-fuchsia-500 to-cyan-400 transition-all duration-300 shadow-[0_0_8px_rgba(34,211,238,0.6)] rounded-full"></div>
+                    </div>
                 </div>
+
+                <!-- COINS POUCH -->
+                <div class="shrink-0 bg-black/50 backdrop-blur-xl border border-yellow-600/30 rounded-xl px-3 shadow-[0_4px_15px_rgba(0,0,0,0.4)] flex items-center justify-center gap-2 min-w-[60px]">
+                    <i class="fa-solid fa-coins text-yellow-500 text-[10px] sm:text-xs drop-shadow-[0_0_5px_rgba(234,179,8,0.8)]"></i> 
+                    <span id="ui-coins" class="text-yellow-400 text-xs sm:text-sm font-black tracking-wider">0</span>
+                </div>
+                
             </div>
         </div>
 
@@ -2224,7 +2249,14 @@ const UI = {
         let hpPct = (Game.player.stats.hp / Game.player.stats.maxHp) * 100; let hpText = `${Math.floor(Game.player.stats.hp)}/${Math.floor(Game.player.stats.maxHp)}`;
         if (this.cache.hpPct !== hpPct) { this.els.hpFill.style.width = `${hpPct}%`; this.cache.hpPct = hpPct; }
         if (this.cache.hpText !== hpText) { this.els.hpText.innerText = hpText; this.cache.hpText = hpText; }
-        if (this.cache.lives !== Game.lives) { this.els.lives.innerText = '❤️'.repeat(Math.max(0, Game.lives)); this.cache.lives = Game.lives; }
+       if (this.cache.lives !== Game.lives) { 
+            let hearts = '';
+            for(let i = 0; i < Math.max(0, Game.lives); i++) {
+                hearts += '<i class="fa-solid fa-heart text-red-500 drop-shadow-[0_0_5px_rgba(220,38,38,0.9)] transition-all"></i>';
+            }
+            this.els.lives.innerHTML = hearts; 
+            this.cache.lives = Game.lives; 
+        }
         if (this.cache.level !== Game.player.level) { this.els.level.innerText = Game.player.level; this.cache.level = Game.player.level; }
         
         let xpPct = (Game.player.xp / Game.player.xpNeeded) * 100; 

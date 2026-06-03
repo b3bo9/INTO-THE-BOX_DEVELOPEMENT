@@ -6631,20 +6631,21 @@ class Projectile {
     }
 }
 class Particle {
-    constructor() { 
-        this.active = false; this.mesh = new THREE.Sprite(SharedMat.spriteWhite); 
-        this.mesh.matrixAutoUpdate = false; 
-        this.mesh.frustumCulled = false;
-        this.mesh.visible = false; Game.scene.add(this.mesh); 
-    }
-   spawn(x, y, z, mat, type='spark', dirAngle=null) {
-        // OTTIMIZZAZIONE: Evita la "Bomba di Particelle" che uccide la CPU
+    constructor() { 
+        this.active = false; 
+        this.mesh = new THREE.Sprite(SharedMat.spriteWhite); 
+        // FIX: Rimosso matrixAutoUpdate=false. Three.js sincronizzerà istantaneamente la posizione al respawn!
+        this.mesh.frustumCulled = false;
+        this.mesh.visible = false; 
+        Game.scene.add(this.mesh); 
+    }
+   spawn(x, y, z, mat, type='spark', dirAngle=null) {
         if (Game.particlesThisFrame > (isTouchDevice ? 25 : 80)) return;
         Game.particlesThisFrame = (Game.particlesThisFrame || 0) + 1;
 
         this.active = true; 
         this.type = type;
-        this.seed = Math.random() * 100; 
+        this.seed = Math.random() * 100; 
         
         if (type === 'nova') {
             this.life = 0.15;
@@ -6652,32 +6653,29 @@ class Particle {
             this.vx = 0; this.vy = 0; this.vz = 0;
         } else if (type === 'ambient') { 
             this.life = MathUtils.randomRange(3.0, 6.0); 
-            this.baseSize = MathUtils.randomRange(15, 35); 
+            this.baseSize = MathUtils.randomRange(15, 35); 
             this.vx = MathUtils.randomRange(-15, 15);
-            this.vy = MathUtils.randomRange(-35, -15); 
+            this.vy = MathUtils.randomRange(-35, -15); 
             this.vz = MathUtils.randomRange(-15, 15);
-        } else if (type === 'dust') { 
+        } else if (type === 'dust') { 
             this.life = MathUtils.randomRange(0.4, 0.6);
             this.baseSize = MathUtils.randomRange(15, 25);
             this.vx = MathUtils.randomRange(-15, 15);
-            this.vy = MathUtils.randomRange(5, 15); 
+            this.vy = MathUtils.randomRange(5, 15); 
             this.vz = MathUtils.randomRange(-15, 15);
-        } else if (type === 'trail') { 
-            // FIX: Fisica reale della scia (fumo che sale morbido, zero esplosioni laterali)
-            this.life = MathUtils.randomRange(0.2, 0.4);
-            this.baseSize = 12;
-            this.vx = MathUtils.randomRange(-15, 15);
-            this.vy = MathUtils.randomRange(10, 30); 
-            this.vz = MathUtils.randomRange(-15, 15);
-        } else if (type === 'electric') { 
-            // FIX: Fisica elettrica (sfarfallio statico attorno al proiettile)
-            this.life = MathUtils.randomRange(0.1, 0.2);
-            this.baseSize = MathUtils.randomRange(6, 12);
-            this.vx = MathUtils.randomRange(-5, 5); 
-            this.vy = MathUtils.randomRange(-20, 20);
-            this.vz = MathUtils.randomRange(-5, 5);
-        } else {
-            // Esplosioni violente (blood, spark, flame, level up)
+        } else if (type === 'trail') { 
+            this.life = MathUtils.randomRange(0.2, 0.4);
+            this.baseSize = 12;
+            this.vx = MathUtils.randomRange(-15, 15);
+            this.vy = MathUtils.randomRange(10, 30); 
+            this.vz = MathUtils.randomRange(-15, 15);
+        } else if (type === 'electric') { 
+            this.life = MathUtils.randomRange(0.1, 0.2);
+            this.baseSize = MathUtils.randomRange(6, 12);
+            this.vx = MathUtils.randomRange(-5, 5); 
+            this.vy = MathUtils.randomRange(-20, 20);
+            this.vz = MathUtils.randomRange(-5, 5);
+        } else {
             this.life = type === 'flame' ? MathUtils.randomRange(0.15, 0.45) : MathUtils.randomRange(0.2, 0.5); 
             this.baseSize = type === 'blood' ? 12 : (type==='level'? 16 : (type==='flame'? 24 : 10));
             let a = dirAngle !== null ? dirAngle + MathUtils.randomRange(-0.4, 0.4) : Math.random() * Math.PI * 2; 
@@ -6691,157 +6689,123 @@ class Particle {
         this.mesh.material = mat; 
         this.mesh.position.set(x, y, z); 
         this.mesh.scale.set(this.baseSize, this.baseSize, 1);
-        this.mesh.updateMatrix(); 
+        // FIX: Eliminato l'update manuale e non sincronizzato della matrice
         this.mesh.visible = true;
     }
-    
-    update(dt) {
-        if (!this.active) return;
-        
-        if (this.type === 'nova') {
-            let pct = this.life / this.maxLife;
-            let currentSize = Math.sin(pct * Math.PI) * this.baseSize;
-            this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
-        } else if (this.type === 'ambient') { // --- NUOVO: Fisica Ambientale
-            // Movimento ondulatorio dolce (svolazzano)
-            this.vx += Math.sin(this.life * 3.0 + this.seed) * 15.0 * dt;
-            this.vz += Math.cos(this.life * 2.5 + this.seed) * 15.0 * dt;
-            
-            this.mesh.position.x += this.vx * dt; 
-            this.mesh.position.y += this.vy * dt; 
-            this.mesh.position.z += this.vz * dt;
-            
-            // Dissolvenza in entrata e uscita + Pulsazione veloce (Sfarfallio)
-            let pct = this.life / this.maxLife;
-            let fade = Math.sin(pct * Math.PI); // Curva ad arco: 0 -> 1 -> 0
-            let pulse = 1.0 + Math.sin(this.life * 15.0) * 0.4; // Lampeggio da lucciola
-            
-            let currentSize = this.baseSize * fade * pulse;
-            this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
-        } else if (this.type === 'dust') { // --- FIX: Espansione Polvere Sicura
+    
+    update(dt) {
+        if (!this.active) return;
+        
+        if (this.type === 'nova') {
+            let pct = this.life / this.maxLife;
+            let currentSize = Math.sin(pct * Math.PI) * this.baseSize;
+            this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
+        } else if (this.type === 'ambient') { 
+            this.vx += Math.sin(this.life * 3.0 + this.seed) * 15.0 * dt;
+            this.vz += Math.cos(this.life * 2.5 + this.seed) * 15.0 * dt;
+            
+            this.mesh.position.x += this.vx * dt; 
+            this.mesh.position.y += this.vy * dt; 
+            this.mesh.position.z += this.vz * dt;
+            
+            let pct = this.life / this.maxLife;
+            let fade = Math.sin(pct * Math.PI); 
+            let pulse = 1.0 + Math.sin(this.life * 15.0) * 0.4; 
+            
+            let currentSize = this.baseSize * fade * pulse;
+            this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
+        } else if (this.type === 'dust') { 
             this.mesh.position.x += this.vx * dt; 
             this.mesh.position.y += this.vy * dt; 
             this.mesh.position.z += this.vz * dt;
             let pct = this.life / this.maxLife;
-            // Invece di cambiare l'opacità globale, restringiamo la scala a 0 per farla svanire
-            let currentSize = this.baseSize * pct; 
+            let currentSize = this.baseSize * pct; // Nessun cambio di opacità globale!
             this.mesh.scale.set(currentSize, currentSize, 1);
         } else {
-            if(this.type === 'blood' || this.type === 'spark') this.vy -= 600 * dt; 
-            if(this.type === 'flame') { 
-                this.vx -= this.vx * 2.5 * dt; 
-                this.vz -= this.vz * 2.5 * dt; 
-                this.baseSize += dt * 120; 
-            }
-            this.mesh.position.x += this.vx * dt; this.mesh.position.y += this.vy * dt; this.mesh.position.z += this.vz * dt;
-            if (this.mesh.position.y < 2) { this.mesh.position.y = 2; this.vx *= 0.5; this.vz *= 0.5; this.vy *= -0.3; } 
-            
-            let currentSize = this.baseSize * (this.type === 'flame' ? (this.life / this.maxLife) * 1.5 : (this.life / this.maxLife));
-            this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
-        }
+            if(this.type === 'blood' || this.type === 'spark') this.vy -= 600 * dt; 
+            if(this.type === 'flame') { 
+                this.vx -= this.vx * 2.5 * dt; 
+                this.vz -= this.vz * 2.5 * dt; 
+                this.baseSize += dt * 120; 
+            }
+            this.mesh.position.x += this.vx * dt; this.mesh.position.y += this.vy * dt; this.mesh.position.z += this.vz * dt;
+            if (this.mesh.position.y < 2) { this.mesh.position.y = 2; this.vx *= 0.5; this.vz *= 0.5; this.vy *= -0.3; } 
+            
+            let currentSize = this.baseSize * (this.type === 'flame' ? (this.life / this.maxLife) * 1.5 : (this.life / this.maxLife));
+            this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
+        }
 
-        this.mesh.updateMatrix(); 
-        this.life -= dt; 
-        if(this.life <= 0) { this.active = false; this.mesh.visible = false; }
-    }
+        this.life -= dt; 
+        if(this.life <= 0) { this.active = false; this.mesh.visible = false; }
+    }
 }
 class Debris {
-    constructor() {
-        this.active = false;
-        this.mesh = new THREE.Mesh(SharedGeo.tetrahedron, new THREE.MeshStandardMaterial({roughness: 0.8, metalness: 0.2}));
-        this.mesh.matrixAutoUpdate = false; 
-        this.mesh.visible = false; 
-        
-        // SALVA CPU: Disabilitiamo le ombre per i frammenti
-        this.mesh.castShadow = false; 
-        this.mesh.receiveShadow = false;
-        Game.scene.add(this.mesh);
-    }
-   spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, enemyRadius, isElite = false) {
-        // OTTIMIZZAZIONE: Limita le Draw Calls dei pezzi di cadavere in 3D
-        if (Game.debrisThisFrame > (isTouchDevice ? 8 : 20)) return;
-        Game.debrisThisFrame = (Game.debrisThisFrame || 0) + 1;
+    constructor() {
+        this.active = false;
+        this.mesh = new THREE.Mesh(SharedGeo.tetrahedron, new THREE.MeshStandardMaterial({roughness: 0.8, metalness: 0.2}));
+        // FIX: matrixAutoUpdate riattivato per i detriti. Zero glitch di teletrasporto!
+        this.mesh.visible = false; 
+        this.mesh.castShadow = false; 
+        this.mesh.receiveShadow = false;
+        Game.scene.add(this.mesh);
+    }
+   spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, enemyRadius, isElite = false) {
+        if (Game.debrisThisFrame > (isTouchDevice ? 8 : 20)) return;
+        Game.debrisThisFrame = (Game.debrisThisFrame || 0) + 1;
 
-        this.active = true;
-        
-        this.mesh.geometry = geometry;
-        this.mesh.material.color.setHex(colorHex);
-        this.mesh.material.emissive.setHex(isElite ? 0x440000 : 0x000000);
-        
-        this.mesh.position.copy(worldPos);
-        this.mesh.quaternion.copy(worldQuat);
-        
-        // --- MODIFICHE GRANDEZZA ---
-        // I pezzi restano grandi l'85% della loro dimensione originale (evitando il gigantismo)
-        let maxScale = Math.max(scaleVec.x, scaleVec.y, scaleVec.z);
-        maxScale = Math.min(maxScale, enemyRadius * 1.2); 
-        
-        this.baseScale = maxScale * 0.85; // <- Riportato a dimensioni più solide
-        this.mesh.scale.setScalar(this.baseScale); 
-        
-        // --- MODIFICHE ESPLOSIONE ---
-        // Spinta orizzontale ridotta per tenerli più vicini, ma mantengono il balzo
-        let a = Math.random() * Math.PI * 2;
-        let speed = MathUtils.randomRange(40, 110); 
-        this.vx = Math.cos(a) * speed;
-        this.vz = Math.sin(a) * speed;
-        this.vy = MathUtils.randomRange(250, 450); // Salto leggero verso l'alto
-        
-        // Rotazione fluida
-        this.rx = MathUtils.randomRange(-15, 15);
-        this.ry = MathUtils.randomRange(-15, 15);
-        this.rz = MathUtils.randomRange(-15, 15);
-        
-        // Durata leggermente variabile per renderlo organico
-        this.life = MathUtils.randomRange(0.6, 0.9); 
-        this.maxLife = this.life;
-        this.mesh.visible = true;
-        this.mesh.updateMatrix();
-    }
-    
-    update(dt) {
-        if (!this.active) return;
-        
-        // GRAVITÀ LEGGERA
-        this.vy -= 600 * dt; 
-        
-        this.mesh.position.x += this.vx * dt;
-        this.mesh.position.y += this.vy * dt;
-        this.mesh.position.z += this.vz * dt;
-        
-        this.mesh.rotation.x += this.rx * dt;
-        this.mesh.rotation.y += this.ry * dt;
-        this.mesh.rotation.z += this.rz * dt;
-        
-        // PAVIMENTO
+        this.active = true;
+        this.mesh.geometry = geometry;
+        this.mesh.material.color.setHex(colorHex);
+        this.mesh.material.emissive.setHex(isElite ? 0x440000 : 0x000000);
+        this.mesh.position.copy(worldPos);
+        this.mesh.quaternion.copy(worldQuat);
+        
+        let maxScale = Math.max(scaleVec.x, scaleVec.y, scaleVec.z);
+        maxScale = Math.min(maxScale, enemyRadius * 1.2); 
+        this.baseScale = maxScale * 0.85; 
+        this.mesh.scale.setScalar(this.baseScale); 
+        
+        let a = Math.random() * Math.PI * 2;
+        let speed = MathUtils.randomRange(40, 110); 
+        this.vx = Math.cos(a) * speed;
+        this.vz = Math.sin(a) * speed;
+        this.vy = MathUtils.randomRange(250, 450); 
+        this.rx = MathUtils.randomRange(-15, 15);
+        this.ry = MathUtils.randomRange(-15, 15);
+        this.rz = MathUtils.randomRange(-15, 15);
+        this.life = MathUtils.randomRange(0.6, 0.9); 
+        this.maxLife = this.life;
+        this.mesh.visible = true;
+    }
+    
+    update(dt) {
+        if (!this.active) return;
+        this.vy -= 600 * dt; 
+        this.mesh.position.x += this.vx * dt;
+        this.mesh.position.y += this.vy * dt;
+        this.mesh.position.z += this.vz * dt;
+        this.mesh.rotation.x += this.rx * dt;
+        this.mesh.rotation.y += this.ry * dt;
+        this.mesh.rotation.z += this.rz * dt;
+        
         let floorLimit = this.baseScale * 0.3;
         if (this.mesh.position.y < floorLimit) {
             this.mesh.position.y = floorLimit;
-            // Mini-rimbalzo e rallentamento
             this.vy *= -0.3; 
             this.vx *= 0.5; 
             this.vz *= 0.5;
-            // FIX: Frena violentemente la rotazione (niente più breakdance)
             this.rx *= 0.5;
             this.ry *= 0.5;
             this.rz *= 0.5;
         }
-        
-        // --- EFFETTO FLUIDO RITARDATO ---
-        // Mantengono la grandezza solida finché la loro vita non scende sotto il 60%, poi evaporano.
-        let pct = this.life / this.maxLife;
-        let easeShrink = 1.0; 
-        
-        if (pct < 0.6) {
-            easeShrink = Math.pow(pct / 0.6, 1.2); // Si dissolve dolcemente alla fine
-        }
-        
-        this.mesh.scale.setScalar(Math.max(0.001, this.baseScale * easeShrink));
-        this.mesh.updateMatrix();
-        
-        this.life -= dt;
-        if (this.life <= 0) { this.active = false; this.mesh.visible = false; }
-    }
+        
+        let pct = this.life / this.maxLife;
+        let easeShrink = 1.0; 
+        if (pct < 0.6) easeShrink = Math.pow(pct / 0.6, 1.2); 
+        this.mesh.scale.setScalar(Math.max(0.001, this.baseScale * easeShrink));
+        this.life -= dt;
+        if (this.life <= 0) { this.active = false; this.mesh.visible = false; }
+    }
 }
 class FloatingText {
     constructor() { this.active = false; }

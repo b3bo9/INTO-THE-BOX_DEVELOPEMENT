@@ -5502,14 +5502,22 @@ Game.scene.add(this.telegraphMesh);
             // --- AI: PROFETA OSCURO DOPPIO BUFF ---
             if (this.type === 'dark_prophet') {
                 // 1. Pulisce i target morti o usciti fuori range (Range a 1800 per evitare lo "yo-yo effect")
-                for (let i = this.buffTargets.length - 1; i >= 0; i--) {
-                    let target = this.buffTargets[i];
-                    if (target.dead || MathUtils.distanceSq(this, target) > 1800*1800) {
-                        target.isProphetBuffed = false;
-                        this.buffTargets[i] = this.buffTargets[this.buffTargets.length - 1];
-                        this.buffTargets.pop();
-                    }
-                }
+                for (let i = this.buffTargets.length - 1; i >= 0; i--) {
+                    let target = this.buffTargets[i];
+                    if (target.dead || MathUtils.distanceSq(this, target) > 1800*1800) {
+                        let isStillBuffed = false;
+                        for (let j = 0; j < Game.enemies.length; j++) {
+                            let otherProphet = Game.enemies[j];
+                            if (otherProphet !== this && otherProphet.type === 'dark_prophet' && !otherProphet.dead && otherProphet.buffTargets.includes(target)) {
+                                isStillBuffed = true;
+                                break;
+                            }
+                        }
+                        target.isProphetBuffed = isStillBuffed;
+                        this.buffTargets[i] = this.buffTargets[this.buffTargets.length - 1];
+                        this.buffTargets.pop();
+                    }
+                }
                 
                // 2. Cerca nuovi target se c'è spazio in base alla difficoltà
                 if (this.buffTargets.length < this.maxLinks) {
@@ -5829,12 +5837,22 @@ Game.scene.add(this.telegraphMesh);
                 this.targetShields[i].visible = false; 
             }
         }
-        if (this.type === 'dark_prophet' && this.buffTargets) {
-            for(let i = 0; i < this.buffTargets.length; i++) {
-                this.buffTargets[i].isProphetBuffed = false;
-            }
-            this.buffTargets = [];
-        }
+    if (this.type === 'dark_prophet' && this.buffTargets) {
+            for(let i = 0; i < this.buffTargets.length; i++) {
+                let target = this.buffTargets[i];
+                // Verifica se ci sono ALTRI profeti vivi che puntano ancora allo stesso bersaglio
+                let isStillBuffed = false;
+                for (let j = 0; j < Game.enemies.length; j++) {
+                    let otherProphet = Game.enemies[j];
+                    if (otherProphet !== this && otherProphet.type === 'dark_prophet' && !otherProphet.dead && otherProphet.buffTargets.includes(target)) {
+                        isStillBuffed = true;
+                        break;
+                    }
+                }
+                target.isProphetBuffed = isStillBuffed;
+            }
+            this.buffTargets = [];
+        }
       if (this.type === 'crystal') {
             Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xaa00ff, 'crystal_fire'); // Spawn color viola
             Game.addTrauma(1.5); let pCount = AppSettings.isLow ? 5 : (AppSettings.isUltraPC ? 40 : 20);
@@ -6132,21 +6150,52 @@ class BossEnemy extends Enemy {
     update(dt) {
         if (this.dead) return;
         
-        // FASE ENRAGED (Sotto il 50% HP)
-        if (!this.isEnraged && this.stats.hp <= this.stats.maxHp * 0.5) {
-            this.isEnraged = true;
-            this.baseSpeed *= 1.35; 
-            this.speed = this.baseSpeed;
-            
-            // Cambia i colori per mostrare la furia
-            if (this.bossElement === 'red') { this.mat.color.setHex(0xff1100); if (this.modelParts.crown) this.modelParts.crown.material.emissive.setHex(0xffaa00); }
-            else if (this.bossElement === 'blue') { this.mat.color.setHex(0x0055ff); if (this.modelParts.crown) this.modelParts.crown.material.emissive.setHex(0x00ffff); }
-            else if (this.bossElement === 'green') { this.mat.color.setHex(0x33cc00); if (this.modelParts.crown) this.modelParts.crown.material.emissive.setHex(0xaaff00); }
-            
-            Game.getFloatingText().spawn(this.x, this.y, "FURENTE!", this.bossElement === 'blue' ? '#00DDFF' : (this.bossElement === 'green' ? '#33FF00' : '#ff0000'), 60, true);
-            Game.addTrauma(1.5);
-            AudioEngine.playGameOverSound(); 
-        }
+       // FASE ENRAGED (Sotto il 50% HP)
+        if (!this.isEnraged && this.stats.hp <= this.stats.maxHp * 0.5) {
+            this.isEnraged = true;
+            this.baseSpeed *= 1.35; 
+            this.speed = this.baseSpeed;
+            
+            // Cambia i colori per mostrare la furia
+            if (this.bossElement === 'red') { this.mat.color.setHex(0xff1100); if (this.modelParts.crown) this.modelParts.crown.material.emissive.setHex(0xffaa00); }
+            else if (this.bossElement === 'blue') { this.mat.color.setHex(0x0055ff); if (this.modelParts.crown) this.modelParts.crown.material.emissive.setHex(0x00ffff); }
+            else if (this.bossElement === 'green') { this.mat.color.setHex(0x33cc00); if (this.modelParts.crown) this.modelParts.crown.material.emissive.setHex(0xaaff00); }
+            
+            Game.getFloatingText().spawn(this.x, this.y, "FURENTE!", this.bossElement === 'blue' ? '#00DDFF' : (this.bossElement === 'green' ? '#33FF00' : '#ff0000'), 60, true);
+            Game.addTrauma(1.5);
+            AudioEngine.playGameOverSound(); 
+
+            // --- NUOVO: RITUALE OSCURO (Spawn 3 Profeti a Triangolo) ---
+            let spawnRadius = 250; 
+            let baseAngle = Math.random() * Math.PI * 2;
+            for (let i = 0; i < 3; i++) {
+                // Calcola i tre vertici del triangolo (120 gradi di differenza)
+                let angle = baseAngle + (Math.PI * 2 / 3) * i;
+                let sx = this.x + Math.cos(angle) * spawnRadius;
+                let sy = this.y + Math.sin(angle) * spawnRadius;
+                
+                // Se finiscono dentro un muro, stringi il raggio di emergenza
+                if (Game.map.isSolid(sx, sy)) {
+                    sx = this.x + Math.cos(angle) * (spawnRadius * 0.5);
+                    sy = this.y + Math.sin(angle) * (spawnRadius * 0.5);
+                }
+
+                let prophet = Game.getEnemy();
+                prophet.spawn(sx, sy, 'dark_prophet', this.level);
+                
+                // Forziamo brutalmente i profeti ad agganciarsi immediatamente al Boss
+                prophet.buffTargets.push(this);
+                this.isProphetBuffed = true; // Attiva l'immunità del boss al 95%
+
+                Game.enemies.push(prophet); 
+                Game.enemyGrid.insert(prophet);
+                Game.floorMaxKills++; 
+                
+                Game.getParticle().spawn(sx, 20, sy, SharedMat.spriteRed, 'nova');
+            }
+            Game.getFloatingText().spawn(this.x, this.y + 40, "RITUALE OSCURO!", '#ff5500', 40, true);
+            // -------------------------------------------------------------
+        }
 
         if (this.modelParts.armL && this.speed > 0 && this.state !== 'leaping') {
             this.modelParts.armL.rotation.x = Game.animArm * (this.isEnraged ? 2 : 1);

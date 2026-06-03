@@ -2691,17 +2691,15 @@ prewarmShaders() {
         } while (this._debrisIdx !== startIdx);
         return null; // Pool esaurito: evita di teletrasportare detriti già in volo
     },
-    getParticle() { 
+   getParticle() { 
         let startIdx = this._particleIdx;
         do {
             let p = this.particles[this._particleIdx];
             this._particleIdx = (this._particleIdx + 1) % this.particles.length;
-            if (!p.active) return p; // Ritorna solo se è libera!
+            if (!p.active) return p;
         } while (this._particleIdx !== startIdx);
         
-        // Se il pool è saturo, restituisce un finto oggetto vuoto (Dummy) a costo zero 
-        // per evitare che il codice vada in crash o rubi particelle attive dallo schermo.
-        return { spawn: () => {} }; 
+        return { spawn: () => {}, mesh: { scale: { set: () => {} } } }; 
     },
     getProjectile() { let p = this.projectiles[this._projectileIdx]; this._projectileIdx = (this._projectileIdx + 1) % this.projectiles.length; return p; },
     getFloatingText() { let f = this.floatingTexts[this._textIdx]; this._textIdx = (this._textIdx + 1) % this.floatingTexts.length; return f; },
@@ -4347,17 +4345,19 @@ class Player extends Entity {
         this.glacialShieldMesh.visible = false;
         this.mesh.add(this.glacialShieldMesh);
        // FAKE BLOOM: Un alone 2D leggerissimo per simulare il bagliore su Smartphone
-        this.fakeBloom = new THREE.Sprite(SharedMat.spriteWhite);
-        this.fakeBloom.scale.set(20, 20, 1); // Dimensione bilanciata per la punta
-        this.fakeBloom.position.set(0, 0, 0); // Zero locale: sta esattamente dentro la gemma
+        this.fakeBloom = new THREE.Sprite(SharedMat.spriteWhite.clone());
+        this.fakeBloom.scale.set(20, 20, 1); // Dimensione bilanciata per la punta
+        this.fakeBloom.position.set(0, 0, 0); // Zero locale: sta esattamente dentro la gemma
+        
+        // Riagganciamo il bloom alla bacchetta magica
+        this.modelParts.staffGem.add(this.fakeBloom);
+        // Attiva e scala l'ombra per il giocatore
+        this.shadowMesh.scale.set(32, 32, 1);
+        // La mostriamo solo se le ombre reali sono disattivate, per non sovrapporle!
+        this.shadowMesh.visible = !AppSettings.shadowsEnabled;
         
-        // Riagganciamo il bloom alla bacchetta magica
-        this.modelParts.staffGem.add(this.fakeBloom);
-        // Attiva e scala l'ombra per il giocatore
-        this.shadowMesh.scale.set(32, 32, 1);
-        // La mostriamo solo se le ombre reali sono disattivate, per non sovrapporle!
-        this.shadowMesh.visible = !AppSettings.shadowsEnabled;
-    }
+        this.updateAppearance();
+    }
     collectEssence(type) {
         if (this.overdrive) { 
             let kept = this.modifiers.keepEssenceOnCombo ? this.essence : null;

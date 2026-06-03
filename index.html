@@ -2589,7 +2589,7 @@ _dummyScale: new THREE.Vector3(3, 3, 3),
    init() {
         UI.init(); TouchControls.init(); const container = document.getElementById('game-container');
         this.scene = new THREE.Scene(); this.scene.fog = new THREE.Fog(0x050508, 400, 1800); 
-       this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 1, 3000);
+       this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 100, 3000);
         
         // OTTIMIZZAZIONE PC: Assegnazione corretta della risoluzione al lancio
         let pixelRatio = 1.0;
@@ -3183,25 +3183,31 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         }
         
         // SPAWN LUCCIOLE/SPORE AMBIENTALI
-        if (Game.frameCount % (isTouchDevice ? 15 : 6) === 0) {
-            let angle = Math.random() * Math.PI * 2;
-            let dist = Math.random() * 600; 
-            let px = this.player.x + Math.cos(angle) * dist;
-            let pz = this.player.y + Math.sin(angle) * dist;
-            let tileX = Math.floor(px / TILE_SIZE);
-            let tileY = Math.floor(pz / TILE_SIZE);
-            if (tileX >= 0 && tileX < this.map.width && tileY >= 0 && tileY < this.map.height) {
-                if (this.map.grid[tileX][tileY] === 2) {
-                    let noiseRaw = (Math.sin(tileX * 0.3) + Math.cos(tileY * 0.3)) / 2.0; 
-                    let noiseSafe = (noiseRaw + 1.0) / 2.0; 
-                    if (noiseSafe > 0.45) {
-                        let p = this.getParticle();
-                        let magicMat = Math.random() > 0.3 ? SharedMat.spriteWhite : SharedMat.spriteRed;
-                        p.spawn(px, MathUtils.randomRange(40, 80), pz, magicMat, 'ambient');
-                    }
-                }
+        if (Game.frameCount % (isTouchDevice ? 15 : 6) === 0) {
+            let angle = Math.random() * Math.PI * 2;
+            let dist = Math.random() * 600; 
+            let px = this.player.x + Math.cos(angle) * dist;
+            let pz = this.player.y + Math.sin(angle) * dist;
+            
+            // FIX FLASH: Evita che nascano in faccia alla telecamera
+            let isTooCloseToCamera = (Math.abs(px - this.camera.position.x) < 150) && (Math.abs(pz - this.camera.position.z) < 150);
+
+            if (!isTooCloseToCamera) {
+                let tileX = Math.floor(px / TILE_SIZE);
+                let tileY = Math.floor(pz / TILE_SIZE);
+                if (tileX >= 0 && tileX < this.map.width && tileY >= 0 && tileY < this.map.height) {
+                    if (this.map.grid[tileX][tileY] === 2) {
+                        let noiseRaw = (Math.sin(tileX * 0.3) + Math.cos(tileY * 0.3)) / 2.0; 
+                        let noiseSafe = (noiseRaw + 1.0) / 2.0; 
+                        if (noiseSafe > 0.45) {
+                            let p = this.getParticle();
+                            let magicMat = Math.random() > 0.3 ? SharedMat.spriteWhite : SharedMat.spriteRed;
+                            p.spawn(px, MathUtils.randomRange(40, 80), pz, magicMat, 'ambient');
+                        }
+                    }
+                }
             }
-        }
+        }
 
         let isLow = (this.player.stats.hp / this.player.stats.maxHp) < 0.30 && !this.player.dead;
         if (isLow !== AudioEngine.isLowHp) {

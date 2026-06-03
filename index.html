@@ -4548,16 +4548,22 @@ class Player extends Entity {
             }
         }
         
-        // FIX BUG IMMORTALITÀ: Ripristinato il timer di 3 secondi per la reliquia Cristallo Rigenerante
-        if (this.modifiers.regen > 0) {
-            if (!this.regenTimer) this.regenTimer = 0;
-            this.regenTimer += dt;
-            if (this.regenTimer >= 3.0) { 
-                let healAmount = this.stats.maxHp * this.modifiers.regen;
-                this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
-                this.regenTimer = 0;
-            }
-        }
+      // FIX BUG IMMORTALITÀ: Ripristinato il timer di 3 secondi per la reliquia Cristallo Rigenerante
+        if (this.modifiers.regen > 0) {
+            if (!this.regenTimer) this.regenTimer = 0;
+            this.regenTimer += dt;
+            if (this.regenTimer >= 3.0) { 
+                // CURA SOLO SE NON SEI FULL HP
+                if (this.stats.hp < this.stats.maxHp) {
+                    let healAmount = this.stats.maxHp * this.modifiers.regen;
+                    this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
+                    // Feedback visivo evidente!
+                    Game.getFloatingText().spawn(this.x, this.y + 20, `+${Math.floor(healAmount)}`, '#00ffaa', 22, false);
+                    Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark');
+                }
+                this.regenTimer = 0;
+            }
+        }
         
         this.modelParts.halo.rotation.z += dt; this.modelParts.staffGem.rotation.y += dt;
         if (this.activeShieldCooldown > 0) this.activeShieldCooldown -= dt;
@@ -5583,6 +5589,34 @@ Game.scene.add(this.telegraphMesh);
                     this.targetShields[i].rotation.z += dt * 1.5;
                     this.targetShields[i].updateMatrix();
                     this.targetShields[i].visible = true;
+                    // --- COLLISIONE RAGGIO PROFETA VS GIOCATORE ---
+                    // Se non sta usando il Dash (il dash garantisce immunità ai laser di passaggio)
+                    if (Game.player && !Game.player.dead && !Game.player.isDashing) {
+                        if (!this.beamHitCooldown) this.beamHitCooldown = [0,0,0];
+                        
+                        if (Game.playTime > this.beamHitCooldown[i]) {
+                            let l2 = dist * dist;
+                            if (l2 > 0) {
+                                // Proiezione del punto sulla linea per trovare il punto di collisione più vicino
+                                let t = ((Game.player.x - this.x) * dx + (Game.player.y - this.y) * dz) / l2;
+                                t = Math.max(0, Math.min(1, t)); // Limita ai confini reali del raggio
+                                
+                                let projX = this.x + t * dx;
+                                let projY = this.y + t * dz;
+                                let pdx = Game.player.x - projX;
+                                let pdy = Game.player.y - projY;
+                                
+                                // Verifica del raggio d'azione + piccolo margine di sicurezza
+                                if ((pdx*pdx + pdy*pdy) < (Game.player.radius + 12)**2) {
+                                    Game.player.takeDamage(this.stats.maxDmg * 0.35, this);
+                                    Game.getParticle().spawn(Game.player.x, 15, Game.player.y, SharedMat.spriteWhite, 'spark');
+                                    // Ripete il danno ogni 200ms finché il giocatore ci sta sopra
+                                    this.beamHitCooldown[i] = Game.playTime + 0.2; 
+                                }
+                            }
+                        }
+                    }
+                    // ----------------------------------------------
                 } else {
                     this.beams[i].visible = false;
                     this.beamGlows[i].visible = false;
@@ -5712,24 +5746,28 @@ Game.scene.add(this.telegraphMesh);
     }
     
  takeDamage(amount, source, isCrit = false, canInfect = true) {
-      if (this.isPursuer) {
-          // FIX NEMESI: Mostra la scritta IMMUNE.
-          // Il timer evita che le armi a fuoco rapido (fiamme, veleno) spardino scritte all'infinito uccidendo la CPU.
-          if (!this.immuneTimer || Game.playTime > this.immuneTimer) {
-              Game.getFloatingText().spawn(this.x, this.y + 20, "IMMUNE", '#aa00ff', 35, true);
-              this.immuneTimer = Game.playTime + 0.5;
-          }
-          return; 
-      }
-     if (this.isProphetBuffed) amount *= 0.1;
-        // Esecuzione (Lama del Giudizio)
-        if (source === Game.player && Game.player.modifiers.executioner && (this.stats.hp / this.stats.maxHp) < 0.3) amount *= 2.0;
-        
-       // NUOVO: Runa Minore (Danni Opener)
-        if (source === Game.player && Game.player.modifiers.openerDmg && (this.stats.hp / this.stats.maxHp) >= 0.8) amount *= 1.2;
-        
-        // NUOVO: Prisma (Crit Gold)
-        if (isCrit && source === Game.player && Game.player.modifiers.critGold && Math.random() < 0.20) {
+      if (this.isPursuer) {
+          // FIX NEMESI: Mostra la scritta IMMUNE.
+          if (!this.immuneTimer || Game.playTime > this.immuneTimer) {
+              Game.getFloatingText().spawn(this.x, this.y + 20, "IMMUNE", '#aa00ff', 35, true);
+              this.immuneTimer = Game.playTime + 0.5;
+          }
+          return; 
+      }
+
+        // 1. Calcola PRIMA i modificatori di danno del Giocatore (Esecuzione, Danni Opener, ecc.)
+        if (source === Game.player && Game.player.modifiers.executioner && (this.stats.hp / this.stats.maxHp) < 0.3) amount *= 2.0;
+        if (source === Game.player && Game.player.modifiers.openerDmg && (this.stats.hp / this.stats.maxHp) >= 0.8) amount *= 1.2;
+        
+        // 2. APPLICA LO SCUDO DEL PROFETA (Riduce del 95% e impedisce i critici)
+        if (this.isProphetBuffed) {
+            amount *= 0.05; 
+            isCrit = false; 
+            if (Game.frameCount % 4 === 0) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'spark');
+        }
+        
+        // NUOVO: Prisma (Crit Gold)
+        if (isCrit && source === Game.player && Game.player.modifiers.critGold && Math.random() < 0.20) {
             Game.coins++; 
             if(UI.els.coins) UI.els.coins.innerText = Game.coins;
             Game.getFloatingText().spawn(this.x, this.y, "+1", '#ffff00', 20);

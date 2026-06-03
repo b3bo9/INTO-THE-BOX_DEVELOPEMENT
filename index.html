@@ -3183,32 +3183,22 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
             }
         }
         
-        // SPAWN LUCCIOLE/SPORE AMBIENTALI
-        if (Game.frameCount % (isTouchDevice ? 15 : 6) === 0) {
+// --- SPAWN POLVERE INFUOCATA AMBIENTALE (Cenere che cade dal cielo) ---
+        if (Game.frameCount % (isTouchDevice ? 30 : 12) === 0) {
             let angle = Math.random() * Math.PI * 2;
-            let dist = Math.random() * 600; 
+            let dist = Math.random() * 900; // Si disperdono su tutta la visuale
             let px = this.player.x + Math.cos(angle) * dist;
             let pz = this.player.y + Math.sin(angle) * dist;
-            
-            // FIX FLASH: Evita che nascano in faccia alla telecamera
-            let isTooCloseToCamera = (Math.abs(px - this.camera.position.x) < 150) && (Math.abs(pz - this.camera.position.z) < 150);
+            
+            // Nascono altissime nel cielo, fuori dall'inquadratura principale
+            let py = MathUtils.randomRange(500, 800);
 
-            if (!isTooCloseToCamera) {
-                let tileX = Math.floor(px / TILE_SIZE);
-                let tileY = Math.floor(pz / TILE_SIZE);
-                if (tileX >= 0 && tileX < this.map.width && tileY >= 0 && tileY < this.map.height) {
-                    if (this.map.grid[tileX][tileY] === 2) {
-                        let noiseRaw = (Math.sin(tileX * 0.3) + Math.cos(tileY * 0.3)) / 2.0; 
-                        let noiseSafe = (noiseRaw + 1.0) / 2.0; 
-                        if (noiseSafe > 0.45) {
-                            let p = this.getParticle();
-                            let magicMat = Math.random() > 0.3 ? SharedMat.spriteWhite : SharedMat.spriteRed;
-                            p.spawn(px, MathUtils.randomRange(40, 80), pz, magicMat, 'ambient');
-                        }
-                    }
-                }
-            }
+            let p = this.getParticle();
+            // Scelgono tra scintilla rossa (fuoco denso) o gialla/bianca (braci vive)
+            let magicMat = Math.random() > 0.6 ? SharedMat.spriteYellow : SharedMat.spriteRed;
+            p.spawn(px, py, pz, magicMat, 'ambient');
         }
+        // ----------------------------------------------------------------------
 
         let isLow = (this.player.stats.hp / this.player.stats.maxHp) < 0.30 && !this.player.dead;
         if (isLow !== AudioEngine.isLowHp) {
@@ -6634,12 +6624,13 @@ class Particle {
     constructor() { 
         this.active = false; 
         this.mesh = new THREE.Sprite(SharedMat.spriteWhite); 
-        // FIX: Rimosso matrixAutoUpdate=false. Three.js sincronizzerà istantaneamente la posizione al respawn!
+        this.mesh.matrixAutoUpdate = true; // <-- Sicurezza contro i vecchi glitch di update
         this.mesh.frustumCulled = false;
         this.mesh.visible = false; 
         Game.scene.add(this.mesh); 
     }
-   spawn(x, y, z, mat, type='spark', dirAngle=null) {
+    
+    spawn(x, y, z, mat, type='spark', dirAngle=null) {
         if (Game.particlesThisFrame > (isTouchDevice ? 25 : 80)) return;
         Game.particlesThisFrame = (Game.particlesThisFrame || 0) + 1;
 
@@ -6652,11 +6643,12 @@ class Particle {
             this.baseSize = MathUtils.randomRange(60, 100);
             this.vx = 0; this.vy = 0; this.vz = 0;
         } else if (type === 'ambient') { 
-            this.life = MathUtils.randomRange(3.0, 6.0); 
-            this.baseSize = MathUtils.randomRange(15, 35); 
-            this.vx = MathUtils.randomRange(-15, 15);
-            this.vy = MathUtils.randomRange(-35, -15); 
-            this.vz = MathUtils.randomRange(-15, 15);
+            // --- FISICA CENERE INFUOCATA ---
+            this.life = MathUtils.randomRange(4.0, 7.0); 
+            this.baseSize = MathUtils.randomRange(5, 12); // Braci piccole
+            this.vx = MathUtils.randomRange(-20, 20);
+            this.vy = MathUtils.randomRange(-150, -80); // Gravità verso il suolo
+            this.vz = MathUtils.randomRange(-20, 20);
         } else if (type === 'dust') { 
             this.life = MathUtils.randomRange(0.4, 0.6);
             this.baseSize = MathUtils.randomRange(15, 25);
@@ -6689,7 +6681,6 @@ class Particle {
         this.mesh.material = mat; 
         this.mesh.position.set(x, y, z); 
         this.mesh.scale.set(this.baseSize, this.baseSize, 1);
-        // FIX: Eliminato l'update manuale e non sincronizzato della matrice
         this.mesh.visible = true;
     }
     
@@ -6701,25 +6692,27 @@ class Particle {
             let currentSize = Math.sin(pct * Math.PI) * this.baseSize;
             this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
         } else if (this.type === 'ambient') { 
-            this.vx += Math.sin(this.life * 3.0 + this.seed) * 15.0 * dt;
-            this.vz += Math.cos(this.life * 2.5 + this.seed) * 15.0 * dt;
+            // --- MOVIMENTO CENERE INFUOCATA ---
+            // Le particelle dondolano lateralmente (simulando resistenza dell'aria)
+            this.vx += Math.sin(this.life * 2.0 + this.seed) * 20.0 * dt;
+            this.vz += Math.cos(this.life * 1.5 + this.seed) * 20.0 * dt;
             
             this.mesh.position.x += this.vx * dt; 
             this.mesh.position.y += this.vy * dt; 
             this.mesh.position.z += this.vz * dt;
             
             let pct = this.life / this.maxLife;
+            // Sfuma morbidamente per non "poppare" a schermo
             let fade = Math.sin(pct * Math.PI); 
-            let pulse = 1.0 + Math.sin(this.life * 15.0) * 0.4; 
             
-            let currentSize = this.baseSize * fade * pulse;
+            let currentSize = this.baseSize * fade;
             this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
-        } else if (this.type === 'dust') { 
+        } else if (this.type === 'dust') { 
             this.mesh.position.x += this.vx * dt; 
             this.mesh.position.y += this.vy * dt; 
             this.mesh.position.z += this.vz * dt;
             let pct = this.life / this.maxLife;
-            let currentSize = this.baseSize * pct; // Nessun cambio di opacità globale!
+            let currentSize = this.baseSize * pct; 
             this.mesh.scale.set(currentSize, currentSize, 1);
         } else {
             if(this.type === 'blood' || this.type === 'spark') this.vy -= 600 * dt; 

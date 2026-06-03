@@ -518,98 +518,98 @@
        
     </div>
 
-    <!-- HUD IN-GAME -->
+<!-- HUD IN-GAME -->
     <div id="hud" class="absolute inset-0 pointer-events-none hidden z-10">
         <!-- INIZIO FPS COUNTER -->
         <div id="fps-counter" class="absolute top-2 right-2 sm:top-4 sm:right-4 bg-black/60 backdrop-blur-md border border-gray-600 font-bold px-2 py-1 rounded-lg text-[10px] sm:text-xs z-50 pointer-events-none shadow-lg">
             FPS: <span id="fps-value" class="text-green-400">0</span>
         </div>
         <!-- FINE FPS COUNTER -->
-   <!-- TACTICAL HUD (Top-Left) -->
-        <div class="absolute top-3 left-3 sm:top-6 sm:left-6 flex flex-col gap-2.5 pointer-events-none w-full max-w-[260px] sm:max-w-[320px] z-50">
+        
+        <!-- TACTICAL HUD (Top-Left) Aumentata la leggibilità -->
+        <div class="absolute top-4 left-3 sm:top-6 sm:left-6 flex flex-col gap-3 pointer-events-none w-full max-w-[280px] sm:max-w-[340px] z-50">
             
             <!-- MAIN VITALS PANEL -->
-            <div class="bg-black/50 backdrop-blur-xl border border-gray-600/40 rounded-2xl p-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] flex items-center gap-3.5">
+            <div class="bg-black/50 backdrop-blur-xl border border-gray-600/40 rounded-2xl p-3 shadow-[0_8px_32px_rgba(0,0,0,0.6)] flex items-center gap-3.5">
                 
-                <!-- LEVEL RING -->
-                <div class="relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center bg-black/80 rounded-full border-2 border-gray-700/80 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] shrink-0">
+                <!-- LEVEL RING (Ingrandito) -->
+                <div class="relative w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center bg-black/80 rounded-full border-2 border-gray-700/80 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] shrink-0">
                     <svg class="absolute inset-0 w-full h-full transform -rotate-90 drop-shadow-[0_0_3px_rgba(34,211,238,0.5)]" viewBox="0 0 36 36">
                         <path class="text-gray-800" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="2.5"/>
                         <path id="ui-xp-circle" class="text-cyan-400 transition-all duration-300" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
                     </svg>
                     <div class="absolute flex flex-col items-center mt-0.5">
-                        <span class="text-[7px] sm:text-[9px] text-cyan-200 font-black tracking-[0.2em] leading-none mb-0.5">LVL</span>
-                        <span id="ui-level" class="text-base sm:text-xl font-black text-white leading-none">1</span>
+                        <span class="text-[8px] sm:text-[10px] text-cyan-200 font-black tracking-[0.2em] leading-none mb-0.5">LVL</span>
+                        <span id="ui-level" class="text-lg sm:text-2xl font-black text-white leading-none">1</span>
                     </div>
                 </div>
 
                 <!-- HP & LIVES CONTAINER -->
                 <div class="flex flex-col flex-1 gap-1.5 pr-1">
                     <div class="flex justify-between items-end">
-                        <span id="ui-hp-text" class="text-xs sm:text-sm font-black text-white tracking-widest drop-shadow-[0_0_5px_rgba(220,38,38,0.8)]">100 / 100</span>
-                        <div id="ui-lives" class="flex gap-1 items-center text-[10px] sm:text-xs">
-                            <!-- Cuori popolati via JS -->
-                        </div>
+                        <span id="ui-hp-text" class="text-sm sm:text-base font-black text-white tracking-wider drop-shadow-[0_0_5px_rgba(220,38,38,0.8)]">100 / 100</span>
+                        <div id="ui-lives" class="flex gap-1 items-center text-xs sm:text-sm"></div>
                     </div>
                     <!-- HEALTH BAR -->
-                    <div class="w-full h-3 sm:h-3.5 bg-black/90 rounded-full border border-gray-900 shadow-[inset_0_0_8px_rgba(0,0,0,0.9)] overflow-hidden relative">
+                    <div class="w-full h-3.5 sm:h-4 bg-black/90 rounded-full border border-gray-900 shadow-[inset_0_0_8px_rgba(0,0,0,0.9)] overflow-hidden relative">
                         <div id="ui-hp-fill" class="h-full bg-gradient-to-r from-red-800 via-red-600 to-red-400 shadow-[0_0_15px_rgba(220,38,38,1)] rounded-full transition-all duration-150"></div>
-                        <!-- Glossy overlay (Riflesso tipo vetro) -->
+                        <!-- Glossy overlay -->
                         <div class="absolute top-0 left-0 w-full h-[40%] bg-white/20 rounded-full"></div>
                     </div>
                 </div>
             </div>
 
             <!-- SECONDARY INFO PANEL (Floor Context & Economy) -->
-            <div class="flex gap-2.5 pl-2 w-full">
-                
+            <div class="flex gap-3 pl-2 w-full">
                 <!-- FLOOR PROGRESS -->
-                <div class="flex-1 bg-black/50 backdrop-blur-xl border border-gray-600/30 rounded-xl p-2 sm:p-2.5 shadow-[0_4px_15px_rgba(0,0,0,0.4)] flex flex-col justify-center">
+                <div class="flex-1 bg-black/50 backdrop-blur-xl border border-gray-600/30 rounded-xl p-2.5 shadow-[0_4px_15px_rgba(0,0,0,0.4)] flex flex-col justify-center">
                     <div class="flex items-center justify-between mb-1.5">
-                        <span id="ui-floor-text" class="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center">
+                        <span id="ui-floor-text" class="text-[10px] sm:text-xs font-black uppercase tracking-widest text-gray-400 flex items-center">
                             <i class="fa-solid fa-layer-group text-gray-500 mr-1.5"></i> Piano <span id="ui-floor" class="text-white ml-1">1</span>
                         </span>
-                        <span id="ui-corruption-label" class="text-[8px] sm:text-[9px] font-black tracking-widest text-purple-300 drop-shadow-[0_0_5px_rgba(168,85,247,0.8)] hidden bg-purple-900/40 px-1.5 py-0.5 rounded border border-purple-500/40 uppercase"></span>
+                        <span id="ui-corruption-label" class="text-[9px] sm:text-[10px] font-black tracking-widest text-purple-300 drop-shadow-[0_0_5px_rgba(168,85,247,0.8)] hidden bg-purple-900/40 px-1.5 py-0.5 rounded border border-purple-500/40 uppercase"></span>
                     </div>
                     <!-- PROGRESS BAR -->
-                    <div class="w-full h-1.5 sm:h-2 bg-gray-900/90 rounded-full border border-gray-800 shadow-inner overflow-hidden relative">
+                    <div class="w-full h-2 bg-gray-900/90 rounded-full border border-gray-800 shadow-inner overflow-hidden relative">
                         <div id="ui-floor-progress" class="h-full w-0 bg-gradient-to-r from-purple-800 via-fuchsia-500 to-cyan-400 transition-all duration-300 shadow-[0_0_8px_rgba(34,211,238,0.6)] rounded-full"></div>
                     </div>
                 </div>
 
                 <!-- COINS POUCH -->
-                <div class="shrink-0 bg-black/50 backdrop-blur-xl border border-yellow-600/30 rounded-xl px-3 shadow-[0_4px_15px_rgba(0,0,0,0.4)] flex items-center justify-center gap-2 min-w-[60px]">
-                    <i class="fa-solid fa-coins text-yellow-500 text-[10px] sm:text-xs drop-shadow-[0_0_5px_rgba(234,179,8,0.8)]"></i> 
-                    <span id="ui-coins" class="text-yellow-400 text-xs sm:text-sm font-black tracking-wider">0</span>
+                <div class="shrink-0 bg-black/50 backdrop-blur-xl border border-yellow-600/30 rounded-xl px-4 shadow-[0_4px_15px_rgba(0,0,0,0.4)] flex items-center justify-center gap-2.5 min-w-[70px]">
+                    <i class="fa-solid fa-coins text-yellow-500 text-xs sm:text-sm drop-shadow-[0_0_5px_rgba(234,179,8,0.8)]"></i> 
+                    <span id="ui-coins" class="text-yellow-400 text-sm sm:text-base font-black tracking-wider">0</span>
                 </div>
-                
             </div>
         </div>
 
-       <!-- COMBO COUNTER (AAA Style) -->
-        <<!-- ESSENCE HUD (AAA Glassmorphism - Top Right) -->
-        <div id="essence-hud" class="absolute top-3 right-3 sm:top-6 sm:right-6 flex flex-col items-center justify-center gap-2 bg-black/50 backdrop-blur-xl border border-gray-600/40 rounded-2xl p-3 shadow-[0_8px_32px_rgba(0,0,0,0.6)] transition-opacity duration-300 opacity-0 min-w-[140px] sm:min-w-[180px] z-50">
-            <div class="flex gap-2 sm:gap-3 mb-0.5">
-                <div class="stack-dot" id="stack-1"></div><div class="stack-dot" id="stack-2"></div><div class="stack-dot" id="stack-3"></div>
-            </div>
-            <div id="overdrive-text" class="font-black text-[10px] sm:text-sm text-white hidden tracking-widest uppercase drop-shadow-[0_0_10px_rgba(255,255,255,1)] leading-none">INFERNO!</div>
-            <div class="w-full h-1.5 sm:h-2 bg-gray-900/90 rounded-full border border-gray-800 shadow-inner overflow-hidden relative">
-                <div id="essence-timer" class="h-full w-0 bg-white transition-all duration-100 linear rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
-            </div>
-        </div>
-
-        <!-- COMBO COUNTER (Right, below Essences) -->
-        <div id="combo-container" class="absolute top-24 right-3 sm:top-32 sm:right-6 flex flex-col items-end pointer-events-none z-40 transition-all duration-300 opacity-0 translate-x-8">
-            <div class="bg-black/40 backdrop-blur-md border border-gray-600/30 rounded-2xl p-3 sm:p-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col items-end min-w-[140px] sm:min-w-[180px]">
+        <!-- COMBO COUNTER (Riposizionato: Subito sopra alle Essenze) -->
+        <div id="combo-container" class="absolute bottom-[55%] right-3 sm:bottom-[60%] sm:right-6 flex flex-col items-end pointer-events-none z-40 transition-all duration-300 opacity-0 translate-x-8">
+            <div class="bg-black/50 backdrop-blur-xl border border-gray-600/30 rounded-2xl p-3 sm:p-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col items-end min-w-[150px] sm:min-w-[190px]">
                 <div class="flex items-baseline gap-1">
-                    <span class="text-white/80 font-black italic text-base sm:text-xl drop-shadow-md">x</span>
-                    <h2 id="combo-text" class="font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-yellow-400 m-0 leading-none text-4xl sm:text-6xl drop-shadow-[0_0_10px_rgba(250,204,21,0.6)] italic tracking-tighter">2</h2>
+                    <span id="combo-x" class="text-white/80 font-black italic text-lg sm:text-2xl drop-shadow-md">x</span>
+                    <!-- Nota: Rimosse classi colore Tailwind, applicate via JS per transizione fluida -->
+                    <h2 id="combo-text" class="font-black m-0 leading-none text-5xl sm:text-7xl italic tracking-tighter" style="-webkit-background-clip: text; -webkit-text-fill-color: transparent;">2</h2>
                 </div>
-                <span id="combo-label" class="text-[9px] sm:text-[10px] text-gray-300 font-black tracking-[0.3em] uppercase mt-1 opacity-80">HITS</span>
+                <span id="combo-label" class="text-[10px] sm:text-xs text-gray-300 font-black tracking-[0.3em] uppercase mt-1 opacity-90 transition-colors">HITS</span>
                 
-                <div class="w-full h-1.5 sm:h-2 bg-gray-900/90 rounded-full border border-gray-800 shadow-inner mt-2.5 overflow-hidden relative">
-                    <div id="combo-bar" class="h-full bg-gradient-to-r from-yellow-600 to-yellow-300 shadow-[0_0_8px_rgba(250,204,21,0.8)] w-full transition-all duration-100 ease-linear rounded-full"></div>
+                <div class="w-full h-2 bg-gray-900/90 rounded-full border border-gray-800 shadow-inner mt-2.5 overflow-hidden relative">
+                    <div id="combo-bar" class="h-full w-full transition-all duration-100 ease-linear rounded-full"></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- ESSENCE HUD (Riposizionato: Subito sopra i tasti combattimento destri) -->
+        <div id="essence-hud" class="absolute bottom-[40%] right-3 sm:bottom-[45%] sm:right-6 flex flex-col items-center justify-center gap-2.5 bg-black/50 backdrop-blur-xl border border-gray-600/40 rounded-2xl p-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] transition-opacity duration-300 opacity-0 min-w-[150px] sm:min-w-[190px] z-50">
+            <div class="flex gap-3 mb-0.5">
+                <!-- Stack dot ingranditi -->
+                <div class="stack-dot w-[26px] h-[26px] sm:w-[32px] sm:h-[32px]" id="stack-1"></div>
+                <div class="stack-dot w-[26px] h-[26px] sm:w-[32px] sm:h-[32px]" id="stack-2"></div>
+                <div class="stack-dot w-[26px] h-[26px] sm:w-[32px] sm:h-[32px]" id="stack-3"></div>
+            </div>
+            <div id="overdrive-text" class="font-black text-xs sm:text-base text-white hidden tracking-widest uppercase drop-shadow-[0_0_10px_rgba(255,255,255,1)] leading-none mt-1">INFERNO!</div>
+            <div class="w-full h-2 bg-gray-900/90 rounded-full border border-gray-800 shadow-inner overflow-hidden relative mt-0.5">
+                <div id="essence-timer" class="h-full w-0 bg-white transition-all duration-100 linear rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
             </div>
         </div>
         <!-- Tasto Scatto (Dash) -->
@@ -2457,37 +2457,54 @@ const UI = {
     },
      
     
- triggerComboAnim(combo) {
-        // Aggiorna solo il numero 
+triggerComboAnim(combo) {
+        // Aggiorna la cifra
         this.els.comboText.innerText = combo;
         
         let scale = isTouchDevice ? (1 + Math.min(combo * 0.02, 0.3)) : (1 + Math.min(combo * 0.015, 0.3)); 
         this.els.comboText.style.transform = `scale(${scale})`;
         
-        // Colori Tripla A coerenti col pannello in vetro
-        let gradient = "from-white to-yellow-400";
-        let glowColor = "rgba(250,204,21,0.6)"; // Giallo base
-        let barGradient = "from-yellow-600 to-yellow-300";
+        // --- TRANSIZIONE CROMATICA FLUIDA (HSL) ---
+        // Vogliamo che la "Hue" (tonalità) passi da 50 (Giallo/Oro) a 0 (Rosso), e poi sfoci a 300 (Fucsia).
+        // Calcoliamo il progresso da 1 a 100 hit (cappato a 100 per i colori massimi)
+        let progress = Math.min(1.0, combo / 100.0);
+        let hue;
         
-        if (combo > 50) {
-            gradient = "from-white to-fuchsia-500";
-            glowColor = "rgba(217,70,239,0.8)"; // Fucsia
-            barGradient = "from-purple-600 to-fuchsia-400";
-        } else if (combo > 20) {
-            gradient = "from-white to-red-500";
-            glowColor = "rgba(239,68,68,0.8)"; // Rosso
-            barGradient = "from-red-700 to-red-400";
-        }
-        
-        // Applica stili testuali
-        this.els.comboText.className = `font-black text-transparent bg-clip-text bg-gradient-to-b ${gradient} m-0 leading-none text-4xl sm:text-6xl drop-shadow-[0_0_15px_${glowColor}] italic tracking-tighter`;
-        
-        // Colora anche la barra in tinta
-        if (this.els.comboBar) {
-            this.els.comboBar.className = `h-full bg-gradient-to-r ${barGradient} shadow-[0_0_10px_${glowColor}] w-full transition-all duration-100 ease-linear rounded-full`;
+        if (progress < 0.4) {
+            // Da 1 a 40 hit: Si infiamma dal Giallo (50) al Rosso Fuoco (0)
+            hue = 50 - (progress / 0.4) * 50; 
+        } else {
+            // Da 40 a 100 hit: Raggiunge temperature termonucleari, passa dal Rosso (360) al Fucsia (300)
+            hue = 360 - ((progress - 0.4) / 0.6) * 60;
         }
 
-        // Ritorno elastico morbido
+        // Creiamo i colori HSL dinamici
+        let mainColor = `hsl(${hue}, 100%, 50%)`;
+        let lightColor = `hsl(${hue}, 100%, 75%)`;
+        let shadowColor = `hsla(${hue}, 100%, 50%, 0.7)`;
+
+        // Applichiamo i CSS inline (Zero-Allocation compatibili, no repaint violenti)
+        this.els.comboText.style.backgroundImage = `linear-gradient(to bottom, #ffffff, ${mainColor})`;
+        this.els.comboText.style.filter = `drop-shadow(0 0 15px ${shadowColor})`;
+        
+        // Colora la scritta "HITS" per matchare il vibe
+        let comboLabel = document.getElementById('combo-label');
+        if (comboLabel) {
+            comboLabel.style.color = lightColor;
+            comboLabel.style.textShadow = `0 0 8px ${shadowColor}`;
+        }
+        let comboX = document.getElementById('combo-x');
+        if (comboX) {
+            comboX.style.color = lightColor;
+        }
+
+        // Colora e illumina la barra del timer
+        if (this.els.comboBar) {
+            this.els.comboBar.style.backgroundImage = `linear-gradient(to right, ${mainColor}, ${lightColor})`;
+            this.els.comboBar.style.boxShadow = `0 0 10px ${shadowColor}`;
+        }
+
+        // Ritorno elastico morbido dell'animazione
         setTimeout(() => { 
             this.els.comboText.style.transform = `scale(${1 + Math.min(combo * 0.01, 0.1)})`; 
         }, 50);

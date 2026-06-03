@@ -598,30 +598,33 @@
 <div class="absolute top-[20%] right-0 sm:top-[22%] sm:right-0 flex flex-col items-end gap-1.5 pointer-events-none z-50">
             
             <div id="combo-container" class="transition-all duration-300 opacity-0 translate-x-12 pr-2 sm:pr-4">
-                <div id="combo-panel" class="bg-black/50 backdrop-blur-xl border-y border-l border-gray-600/40 border-r-4 rounded-l-2xl rounded-r-sm p-3.5 sm:p-4 shadow-[-8px_8px_24px_rgba(0,0,0,0.5)] flex flex-col items-end min-w-[150px] sm:min-w-[190px] transition-colors duration-200">
-                    <div class="flex items-baseline gap-1">
-                        <span id="combo-x" class="text-white/80 font-black italic text-lg sm:text-2xl drop-shadow-md">x</span>
-                        <h2 id="combo-text" class="font-black m-0 leading-none text-5xl sm:text-6xl italic tracking-tighter" style="-webkit-background-clip: text; -webkit-text-fill-color: transparent; background-image: linear-gradient(to bottom, #ffffff, hsl(60, 100%, 50%)); filter: drop-shadow(0 0 15px hsla(60, 100%, 50%, 0.7));">2</h2>
-                    </div>
-                    <span id="combo-label" class="text-[10px] sm:text-xs text-gray-300 font-black tracking-[0.3em] uppercase mt-1 opacity-90 transition-colors">HITS</span>
+                <div id="combo-panel" class="relative bg-black/50 backdrop-blur-xl border-y border-l border-gray-600/40 rounded-l-2xl rounded-r-sm p-3 shadow-[-8px_8px_24px_rgba(0,0,0,0.5)] flex flex-col items-end min-w-[110px] sm:min-w-[140px] transition-colors duration-200 overflow-hidden">
                     
-                    <div class="w-full h-1.5 sm:h-2 bg-gray-900/90 rounded-full border border-gray-800 shadow-inner mt-2.5 overflow-hidden relative">
-                        <div id="combo-bar" class="h-full w-full transition-all duration-100 ease-linear rounded-full"></div>
+                    <div class="absolute top-0 right-0 w-1.5 sm:w-2 h-full bg-gray-900/80">
+                        <div id="combo-bar" class="absolute bottom-0 w-full h-full bg-yellow-400 transition-all duration-100 ease-linear"></div>
                     </div>
+
+                    <div class="flex items-baseline gap-1 pr-3 sm:pr-4">
+                        <span id="combo-x" class="text-white/80 font-black italic text-base sm:text-xl drop-shadow-md">x</span>
+                        <h2 id="combo-text" class="font-black m-0 leading-none text-4xl sm:text-5xl italic tracking-tighter text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.8)]">2</h2>
+                    </div>
+                    <span id="combo-label" class="text-[9px] sm:text-[10px] text-gray-300 font-black tracking-[0.3em] uppercase mt-0.5 opacity-90 transition-colors pr-3 sm:pr-4">HITS</span>
                 </div>
             </div>
 
             <div id="essence-hud" class="transition-all duration-300 opacity-0 pr-2 sm:pr-4">
-                <div class="bg-black/50 backdrop-blur-xl border-y border-l border-gray-600/40 border-r-4 border-r-cyan-500/50 rounded-l-2xl rounded-r-sm p-3.5 sm:p-4 shadow-[-8px_8px_24px_rgba(0,0,0,0.5)] flex flex-col items-end min-w-[150px] sm:min-w-[190px]">
-                    <div class="flex justify-end gap-2.5 sm:gap-3 mb-0.5 w-full">
-                        <div class="stack-dot w-[22px] h-[22px] sm:w-[28px] sm:h-[28px]" id="stack-1"></div>
-                        <div class="stack-dot w-[22px] h-[22px] sm:w-[28px] sm:h-[28px]" id="stack-2"></div>
-                        <div class="stack-dot w-[22px] h-[22px] sm:w-[28px] sm:h-[28px]" id="stack-3"></div>
+                <div class="relative bg-black/50 backdrop-blur-xl border-y border-l border-gray-600/40 border-r-2 border-r-cyan-500/50 rounded-l-2xl rounded-r-sm p-3 shadow-[-8px_8px_24px_rgba(0,0,0,0.5)] flex flex-col items-end min-w-[110px] sm:min-w-[140px] overflow-hidden">
+                    
+                    <div class="absolute top-0 right-0 w-1.5 sm:w-2 h-full bg-gray-900/80 z-0">
+                        <div id="essence-timer" class="absolute bottom-0 w-full h-0 bg-white transition-all duration-100 ease-linear shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
                     </div>
-                    <div id="overdrive-text" class="font-black text-[11px] sm:text-sm text-white hidden tracking-widest uppercase drop-shadow-[0_0_10px_rgba(255,255,255,1)] leading-none mt-1.5">INFERNO!</div>
-                    <div class="w-full h-1.5 sm:h-2 bg-gray-900/90 rounded-full border border-gray-800 shadow-inner overflow-hidden relative mt-1.5">
-                        <div id="essence-timer" class="h-full w-0 bg-white transition-all duration-100 linear rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+
+                    <div class="flex justify-end gap-1.5 sm:gap-2 mb-1 w-full pr-3 sm:pr-4 relative z-10">
+                        <div class="stack-dot w-[20px] h-[20px] sm:w-[26px] sm:h-[26px]" id="stack-1"></div>
+                        <div class="stack-dot w-[20px] h-[20px] sm:w-[26px] sm:h-[26px]" id="stack-2"></div>
+                        <div class="stack-dot w-[20px] h-[20px] sm:w-[26px] sm:h-[26px]" id="stack-3"></div>
                     </div>
+                    <div id="overdrive-text" class="font-black text-[10px] sm:text-xs text-white hidden tracking-widest uppercase drop-shadow-[0_0_10px_rgba(255,255,255,1)] leading-none mt-1.5 pr-3 sm:pr-4 relative z-10">INFERNO!</div>
                 </div>
             </div>
             
@@ -2355,7 +2358,7 @@ const UI = {
            let maxTimer = Game.player.overdrive ? (5.0 * Game.player.modifiers.essenceDurationMult) : (8.0 * Game.player.modifiers.essenceDurationMult);
             let ePct = Math.round((Game.player.essenceTimer / maxTimer) * 100);
             if (this.cache.essenceWidth !== ePct) {
-                this.els.essenceTimer.style.width = `${ePct}%`;
+               this.els.essenceTimer.style.height = `${ePct}%`;
                 this.cache.essenceWidth = ePct;
             }
         } else { this.els.essenceHud.classList.remove('opacity-100'); this.els.essenceHud.classList.add('opacity-0'); }
@@ -2404,7 +2407,7 @@ const UI = {
        if (isCombo) {
             let cPct = Math.round((Game.comboTimer / Game.comboMaxTime) * 100);
             if (this.cache.comboWidth !== cPct) {
-                this.els.comboBar.style.width = `${cPct}%`;
+               this.els.comboBar.style.height = `${cPct}%`;
                 this.cache.comboWidth = cPct;
             }
         }
@@ -2487,37 +2490,37 @@ triggerComboAnim(combo) {
         let scale = isTouchDevice ? (1 + Math.min(combo * 0.02, 0.3)) : (1 + Math.min(combo * 0.015, 0.3)); 
         this.els.comboText.style.transform = `scale(${scale})`;
         
-        // --- TRANSIZIONE CROMATICA A 3 FASI (AAA Style) ---
+        // --- TRANSIZIONE CROMATICA A 3 FASI CORRETTA ---
         let hue;
         
         if (combo <= 20) {
-            // FASE 1 (1-20 Hits): Da Giallo Puro (60) ad Arancione (30)
-            let p = combo / 20.0;
-            hue = 60 - (p * 30); 
+            // Da 1 a 20 Hits: Si scalda lentissimamente dal Giallo limone (60) ad un Oro/Arancio (35)
+            // (combo - 1) serve a far partire l'1x ESATTAMENTE da hue 60
+            let p = (combo - 1) / 19.0; 
+            hue = 60 - (p * 25); 
         } 
         else if (combo <= 50) {
-            // FASE 2 (21-50 Hits): Da Arancione (30) a Rosso Sangue (0)
+            // Da 21 a 50 Hits: Da Arancione (35) a Rosso Sangue (0)
             let p = (combo - 20) / 30.0;
-            hue = 30 - (p * 30);
+            hue = 35 - (p * 35);
         } 
         else {
-            // FASE 3 (51+ Hits): Da Rosso (360) a Fucsia/Viola Nucleare (280)
-            // Cappiamo a 100 hit per non far sballare il colore se fai combo infinite
+            // 51+ Hits: Da Rosso (360) a Fucsia/Viola (280)
             let p = Math.min(1.0, (combo - 50) / 50.0);
             hue = 360 - (p * 80); 
         }
 
-        // Palette Colori Modulare calcolata sulla Tonalità (Hue)
-        let mainColor = `hsl(${hue}, 100%, 50%)`;
-        let lightColor = `hsl(${hue}, 100%, 70%)`; // Leggermente meno bianco per non slavare il giallo
-        let shadowColor = `hsla(${hue}, 100%, 50%, 0.7)`;
-        let borderColor = `hsla(${hue}, 100%, 50%, 0.6)`;
+        // Palette Colori (Usa colori solidi, NO background-clip text)
+        let mainColor = `hsl(${hue}, 100%, 55%)`; // Colore testo
+        let lightColor = `hsl(${hue}, 100%, 75%)`; // Testi piccoli
+        let shadowColor = `hsla(${hue}, 100%, 50%, 0.8)`; // Alone neon
+        let borderColor = `hsla(${hue}, 100%, 50%, 0.9)`; // Colore barra timer
 
-        // Colora e illumina il testo del numero
-        this.els.comboText.style.backgroundImage = `linear-gradient(to bottom, #ffffff, ${mainColor})`;
-        this.els.comboText.style.filter = `drop-shadow(0 0 15px ${shadowColor})`;
+        // Applica testo e alone (Super sicuro su mobile)
+        this.els.comboText.style.color = mainColor;
+        this.els.comboText.style.textShadow = `0 0 20px ${shadowColor}`;
         
-        // Colora coerentemente i testi secondari
+        // Applica ai testi secondari
         let comboLabel = document.getElementById('combo-label');
         if (comboLabel) {
             comboLabel.style.color = lightColor;
@@ -2526,13 +2529,13 @@ triggerComboAnim(combo) {
         let comboX = document.getElementById('combo-x');
         if (comboX) comboX.style.color = lightColor;
 
-        // Colora la barra di ricarica
+        // La barra verticale si colora
         if (this.els.comboBar) {
-            this.els.comboBar.style.backgroundImage = `linear-gradient(to right, ${mainColor}, ${lightColor})`;
-            this.els.comboBar.style.boxShadow = `0 0 10px ${shadowColor}`;
+            this.els.comboBar.style.backgroundColor = borderColor;
+            this.els.comboBar.style.boxShadow = `0 0 15px ${shadowColor}`;
         }
 
-        // Colora la "schiena" del pannello di vetro
+        // Il bordo sinistro e superiore del pannello reagiscono leggermente
         let comboPanel = document.getElementById('combo-panel');
         if (comboPanel) {
             comboPanel.style.borderColor = `rgba(75, 85, 99, 0.4) ${borderColor} rgba(75, 85, 99, 0.4) rgba(75, 85, 99, 0.4)`;

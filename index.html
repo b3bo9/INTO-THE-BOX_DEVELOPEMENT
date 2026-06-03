@@ -5894,7 +5894,7 @@ class Enemy extends Entity {
         }
         // ----------------------------------------
 
-        t// CLEANUP MATERIALI CLONATI (Es. Pursuer)
+        // CLEANUP MATERIALI CLONATI (Es. Pursuer)
         this.mesh.traverse(child => {
             if (child.isMesh && child.material && child.material !== this.mat && !SharedMatSet.has(child.material)) {
                 if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());

@@ -1579,7 +1579,7 @@ const SharedMat = {
     enemyBolt: new THREE.MeshPhongMaterial({color: 0x220022, emissive: 0xaa00ff, emissiveIntensity: 2.0}), 
     fireShape: new THREE.MeshPhongMaterial({color: 0x220000, emissive: 0xff3300, emissiveIntensity: 2.0}),
     blobShadow: new THREE.MeshBasicMaterial({map: BLOB_SHADOW_TEX, transparent: true, depthWrite: false}),
-    
+    telegraph: new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.0, depthWrite: false, alphaTest: 0.05 }),
     hazardFirePlane: new THREE.MeshBasicMaterial({color: 0x33ff00, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}), // GIOCATORE: VERDE
     hazardFireRing: new THREE.MeshBasicMaterial({color: 0xaaffaa, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending}), // GIOCATORE: VERDE
     hazardPoisonPlane: new THREE.MeshBasicMaterial({color: 0x33ff00, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}), // GIOCATORE: VERDE
@@ -2610,6 +2610,7 @@ this.renderer.shadowMap.type = isTouchDevice ? THREE.PCFShadowMap : THREE.PCFSof
         // Luce globale quasi inesistente (notte fonda), esalta la luce del giocatore
       // Luce ambientale schiarita: toglie l'effetto dark fantasy e accende i colori
         const ambientLight = new THREE.AmbientLight(0x1a1c3a, 0.6); this.scene.add(ambientLight);
+this.ambientLight = ambientLight; // <-- SALVA IL RIFERIMENTO GLOBALE
         
 // Luce lunare leggermente più ciano e meno intensa per far risaltare la luce del giocatore
 this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
@@ -2651,9 +2652,19 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
             this.composer.addPass(this.bloomPass);
         }
         this.uiCtx = this.uiCanvas.getContext('2d'); this.resize(); window.addEventListener('resize', () => this.resize());
-        this.setupInputs(); this.initPools(); this._boundLoop = this.loop.bind(this); requestAnimationFrame(this._boundLoop);
+        this.prewarmShaders(); this.setupInputs(); this.initPools(); this._boundLoop = this.loop.bind(this); requestAnimationFrame(this._boundLoop);
     },
-
+prewarmShaders() {
+        // Crea una scena invisibile usa-e-getta per forzare la GPU a compilare i materiali
+        let warmScene = new THREE.Scene();
+        let warmCam = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
+        SharedMatSet.forEach(mat => {
+            let mesh = new THREE.Mesh(window.GLOBAL_WALL_GEO || SharedGeo.box, mat);
+            mesh.position.z = -2;
+            warmScene.add(mesh);
+        });
+        this.renderer.compile(warmScene, warmCam);
+    },
     initPools() {
         this.debris = Array.from({length: isTouchDevice ? 90 : 250}, () => new Debris());
         this.enemyPool = Array.from({length: 80}, () => new Enemy()); // Pre-alloca 80 nemici
@@ -2781,7 +2792,7 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         }
     },
    updateCamera(dt) {
-        let camX = this.player.x; let camY = isTouchDevice ? 750 : 600; let camZ = this.player.y + (isTouchDevice ? 500 : 400);
+        let camX = this.player.x; let camY = isTouchDevice ? 750 : 600; let camZ = this.player.y + (isTouchDevice ? 500 : 400);
         let shakeX = 0, shakeY = 0, shakeZ = 0;
         if (this.trauma > 0) {
             let shakeForce = this.trauma * this.trauma * 40; 
@@ -2796,6 +2807,27 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
             this.dirLight.position.set(this.player.x - 400, 1000, this.player.y - 400);
             this.dirLight.target.position.set(this.player.x, 0, this.player.y);
         }
+
+        // FOV Dinamico: allarga la visuale per enfatizzare la potenza dell'Ultimate
+        let targetFov = Game.ultimateActive ? 56 : 50;
+        if (Math.abs(targetFov - this.camera.fov) > 0.1) {
+            this.camera.fov += (targetFov - this.camera.fov) * 8 * dt;
+            this.camera.updateProjectionMatrix();
+        }
+        
+        // Transizione cromatica della Boss Arena Evolutiva (Fase Enraged)
+        if (Game.arenaEvolution) {
+            this.ambientLight.intensity += (0.12 - this.ambientLight.intensity) * dt * 1.5;
+            this.ambientLight.color.lerp(new THREE.Color(0x3a0010), dt * 0.4); 
+            if (this.dirLight) {
+                this.dirLight.intensity += (0.15 - this.dirLight.intensity) * dt;
+                this.dirLight.color.lerp(new THREE.Color(0xff1100), dt * 0.4); 
+            }
+            this.scene.background.lerp(new THREE.Color(0x050000), dt * 0.4);
+            this.scene.fog.color.lerp(new THREE.Color(0x050000), dt * 0.4);
+        }
+       // Transizione Arena Boss (Costo CPU zero, usa interpolazioni lineari stabili)
+    
     },
    updateMouseWorld() {
         if (isTouchDevice) return; // STOP! Niente calcoli a matrice su smartphone, mira col joystick!
@@ -2803,20 +2835,20 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         this.raycaster.setFromCamera(this._vec2, this.camera); this.raycaster.ray.intersectPlane(this._plane, this._vec3);
         if (this._vec3) { this.mouse.worldX = this._vec3.x; this.mouse.worldY = this._vec3.z; }
     },
-   loop(timestamp) {
-        // --- INIZIO CAP FPS ---
-        if (this.frameInterval > 0) {
-            if (!this.lastDrawTime) this.lastDrawTime = timestamp;
-            const elapsed = timestamp - this.lastDrawTime;
-            if (elapsed < this.frameInterval) {
-                requestAnimationFrame(this._boundLoop);
-                return; // Salta il frame se è passato troppo poco tempo
-            }
-            // Sincronizza il tempo per evitare micro-stuttering
-            this.lastDrawTime = timestamp - (elapsed % this.frameInterval);
-        }
-        // --- FINE CAP FPS ---
-// --- INIZIO CALCOLO FPS E RISOLUZIONE DINAMICA ---
+  loop(timestamp) {
+        // --- INIZIO CAP FPS ---
+        if (this.frameInterval > 0) {
+            if (!this.lastDrawTime) this.lastDrawTime = timestamp;
+            const elapsed = timestamp - this.lastDrawTime;
+            if (elapsed < this.frameInterval) {
+                requestAnimationFrame(this._boundLoop);
+                return; // Salta il frame se è passato troppo poco tempo
+            }
+            // Sincronizza il tempo per evitare micro-stuttering
+            this.lastDrawTime = timestamp - (elapsed % this.frameInterval);
+        }
+        // --- FINE CAP FPS ---
+        // --- INIZIO CALCOLO FPS E RISOLUZIONE DINAMICA ---
         this.fpsFrames++;
         if (timestamp > this.fpsLastTime + 1000) {
             let fps = Math.round((this.fpsFrames * 1000) / (timestamp - this.fpsLastTime));
@@ -2829,23 +2861,20 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
                 else fpsEl.className = "text-red-500 animate-pulse";
             }
             
-           // DRS: Abbassa la risoluzione se lagga, la rialza se è fluido (solo Mobile)
+            // DRS: Abbassa la risoluzione se lagga, la rialza se è fluido (solo Mobile)
             if (isTouchDevice && !AppSettings.isLow) {
-                // FIX: Inizializza l'array correttamente la prima volta
                 if (!this.drsHistory) this.drsHistory = []; 
                 this.drsHistory.push(fps);
-                if (this.drsHistory.length > 3) this.drsHistory.shift(); // Tieni solo gli ultimi 3 secondi
+                if (this.drsHistory.length > 3) this.drsHistory.shift(); 
                 
                 if (this.drsHistory.length === 3) {
                     let avgFps = (this.drsHistory[0] + this.drsHistory[1] + this.drsHistory[2]) / 3;
                     let currentRatio = this.renderer.getPixelRatio();
                     
-                    // Se gli FPS medi sono bassi e possiamo ancora scalare giù
                     if (avgFps < 45 && currentRatio > 0.5) {
                         this.renderer.setPixelRatio(Math.max(0.5, currentRatio - 0.2));
-                        this.drsHistory.length = 0; // Reset storico per far stabilizzare (QUI è corretto usare .length = 0)
+                        this.drsHistory.length = 0; 
                     } 
-                    // Se gli FPS sono perfetti e possiamo migliorare la grafica
                     else if (avgFps >= 58 && currentRatio < 0.9) {
                         let maxRatio = Math.min(window.devicePixelRatio, 0.9);
                         if (currentRatio < maxRatio) {
@@ -2860,30 +2889,31 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
             this.fpsFrames = 0;
         }
         // --- FINE CALCOLO FPS E RISOLUZIONE DINAMICA ---
-        if (!this.lastTime) this.lastTime = timestamp; 
+        if (!this.lastTime) this.lastTime = timestamp; 
         let frameTime = (timestamp - this.lastTime) / 1000; 
         this.lastTime = timestamp;
-        if (frameTime > MAX_TIME_STEP) frameTime = MAX_TIME_STEP; 
+        if (frameTime > MAX_TIME_STEP) frameTime = MAX_TIME_STEP; 
         this.accumulator += frameTime;
         
-        // OTTIMIZZAZIONE CPU: Evita lo "Spiral of Death". 
-        // Su mobile, se il telefono lagga, limitiamo i ricalcoli di fisica a massimo 3 per frame.
-        // È meglio scartare una frazione di secondo (drop frame) piuttosto che freezare il gioco.
         let updateCount = 0;
         while(this.accumulator >= FIXED_TIME_STEP) {
+            // Dividiamo il tempo di combattimento (che subisce l'Hit-Stop) da quello visivo (sempre fluido)
+            let combatDt = this.hitStop > 0 ? 0 : FIXED_TIME_STEP;
             if (this.hitStop > 0) this.hitStop -= FIXED_TIME_STEP; 
-            else this.update(FIXED_TIME_STEP);
+            
+            this.update(combatDt, FIXED_TIME_STEP);
             this.accumulator -= FIXED_TIME_STEP;
             
             updateCount++;
             if (updateCount >= (isTouchDevice ? 3 : 5)) {
-                this.accumulator = 0; // Scarta il tempo extra
+                this.accumulator = 0; 
                 break;
             }
         }
         this.draw();
         requestAnimationFrame(this._boundLoop);
-    },
+    },
+      
 
     setupFloor() {
        this.bossDefeatedTimer = 0; this.isBossFloor = (this.floor % 5 === 0);
@@ -2895,9 +2925,11 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         let floorColor = 0xffffff; let mutatorText = ""; let camDist = isTouchDevice ? 1000 : 750;
         
         // Impostiamo la visibilità della nebbia sempre costante e pulita
-        this.scene.background = new THREE.Color(0x020205); 
+       this.scene.background = new THREE.Color(0x020205); 
         this.scene.fog = new THREE.Fog(0x020205, camDist - 150, camDist + 500);
-        if (this.dirLight) this.dirLight.intensity = 1.4; // Ripristina sempre la luce lunare
+        Game.arenaEvolution = false; // DEVE ESSERE FALSE ALL'INIZIO!
+        if (this.dirLight) { this.dirLight.intensity = 1.4; this.dirLight.color.setHex(0x335577); }
+        if (this.ambientLight) { this.ambientLight.intensity = 0.6; this.ambientLight.color.setHex(0x1a1c3a); }
         this.difficultyMult = this.baseDifficultyMult;
         if (this.isCorrupted && !this.isBossFloor) {
             this.difficultyMult *= 1.25; // Aumenta globalmente la difficoltà
@@ -3016,8 +3048,9 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         if (this.player) this.player.invincibilityTimer = 1.5;
     },
     
-   update(dt) {
+ update(combatDt, visualDt) {
         if (this.state !== 'PLAYING') return;
+        let dt = combatDt; // Preserva compatibilità con calcoli interni esistenti
 
         // --- AGGIORNAMENTO SHADER ERBA INTERATTIVA ---
         InteractiveGrassSystem.uniforms.uTime.value = this.playTime;
@@ -3026,30 +3059,24 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         let windCount = 0;
 
         if (this.player && !this.player.dead) {
-            // Il vento base è 1.0, ma diventa un tornado (4.0) durante lo scatto 
-            // e si alza (2.5) costantemente durante l'Ascensione (Ultimate)
-            let windForce = this.player.isDashing ? 4.5 : (Game.ultimateActive ? 2.5 : 1.0);
-            windSources[windCount].set(this.player.x, windForce, this.player.y);
-            windCount++;
-        }
+            let windForce = this.player.isDashing ? 4.5 : (Game.ultimateActive ? 2.5 : 1.0);
+            windSources[windCount].set(this.player.x, windForce, this.player.y);
+            windCount++;
+        }
         for(let i=0; i<this.projectiles.length; i++) {
             let p = this.projectiles[i];
-            // Processa sia quelli attivi, sia le scie fantasma in dissolvenza
             if ((p.active || p.windIntensity > 0) && windCount < MAX_WIND) { 
                 windSources[windCount].set(p.windX, p.windIntensity, p.windZ);
                 windCount++;
             }
         }
-       // --- VENTO PER LA NOVA CORROTTA IN ESPANSIONE ---
+        // --- VENTO PER LA NOVA CORROTTA IN ESPANSIONE ---
         for(let i=0; i<this.hazards.length; i++) {
             let h = this.hazards[i];
-            // Controlla che ci sia spazio nel buffer (lasciando un margine per il player)
             if (h.active && h.type === 'nova_ring' && windCount < MAX_WIND - 4) {
-                let points = isTouchDevice ? 4 : 8; // Più punti su PC per massima fluidità
+                let points = isTouchDevice ? 4 : 8; 
                 for(let j=0; j<points; j++) {
                     if(windCount >= MAX_WIND) break;
-                    // Distribuiamo punti di vento lungo la circonferenza.
-                    // Il time aggiunto fa ruotare i punti, coprendo tutta l'area in modo fluido.
                     let a = (Math.PI * 2 / points) * j + (Game.playTime * 5); 
                     windSources[windCount].set(h.x + Math.cos(a)*h.radius, 1.5, h.y + Math.sin(a)*h.radius);
                     windCount++;
@@ -3059,24 +3086,26 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         InteractiveGrassSystem.uniforms.uWindCount.value = windCount;
         // ----------------------------------------------
 
-      for (let i = 0, len = this.debris.length; i < len; i++) if(this.debris[i].active) this.debris[i].update(dt);
-        this.frameCount++; this.playTime += dt; 
+        // EFFETTI VISIVI: si muovono sempre a tempo reale (visualDt), liberi dall'Hit-Stop
+        for (let i = 0, len = this.debris.length; i < len; i++) if(this.debris[i].active) this.debris[i].update(visualDt);
+        for (let i = 0, len = this.particles.length; i < len; i++) if(this.particles[i].active) this.particles[i].update(visualDt);
+        for (let i = 0, len = this.floatingTexts.length; i < len; i++) if(this.floatingTexts[i].active) this.floatingTexts[i].update(visualDt);
+
+        this.frameCount++; 
+        this.playTime += combatDt; // Il tempo di gioco reale si ferma durante l'Hit-Stop
         
-        // OTTIMIZZAZIONE: Reset dei contatori anti-lag ad ogni frame
         Game.particlesThisFrame = 0; Game.debrisThisFrame = 0;
 
         // --- POZZE CORROSIVE (Piano Corrotto) ---
         if (this.isCorrupted && this.corruptedType === 'acid_pools') {
             if (!this.acidPoolTimer) this.acidPoolTimer = 0;
-            this.acidPoolTimer -= dt;
+            this.acidPoolTimer -= combatDt;
             if (this.acidPoolTimer <= 0) {
-               // Spawna una pozza con una SAFE ZONE (min 80, max 300) per evitare danni inevitabili
                 let angle = Math.random() * Math.PI * 2;
                 let dist = MathUtils.randomRange(80, 300);
                 let rx = this.player.x + Math.cos(angle) * dist;
                 let ry = this.player.y + Math.sin(angle) * dist;
                 if (!this.map.isSolid(rx, ry)) {
-                    // FIX: Utilizza il nuovo anello espansivo viola che colpisce tutto
                     let dmg = this.player.stats.maxHp * 0.15;
                     this.getHazard().spawn(rx, ry, 150, 2.5, dmg, 0xaa00ff, 'crystal_nova_ring');
                 }
@@ -3087,65 +3116,54 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         this.animBounce = Math.sin(this.frameCount * 0.4) * 4;
         this.animFloat = Math.sin(this.frameCount * 0.1) * 5;
         this.animArm = Math.sin(this.frameCount * 0.3) * 0.5;
-       // --- LAMPI SPETTRALI (Bilanciati per Fotosensibilità) ---
+        
+        // --- LAMPI SPETTRALI ---
         if (this.lightningCooldown === undefined) this.lightningCooldown = 0;
-        this.lightningCooldown -= dt;
+        this.lightningCooldown -= combatDt;
 
-        // Scatta solo se il cooldown è a zero E la probabilità si avvera
         if (this.lightningCooldown <= 0 && Math.random() < 0.002) {
-            // Imposta un blocco obbligatorio di MINIMO 7 secondi tra un lampo e l'altro (Zero rischio strobo)
             this.lightningCooldown = MathUtils.randomRange(7.0, 15.0); 
-
             if (this.dirLight) {
-                this.dirLight.intensity = 2.6; // Picco molto più basso e morbido
-                this.dirLight.color.setHex(0xaaccff); // Azzurro polvere, meno aggressivo del bianco puro
-                
+                this.dirLight.intensity = 2.6; 
+                this.dirLight.color.setHex(0xaaccff); 
                 setTimeout(() => { 
                     if (this.dirLight) {
-                        // FIX: Controlla in che piano siamo e ripristina la luminosità corretta (0.05 se Oscurità)
                         this.dirLight.intensity = (this.isCorrupted && this.corruptedType === 'darkness') ? 0.05 : 1.4; 
-                        // Ripristina il colore della luna originale
                         this.dirLight.color.setHex(0x335577); 
                     }
-                }, 180); // Durata raddoppiata (180ms): diventa un "pulsare" invece che uno "sfarfallio"
+                }, 180); 
             }
         }
-        // --------------------------------------------------------
 
-       // Decadimento normale della Combo
-       if (this.combo > 0) { 
-            this.comboTimer -= dt * (this.player ? this.player.modifiers.comboDecayRate : 1.0); 
+        // Decadimento della Combo
+        if (this.combo > 0) { 
+            this.comboTimer -= combatDt * (this.player ? this.player.modifiers.comboDecayRate : 1.0); 
             if (this.comboTimer <= 0) this.resetCombo(); 
         }
-        if (this.ultimateActive) { this.ultimateTimer -= dt; if (this.ultimateTimer <= 0) this.ultimateActive = false; }
+        if (this.ultimateActive) { this.ultimateTimer -= combatDt; if (this.ultimateTimer <= 0) this.ultimateActive = false; }
 
-        // IMPORTANTE: Modificato per continuare ad aggiornare l'aria dei proiettili morti!
         for (let i = 0, len = this.projectiles.length; i < len; i++) {
             if(this.projectiles[i].active || this.projectiles[i].windIntensity > 0) {
-                this.projectiles[i].update(dt);
+                this.projectiles[i].update(combatDt);
             }
         }
 
-        this.updateMouseWorld(); this.player.update(dt); this.updateCamera(dt);
+        this.updateMouseWorld(); 
+        this.player.update(combatDt); 
+        this.updateCamera(visualDt); // La telecamera segue fluida il tempo reale
 
-      // --- AGGIORNAMENTO DERIVA DELLA NEBBIA BASSA ---
+        // --- AGGIORNAMENTO DERIVA DELLA NEBBIA BASSA ---
         if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
-            // OTTIMIZZAZIONE CPU: Ricalcola il matrix buffer a frame alterni su Mobile E sui PC non in Ultra.
-            // Dimezza letteralmente il carico della CPU impiegato a comunicare con WebGL.
             if (AppSettings.isUltraPC || Game.frameCount % 2 === 0) {
                 let dummyFog = this._dummyFog;
                 let mapW = this.map.width * TILE_SIZE;
                 let mapH = this.map.height * TILE_SIZE;
-                let timeScale = AppSettings.isUltraPC ? dt : (dt * 2);
+                let timeScale = AppSettings.isUltraPC ? combatDt : (combatDt * 2);
 
                 for(let i=0; i<this.map.fogData.length; i++) {
                     let d = this.map.fogData[i];
-                
-                    // Movimento lineare
                     d.x += d.vx * timeScale;
                     d.z += d.vz * timeScale;
-                    
-                    // ---WRAP MATEMATICO (Modulo)---
                     if (d.x < 0) d.x += mapW;
                     if (d.x > mapW) d.x -= mapW;
                     if (d.z < 0) d.z += mapH;
@@ -3160,74 +3178,58 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
                 this.map.fogMesh.instanceMatrix.needsUpdate = true;
             }
         }
-      
-
-       // ---------------------------------------------
-        // SPAWN LUCCIOLE/SPORE AMBIENTALI
-        // ---------------------------------------------
-        // Frequenza: ogni tot frame (ritmo rilassato per non saturare lo schermo)
+        
+        // SPAWN LUCCIOLE/SPORE AMBIENTALI
         if (Game.frameCount % (isTouchDevice ? 15 : 6) === 0) {
-            // Scegliamo un punto casuale intorno al giocatore (nel campo visivo)
             let angle = Math.random() * Math.PI * 2;
             let dist = Math.random() * 600; 
             let px = this.player.x + Math.cos(angle) * dist;
             let pz = this.player.y + Math.sin(angle) * dist;
-            
-            // In che mattonella della griglia ci troviamo?
             let tileX = Math.floor(px / TILE_SIZE);
             let tileY = Math.floor(pz / TILE_SIZE);
-            
-            // Assicuriamoci che non sia fuori mappa e che sia pavimento (valore 2)
             if (tileX >= 0 && tileX < this.map.width && tileY >= 0 && tileY < this.map.height) {
                 if (this.map.grid[tileX][tileY] === 2) {
-                    // Magia: Ricalcoliamo il noise della mappa al volo!
                     let noiseRaw = (Math.sin(tileX * 0.3) + Math.cos(tileY * 0.3)) / 2.0; 
                     let noiseSafe = (noiseRaw + 1.0) / 2.0; 
-                    
-                    // Se la matematica dice che qui c'è una radura folta (>0.45 come in GameMap)
                     if (noiseSafe > 0.45) {
                         let p = this.getParticle();
-                        // 50% Gialle (Lucciole classiche), 50% Verdi (Spore silvane)
-                       let magicMat = Math.random() > 0.3 ? SharedMat.spriteWhite : SharedMat.spriteRed;
-                        // SPAWNA NEL CIELO: La cenere piove dall'alto verso il basso!
-                       p.spawn(px, MathUtils.randomRange(40, 80), pz, magicMat, 'ambient');
+                        let magicMat = Math.random() > 0.3 ? SharedMat.spriteWhite : SharedMat.spriteRed;
+                        p.spawn(px, MathUtils.randomRange(40, 80), pz, magicMat, 'ambient');
                     }
                 }
             }
         }
-        // ---------------------------------------------
-   let isLow = (this.player.stats.hp / this.player.stats.maxHp) < 0.30 && !this.player.dead;
+
+        let isLow = (this.player.stats.hp / this.player.stats.maxHp) < 0.30 && !this.player.dead;
         if (isLow !== AudioEngine.isLowHp) {
             AudioEngine.setLowHpState(isLow);
             let vignette = document.getElementById('blood-vignette');
             if(isLow) vignette.classList.add('vignette-low-hp-active');
             else vignette.classList.remove('vignette-low-hp-active');
         }
-        if (isLow) AudioEngine.playHeartbeat(dt);
-        // ---------------------------------------------
-       for (let i = this.enemies.length - 1; i >= 0; i--) {
-            let e = this.enemies[i]; 
-            e.update(dt); 
-            
-            // SOSTITUZIONE: Aggiorna la griglia spaziale a frames alterni sfalsati (~30fps)
-            if ((Game.frameCount + e.thinkOffset) % 2 === 0) {
-                this.enemyGrid.updateClient(e); 
-            }
-            
-            if (e.dead) {
-                e.onDeath(); this.enemyGrid.remove(e); 
-                this.enemies[i] = this.enemies[this.enemies.length - 1];
-                this.enemies.pop();
-                this.floorKills++; this.totalKills++;
-                if (!this.isBossFloor && this.floorKills + this.enemies.length < this.floorMaxKills) this.spawnEnemy();
+        if (isLow) AudioEngine.playHeartbeat(combatDt);
+
+        // AGGIORNAMENTO NEMICI: congelati se siamo in Hit-Stop (combatDt === 0)
+        if (combatDt > 0) {
+            for (let i = this.enemies.length - 1; i >= 0; i--) {
+                let e = this.enemies[i]; 
+                e.update(combatDt); 
+                if ((Game.frameCount + e.thinkOffset) % 2 === 0) {
+                    this.enemyGrid.updateClient(e); 
+                }
+                if (e.dead) {
+                    e.onDeath(); this.enemyGrid.remove(e); 
+                    this.enemies[i] = this.enemies[this.enemies.length - 1];
+                    this.enemies.pop();
+                    this.floorKills++; this.totalKills++;
+                    if (!this.isBossFloor && this.floorKills + this.enemies.length < this.floorMaxKills) this.spawnEnemy();
+                }
             }
         }
         
-        for (let i = 0, len = this.hazards.length; i < len; i++) if(this.hazards[i].active) this.hazards[i].update(dt);
-        for (let i = 0, len = this.decoys.length; i < len; i++) if(this.decoys[i].active) this.decoys[i].update(dt);
-        for (let i = 0, len = this.dashLines.length; i < len; i++) if(this.dashLines[i].active) this.dashLines[i].update(dt);
-        for (let i = 0, len = this.particles.length; i < len; i++) if(this.particles[i].active) this.particles[i].update(dt);
-        for (let i = 0, len = this.floatingTexts.length; i < len; i++) if(this.floatingTexts[i].active) this.floatingTexts[i].update(dt);
+        for (let i = 0, len = this.hazards.length; i < len; i++) if(this.hazards[i].active) this.hazards[i].update(combatDt);
+        for (let i = 0, len = this.decoys.length; i < len; i++) if(this.decoys[i].active) this.decoys[i].update(combatDt);
+        for (let i = 0, len = this.dashLines.length; i < len; i++) if(this.dashLines[i].active) this.dashLines[i].update(combatDt);
 
         let pickupMult = this.player ? this.player.modifiers.pickupRadiusMult : 1.0;
         let pRadiusSq = (this.player.radius + 20 * pickupMult)**2;
@@ -3235,10 +3237,10 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         for(let i = 0, len = this.essences.length; i < len; i++) {
             let e = this.essences[i];
             if(e.active) {
-                e.life -= dt;
+                e.life -= combatDt;
                 if (e.life <= 0) { 
                     if (Game.isCorrupted && Game.corruptedType === 'volatile') {
-                        Game.getHazard().spawn(e.x, e.y, 80, 0.5, Game.player.stats.maxHp * 0.3, 0x33ff00, 'poison'); // Esplosione fissa del 30% HP!
+                        Game.getHazard().spawn(e.x, e.y, 80, 0.5, Game.player.stats.maxHp * 0.3, 0x33ff00, 'poison'); 
                         Game.getParticle().spawn(e.x, 20, e.y, SharedMat.spriteGreen, 'nova');
                     }
                     e.destroy(); continue; 
@@ -3246,7 +3248,7 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
                 if (e.life < 3.0) e.group.visible = Math.floor(e.life * 8) % 2 === 0;
                 else e.group.visible = true;
 
-                e.group.rotation.y += dt; e.group.position.y = 12 + this.animFloat; // <-- MODIFICA: altezza base da 15 a 12
+                e.group.rotation.y += combatDt; e.group.position.y = 12 + this.animFloat; 
                 e.group.updateMatrix();
                 if (MathUtils.distanceSq(this.player, e) < pRadiusSq) { this.player.collectEssence(e.type); e.destroy(); }
             }
@@ -3255,53 +3257,43 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         for(let i = 0, len = this.extraLivesDrops.length; i < len; i++) {
             let el = this.extraLivesDrops[i];
             if(el.active) {
-                el.life -= dt;
+                el.life -= combatDt;
                 if (el.life <= 0) { el.destroy(); continue; }
                 if (el.life < 3.0) el.group.visible = Math.floor(el.life * 8) % 2 === 0;
                 else el.group.visible = true;
 
-                el.group.rotation.y += dt * 2; el.group.position.y = 12 + this.animFloat; // <-- MODIFICA: altezza base da 15 a 12
+                el.group.rotation.y += combatDt * 2; el.group.position.y = 12 + this.animFloat; 
                 el.group.updateMatrix();
                 if (MathUtils.distanceSq(this.player, el) < pRadiusSq) { 
-    el.destroy(); 
-    AudioEngine.playCollect(); 
-    
-    // Cap 6 vite max
-    if (this.lives < 6) {
-        this.lives++; 
-        this.getFloatingText().spawn(this.player.x, this.player.y, "VITA EXTRA!", '#ffffff', 30, true); 
-    } else {
-        // Ricompensa se sei al massimo: Cura totale e Carica Ultimate al 100%
-        let healAmount = this.player.stats.maxHp - this.player.stats.hp;
-        this.player.stats.hp = this.player.stats.maxHp;
-        this.getFloatingText().spawn(this.player.x, this.player.y, `MAX VITE! (+${Math.floor(healAmount)} HP)`, '#00DDFF', 25, true);
-    }
-}
+                    el.destroy(); 
+                    AudioEngine.playCollect(); 
+                    if (this.lives < 6) {
+                        this.lives++; 
+                        this.getFloatingText().spawn(this.player.x, this.player.y, "VITA EXTRA!", '#ffffff', 30, true); 
+                    } else {
+                        let healAmount = this.player.stats.maxHp - this.player.stats.hp;
+                        this.player.stats.hp = this.player.stats.maxHp;
+                        this.getFloatingText().spawn(this.player.x, this.player.y, `MAX VITE! (+${Math.floor(healAmount)} HP)`, '#00DDFF', 25, true);
+                    }
+                }
             }
         }
 
-for(let i = 0, len = this.coinDrops.length; i < len; i++) {
+        for(let i = 0, len = this.coinDrops.length; i < len; i++) {
             let c = this.coinDrops[i];
             if(c.active) {
-                // Se ha il Patto dell'Avaro, la moneta non perde vita e non scompare
-                if (!this.player.modifiers.miserPact) {
-                    c.life -= dt;
-                }
-                
+                if (!this.player.modifiers.miserPact) c.life -= combatDt;
                 if (c.life <= 0) { c.destroy(); continue; }
-                
-                // Lampeggia solo se non ha il Patto e sta per scomparire
                 if (!this.player.modifiers.miserPact && c.life < 3.0) c.group.visible = Math.floor(c.life * 8) % 2 === 0;
                 else c.group.visible = true;
 
-                c.group.rotation.y += dt * 3; c.group.position.y = 12 + this.animFloat;
+                c.group.rotation.y += combatDt * 3; c.group.position.y = 12 + this.animFloat;
                 c.group.updateMatrix();
                 if (MathUtils.distanceSq(this.player, c) < pRadiusSq) { 
                     c.destroy(); AudioEngine.playCoin();
                     Game.coins++; UI.els.coins.innerText = Game.coins;
                     Game.getFloatingText().spawn(this.player.x, this.player.y, "+1", '#ffaa00', 25, true);
                     
-                    // REWORK: La raccolta monete ora accumula stack di velocità d'attacco e movimento (Max 5 stack: +30%)
                     if (this.player.modifiers.miserPact) {
                         if (this.player.miserBuffStacks === undefined) { this.player.miserBuffStacks = 0; this.player.miserBuffTimer = 0; }
                         this.player.miserBuffTimer = 3.0;
@@ -3311,19 +3303,18 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
                 }
             }
         }
+
         if (this.isBossFloor && this.bossDefeatedTimer > 0) {
-            this.bossDefeatedTimer -= dt;
+            this.bossDefeatedTimer -= combatDt;
             if (this.bossDefeatedTimer <= 0 && this.state === 'PLAYING') { this.state = 'RELIC_SELECTION'; RelicSystem.showChoices(); }
         } else if (!this.isBossFloor && this.state === 'PLAYING') {
             let enemiesLeft = this.floorMaxKills - this.floorKills;
             
-           // Se scende sotto i 3 ma è > 0, avvia il conto alla rovescia
             if (enemiesLeft <= 3 && enemiesLeft > 0 && !this.floorEndTriggered) {
                 this.floorEndTriggered = true;
                 this.floorEndTimer = 5.0;
                 Game.getFloatingText().spawn(this.player.x, this.player.y, "IL PORTALE SI APRE!", '#00DDFF', 40, true);
             } 
-            // FIX SOFTLOCK: Se scende a 0 di botto (AoE massivo che spazza via tutto), attiva la fine immediata
             else if (enemiesLeft <= 0 && !this.floorEndTriggered) {
                 this.floorEndTriggered = true;
                 this.floorEndTimer = 0.0;
@@ -3331,7 +3322,7 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
             
             if (this.floorEndTriggered) {
                 let oldSec = Math.ceil(this.floorEndTimer);
-                this.floorEndTimer -= dt;
+                this.floorEndTimer -= combatDt;
                 let newSec = Math.ceil(this.floorEndTimer);
                 
                 if (oldSec !== newSec && newSec > 0) {
@@ -3339,12 +3330,11 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
                     AudioEngine.playCountdown();
                 }
                 
-                // FIX PURSUER: Ignoriamo la lunghezza array (il Pursuer rimarrebbe vivo bloccando il livello)
                 if (this.floorEndTimer <= 0 || enemiesLeft <= 0) {
                     for (let i = this.enemies.length - 1; i >= 0; i--) {
                         let e = this.enemies[i];
                         if (!e.dead) { 
-                            e.isPursuer = false; // Rimuoviamo l'invincibilità all'inseguitore per forzarne la morte
+                            e.isPursuer = false; 
                             e.takeDamage(999999, this.player, false, false); 
                             e.onDeath(); 
                         }
@@ -3358,7 +3348,6 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
                             dropRelic.apply(this.player); this.player.relics.push(dropRelic);
                             Game.getFloatingText().spawn(this.player.x, this.player.y, "RELIQUIA OTTENUTA!", '#fbbf24', 50, true);
                         } else {
-                            // Riserva: se hai esaurito le reliquie, ti ricompensa in monete
                             Game.coins += 50;
                             Game.getFloatingText().spawn(this.player.x, this.player.y, "+50 MONETE (RELIQUIE ESAURITE)!", '#fbbf24', 40, true);
                         }
@@ -3497,7 +3486,7 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
                 // Gestiamo le variazioni dinamiche calcolando il rapporto di scala (dynamicScale).
                 let targetSize = ft.size * (isTouchDevice ? 0.7 : 1);
                 let dynamicScale = targetSize / 40.0; // 40px è la nostra base fissa
-                let finalScale = (ft.isCrit ? (2.0 - progress) : (1.5 - progress*0.5)) * dynamicScale;
+                let finalScale = (ft.isCrit ? (2.0 - progress) : (1.5 - progress*0.5)) * dynamicScale * ft.scalePop;
                 
                 let fontStr = `900 40px 'Impact', sans-serif`; // Stringa statica!
                 
@@ -3929,6 +3918,10 @@ class GameMap {
             window.GLOBAL_SHAFT_GEO = new THREE.CylinderGeometry(12, 14, TILE_SIZE * 1.5, 8);
             window.GLOBAL_CAP_GEO = new THREE.CylinderGeometry(20, 12, 10, 4);
         }
+      if (!window.GLOBAL_TELEGRAPH_GEO) {
+    window.GLOBAL_TELEGRAPH_GEO = new THREE.PlaneGeometry(1, 1);
+    window.GLOBAL_TELEGRAPH_GEO.rotateX(-Math.PI / 2);
+}
         const wallMesh = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, this.wallMat, wallCount);
         const pillarBaseMesh = new THREE.InstancedMesh(window.GLOBAL_BASE_GEO, this.wallMat, pillarCount);
         const pillarShaftMesh = new THREE.InstancedMesh(window.GLOBAL_SHAFT_GEO, this.wallMat, pillarCount);
@@ -4248,6 +4241,7 @@ class Entity {
             foundText.text = Math.floor(foundText.accumulated).toString() + (isCrit || foundText.isCrit ? "!" : "");
             foundText.life = foundText.maxLife; 
             foundText.vy = isCrit || foundText.isCrit ? 60 : 30; // FIX: Ripristina la spinta verso l'alto ad ogni colpo concatenato!
+           foundText.scalePop = 1.6;
             if (isCrit) { foundText.color = '#ffff00'; foundText.isCrit = true; }
             foundText.size = Math.min(foundText.size + 4, 50); 
         } else {
@@ -5191,6 +5185,10 @@ class Enemy extends Entity {
         Game.scene.add(this.mesh);
         this.currentType = null;
         this.mat = null;
+        this.telegraphMesh = new THREE.Mesh(window.GLOBAL_TELEGRAPH_GEO, SharedMat.telegraph.clone());
+this.telegraphMesh.matrixAutoUpdate = false;
+this.telegraphMesh.visible = false;
+Game.scene.add(this.telegraphMesh);
     }
 
    spawn(x, y, type, level) {
@@ -5621,34 +5619,35 @@ class Enemy extends Entity {
         // Movimento Continuo a 60 FPS basato sui dati calcolati dallo "Staggering"
         if (this.distToTargetSq !== undefined && this.distToTargetSq < this.aggroRangeSq) {
             
-            // --- INIZIO TELEGRAPHING (Preavviso Attacchi a Distanza) ---
-            if (this.telegraphTimer > 0) {
-                this.telegraphTimer -= dt;
-                
-                // Effetto strobo bianco rapido per caricare il colpo
-                if (Math.floor(this.telegraphTimer * 15) % 2 === 0) {
-                    for(let i=0; i<this.flashMats.length; i++) { this.flashMats[i].emissive.setHex(0xffffff); this.flashMats[i].emissiveIntensity = 2.0; }
-               } else {
-                    let base = this.isGolden ? 0xffaa00 : (this.isElite ? 0x440000 : 0x000000);
-                    let baseInt = this.isGolden ? 2.0 : 1.0;
-                    for(let i=0; i<this.flashMats.length; i++) { 
-                        this.flashMats[i].emissive.setHex(base); 
-                        this.flashMats[i].emissiveIntensity = baseInt; 
-                    }
-                }
-                
-                if (this.telegraphTimer <= 0) {
-                    let base = this.isGolden ? 0xffaa00 : (this.isElite ? 0x440000 : 0x000000);
-                    let baseInt = this.isGolden ? 2.0 : 1.0;
-                    for(let i=0; i<this.flashMats.length; i++) { 
-                        this.flashMats[i].emissive.setHex(base); 
-                        this.flashMats[i].emissiveIntensity = baseInt; 
-                    }
-                    this.executeAttack(); // Scaglia il proiettile
-                }
-                return; // Ferma il nemico (non cammina mentre mira)
+      // --- INIZIO TELEGRAPHING ANIMATO ---
+        if (this.telegraphTimer > 0) {
+            this.telegraphTimer -= dt;
+
+            this.telegraphMesh.position.set(this.x, 0.3, this.y);
+            let prog = 1.0 - (this.telegraphTimer / 0.4); // 0.4s è il tempo di carica
+            let ts = this.radius * 4.5 * prog;
+            this.telegraphMesh.scale.set(ts, ts, 1);
+            this.telegraphMesh.material.opacity = 0.4 * (1.0 - prog);
+            this.telegraphMesh.updateMatrix();
+            this.telegraphMesh.visible = true;
+
+            if (Math.floor(this.telegraphTimer * 15) % 2 === 0) {
+                for(let i=0; i<this.flashMats.length; i++) { this.flashMats[i].emissive.setHex(0xffffff); this.flashMats[i].emissiveIntensity = 2.0; }
+            } else {
+                let base = this.isGolden ? 0xffaa00 : (this.isElite ? 0x440000 : 0x000000);
+                let baseInt = this.isGolden ? 2.0 : 1.0;
+                for(let i=0; i<this.flashMats.length; i++) { this.flashMats[i].emissive.setHex(base); this.flashMats[i].emissiveIntensity = baseInt; }
             }
-            // --- FINE TELEGRAPHING ---
+
+            if (this.telegraphTimer <= 0) {
+                this.telegraphMesh.visible = false; // Nascondi il decal
+                let base = this.isGolden ? 0xffaa00 : (this.isElite ? 0x440000 : 0x000000);
+                let baseInt = this.isGolden ? 2.0 : 1.0;
+                for(let i=0; i<this.flashMats.length; i++) { this.flashMats[i].emissive.setHex(base); this.flashMats[i].emissiveIntensity = baseInt; }
+                this.executeAttack();
+            }
+            return;
+        }
 
             if (this.distToTargetSq > this.attackRangeSq) { 
                 this.move(this.moveX, this.moveY, dt); 
@@ -5763,6 +5762,7 @@ class Enemy extends Entity {
         if (Game.player.overdrive && Game.player.essence === 'green' && canInfect) this.infected = true;
     }
        onDeath() {
+           if (this.telegraphMesh) this.telegraphMesh.visible = false;
         // Se muore il Profeta, spezza i raggi, spegne i glow e ripulisce tutti i bersagli
         if (this.beams) {
             for(let i = 0; i < 3; i++) {
@@ -6767,12 +6767,17 @@ class Debris {
 class FloatingText {
     constructor() { this.active = false; }
     spawn(x, z, text, color, size, isCrit=false) {
-        this.active = true; this.x = x + MathUtils.randomRange(-15, 15); this.y = z; this.h = 40;
-        this.text = text.replace('!', ''); this.color = color; this.size = size; this.isCrit = isCrit;
-        this.life = isCrit ? 1.0 : 0.7; this.maxLife = this.life; this.vy = isCrit ? 60 : 30;
-        this.targetId = null; // FIX MEMORY/LOGIC: Ripulisce l'id per evitare che un testo riciclato dal pool assorba i danni sbagliati
-    }
-   update(dt) { if(!this.active) return; this.h += this.vy * dt; this.vy -= 100*dt; this.life -= dt; if(this.life <= 0) { this.active = false; this.targetId = null; } }
+    this.active = true; this.x = x + MathUtils.randomRange(-15, 15); this.y = z; this.h = 40;
+    this.text = text.replace('!', ''); this.color = color; this.size = size; this.isCrit = isCrit;
+    this.life = isCrit ? 1.0 : 0.7; this.maxLife = this.life; this.vy = isCrit ? 60 : 30;
+    this.targetId = null;
+    this.scalePop = 1.6; // Moltiplicatore di rimbalzo iniziale
+}
+update(dt) { 
+    if(!this.active) return; 
+    this.h += this.vy * dt; this.vy -= 100*dt; this.life -= dt; 
+    if(this.scalePop > 1.0) this.scalePop -= dt * 4.5; else this.scalePop = 1.0; // Ritorno elastico
+    if(this.life <= 0) { this.active = false; this.targetId = null; } 
 }
 
 function clearScene() {

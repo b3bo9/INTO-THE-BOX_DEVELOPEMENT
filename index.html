@@ -18,7 +18,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
 
     <style>
-       @keyframes gold-pulse {
+    @keyframes gold-pulse {
     0%, 100% { opacity: 1; transform: scale(1); text-shadow: 0 0 5px #fbbf24; }
     50% { opacity: 0.7; transform: scale(1.1); text-shadow: 0 0 15px #fbbf24; }
 }
@@ -137,6 +137,19 @@
         .relic-card { transition: all 0.2s; cursor: pointer; } .relic-card:hover { transform: scale(1.05) translateY(-5px); } .relic-card:active { transform: scale(0.95); }
         .rarity-common { border-color: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); } .rarity-rare { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
         .rarity-epic { border-color: #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.6); } .rarity-legendary { border-color: #fbbf24; box-shadow: 0 0 30px rgba(251, 191, 36, 0.8); }
+        /* --- OTTIMIZZAZIONE PRESTAZIONI (Modalità Low) --- */
+        body.low-spec .backdrop-blur-xl,
+        body.low-spec .backdrop-blur-md,
+        body.low-spec .backdrop-blur-sm {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            background-color: rgba(10, 10, 15, 0.95) !important; /* Vetro spento, diventa solido e scurissimo */
+        }
+        
+        body.low-spec [class*="drop-shadow"] {
+            filter: none !important; /* Spegne tutte le ombre complesse SVG e testi */
+            text-shadow: 2px 2px 0px #000 !important; /* Rimpiazza con un'ombra piatta 2D leggerissima */
+        }
     </style>
 </head>
 <body class="text-white selection:bg-red-900">
@@ -650,12 +663,22 @@ const AppSettings = {
     // OTTIMIZZAZIONE PC: Ombre attive SOLO su Ultra.
     // La modalità "Bilanciata" ora spegnerà le ombre dinamiche usando le blob-shadows, raddoppiando gli FPS sui laptop.
     get shadowsEnabled() { return this.mode === 2; },
+    get isUltraPC() { return this.mode === 2 && !isTouchDevice; },
+    get shadowsEnabled() { return this.mode === 2; },
+    
+    init() {
+        if (this.isLow) document.body.classList.add('low-spec');
+    },
     
     toggleGraphics() {
         this.mode = (this.mode + 1) % 3;
         const vignette = document.getElementById('vignette');
         if (this.mode === 0) vignette.style.opacity = '0';
         else vignette.style.opacity = '1';
+
+        // OTTIMIZZAZIONE UI: Spegne il Glassmorphism e le ombre CSS pesanti su dispositivi lenti
+        if (this.isLow) document.body.classList.add('low-spec');
+        else document.body.classList.remove('low-spec');
 
         if(Game.renderer) {
             Game.renderer.shadowMap.enabled = this.shadowsEnabled;
@@ -2464,21 +2487,29 @@ triggerComboAnim(combo) {
         let scale = isTouchDevice ? (1 + Math.min(combo * 0.02, 0.3)) : (1 + Math.min(combo * 0.015, 0.3)); 
         this.els.comboText.style.transform = `scale(${scale})`;
         
-        // --- TRANSIZIONE CROMATICA FLUIDA (HSL) ---
-        let progress = Math.min(1.0, combo / 100.0);
+        // --- TRANSIZIONE CROMATICA A 3 FASI (AAA Style) ---
         let hue;
         
-        if (progress < 0.4) {
-            // Da 1 a 40 hit: Si infiamma dal Giallo (50) al Rosso Fuoco (0)
-            hue = 50 - (progress / 0.4) * 50; 
-        } else {
-            // Da 40 a 100 hit: Raggiunge temperature nucleari, dal Rosso (360) al Fucsia (300)
-            hue = 360 - ((progress - 0.4) / 0.6) * 60;
+        if (combo <= 20) {
+            // FASE 1 (1-20 Hits): Da Giallo Puro (60) ad Arancione (30)
+            let p = combo / 20.0;
+            hue = 60 - (p * 30); 
+        } 
+        else if (combo <= 50) {
+            // FASE 2 (21-50 Hits): Da Arancione (30) a Rosso Sangue (0)
+            let p = (combo - 20) / 30.0;
+            hue = 30 - (p * 30);
+        } 
+        else {
+            // FASE 3 (51+ Hits): Da Rosso (360) a Fucsia/Viola Nucleare (280)
+            // Cappiamo a 100 hit per non far sballare il colore se fai combo infinite
+            let p = Math.min(1.0, (combo - 50) / 50.0);
+            hue = 360 - (p * 80); 
         }
 
-        // Palette Colori Modulare
+        // Palette Colori Modulare calcolata sulla Tonalità (Hue)
         let mainColor = `hsl(${hue}, 100%, 50%)`;
-        let lightColor = `hsl(${hue}, 100%, 75%)`;
+        let lightColor = `hsl(${hue}, 100%, 70%)`; // Leggermente meno bianco per non slavare il giallo
         let shadowColor = `hsla(${hue}, 100%, 50%, 0.7)`;
         let borderColor = `hsla(${hue}, 100%, 50%, 0.6)`;
 
@@ -2501,7 +2532,7 @@ triggerComboAnim(combo) {
             this.els.comboBar.style.boxShadow = `0 0 10px ${shadowColor}`;
         }
 
-        // INTEGRAZIONE TRIpla A: Colora la "schiena" del pannello in vetro!
+        // Colora la "schiena" del pannello di vetro
         let comboPanel = document.getElementById('combo-panel');
         if (comboPanel) {
             comboPanel.style.borderColor = `rgba(75, 85, 99, 0.4) ${borderColor} rgba(75, 85, 99, 0.4) rgba(75, 85, 99, 0.4)`;
@@ -7159,6 +7190,7 @@ function cycleDifficulty() {
     document.getElementById('difficultyText').innerText = DifficultySettings.levels[DifficultySettings.index].label;
 }
     window.onload = () => {
+    AppSettings.init();
     Preloader.init(); // Avvia il LoadingManager globale
     ScoreManager.init(); Game.init();
     const initScreen = document.getElementById('initScreen'); const mainMenu = document.getElementById('mainMenu');

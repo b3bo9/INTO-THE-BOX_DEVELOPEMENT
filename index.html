@@ -216,7 +216,7 @@
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 124</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 125</p>
                 </div>
             </div>
         </div>
@@ -1601,6 +1601,8 @@ const SharedMat = {
     dashLine: new THREE.MeshBasicMaterial({color: 0x00ffff, blending: THREE.AdditiveBlending, transparent: true})
 };
 SharedMat.coin = new THREE.MeshStandardMaterial({color: 0xffd700, emissive: 0xaa6600, metalness: 1.0, roughness: 0.2});
+    const SharedGeoSet = new Set(Object.values(SharedGeo));
+const SharedMatSet = new Set(Object.values(SharedMat));
 const ModelFactory = {
     setupShadows(mesh) { mesh.traverse(c => { if(c.isMesh) { c.castShadow = true; c.receiveShadow = true; } }); },
     buildPlayer(mat, gemMat) {
@@ -3499,11 +3501,12 @@ for(let i = 0, len = this.coinDrops.length; i < len; i++) {
                 
                 let fontStr = `900 40px 'Impact', sans-serif`; // Stringa statica!
                 
-                if (currentFont !== fontStr) { this.uiCtx.font = fontStr; currentFont = fontStr; }
+               if (currentFont !== fontStr) { this.uiCtx.font = fontStr; currentFont = fontStr; }
                 if (currentColor !== ft.color) { this.uiCtx.fillStyle = ft.color; currentColor = ft.color; }
                 
                 this.uiCtx.save();
-                this.uiCtx.translate(pos.x, pos.y);
+                // FORZA NUMERI INTERI: Toglie un peso massiccio dalla CPU su mobile
+                this.uiCtx.translate(Math.round(pos.x), Math.round(pos.y));
                 this.uiCtx.scale(finalScale, finalScale);
                 this.uiCtx.strokeText(ft.text, 0, 0); 
                 this.uiCtx.fillText(ft.text, 0, 0); 
@@ -3832,12 +3835,13 @@ class GameMap {
         const meshTreeShadows = new THREE.InstancedMesh(window.GLOBAL_TREE_SHADOW_GEO, SharedMat.blobShadow, maxTrees);
         // ------------------------------------------
 
-       // --- NUOVO: SANGUE PERMANENTE SUL PAVIMENTO ---
+      // --- NUOVO: SANGUE PERMANENTE SUL PAVIMENTO ---
         Game.maxBlood = isTouchDevice ? 60 : 150; 
         if (!window.GLOBAL_BLOOD_GEO) {
             window.GLOBAL_BLOOD_GEO = new THREE.PlaneGeometry(12, 12);
             window.GLOBAL_BLOOD_GEO.rotateX(-Math.PI / 2);
-            window.GLOBAL_BLOOD_MAT = new THREE.MeshBasicMaterial({ map: BLOOD_TEX, transparent: true, opacity: 0.7, depthWrite: false, color: 0x4a0000 });
+            // ALPHATEST: Scarta i pixel con opacità quasi nulla per salvare Fill-Rate su Mobile!
+            window.GLOBAL_BLOOD_MAT = new THREE.MeshBasicMaterial({ map: BLOOD_TEX, transparent: true, opacity: 0.7, depthWrite: false, color: 0x4a0000, alphaTest: 0.05 });
         }
         Game.bloodMesh = new THREE.InstancedMesh(window.GLOBAL_BLOOD_GEO, window.GLOBAL_BLOOD_MAT, Game.maxBlood);
         let hideMatrix = new THREE.Matrix4().makeTranslation(0, -100, 0);
@@ -5283,15 +5287,15 @@ class Enemy extends Entity {
         
         this.aggroRangeSq = this.aggroRange * this.aggroRange; this.attackRangeSq = this.attackRange * this.attackRange;
         
-        // Pulizia profonda (VRAM Leak Fix)
+       // Pulizia profonda (VRAM Leak Fix OTTIMIZZATO)
         if (this.currentType !== type || this.wasElite !== this.isElite) {
             this.mesh.traverse((child) => {
                 if (child.isMesh || child.isSprite) {
-                    if (child.material && !Object.values(SharedMat).includes(child.material)) {
+                    if (child.material && !SharedMatSet.has(child.material)) {
                         if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
                         else child.material.dispose();
                     }
-                    if (child.geometry && !Object.values(SharedGeo).includes(child.geometry)) {
+                    if (child.geometry && !SharedGeoSet.has(child.geometry)) {
                         child.geometry.dispose();
                     }
                 }
@@ -5780,6 +5784,7 @@ class Enemy extends Entity {
             for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
             AudioEngine.playShoot('explosive_arrow'); 
            this.shadowMesh.visible = false; // <-- FIX: Nascondi l'ombra del cristallo
+          
             this.active = false; this.mesh.visible = false;
             return;
         }
@@ -5889,7 +5894,16 @@ class Enemy extends Entity {
         }
         // ----------------------------------------
 
+        t// CLEANUP MATERIALI CLONATI (Es. Pursuer)
+        this.mesh.traverse(child => {
+            if (child.isMesh && child.material && child.material !== this.mat && !SharedMatSet.has(child.material)) {
+                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                else child.material.dispose();
+            }
+        });
+        
         this.active = false; this.mesh.visible = false;
+           
         if (this.infected) {
             Game.addTrauma(0.3);
             for(let i=0; i<3; i++) { let p = Game.getProjectile(); p.spawn(this.x, this.y, (Math.PI*2/3)*i, 600, Game.player.stats.maxDmg * 2.5 * Game.player.modifiers.dmgMult, 'player', 'homing_arrow'); p.canInfect = false; }
@@ -6274,6 +6288,12 @@ class BossEnemy extends Enemy {
         for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 30, this.y, bloodMat, 'blood');
         
         
+       this.mesh.traverse(child => {
+            if (child.isMesh && child.material && child.material !== this.mat && !SharedMatSet.has(child.material)) {
+                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                else child.material.dispose();
+            }
+        });
         this.mat.dispose(); Game.scene.remove(this.mesh); Game.addTrauma(2.0); AudioEngine.playShoot('explosive_arrow');
         
         // Esplosione di loot a raggiera
@@ -6752,7 +6772,7 @@ class FloatingText {
         this.life = isCrit ? 1.0 : 0.7; this.maxLife = this.life; this.vy = isCrit ? 60 : 30;
         this.targetId = null; // FIX MEMORY/LOGIC: Ripulisce l'id per evitare che un testo riciclato dal pool assorba i danni sbagliati
     }
-    update(dt) { if(!this.active) return; this.h += this.vy * dt; this.vy -= 100*dt; this.life -= dt; if(this.life <= 0) this.active = false; } 
+   update(dt) { if(!this.active) return; this.h += this.vy * dt; this.vy -= 100*dt; this.life -= dt; if(this.life <= 0) { this.active = false; this.targetId = null; } }
 }
 
 function clearScene() {
@@ -6771,7 +6791,7 @@ function clearScene() {
                     child.geometry !== window.GLOBAL_SHAFT_GEO && 
                     child.geometry !== window.GLOBAL_CAP_GEO && 
                     child.geometry !== window.GLOBAL_FOG_GEO && 
-                    !Object.values(SharedGeo).includes(child.geometry)) {
+               !SharedGeoSet.has(child.geometry)) {
                     child.geometry.dispose();
                 }
                 
@@ -6781,7 +6801,7 @@ function clearScene() {
                     child.material !== window.GLOBAL_BLOOD_MAT && 
                     child.material !== window.GLOBAL_FOG_MAT && 
                     !Object.values(window.GLOBAL_MAP_MATS || {}).includes(child.material) && 
-                    !Object.values(SharedMat).includes(child.material)) {
+                    !SharedMatSet.has(child.material)) {
                     if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
                     else child.material.dispose();
                 }
@@ -6800,10 +6820,10 @@ function clearScene() {
         let e = Game.enemies[i];
         
         if (e.isBoss) {
-            e.mesh.traverse(child => {
+          e.mesh.traverse(child => {
                 if (child.isMesh) {
-                    if (child.geometry && !Object.values(SharedGeo).includes(child.geometry)) child.geometry.dispose();
-                    if (child.material && !Object.values(SharedMat).includes(child.material)) {
+                    if (child.geometry && !SharedGeoSet.has(child.geometry)) child.geometry.dispose();
+                    if (child.material && !SharedMatSet.has(child.material)) {
                         if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
                         else child.material.dispose();
                     }

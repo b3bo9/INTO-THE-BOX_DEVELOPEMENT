@@ -3482,7 +3482,17 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
             this.comboTimer -= combatDt * (this.player ? this.player.modifiers.comboDecayRate : 1.0); 
             if (this.comboTimer <= 0) this.resetCombo(); 
         }
-        if (this.ultimateActive) { this.ultimateTimer -= combatDt; if (this.ultimateTimer <= 0) this.ultimateActive = false; }
+       if (this.ultimateActive) { 
+            this.ultimateTimer -= combatDt; 
+            if (this.ultimateTimer <= 0) { 
+                this.ultimateActive = false; 
+                // FIX: Reset del bonus della reliquia a fine Ultimate
+                if (this.player && this.player.modifiers.ultDurationPerKill) {
+                    this.player.modifiers.ultKillCount = 0;
+                    this.player.modifiers.ascensionDurationAdd = 0; // Azzera il bonus temporaneo
+                }
+            } 
+        }
 
         for (let i = 0, len = this.projectiles.length; i < len; i++) {
             if(this.projectiles[i].active || this.projectiles[i].windIntensity > 0) {
@@ -6264,13 +6274,14 @@ Game.scene.add(this.telegraphMesh);
         this.shadowMesh.visible = false;
         AudioEngine.playEnemyDeath();
        Game.player.gainXp(this.xpValue);
-        // NUOVO: Sovraccarico Etereo (Scala Ultimate)
-        if (Game.player.modifiers.ultDurationPerKill) {
+        // FIX: Sovraccarico Etereo (Estende solo l'Ultimate in corso)
+        if (Game.player.modifiers.ultDurationPerKill && Game.ultimateActive) {
             Game.player.modifiers.ultKillCount++;
-            if (Game.player.modifiers.ultKillCount >= 15) {
+            if (Game.player.modifiers.ultKillCount >= 10) {
                 Game.player.modifiers.ultKillCount = 0;
-                Game.player.modifiers.ascensionDurationAdd += 0.5;
-                Game.getFloatingText().spawn(Game.player.x, Game.player.y + 30, "+0.5s ULTIMATE!", '#00DDFF', 25, true);
+                Game.ultimateTimer += 0.5; // Aggiunge tempo reale all'Ultimate attiva
+                Game.player.modifiers.ascensionDurationAdd += 0.5; // Estende il cap della barra UI per non "sbordare" oltre il 100%
+                Game.getFloatingText().spawn(Game.player.x, Game.player.y + 30, "+0.5s ASCENSIONE!", '#00DDFF', 25, true);
             }
         }
         let cHex = this.mat.color.getHex();

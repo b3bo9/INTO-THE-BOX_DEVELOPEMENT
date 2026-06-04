@@ -1626,10 +1626,19 @@ const RelicSystem = {
         document.getElementById('btn-select-reforge').onclick = null;
         document.getElementById('reforge-overlay').classList.add('hidden');
         
+        // Salviamo l'ID della reliquia sacrificata prima di rimuoverla
+        let sacrificedRelicId = this.selectedForReforge.relic.id;
+        
         Game.player.relics.splice(this.selectedForReforge.index, 1);
         Game.player.recalculateModifiers();
         
-        let availablePool = this.allRelics.filter(r => !Game.player.relics.some(pr => pr.id === r.id) && !this.currentChoices.some(c => c.id === r.id));
+        // Filtriamo il pool per impedire che la reliquia sacrificata venga estratta ORA.
+        // Essendo stata tolta da Game.player.relics, tornerà droppabile nei piani successivi.
+        let availablePool = this.allRelics.filter(r => 
+            !Game.player.relics.some(pr => pr.id === r.id) && 
+            !this.currentChoices.some(c => c.id === r.id) &&
+            r.id !== sacrificedRelicId
+        );
         
         if (availablePool.length > 0) {
             let targetRarity = this.getRandomRarity(); 

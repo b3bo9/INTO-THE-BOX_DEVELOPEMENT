@@ -499,7 +499,7 @@
                 <p class="text-[9px] sm:text-[10px] text-gray-400 font-bold text-center mb-2 leading-tight">Sacrifica una reliquia dal tuo zaino per forgiarne una nuova casuale.</p>
                 
                 <div class="flex items-center gap-3 sm:gap-5 w-full justify-center mt-1">
-                    <button id="btn-select-reforge" onclick="RelicSystem.openReforgeModal()" class="w-12 h-12 sm:w-16 sm:h-16 rounded-xl border-2 border-dashed border-gray-600 hover:border-purple-400 flex items-center justify-center bg-gray-900 transition-all active:scale-95 group relative overflow-hidden shrink-0 shadow-inner">
+                    <button id="btn-select-reforge" onclick="RelicSystem." class="w-12 h-12 sm:w-16 sm:h-16 rounded-xl border-2 border-dashed border-gray-600 hover:border-purple-400 flex items-center justify-center bg-gray-900 transition-all active:scale-95 group relative overflow-hidden shrink-0 shadow-inner">
                         <i id="reforge-icon-default" class="fa-solid fa-gem text-gray-500 group-hover:text-purple-400 text-xl transition-colors"></i>
                         <img id="reforge-icon-img" src="" class="absolute inset-0 w-full h-full object-cover hidden">
                         <div id="reforge-overlay" class="absolute inset-0 bg-black/60 hidden items-center justify-center text-white font-black text-[8px] sm:text-[9px] uppercase text-center leading-none">Cambia</div>
@@ -1654,136 +1654,23 @@ const RelicSystem = {
         }
     },
 
-    proceedToNextFloor(forceSkip = false) {
-        // Se non abbiamo forzato lo skip, e non c'è una selezione e c'è qualcosa da scegliere -> blocca
-        if (!this.selectedMainRelic && !forceSkip && this.currentChoices.length > 0) return;
-        
-        AudioEngine.playClick();
-        
-        // Applica l'oggetto principale (se è stato selezionato)
-        if (this.selectedMainRelic) {
-            this.selectedMainRelic.apply(Game.player);
-            Game.player.relics.push(this.selectedMainRelic);
-            Game.getFloatingText().spawn(Game.player.x, Game.player.y, "POTERE ACQUISITO", '#ffff00', 40, true);
-        }
-        
-        document.getElementById('relicScreen').classList.add('hidden'); 
-        Game.state = 'FLOOR_TRANSITION'; 
-        window.prepareFloorScreen(); 
-        document.getElementById('floorScreen').classList.remove('hidden'); 
-    },
-
-    openReforgeModal() {
-        if (this.hasReforged) return;
+   proceedToNextFloor(forceSkip = false) {
+        // Se non abbiamo forzato lo skip, e non c'è una selezione e c'è qualcosa da scegliere -> blocca
+        if (!this.selectedMainRelic && !forceSkip && this.currentChoices.length > 0) return;
+        
         AudioEngine.playClick();
-        const grid = document.getElementById('reforgeSelectGrid');
-        grid.innerHTML = '';
         
-        Game.player.relics.forEach((relic, index) => {
-            let colorClass = relic.rarity === 'legendary' ? 'border-amber-400' : 
-                             relic.rarity === 'epic' ? 'border-purple-400' : 
-                             relic.rarity === 'rare' ? 'border-blue-400' : 'border-green-400';
-                             
-            let imgBox = document.createElement('div');
-            imgBox.className = `w-14 h-14 sm:w-16 sm:h-16 rounded-xl border-2 ${colorClass} overflow-hidden cursor-pointer hover:scale-110 transition-transform relative group bg-black/50 flex shrink-0`;
-            imgBox.innerHTML = `
-                <img src="${relic.image}" class="w-full h-full object-cover">
-                <div class="absolute inset-0 bg-red-900/80 hidden group-hover:flex items-center justify-center text-white"><i class="fa-solid fa-fire text-xl"></i></div>
-            `;
-            
-            imgBox.onclick = () => {
-                AudioEngine.playClick();
-                this.selectedForReforge = { relic, index };
-                
-                // Update UI della Box di Scelta
-                document.getElementById('reforge-icon-default').classList.add('hidden');
-                let imgEl = document.getElementById('reforge-icon-img');
-                imgEl.src = relic.image;
-                imgEl.classList.remove('hidden');
-                
-                let btnSel = document.getElementById('btn-select-reforge');
-                btnSel.classList.remove('border-dashed', 'border-gray-600');
-                btnSel.classList.add('border-solid', 'border-purple-400', 'shadow-[0_0_15px_rgba(168,85,247,0.5)]');
-                document.getElementById('reforge-overlay').classList.remove('hidden');
-                
-                document.getElementById('btn-do-reforge').disabled = false;
-                document.getElementById('reforge-desc').innerText = `SACRIFICIO: ${relic.name}`;
-                
-                UIManager.hideModal('reforgeSelectModal');
-            };
-            grid.appendChild(imgBox);
-        });
-        UIManager.showModal('reforgeSelectModal');
-    },
-
-    executeReforge() {
-        if (this.hasReforged || !this.selectedForReforge) return;
-        this.hasReforged = true;
-        
-        AudioEngine.playShoot('explosive_arrow');
-        Game.addTrauma(0.5);
-        
-        let btnDo = document.getElementById('btn-do-reforge');
-        btnDo.disabled = true;
-        btnDo.innerText = "RIFORGIATA";
-        document.getElementById('btn-select-reforge').onclick = null;
-        document.getElementById('reforge-overlay').classList.add('hidden');
-        
-        // 1. RIMUOVI VECCHIA E RICALCOLA IL DNA DEL GIOCATORE (Pulizia Malus inclusa!)
-        Game.player.relics.splice(this.selectedForReforge.index, 1);
-        Game.player.recalculateModifiers();
-        
-        // 2. PESCA LA NUOVA (escludendo lo zaino attuale e le 3 sul bancone)
-        let availablePool = this.allRelics.filter(r => !Game.player.relics.some(pr => pr.id === r.id) && !this.currentChoices.some(c => c.id === r.id));
-        
-        if (availablePool.length > 0) {
-            let targetRarity = this.getRandomRarity(); 
-            let poolForRarity = availablePool.filter(r => r.rarity === targetRarity);
-            if (poolForRarity.length === 0) poolForRarity = availablePool;
-            
-            let newRelic = poolForRarity[Math.floor(Math.random() * poolForRarity.length)];
-            
-            // 3. APPLICA LA NUOVA AL GIOCATORE
-            newRelic.apply(Game.player);
-            Game.player.relics.push(newRelic);
-            
-            // 4. ANIMAZIONI EPICHE UI
-            let imgEl = document.getElementById('reforge-icon-img');
-            let btnSel = document.getElementById('btn-select-reforge');
-            
-            // Effetto di Flash/Esplosione
-            btnSel.classList.add('scale-125', 'brightness-200');
-            
-            setTimeout(() => {
-                imgEl.src = newRelic.image;
-                
-                let colorGlow = newRelic.rarity === 'legendary' ? 'rgba(251,191,36,0.8)' : 
-                                newRelic.rarity === 'epic' ? 'rgba(168,85,247,0.8)' : 
-                                newRelic.rarity === 'rare' ? 'rgba(59,130,246,0.8)' : 'rgba(34,197,94,0.8)';
-                                 
-                let borderColor = newRelic.rarity === 'legendary' ? 'border-amber-400' : 
-                                  newRelic.rarity === 'epic' ? 'border-purple-400' : 
-                                  newRelic.rarity === 'rare' ? 'border-blue-400' : 'border-green-400';
-                                  
-                btnSel.className = `w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 border-solid ${borderColor} flex items-center justify-center bg-gray-900 transition-all shrink-0 relative overflow-hidden`;
-                btnSel.style.boxShadow = `0 0 25px ${colorGlow}`;
-                
-                let descEl = document.getElementById('reforge-desc');
-                descEl.innerText = `OTTENUTA: ${newRelic.name}`;
-                descEl.style.color = newRelic.rarity === 'legendary' ? '#fbbf24' : newRelic.rarity === 'epic' ? '#a855f7' : newRelic.rarity === 'rare' ? '#3b82f6' : '#22c55e';
-                
-                AudioEngine.playRelicDrop();
-                // Spawna particelle 3D sullo sfondo come feedback fisico
-                for(let i=0; i<20; i++) Game.getParticle().spawn(Game.player.x, 20, Game.player.y, SharedMat.spriteLevel, 'spark');
-                
-                setTimeout(() => {
-                    btnSel.classList.remove('scale-125', 'brightness-200');
-                }, 150);
-            }, 400);
-            
-        } else {
-            document.getElementById('reforge-desc').innerText = "NESSUNA RELIQUIA DISPONIBILE";
+        // Applica l'oggetto principale (se è stato selezionato)
+        if (this.selectedMainRelic) {
+            this.selectedMainRelic.apply(Game.player);
+            Game.player.relics.push(this.selectedMainRelic);
+            Game.getFloatingText().spawn(Game.player.x, Game.player.y, "POTERE ACQUISITO", '#ffff00', 40, true);
         }
+        
+        document.getElementById('relicScreen').classList.add('hidden'); 
+        Game.state = 'FLOOR_TRANSITION'; 
+        window.prepareFloorScreen(); 
+        document.getElementById('floorScreen').classList.remove('hidden'); 
     },
 
     skipRelic() {

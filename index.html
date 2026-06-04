@@ -1454,20 +1454,22 @@ const RelicSystem = {
         const reforgeSection = document.getElementById('reforgeSection');
         const btnProceed = document.getElementById('btn-proceed-relic');
         
-       // SETUP FORGIA COSMICA
-        if (Game.player.relics.length > 0) {
-            reforgeSection.classList.remove('hidden');
-            document.getElementById('reforge-icon-default').classList.remove('hidden');
-            document.getElementById('reforge-icon-img').classList.add('hidden');
-            document.getElementById('reforge-overlay').classList.add('hidden');
-            
-            let btnDo = document.getElementById('btn-do-reforge');
-            btnDo.disabled = true;
-            btnDo.innerText = "RIFORGIA";
-            
-            document.getElementById('reforge-desc').innerHTML = "Tocca il riquadro a sinistra.";
-            
-            let btnSel = document.getElementById('btn-select-reforge');
+      // SETUP FORGIA COSMICA
+        if (Game.player.relics.length > 0) {
+            reforgeSection.classList.remove('hidden');
+            document.getElementById('reforge-icon-default').classList.remove('hidden');
+            document.getElementById('reforge-icon-img').classList.add('hidden');
+            document.getElementById('reforge-overlay').classList.add('hidden');
+            
+            let btnDo = document.getElementById('btn-do-reforge');
+            btnDo.disabled = true;
+            btnDo.innerText = "RIFORGIA";
+            
+            // FIX: Aggiornati gli ID per combaciare con il nuovo layout HTML
+            document.getElementById('reforge-desc-title').innerHTML = "Tocca il riquadro a sinistra.";
+            document.getElementById('reforge-desc-text').classList.add('hidden');
+            
+            let btnSel = document.getElementById('btn-select-reforge');
             btnSel.className = "w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 border-dashed border-gray-600 hover:border-purple-400 flex items-center justify-center bg-gray-900 transition-all active:scale-95 group relative overflow-hidden shrink-0 shadow-inner";
             btnSel.style.boxShadow = "none";
         } else {

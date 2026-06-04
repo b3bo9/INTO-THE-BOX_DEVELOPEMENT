@@ -2572,14 +2572,15 @@ _dummyScale: new THREE.Vector3(3, 3, 3),
 
     enemyPool: [],
     _enemyIdx: 0,
-    getEnemy() {
-        for(let i=0; i<this.enemyPool.length; i++) {
-            let e = this.enemyPool[this._enemyIdx];
-            this._enemyIdx = (this._enemyIdx + 1) % this.enemyPool.length;
-            if (!e.active) return e;
-        }
-        return this.enemyPool[0]; // Ritorna il primo se tutti sono occupati
-    },
+getEnemy() {
+        let startIdx = this._enemyIdx;
+        do {
+            let e = this.enemyPool[this._enemyIdx];
+            this._enemyIdx = (this._enemyIdx + 1) % this.enemyPool.length;
+            if (!e.active) return e;
+        } while (this._enemyIdx !== startIdx);
+        return null; // FIX CRITICO: Memoria piena! Rifiuta lo spawn invece di clonare.
+    },
 
    init() {
         UI.init(); TouchControls.init(); const container = document.getElementById('game-container');
@@ -2701,9 +2702,36 @@ prewarmShaders() {
         }
         return this._dummyParticle; 
     },
-    getProjectile() { let p = this.projectiles[this._projectileIdx]; this._projectileIdx = (this._projectileIdx + 1) % this.projectiles.length; return p; },
-    getFloatingText() { let f = this.floatingTexts[this._textIdx]; this._textIdx = (this._textIdx + 1) % this.floatingTexts.length; return f; },
-    getHazard() { let h = this.hazards[this._hazardIdx]; this._hazardIdx = (this._hazardIdx + 1) % this.hazards.length; return h; },
+   getProjectile() { 
+        let startIdx = this._projectileIdx;
+        do {
+            let p = this.projectiles[this._projectileIdx];
+            this._projectileIdx = (this._projectileIdx + 1) % this.projectiles.length;
+            if (!p.active) return p;
+        } while (this._projectileIdx !== startIdx);
+        if(!this._dummyProj) this._dummyProj = { spawn: () => {}, group: {visible: false}, active: false };
+        return this._dummyProj;
+    },
+    getFloatingText() { 
+        let startIdx = this._textIdx;
+        do {
+            let f = this.floatingTexts[this._textIdx];
+            this._textIdx = (this._textIdx + 1) % this.floatingTexts.length;
+            if (!f.active) return f;
+        } while (this._textIdx !== startIdx);
+        if(!this._dummyTxt) this._dummyTxt = { spawn: () => {}, active: false };
+        return this._dummyTxt;
+    },
+    getHazard() { 
+        let startIdx = this._hazardIdx;
+        do {
+            let h = this.hazards[this._hazardIdx];
+            this._hazardIdx = (this._hazardIdx + 1) % this.hazards.length;
+            if (!h.active) return h;
+        } while (this._hazardIdx !== startIdx);
+        if(!this._dummyHaz) this._dummyHaz = { spawn: () => {}, active: false };
+        return this._dummyHaz;
+    },
     getEssence() { let e = this.essences[this._essenceIdx]; this._essenceIdx = (this._essenceIdx + 1) % this.essences.length; return e; },
     getExtraLife() { let e = this.extraLivesDrops[this._extraLifeIdx]; this._extraLifeIdx = (this._extraLifeIdx + 1) % this.extraLivesDrops.length; return e; },
     getDecoy() { let d = this.decoys[this._decoyIdx]; this._decoyIdx = (this._decoyIdx + 1) % this.decoys.length; return d; },
@@ -2762,30 +2790,29 @@ prewarmShaders() {
             if((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && this.state === 'PLAYING') this.player.activateShield();
         });
     },
-    spawnSpecificEnemy(x, y, difficulty) {
-        const r = Math.random(); let type = 'goblin';
-        
-        // BILANCIAMENTO SPAWN: Progressione molto più dolce
-        if (difficulty >= 1 && r > 0.4) type = 'orc';
-        if (difficulty >= 1 && r > 0.6) type = 'skeleton_archer'; 
-       if (difficulty >= 1.5 && r > 0.70) type = 'slime';
-        if (difficulty > 2.5 && r > 0.80) type = 'mage';            
-        if (difficulty > 3.0 && r > 0.85) type = 'leaper';
-        if (difficulty > 3.5 && r > 0.90) type = 'golem'; 
-        if (difficulty > 4.0 && r > 0.94) type = 'pyromancer';
-        if (difficulty > 5.0 && r > 0.97) type = 'fire_demon';
-        
-        // PROFETA OSCURO: Max 2 profeti contemporaneamente per livello per evitare troppi raggi arancioni!
-        if (difficulty > 3.5 && Math.random() < 0.05 && this.floorProphets < 4) { 
-            type = 'dark_prophet'; 
-            this.floorProphets++; 
-        }
-        
-        let enemy = this.getEnemy();
-        enemy.spawn(x, y, type, difficulty);
-        this.enemies.push(enemy); 
-        this.enemyGrid.insert(enemy);
-    },
+   spawnSpecificEnemy(x, y, difficulty) {
+        const r = Math.random(); let type = 'goblin';
+        
+        if (difficulty >= 1 && r > 0.4) type = 'orc';
+        if (difficulty >= 1 && r > 0.6) type = 'skeleton_archer'; 
+        if (difficulty >= 1.5 && r > 0.70) type = 'slime';
+        if (difficulty > 2.5 && r > 0.80) type = 'mage';            
+        if (difficulty > 3.0 && r > 0.85) type = 'leaper';
+        if (difficulty > 3.5 && r > 0.90) type = 'golem'; 
+        if (difficulty > 4.0 && r > 0.94) type = 'pyromancer';
+        if (difficulty > 5.0 && r > 0.97) type = 'fire_demon';
+        
+        if (difficulty > 3.5 && Math.random() < 0.05 && this.floorProphets < 4) { 
+            type = 'dark_prophet'; 
+            this.floorProphets++; 
+        }
+        
+        let enemy = this.getEnemy();
+        if (!enemy) return; // FIX: Se non ci sono più slot nemici, salta lo spawn in modo sicuro.
+        enemy.spawn(x, y, type, difficulty);
+        this.enemies.push(enemy); 
+        this.enemyGrid.insert(enemy);
+    },
     spawnEnemy() {
         let pos = this.map.getRandomFloorTile(); let attempts = 0;
         while(MathUtils.distance({x: pos.x*TILE_SIZE, y: pos.y*TILE_SIZE}, this.player) < TILE_SIZE * 8 && attempts < 50) { pos = this.map.getRandomFloorTile(); attempts++; }
@@ -6003,13 +6030,15 @@ Game.scene.add(this.telegraphMesh);
         // ----------------------------------------
 
       // CLEANUP MATERIALI CLONATI (Es. Pursuer)
-        this.mesh.traverse(child => {
-            // FIX VRAM: Aggiunto "|| child.isSprite" per non far leakare l'aura dello scudo del Nemesi!
+        const cleanupChild = (child) => {
             if ((child.isMesh || child.isSprite) && child.material && child.material !== this.mat && !SharedMatSet.has(child.material)) {
                 if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
                 else child.material.dispose();
             }
-        });
+        };
+        this.mesh.traverse(cleanupChild);
+        if (this.telegraphMesh) cleanupChild(this.telegraphMesh);
+        if (this.shadowMesh) cleanupChild(this.shadowMesh);
         
         this.active = false; this.mesh.visible = false;
            
@@ -6332,10 +6361,11 @@ class BossEnemy extends Enemy {
                 }
                 
                 if(minionType) {
-                    let enemy = Game.getEnemy(); 
-                    enemy.spawn(sx, sy, minionType, this.level); 
-                    Game.enemies.push(enemy); Game.enemyGrid.insert(enemy);
-                } else {
+                    let enemy = Game.getEnemy(); 
+                    if (!enemy) continue; // FIX: Ignora lo spawn se l'array è pieno
+                    enemy.spawn(sx, sy, minionType, this.level); 
+                    Game.enemies.push(enemy); Game.enemyGrid.insert(enemy);
+                } else {
                     Game.spawnSpecificEnemy(sx, sy, this.level); 
                 }
                 Game.floorMaxKills++; spawned = true; 

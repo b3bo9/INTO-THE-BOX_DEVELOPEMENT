@@ -82,12 +82,11 @@
         }
         .anim-reforge { animation: reforge-magic 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
 
-     #vignette { 
+    #vignette { 
     position: absolute; inset: 0; 
-    /* Il box-shadow interno per scurire i bordi è stato fuso nel gradiente. FPS x2 su mobile! */
-    background: radial-gradient(circle at center, transparent 40%, rgba(6, 6, 16, 0.8) 85%, rgba(2, 2, 8, 0.95) 100%); 
+    /* RIMOSSO mix-blend-mode: multiply; -> Ammazzava le performance su smartphone! */
+    background: radial-gradient(circle at center, transparent 40%, rgba(2, 2, 10, 0.7) 85%, rgba(0, 0, 5, 0.95) 100%); 
     z-index: 5; pointer-events: none; 
-    mix-blend-mode: multiply; 
     transition: opacity 0.5s; 
 }
 
@@ -1261,7 +1260,7 @@ const MathUtils = {
 };
 
 const TILE_SIZE = 64; const CHUNK_SIZE = 30; const FIXED_TIME_STEP = 1 / 60; const MAX_TIME_STEP = 0.1;
-    const MAP_THEMES = [
+   const MAP_THEMES = [
     // TEMA 1: FORESTA OSCURA (Classico)
     { 
         dirt: 0x705848, grass: 0x446048, rock: 0x5c5c6e, wall: 0x3a3a48, 
@@ -1274,11 +1273,11 @@ const TILE_SIZE = 64; const CHUNK_SIZE = 30; const FIXED_TIME_STEP = 1 / 60; con
         grassShader: 0x3a0505, tree: 0x1a0505,
         ambient: 0x2a0a0a, dirLight: 0x883322, fog: 0x150505
     },
-    // TEMA 3: CAVERNA GLACIALE (Ciano / Blu)
+    // TEMA 3: CAVERNA GLACIALE (Ghiaccio e Ciano Intenso)
     { 
-        dirt: 0x1a2535, grass: 0x306088, rock: 0x15202a, wall: 0x101a25, 
-        grassShader: 0x0a1a3a, tree: 0x050a15,
-        ambient: 0x0a1525, dirLight: 0x226688, fog: 0x020810
+        dirt: 0x0f2035, grass: 0x155b88, rock: 0x10253a, wall: 0x0a1525, 
+        grassShader: 0x052a55, tree: 0x051a35,
+        ambient: 0x051a3a, dirLight: 0x44ccff, fog: 0x051530
     }
 ];
 
@@ -3309,8 +3308,9 @@ prewarmShaders() {
         
         let floorColor = 0xffffff; let mutatorText = ""; let camDist = isTouchDevice ? 1000 : 750;
         
-       let themeIndex = (this.floor - 1) % 3;
-        let currentTheme = MAP_THEMES[themeIndex];
+       // Sceglie un tema casuale e lo salva globalmente per questo piano
+       this.currentThemeIndex = Math.floor(Math.random() * MAP_THEMES.length);
+       let currentTheme = MAP_THEMES[this.currentThemeIndex];
 
         // Impostiamo nebbia, sfondo e luci in base al tema corrente!
         this.scene.background = new THREE.Color(currentTheme.fog); 
@@ -3524,7 +3524,7 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
                 setTimeout(() => { 
                     if (this.dirLight) {
                         // FIX: Legge il colore del tema attuale invece di resettare al blu foresta
-                        let currentTheme = MAP_THEMES[(this.floor - 1) % 3];
+                        let currentTheme = MAP_THEMES[this.currentThemeIndex];
                         this.dirLight.intensity = (this.isCorrupted && this.corruptedType === 'darkness') ? 0.05 : 1.4; 
                         this.dirLight.color.setHex(currentTheme.dirLight); 
                     }
@@ -3586,23 +3586,36 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
             }
         }
         
-// --- SPAWN POLVERE INFUOCATA AMBIENTALE (Cenere che cade dal cielo) ---
-        if (Game.frameCount % (isTouchDevice ? 30 : 12) === 0) {
-            let angle = Math.random() * Math.PI * 2;
-            let dist = Math.random() * 900; // Si disperdono su tutta la visuale
-            let px = this.player.x + Math.cos(angle) * dist;
-            let pz = this.player.y + Math.sin(angle) * dist;
-            
-            // Nascono altissime nel cielo, fuori dall'inquadratura principale
-            let py = MathUtils.randomRange(500, 800);
+// --- SPAWN PARTICELLE AMBIENTALI TEMA-DIPENDENTI ---
+        if (Game.frameCount % (isTouchDevice ? 30 : 12) === 0) {
+            let angle = Math.random() * Math.PI * 2;
+            let dist = Math.random() * 900; // Si disperdono su tutta la visuale
+            let px = this.player.x + Math.cos(angle) * dist;
+            let pz = this.player.y + Math.sin(angle) * dist;
+            
+            // Nascono altissime nel cielo, fuori dall'inquadratura principale
+            let py = MathUtils.randomRange(500, 800);
 
-            let p = this.getParticle();
-            // Scelgono tra scintilla rossa (fuoco denso) o gialla/bianca (braci vive)
-            let magicMat = Math.random() > 0.6 ? SharedMat.spriteYellow : SharedMat.spriteRed;
-            p.spawn(px, py, pz, magicMat, 'ambient');
-        }
+            let p = this.getParticle();
+            let magicMat;
+            let themeIndex = this.currentThemeIndex;
+
+            // Tema 0: Foresta (Spore verdi/gialle)
+            if (themeIndex === 0) {
+                magicMat = Math.random() > 0.5 ? SharedMat.spriteGreen : SharedMat.spriteYellow;
+            } 
+            // Tema 1: Abisso (Cenere rossa/gialla)
+            else if (themeIndex === 1) {
+                magicMat = Math.random() > 0.6 ? SharedMat.spriteYellow : SharedMat.spriteRed;
+            } 
+            // Tema 2: Glaciale (Neve azzurra/bianca)
+            else {
+                magicMat = Math.random() > 0.5 ? SharedMat.spriteWhite : SharedMat.spriteBlue;
+            }
+
+            p.spawn(px, py, pz, magicMat, 'ambient');
+        }
         // ----------------------------------------------------------------------
-
         let isLow = (this.player.stats.hp / this.player.stats.maxHp) < 0.30 && !this.player.dead;
         if (isLow !== AudioEngine.isLowHp) {
             AudioEngine.setLowHpState(isLow);
@@ -4285,9 +4298,9 @@ class GameMap {
         const MapMaterialClass = THREE.MeshPhongMaterial;
         const alphaTex = GLOBAL_ALPHA_TEX; // OTTIMIZZAZIONE 3: Usa la mappa alpha in cache
 
-       // --- SISTEMA TEMI A COSTO ZERO (VRAM/CPU = 0) ---
-        let themeIndex = (Game.floor - 1) % 3;
-        let currentTheme = MAP_THEMES[themeIndex];
+      // --- SISTEMA TEMI A COSTO ZERO (VRAM/CPU = 0) ---
+       // Legge il tema casuale generato da Game.setupFloor
+       let currentTheme = MAP_THEMES[Game.currentThemeIndex];
 
         // 1. Creiamo i materiali vuoti UNA SOLA VOLTA per non intaccare la RAM
         if (!window.GLOBAL_MAP_MATS) {

@@ -1382,14 +1382,14 @@ const RelicSystem = {
         { id: 'c1', name: "Prisma dell'Avarizia", desc: "I tuoi colpi critici hanno il 20% di probabilità di generare 1 Moneta.", rarity: "common", image: "icona_prisma.png", icon: "fa-gem", apply: (p) => p.modifiers.critGold = true },
         { id: 'c2', name: "Siero Adrenalinico", desc: "Se i tuoi HP scendono sotto il 30%, la Velocità d'Attacco aumenta del +30%.", rarity: "common", image: "icona_adrenalina.png", icon: "fa-bolt", apply: (p) => p.modifiers.lowHpAtkSpeed = true },
         { id: 'c3', name: "Piuma Spettrale", desc: "Dopo aver eseguito uno Scatto, ottieni invulnerabilità totale per 0.4 secondi e +20% velocità per 2 sec.", rarity: "common", image: "icona_piuma.png", icon: "fa-feather", apply: (p) => { p.modifiers.dashInvul = true; p.modifiers.dashSpeedBuff = true; } },
-        { id: 'c4', name: "Cristallo Rigenerante", desc: "Rigeneri passivamente 2% della Salute Max ogni 3 secondi.", rarity: "common", image: "icona_cristallo_vitale.png", icon: "fa-heart", apply: (p) => p.modifiers.regen = 0.02 },
-        { id: 'r5', name: "Magnete delle Anime", desc: "Raggio di raccolta di Monete ed Essenze raddoppiato.", rarity: "common", image: "icona_magnete_delle_anime.png", icon: "fa-magnet", apply: (p) => p.modifiers.pickupRadiusMult += 1.0 },
+       { id: 'c4', name: "Cristallo Rigenerante", desc: "Se non subisci danni per 5 sec, rigeneri 1% di Salute al secondo.", rarity: "common", image: "icona_cristallo_vitale.png", icon: "fa-heart", apply: (p) => p.modifiers.outOfCombatRegen = true },
+        { id: 'r5', name: "Magnete delle Anime", desc: "Raggio raccolta x2. Raccogliere un'essenza dona +5% Velocità di movimento (Max 20%).", rarity: "common", image: "icona_magnete_delle_anime.png", icon: "fa-magnet", apply: (p) => { p.modifiers.pickupRadiusMult += 1.0; p.modifiers.essenceSpeedStacks = true; } },
 
         // RARE: Meccaniche di combattimento
        { id: 'c5', name: "Runa dell'Agguato", desc: "Infliggi il +20% di danni ai nemici che hanno più dell'80% di Salute.", rarity: "rare", image: "icona_runa_minore.png", icon: "fa-fire", apply: (p) => p.modifiers.openerDmg = true },
         { id: 'r1', name: "Bussola Dimensionale", desc: "Tutte le Essenze raccolte e l'Overdrive durano il 50% in più.", rarity: "rare", image: "icona_bussola_dimensionale.png", icon: "fa-compass", apply: (p) => p.modifiers.essenceDurationMult += 0.50 },
         { id: 'r3', name: "Scudo dell'Egidio", desc: "Lo Scudo Cinetico si attiva automaticamente ogni 15 sec.", rarity: "rare", image: "icona_scudo_dell_egidio.png", icon: "fa-shield-halved", apply: (p) => p.modifiers.shieldActive = true },
-        { id: 'r4', name: "Apprendimento rapido", desc: "Ottieni +50% XP, ma subisci +15% di danni.", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.50; p.modifiers.dmgTakenMult += 0.15; } },
+        { id: 'r4', name: "Apprendimento Rapido", desc: "+30% XP, subisci +10% danni. Sali di Livello per generare un'onda d'urto.", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.30; p.modifiers.dmgTakenMult += 0.10; p.modifiers.levelUpNova = true; } },
         { id: 'r6', name: "Sovraccarico Cinetico", desc: "Mentre lo Scudo Cinetico è attivo, la tua Velocità d'Attacco aumenta del +40%.", rarity: "rare", image: "icona_sovraccarico_cinetico.png", icon: "fa-bolt", apply: (p) => p.modifiers.shieldAtkSpeedBonus = 0.40 },
         
         // EPICHE: Sinergie Costruttive (Build Definers)
@@ -4698,6 +4698,12 @@ class Player extends Entity {
             this.overdrive = false; this.essenceList = []; 
             if (kept) this.essenceList.push(kept);
         }
+        // NUOVO: Accumulo velocità per Magnete delle Anime
+        if (this.modifiers.essenceSpeedStacks) {
+            if (this.essenceSpeedBonus === undefined) this.essenceSpeedBonus = 0;
+            this.essenceSpeedBonus = Math.min(0.20, this.essenceSpeedBonus + 0.05); // Max 20%
+        }
+
         this.essenceList.push(type); this.essence = type;
         Game.addUltimateCharge(10);
         this.essenceTimer = 8.0 * this.modifiers.essenceDurationMult;
@@ -4937,22 +4943,27 @@ class Player extends Entity {
         }
         
       // FIX BUG IMMORTALITÀ: Ripristinato il timer di 3 secondi per la reliquia Cristallo Rigenerante
-        if (this.modifiers.regen > 0) {
-            if (!this.regenTimer) this.regenTimer = 0;
-            this.regenTimer += dt;
-            if (this.regenTimer >= 3.0) { 
-                // CURA SOLO SE NON SEI FULL HP
-                if (this.stats.hp < this.stats.maxHp) {
-                    let healAmount = this.stats.maxHp * this.modifiers.regen;
-                    this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
-                    // Feedback visivo evidente!
-                    Game.getFloatingText().spawn(this.x, this.y + 20, `+${Math.floor(healAmount)}`, '#00ffaa', 22, false);
+      // FIX: Nuovo Cristallo Rigenerante Out of Combat
+        if (this.modifiers.outOfCombatRegen) {
+            if (this.outOfCombatTimer === undefined) this.outOfCombatTimer = 0;
+            
+            if (this.outOfCombatTimer > 0) {
+                this.outOfCombatTimer -= dt; // Il timer scala
+            } else if (this.stats.hp < this.stats.maxHp) {
+                // Se il timer è a zero e non siamo a vita massima, curiamo ogni secondo
+                if (!this.regenTickTimer) this.regenTickTimer = 0;
+                this.regenTickTimer += dt;
+                
+                if (this.regenTickTimer >= 1.0) { 
+                    let healAmount = this.stats.maxHp * 0.01; // 1% al secondo
+                    this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
+                    // Feedback visivo pulito
+                    Game.getFloatingText().spawn(this.x, this.y + 20, `+${Math.floor(healAmount)}`, '#00ffaa', 16, false);
                     Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark');
+                    this.regenTickTimer = 0;
                 }
-                this.regenTimer = 0;
-            }
-        }
-        
+            }
+        }
         this.modelParts.halo.rotation.z += dt; this.modelParts.staffGem.rotation.y += dt;
         if (this.activeShieldCooldown > 0) this.activeShieldCooldown -= dt;
         if (this.shadowMesh.visible) {
@@ -5120,7 +5131,7 @@ class Player extends Entity {
         // ---------------------------------------------
 
         let flowCapMult = this.modifiers.flowMastery ? 2 : 1;
-        let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult * shockSpdMult * dashSpdMult * miserSpdBonus;
+        let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult * shockSpdMult * dashSpdMult * miserSpdBonus * (1.0 + (this.essenceSpeedBonus || 0));
         if (Game.ultimateActive) currentSpeed *= 1.5; currentSpeed = Math.min(currentSpeed, Game.ultimateActive ? 750 : 550);
         
         if (Game.ultimateActive && Game.frameCount % (isTouchDevice ? 8 : 3) === 0) Game.getParticle().spawn(this.x + MathUtils.randomRange(-15, 15), 15, this.y + MathUtils.randomRange(-15, 15), SharedMat.spriteBlue, 'trail');
@@ -5513,6 +5524,7 @@ if (this.modifiers.flowMastery && !wasDead) {
 
         super.takeDamage(amount, source);
         this.invincibilityTimer = 0.2; // <-- 0.2 secondi di invincibilità ad ogni hit
+      this.outOfCombatTimer = 5.0;
         AudioEngine.playHit('player');
        Haptics.vibrate([40, 30, 40]);
       // La combo si spezza sempre quando vieni colpito
@@ -5582,6 +5594,12 @@ if (this.modifiers.flowMastery && !wasDead) {
             this.baseStats.minDmg += 3; this.baseStats.maxDmg += 5;
             for(let i=0; i< (isTouchDevice?10:(AppSettings.isUltraPC?60:30)); i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteLevel, 'level'); Game.getFloatingText().spawn(this.x, this.y, "LEVEL UP!", '#ffffff', 28, true);
             AudioEngine.playLevelUp();
+            // NUOVO: Trigger Onda d'urto Apprendimento Rapido
+            if (this.modifiers.levelUpNova) {
+                // Sfrutta l'hazard esistente: fa poco danno (10% del maxDmg) ma respinge molto i nemici
+                Game.getHazard().spawn(this.x, this.y, 250, 0.5, this.stats.maxDmg * 0.1, 0x00DDFF, 'nova_ring');
+                Game.addTrauma(1.0);
+            }
         }
     }
    activateShield() {

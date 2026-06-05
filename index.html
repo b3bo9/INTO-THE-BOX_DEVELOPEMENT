@@ -3512,7 +3512,7 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
         this.animFloat = Math.sin(this.frameCount * 0.1) * 5;
         this.animArm = Math.sin(this.frameCount * 0.3) * 0.5;
         
-        // --- LAMPI SPETTRALI ---
+       // --- LAMPI SPETTRALI ---
         if (this.lightningCooldown === undefined) this.lightningCooldown = 0;
         this.lightningCooldown -= combatDt;
 
@@ -3523,8 +3523,10 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
                 this.dirLight.color.setHex(0xaaccff); 
                 setTimeout(() => { 
                     if (this.dirLight) {
+                        // FIX: Legge il colore del tema attuale invece di resettare al blu foresta
+                        let currentTheme = MAP_THEMES[(this.floor - 1) % 3];
                         this.dirLight.intensity = (this.isCorrupted && this.corruptedType === 'darkness') ? 0.05 : 1.4; 
-                        this.dirLight.color.setHex(0x335577); 
+                        this.dirLight.color.setHex(currentTheme.dirLight); 
                     }
                 }, 180); 
             }

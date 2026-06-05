@@ -5702,8 +5702,14 @@ Game.scene.add(this.telegraphMesh);
         this.stats.minDmg = Math.floor(12 * dmgMod * (1 + level * 0.15) * Game.difficultyMult); 
         this.stats.maxDmg = Math.floor(22 * dmgMod * (1 + level * 0.15) * Game.difficultyMult);
         
-        let diffSpeedMod = Game.difficultyMult < 1.0 ? 0.8 : (Game.difficultyMult > 1.0 ? 1.15 : 1.0); 
+       let diffSpeedMod = Game.difficultyMult < 1.0 ? 0.8 : (Game.difficultyMult > 1.0 ? 1.15 : 1.0); 
         this.baseSpeed = 100 * spdMod * Math.min(3.2, 1 + (level * 0.05)) * diffSpeedMod; 
+        
+        // POTENZIAMENTO OSCURITÀ: +20% Velocità di movimento
+        if (Game.isCorrupted && Game.corruptedType === 'darkness') {
+            this.baseSpeed *= 1.20;
+        }
+
         this.speed = this.baseSpeed;
         this.xpValue = Math.floor(20 * hpMod * level) * (this.isElite ? 3 : 1); 
         
@@ -6139,13 +6145,18 @@ Game.scene.add(this.telegraphMesh);
         }
     }
 
-  executeAttack() {
+ executeAttack() {
         let cdMult = Math.max(0.4, 1.0 / Game.difficultyMult); 
         let spdMult = 0.75 + (Game.difficultyMult * 0.25);     
         
-      // FIX PROFETA: POTENZIAMENTO COMBATTIMENTO. Danni aumentati a 2.5x e cadenza d'attacco portata a ben 3.3x (cdMult * 0.3)
         let buffDmgMult = this.isProphetBuffed ? 2.5 : 1.0; 
         if (this.isProphetBuffed) cdMult *= 0.3;
+        
+        // POTENZIAMENTO OSCURITÀ: Ranged attaccano il 20% più velocemente (Cooldown ridotto)
+        let isRanged = (this.type === 'skeleton_archer' || this.type === 'mage' || this.type === 'pyromancer' || this.type === 'fire_demon');
+        if (Game.isCorrupted && Game.corruptedType === 'darkness' && isRanged) {
+            cdMult *= 0.80; 
+        }
         
         this.attackCooldown = 0.9 * cdMult; 
         let actualDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * buffDmgMult;

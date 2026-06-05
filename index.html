@@ -3629,27 +3629,46 @@ Game.pursuerTimeout = setTimeout(() => {
             p.spawn(px, py, pz, magicMat, 'ambient');
         }
         
-        // --- NUOVO: ALBERI INFUOCATI (SOLO TEMA LAVA) ---
+        // --- NUOVO: ALBERI INFUOCATI REALISTICI (SOLO TEMA LAVA) ---
         if (this.currentThemeIndex === 1 && this.map && this.map.treePositions && this.map.treePositions.length > 0) {
-            // Su mobile riduciamo il rateo per salvare GPU e batteria
-            if (Game.frameCount % (isTouchDevice ? 8 : 3) === 0) {
-                // Preleva a caso i dati di uno degli alberi del livello
-                let randomTree = this.map.treePositions[Math.floor(Math.random() * this.map.treePositions.length)];
-                
-                // OTTIMIZZAZIONE GPU: Spawna fiamme SOLO se l'albero è vicino al giocatore (quindi visibile)
-                if (MathUtils.distanceSq({x: randomTree.x, y: randomTree.z}, this.player) < 1200*1200) {
-                    // Sparpaglia le fiamme organicamente in base alla scala della chioma
-                    let rx = randomTree.x + MathUtils.randomRange(-8, 8) * randomTree.scale;
-                    let rz = randomTree.z + MathUtils.randomRange(-8, 8) * randomTree.scale;
-                    let ry = randomTree.y + MathUtils.randomRange(-15, 5); // Altezza della chioma
+            // Troviamo gli alberi vicini al giocatore (nella view della camera)
+            let visibleTrees = this.map.treePositions.filter(t => MathUtils.distanceSq({x: t.x, y: t.z}, this.player) < 1200*1200);
+
+            // Capping dinamico per non fondere la CPU/GPU: elaboriamo max 3 alberi su mobile, 8 su PC
+            let maxTreesToProcess = isTouchDevice ? 3 : 8;
+            
+            for (let i = 0; i < Math.min(visibleTrees.length, maxTreesToProcess); i++) {
+                let tree = visibleTrees[Math.floor(Math.random() * visibleTrees.length)];
+
+                // 30% di probabilità per frame di emettere fuoco su quell'albero
+                if (Math.random() < 0.3) {
+                    // Il fuoco nasce alla base della chioma e sale
+                    let rx = tree.x + MathUtils.randomRange(-7, 7) * tree.scale;
+                    let rz = tree.z + MathUtils.randomRange(-7, 7) * tree.scale;
+                    let ry = tree.y * 0.4 + MathUtils.randomRange(0, 15); 
                     
-                    let p = this.getParticle();
-                    p.spawn(rx, ry, rz, SharedMat.spriteRed, 'flame');
-                    
-                    // 50% di probabilità di aggiungere una scintilla calda per dare tridimensionalità al fuoco
-                    if (Math.random() > 0.5) {
+                    // 1. Fiamma Base (Rossa, corposa, sale verso l'alto)
+                    let flame = this.getParticle();
+                    flame.spawn(rx, ry, rz, SharedMat.spriteRed, 'trail');
+                    flame.vy = MathUtils.randomRange(60, 120); // Spinta fisica dritta verso l'alto
+                    flame.vx = MathUtils.randomRange(-10, 10); // Oscillazione laterale minima
+                    flame.vz = MathUtils.randomRange(-10, 10);
+                    flame.baseSize = MathUtils.randomRange(20, 40);
+
+                    // 2. Nucleo Caldo (Scintilla Gialla, più piccola e veloce)
+                    if (Math.random() > 0.4) {
                         let spark = this.getParticle();
-                        spark.spawn(rx, ry, rz, SharedMat.spriteYellow, 'spark');
+                        spark.spawn(rx, ry, rz, SharedMat.spriteYellow, 'trail');
+                        spark.vy = MathUtils.randomRange(100, 180);
+                        spark.baseSize = MathUtils.randomRange(8, 15);
+                    }
+
+                    // 3. Fumo Nero (Sale lento ed espanso) - Disabilitato su opzioni "Perf." per risparmiare fill-rate
+                    if (Math.random() > 0.5 && !AppSettings.isLow) {
+                        let smoke = this.getParticle();
+                        smoke.spawn(rx, ry + 15, rz, SharedMat.spriteDust, 'trail');
+                        smoke.vy = MathUtils.randomRange(40, 80);
+                        smoke.baseSize = MathUtils.randomRange(30, 55);
                     }
                 }
             }
@@ -7575,18 +7594,25 @@ function clearScene() {
     for(let i=0, len=Game.extraLivesDrops.length; i<len; i++) { Game.extraLivesDrops[i].destroy(); }
     for(let i=0, len=Game.coinDrops.length; i<len; i++) { Game.coinDrops[i].destroy(); }
     
-   if(Game.player) {
-     // OTTIMIZZAZIONE 4: Pulizia profonda del Giocatore (Previene il leak dei materiali al riavvio)
-        Game.player.mesh.traverse((child) => {
-            // FIX VRAM: Aggiunto "|| child.isSprite" per non far leakare il glow della bacchetta!
-            if ((child.isMesh || child.isSprite) && child.material) {
-                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
-                else child.material.dispose();
-            }
-        });
+ if(Game.player) {
+        // OTTIMIZZAZIONE 4: Pulizia profonda del Giocatore (Previene il leak dei materiali al riavvio)
+        Game.player.mesh.traverse((child) => {
+            if ((child.isMesh || child.isSprite) && child.material) {
+                // I materiali del giocatore sono UNICI, non fanno parte del SharedMatSet.
+                // Dobbiamo distruggerli esplicitamente prima di abbandonare l'oggetto.
+                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                else child.material.dispose();
+            }
+            // Le geometrie del giocatore provengono dal SharedGeoSet, quindi NON le eliminiamo
+            // altrimenti il prossimo giocatore spawnerebbe invisibile.
+        });
         
         Game.scene.remove(Game.player.mesh);
         if(Game.player.shadowMesh) { 
+            // Distruggiamo anche il materiale della fake-shadow se è stato clonato
+            if (Game.player.shadowMesh.material && !SharedMatSet.has(Game.player.shadowMesh.material)) {
+                Game.player.shadowMesh.material.dispose();
+            }
             Game.player.shadowMesh.visible = false; 
             Game.scene.remove(Game.player.shadowMesh); 
         }

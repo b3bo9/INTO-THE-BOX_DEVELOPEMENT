@@ -4253,34 +4253,40 @@ class GameMap {
         const MapMaterialClass = THREE.MeshPhongMaterial;
         const alphaTex = GLOBAL_ALPHA_TEX; // OTTIMIZZAZIONE 3: Usa la mappa alpha in cache
 
-        const tintDirt = 0x705848;  // Più chiaro per riflettere meglio la luce del giocatore
-        const tintGrass = 0x446048; // Verde più vivace
-        const tintRock = 0x5c5c6e;  // Ardesia schiarita
-        const tintWall = 0x3a3a48;
+        // --- SISTEMA TEMI A COSTO ZERO (VRAM/CPU = 0) ---
+        // I temi ruotano in modo procedurale ogni piano (Piano 1=Tema 1, Piano 2=Tema 2, ecc.)
+        let themeIndex = (Game.floor - 1) % 3;
+        
+        // Definiamo le 3 Palette di Colore
+        const themes = [
+            { dirt: 0x705848, grass: 0x446048, rock: 0x5c5c6e, wall: 0x3a3a48, grassShader: 0x1a2b16 }, // Tema 1: Foresta (Classico)
+            { dirt: 0x4a2525, grass: 0x7a3030, rock: 0x402525, wall: 0x2a1515, grassShader: 0x3a1010 }, // Tema 2: Infernale / Vulcano
+            { dirt: 0x25354a, grass: 0x30607a, rock: 0x253040, wall: 0x15202a, grassShader: 0x10253a }  // Tema 3: Abissale / Caverna
+        ];
+        
+        let currentTheme = themes[themeIndex];
 
-// FIX MEMORY LEAK: Creiamo i materiali UNA SOLA VOLTA e li riutilizziamo per tutto il gioco
+        // 1. Creiamo i materiali vuoti UNA SOLA VOLTA per non intaccare la RAM
         if (!window.GLOBAL_MAP_MATS) {
             window.GLOBAL_MAP_MATS = {
-                dirt: new MapMaterialClass({ 
-                    map: texDirt, color: tintDirt, shininess: 5, roughness: 0.6,
-                    bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5 
-                }),
-                grass: new MapMaterialClass({ 
-                    map: texGrass, color: tintGrass, shininess: 2, roughness: 0.7,
-                    bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, 
-                    alphaMap: alphaTex, transparent: true, depthWrite: false 
-                }),
-                rock: new MapMaterialClass({ 
-                    map: texRock, color: tintRock, shininess: 40, roughness: 0.4, metalness: 0.3,
-                    bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, 
-                    alphaMap: alphaTex, transparent: true, depthWrite: false 
-                }),
-                wall: new MapMaterialClass({ 
-                    map: texWall, color: tintWall, shininess: 15, roughness: 0.5, metalness: 0.2,
-                    bumpMap: isHighQ ? texWall : null, bumpScale: 3.0 
-                })
+                dirt: new MapMaterialClass({ map: texDirt, shininess: 5, roughness: 0.6, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5 }),
+                grass: new MapMaterialClass({ map: texGrass, shininess: 2, roughness: 0.7, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, alphaMap: alphaTex, transparent: true, depthWrite: false }),
+                rock: new MapMaterialClass({ map: texRock, shininess: 40, roughness: 0.4, metalness: 0.3, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, alphaMap: alphaTex, transparent: true, depthWrite: false }),
+                wall: new MapMaterialClass({ map: texWall, shininess: 15, roughness: 0.5, metalness: 0.2, bumpMap: isHighQ ? texWall : null, bumpScale: 3.0 })
             };
         }
+
+        // 2. Coloriamo le texture dinamicamente in base al tema!
+        window.GLOBAL_MAP_MATS.dirt.color.setHex(currentTheme.dirt);
+        window.GLOBAL_MAP_MATS.grass.color.setHex(currentTheme.grass);
+        window.GLOBAL_MAP_MATS.rock.color.setHex(currentTheme.rock);
+        window.GLOBAL_MAP_MATS.wall.color.setHex(currentTheme.wall);
+        
+        // Aggiorniamo anche le ombre/radici dell'erba 3D reattiva
+        if (InteractiveGrassSystem.mat) {
+            InteractiveGrassSystem.mat.color.setHex(currentTheme.grassShader);
+        }
+        // --- FINE SISTEMA TEMI ---
         
         this.floorMat = window.GLOBAL_MAP_MATS.dirt; // Mantiene compatibilità col tuo codice grafico
         this.wallMat = window.GLOBAL_MAP_MATS.wall;

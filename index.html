@@ -3414,11 +3414,11 @@ Game.pursuerTimeout = setTimeout(() => {
             let cx = Math.floor(CHUNK_SIZE / 2) * TILE_SIZE + TILE_SIZE/2; let cy = Math.floor(CHUNK_SIZE / 2) * TILE_SIZE + TILE_SIZE/2;
             if(!this.player) { this.player = new Player(cx - TILE_SIZE*6, cy - TILE_SIZE*6); } 
             else { this.player.x = cx - TILE_SIZE*6; this.player.y = cy - TILE_SIZE*6; this.player.mesh.position.set(this.player.x, 0, this.player.y); Game.scene.add(this.player.mesh); }
-            // Sceglie a caso l'elemento per il boss di questo piano
-let bossElements = ['red', 'blue', 'green'];
-let chosenElement = bossElements[Math.floor(Math.random() * bossElements.length)];
-let boss = new BossEnemy(cx, cy, this.floor, chosenElement); 
-this.enemies.push(boss); this.enemyGrid.insert(boss);
+           // Sincronizza l'elemento del boss con il tema del piano (0: Foresta/Verde, 1: Lava/Rosso, 2: Ghiaccio/Blu)
+            let themeToElement = { 0: 'green', 1: 'red', 2: 'blue' };
+            let chosenElement = themeToElement[this.currentThemeIndex];
+            let boss = new BossEnemy(cx, cy, this.floor, chosenElement); 
+            this.enemies.push(boss); this.enemyGrid.insert(boss);
             AudioEngine.playBossMusic(); setTimeout(() => Game.getFloatingText().spawn(this.player.x, this.player.y, "ATTENZIONE: BOSS!", '#FF2244', 50, true), 100);
         } else {
             this.floorMaxKills = 20 + (this.floor * 8); 
@@ -3626,7 +3626,33 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
                 magicMat = Math.random() > 0.5 ? SharedMat.spriteWhite : SharedMat.spriteBlue;
             }
 
-            p.spawn(px, py, pz, magicMat, 'ambient');
+            pp.spawn(px, py, pz, magicMat, 'ambient');
+        }
+        
+        // --- NUOVO: ALBERI INFUOCATI (SOLO TEMA LAVA) ---
+        if (this.currentThemeIndex === 1 && this.map && this.map.treePositions && this.map.treePositions.length > 0) {
+            // Su mobile riduciamo il rateo per salvare GPU e batteria
+            if (Game.frameCount % (isTouchDevice ? 8 : 3) === 0) {
+                // Preleva a caso i dati di uno degli alberi del livello
+                let randomTree = this.map.treePositions[Math.floor(Math.random() * this.map.treePositions.length)];
+                
+                // OTTIMIZZAZIONE GPU: Spawna fiamme SOLO se l'albero è vicino al giocatore (quindi visibile)
+                if (MathUtils.distanceSq({x: randomTree.x, y: randomTree.z}, this.player) < 1200*1200) {
+                    // Sparpaglia le fiamme organicamente in base alla scala della chioma
+                    let rx = randomTree.x + MathUtils.randomRange(-8, 8) * randomTree.scale;
+                    let rz = randomTree.z + MathUtils.randomRange(-8, 8) * randomTree.scale;
+                    let ry = randomTree.y + MathUtils.randomRange(-15, 5); // Altezza della chioma
+                    
+                    let p = this.getParticle();
+                    p.spawn(rx, ry, rz, SharedMat.spriteRed, 'flame');
+                    
+                    // 50% di probabilità di aggiungere una scintilla calda per dare tridimensionalità al fuoco
+                    if (Math.random() > 0.5) {
+                        let spark = this.getParticle();
+                        spark.spawn(rx, ry, rz, SharedMat.spriteYellow, 'spark');
+                    }
+                }
+            }
         }
         // ----------------------------------------------------------------------
         let isLow = (this.player.stats.hp / this.player.stats.maxHp) < 0.30 && !this.player.dead;
@@ -4193,7 +4219,8 @@ class GameMap {
         this.floorMat = null; 
         this.wallMat = null;
         this.fogData = []; // <-- Array per la fisica della nebbia
-    }
+        this.treePositions = []; // <-- Array per il fuoco sui rami
+    }
     
   generate(isBossFloor = false) {
         InteractiveGrassSystem.init();
@@ -4390,10 +4417,14 @@ class GameMap {
                                 // 1. Piazziamo l'albero 3D
                                 dummy.position.set(tx, 0, tz); 
                                 let s = MathUtils.randomRange(2.0, 3.5);
-                                dummy.scale.set(s, s * MathUtils.randomRange(1.1, 1.5), s);
+                                let sy = s * MathUtils.randomRange(1.1, 1.5);
+                                dummy.scale.set(s, sy, s);
                                 dummy.rotation.set(0, Math.random() * Math.PI * 2, 0); 
                                 dummy.updateMatrix();
                                 meshTrees.setMatrixAt(idxTree, dummy.matrix);
+                                
+                                // Salva la posizione per l'effetto fuoco del tema Lava
+                                this.treePositions.push({ x: tx, y: sy * 20, z: tz, scale: s });
 
                                 // 2. Piazziamo l'Ombra Fake
                                 // La alziamo leggermente (0.3) per non compenetrare il terreno

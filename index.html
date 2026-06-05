@@ -3300,18 +3300,21 @@ prewarmShaders() {
       
 
     setupFloor() {
-       this.bossDefeatedTimer = 0; this.isBossFloor = (this.floor % 5 === 0);
+        this.bossDefeatedTimer = 0; this.isBossFloor = (this.floor % 5 === 0);
         this.floorEndTimer = 0; this.floorEndTriggered = false;
         this.floorProphets = 0; // CAP PROFETI: Inizializza il contatore
         this.enemyGrid = new SpatialHashGrid([[-1000, -1000], [CHUNK_SIZE*TILE_SIZE+1000, CHUNK_SIZE*TILE_SIZE+1000]], [200, 200]);
+        
+        // ---> FIX: ESTRAIAMO IL TEMA QUI, PRIMA DI GENERARE LA MAPPA <---
+        this.currentThemeIndex = Math.floor(Math.random() * MAP_THEMES.length);
+        
+        // Ora la mappa sa quale tema leggere!
         this.map = new GameMap(CHUNK_SIZE, CHUNK_SIZE); this.map.generate(this.isBossFloor);
         
         let floorColor = 0xffffff; let mutatorText = ""; let camDist = isTouchDevice ? 1000 : 750;
         
-       // Sceglie un tema casuale e lo salva globalmente per questo piano
-       this.currentThemeIndex = Math.floor(Math.random() * MAP_THEMES.length);
-       let currentTheme = MAP_THEMES[this.currentThemeIndex];
-
+        // Leggiamo il tema appena estratto per impostare luci e nebbia
+        let currentTheme = MAP_THEMES[this.currentThemeIndex];
         // Impostiamo nebbia, sfondo e luci in base al tema corrente!
         this.scene.background = new THREE.Color(currentTheme.fog); 
         this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 150, camDist + 500);

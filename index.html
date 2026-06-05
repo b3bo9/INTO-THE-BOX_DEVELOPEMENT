@@ -761,9 +761,19 @@ const AppSettings = {
             }
         }
         if (Game.bloomPass) { Game.bloomPass.strength = this.isUltraPC ? 1.1 : 0.8; Game.bloomPass.radius = this.isUltraPC ? 0.6 : 0.4; }
-        if (Game.map) {
-            if (Game.map.floorMat) { Game.map.floorMat.roughness = this.isUltraPC ? 0.65 : 0.9; Game.map.floorMat.metalness = this.isUltraPC ? 0.25 : 0.1; Game.map.floorMat.bumpScale = this.isUltraPC ? 3.0 : 1.5; Game.map.floorMat.needsUpdate = true; }
-            if (Game.map.wallMat) { Game.map.wallMat.roughness = this.isUltraPC ? 0.5 : 0.8; Game.map.wallMat.metalness = this.isUltraPC ? 0.5 : 0.3; Game.map.wallMat.bumpScale = this.isUltraPC ? 4.0 : 2.0; Game.map.wallMat.needsUpdate = true; }
+        if (window.GLOBAL_THEME_MATS) {
+            const variants = ['', '_lava', '_ice'];
+            window.GLOBAL_THEME_MATS.forEach((mats, i) => {
+                let v = variants[i];
+                mats.dirt.roughness = this.isUltraPC ? 0.65 : 0.9; mats.dirt.metalness = this.isUltraPC ? 0.25 : 0.1; mats.dirt.bumpScale = this.isUltraPC ? 3.0 : 1.5; mats.dirt.needsUpdate = true;
+                mats.wall.roughness = this.isUltraPC ? 0.5 : 0.8; mats.wall.metalness = this.isUltraPC ? 0.5 : 0.3; mats.wall.bumpScale = this.isUltraPC ? 4.0 : 2.0; mats.wall.needsUpdate = true;
+                
+                let useBump = this.isUltraPC || (!this.isLow && !isTouchDevice);
+                mats.dirt.bumpMap = useBump ? Preloader.textures['dirt' + v] : null;
+                mats.grass.bumpMap = useBump ? Preloader.textures['grass' + v] : null;
+                mats.rock.bumpMap = useBump ? Preloader.textures['rock' + v] : null;
+                mats.wall.bumpMap = useBump ? Preloader.textures['wall' + v] : null;
+            });
         }
         if(Game.scene) Game.scene.traverse(child => { if (child.material) child.material.needsUpdate = true; });
     },
@@ -4269,75 +4279,65 @@ class GameMap {
 
         // --- INIZIO GESTIONE MATERIALI OTTIMIZZATI ---
         const isHighQ = !AppSettings.isLow && !isTouchDevice; 
-        const wallTex = GLOBAL_WALL_TEX; // OTTIMIZZAZIONE 2: Usa la texture in cache
-        
-        const texDirt = Preloader.textures.dirt;
-        const texGrass = Preloader.textures.grass;
-        const texRock = Preloader.textures.rock;
-        const texWall = Preloader.textures.wall;
-        
-        const maxAnisotropy = Game.renderer.capabilities.getMaxAnisotropy();
-        if(texDirt) { 
-            texDirt.anisotropy = maxAnisotropy; 
-            texDirt.encoding = THREE.sRGBEncoding; // <--- AGGIUNTO
-        }
-        if(texGrass) { 
-            texGrass.anisotropy = maxAnisotropy; 
-            texGrass.encoding = THREE.sRGBEncoding; // <--- AGGIUNTO
-        }
-        if(texRock) { 
-            texRock.anisotropy = maxAnisotropy; 
-            texRock.encoding = THREE.sRGBEncoding; // <--- AGGIUNTO
-        }
-        if(texWall) {
-            texWall.anisotropy = maxAnisotropy;
-            texWall.encoding = THREE.sRGBEncoding; // <--- AGGIUNTO
-            texWall.wrapS = THREE.RepeatWrapping;
-            texWall.wrapT = THREE.RepeatWrapping;
-            texWall.repeat.set(1, 1.5);
-        }
-      const floorGeo = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE); floorGeo.rotateX(-Math.PI/2);
-        // FIX PERFORMANCE PC: Usiamo Phong ovunque. Colori più puri, zero calcoli PBR, frame rate raddoppiato.
         const MapMaterialClass = THREE.MeshPhongMaterial;
-        const alphaTex = GLOBAL_ALPHA_TEX; // OTTIMIZZAZIONE 3: Usa la mappa alpha in cache
+        const alphaTex = GLOBAL_ALPHA_TEX; 
+        const maxAnisotropy = Game.renderer.capabilities.getMaxAnisotropy();
 
-      // --- SISTEMA TEMI A COSTO ZERO (VRAM/CPU = 0) ---
-       // Legge il tema casuale generato da Game.setupFloor
-       let currentTheme = MAP_THEMES[Game.currentThemeIndex];
+        // 1. Creiamo i 3 SET DI MATERIALI una sola volta per non intaccare la RAM
+        if (!window.GLOBAL_THEME_MATS) {
+            window.GLOBAL_THEME_MATS = [];
+            const variants = ['', '_lava', '_ice']; // 0: Foresta, 1: Lava, 2: Ghiaccio
+            
+            for (let i = 0; i < 3; i++) {
+                let v = variants[i];
+                let tDirt = Preloader.textures['dirt' + v];
+                let tGrass = Preloader.textures['grass' + v];
+                let tRock = Preloader.textures['rock' + v];
+                let tWall = Preloader.textures['wall' + v];
+                
+                [tDirt, tGrass, tRock, tWall].forEach(t => {
+                    if (t) {
+                        t.anisotropy = maxAnisotropy;
+                        t.encoding = THREE.sRGBEncoding;
+                    }
+                });
+                if (tWall) {
+                    tWall.wrapS = THREE.RepeatWrapping;
+                    tWall.wrapT = THREE.RepeatWrapping;
+                    tWall.repeat.set(1, 1.5);
+                }
 
-        // 1. Creiamo i materiali vuoti UNA SOLA VOLTA per non intaccare la RAM
-        if (!window.GLOBAL_MAP_MATS) {
-            window.GLOBAL_MAP_MATS = {
-                dirt: new MapMaterialClass({ map: texDirt, shininess: 5, roughness: 0.6, bumpMap: isHighQ ? texDirt : null, bumpScale: 1.5 }),
-                grass: new MapMaterialClass({ map: texGrass, shininess: 2, roughness: 0.7, bumpMap: isHighQ ? texGrass : null, bumpScale: 2.0, alphaMap: alphaTex, transparent: true, depthWrite: false }),
-                rock: new MapMaterialClass({ map: texRock, shininess: 40, roughness: 0.4, metalness: 0.3, bumpMap: isHighQ ? texRock : null, bumpScale: 3.0, alphaMap: alphaTex, transparent: true, depthWrite: false }),
-                wall: new MapMaterialClass({ map: texWall, shininess: 15, roughness: 0.5, metalness: 0.2, bumpMap: isHighQ ? texWall : null, bumpScale: 3.0 })
-            };
+                window.GLOBAL_THEME_MATS[i] = {
+                    dirt: new MapMaterialClass({ map: tDirt, shininess: 5, roughness: 0.6, bumpMap: isHighQ ? tDirt : null, bumpScale: 1.5 }),
+                    grass: new MapMaterialClass({ map: tGrass, shininess: 2, roughness: 0.7, bumpMap: isHighQ ? tGrass : null, bumpScale: 2.0, alphaMap: alphaTex, transparent: true, depthWrite: false }),
+                    rock: new MapMaterialClass({ map: tRock, shininess: 40, roughness: 0.4, metalness: 0.3, bumpMap: isHighQ ? tRock : null, bumpScale: 3.0, alphaMap: alphaTex, transparent: true, depthWrite: false }),
+                    wall: new MapMaterialClass({ map: tWall, shininess: 15, roughness: 0.5, metalness: 0.2, bumpMap: isHighQ ? tWall : null, bumpScale: 3.0 })
+                };
+            }
         }
 
-        // 2. Coloriamo le texture dinamicamente in base al tema!
-        window.GLOBAL_MAP_MATS.dirt.color.setHex(currentTheme.dirt);
-        window.GLOBAL_MAP_MATS.grass.color.setHex(currentTheme.grass);
-        window.GLOBAL_MAP_MATS.rock.color.setHex(currentTheme.rock);
-        window.GLOBAL_MAP_MATS.wall.color.setHex(currentTheme.wall);
+        const floorGeo = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE); floorGeo.rotateX(-Math.PI/2);
+
+        // --- SISTEMA TEMI A COSTO ZERO (VRAM/CPU = 0) ---
+        let currentTheme = MAP_THEMES[Game.currentThemeIndex];
+        let activeMats = window.GLOBAL_THEME_MATS[Game.currentThemeIndex];
+
+        // Manteniamo la tinta base per amalgamare l'illuminazione col colore del tema
+        activeMats.dirt.color.setHex(currentTheme.dirt);
+        activeMats.grass.color.setHex(currentTheme.grass);
+        activeMats.rock.color.setHex(currentTheme.rock);
+        activeMats.wall.color.setHex(currentTheme.wall);
         
-        // 3. Tingiamo le chiome degli alberi per abbinarsi all'atmosfera
-        if (window.GLOBAL_TREE_MAT) {
-            window.GLOBAL_TREE_MAT.color.setHex(currentTheme.tree);
-        }
-        
-        // 4. Aggiorniamo le ombre/radici dell'erba 3D reattiva dello shader
-        if (InteractiveGrassSystem.mat) {
-            InteractiveGrassSystem.mat.color.setHex(currentTheme.grassShader);
-        }
+        if (window.GLOBAL_TREE_MAT) window.GLOBAL_TREE_MAT.color.setHex(currentTheme.tree);
+        if (InteractiveGrassSystem.mat) InteractiveGrassSystem.mat.color.setHex(currentTheme.grassShader);
         // --- FINE SISTEMA TEMI ---
         
-        this.floorMat = window.GLOBAL_MAP_MATS.dirt; // Mantiene compatibilità col tuo codice grafico
-        this.wallMat = window.GLOBAL_MAP_MATS.wall;
+        this.floorMat = activeMats.dirt; 
+        this.wallMat = activeMats.wall;
 
-        const meshDirt = new THREE.InstancedMesh(floorGeo, window.GLOBAL_MAP_MATS.dirt, floorCount);
-        const meshGrass = new THREE.InstancedMesh(floorGeo, window.GLOBAL_MAP_MATS.grass, floorCount);
-        const meshRock = new THREE.InstancedMesh(floorGeo, window.GLOBAL_MAP_MATS.rock, floorCount);
+        const meshDirt = new THREE.InstancedMesh(floorGeo, activeMats.dirt, floorCount);
+        const meshGrass = new THREE.InstancedMesh(floorGeo, activeMats.grass, floorCount);
+        const meshRock = new THREE.InstancedMesh(floorGeo, activeMats.rock, floorCount);
         meshDirt.renderOrder = -10; meshGrass.renderOrder = -9; meshRock.renderOrder = -8;
         
        if (!window.GLOBAL_WALL_GEO) {
@@ -7478,7 +7478,7 @@ function clearScene() {
                     child.material !== window.GLOBAL_TREE_MAT && 
                     child.material !== window.GLOBAL_BLOOD_MAT && 
                     child.material !== window.GLOBAL_FOG_MAT && 
-                    !Object.values(window.GLOBAL_MAP_MATS || {}).includes(child.material) && 
+                    !(window.GLOBAL_THEME_MATS && window.GLOBAL_THEME_MATS.some(mats => Object.values(mats).includes(child.material))) &&
                     !SharedMatSet.has(child.material)) {
                     if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
                     else child.material.dispose();
@@ -7678,13 +7678,12 @@ function hideHighScores() { AudioEngine.playClick(); document.getElementById('hi
 const Preloader = {
     manager: new THREE.LoadingManager(),
     textures: {}, 
-    init() {
+   init() {
         const loadingText = document.getElementById('loadingText');
         const loadingProgress = document.getElementById('loadingProgress');
         const startText = document.getElementById('startText');
         const initScreen = document.getElementById('initScreen');
 
-        // Funzione sicura per sbloccare il gioco
         const forceUnlock = () => {
             if (loadingText.classList.contains('hidden')) return;
             loadingText.classList.add('hidden');
@@ -7693,25 +7692,31 @@ const Preloader = {
         };
 
         this.manager.onProgress = (url, itemsLoaded, itemsTotal) => {
-            // Evita errori matematici (divisione per zero)
             if (itemsTotal > 0) loadingProgress.innerText = Math.floor((itemsLoaded / itemsTotal) * 100);
         };
 
         this.manager.onLoad = () => { forceUnlock(); };
         this.manager.onError = (url) => { console.warn("Manca file:", url); };
 
-        // FALLBACK DI SICUREZZA: Sblocca SEMPRE il gioco dopo 2 secondi, 
-        // anche se mancano file audio o texture.
         setTimeout(forceUnlock, 2000); 
 
         const texLoader = new THREE.TextureLoader(this.manager);
-        this.textures.dirt = texLoader.load('dirt.jpg');
-        this.textures.grass = texLoader.load('grass.jpg');
-        this.textures.rock = texLoader.load('rock.jpg');
-        this.textures.wall = texLoader.load('wall.jpg');
         this.textures.smoke = texLoader.load('smoke.png');
+        
+        // Carichiamo dinamicamente tutte le varianti
+        const variants = ['', '_lava', '_ice'];
+        variants.forEach(v => {
+            this.textures['dirt' + v] = texLoader.load('dirt' + v + '.jpg');
+            this.textures['grass' + v] = texLoader.load('grass' + v + '.jpg');
+            this.textures['rock' + v] = texLoader.load('rock' + v + '.jpg');
+            this.textures['wall' + v] = texLoader.load('wall' + v + '.jpg');
+        });
 
         const imagesToLoad = ['bg.png', 'bg_morte.png', 'bg_box.png', 'bg_piano.png', 'smoke.png'];
+        variants.forEach(v => {
+            imagesToLoad.push('dirt' + v + '.jpg', 'grass' + v + '.jpg', 'rock' + v + '.jpg', 'wall' + v + '.jpg');
+        });
+        
         RelicSystem.allRelics.forEach(r => { if(r.image) imagesToLoad.push(r.image); });
         imagesToLoad.forEach(src => { const img = new Image(); img.src = src; });
 

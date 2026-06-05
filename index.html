@@ -151,6 +151,16 @@
             filter: none !important; /* Spegne tutte le ombre complesse SVG e testi */
             text-shadow: 2px 2px 0px #000 !important; /* Rimpiazza con un'ombra piatta 2D leggerissima */
         }
+        /* --- OVERRIDE DALTONISMO UI --- */
+body.colorblind-mode .stack-dot.active.red { 
+    background: #FF00AA; border-color: #ffffff; box-shadow: 0 0 25px #FF00AA, inset 0 0 8px rgba(255,255,255,0.8); 
+}
+body.colorblind-mode .stack-dot.active.green { 
+    background: #FFFF00; border-color: #ffffff; box-shadow: 0 0 25px #FFFF00, inset 0 0 8px rgba(255,255,255,0.8); 
+}
+body.colorblind-mode #opt-colorblind-text {
+    color: #FF00AA !important; /* Colore più visibile nel menu opzioni */
+}
     </style>
 </head>
 <body class="text-white selection:bg-red-900">
@@ -761,13 +771,26 @@ const AppSettings = {
     toggleColorblind() {
         this.colorblind = !this.colorblind;
         if(this.colorblind) {
-            ESSENCE_COLORS = { 'red': 0xFF6600, 'blue': 0x00AADD, 'green': 0xFFFF00 }; 
+            // Aggiunge la classe al body per far cambiare i colori all'HUD CSS
+            document.body.classList.add('colorblind-mode');
+            // Nuova palette ad alto contrasto: Magenta, Ciano, Giallo
+            ESSENCE_COLORS = { 'red': 0xFF00AA, 'blue': 0x00AAFF, 'green': 0xFFFF00 }; 
         } else {
+            // Rimuove la classe e torna ai colori originali
+            document.body.classList.remove('colorblind-mode');
             ESSENCE_COLORS = { 'red': 0xFF1133, 'blue': 0x00AAFF, 'green': 0x33FF00 }; 
         }
+        
+        // 1. Aggiorna le particelle
         SharedMat.spriteRed.color.setHex(ESSENCE_COLORS.red);
         SharedMat.spriteBlue.color.setHex(ESSENCE_COLORS.blue);
         SharedMat.spriteGreen.color.setHex(ESSENCE_COLORS.green);
+        
+        // 2. Aggiorna i proiettili 3D
+        if (SharedMat.explosiveArrow) SharedMat.explosiveArrow.emissive.setHex(ESSENCE_COLORS.red);
+        if (SharedMat.chainLightning) SharedMat.chainLightning.emissive.setHex(ESSENCE_COLORS.blue);
+        if (SharedMat.homingArrow) SharedMat.homingArrow.emissive.setHex(ESSENCE_COLORS.green);
+        
         if(Game.player) Game.player.updateAppearance();
     }
 };

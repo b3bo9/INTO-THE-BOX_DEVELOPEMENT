@@ -5805,8 +5805,11 @@ Game.scene.add(this.telegraphMesh);
         
         this.aggroRangeSq = this.aggroRange * this.aggroRange; this.attackRangeSq = this.attackRange * this.attackRange;
         
-       // Pulizia profonda (VRAM Leak Fix OTTIMIZZATO)
-        if (this.currentType !== type || this.wasElite !== this.isElite) {
+      // --- IL VERO OBJECT POOLING: CREAZIONE VS RIUTILIZZO ---
+        
+        // Se il tipo di nemico è DIVERSO da quello salvato in questo slot, 
+        // ALLORA E SOLO ALLORA distruggiamo e ricostruiamo la geometria.
+        if (this.currentType !== type) {
             this.mesh.traverse((child) => {
                 if (child.isMesh || child.isSprite) {
                     if (child.material && !SharedMatSet.has(child.material)) {
@@ -5826,28 +5829,56 @@ Game.scene.add(this.telegraphMesh);
                 new EnemyMatClass({color: 0x000000, emissive: color}) : 
                 new EnemyMatClass({ color: color, shininess: AppSettings.isUltraPC ? 60 : 30 });
                 
-            if (this.isGolden) { this.mat.emissive.setHex(0xffaa00); this.mat.emissiveIntensity = 2.0; } 
-            else if (this.isElite) { this.mat.emissive.setHex(0x440000); }
-            
-            if (type === 'slime' || type === 'slime_mini') {
-                this.mat.emissive.setHex(color); this.mat.emissiveIntensity = 0.35; this.mat.transparent = true; this.mat.opacity = 0.90; 
-            }
-
+            // ATTENZIONE: Costruiamo SEMPRE il modello base (non elite)
             let modelData = ModelFactory.buildEnemy(type, size, this.mat);
             this.mesh.add(modelData.group); 
             this.modelParts = modelData.parts;
             this.currentType = type;
-            this.wasElite = this.isElite; 
-            this.wasGolden = this.isGolden; 
 
             this.flashMats = [];
             if (type !== 'crystal') { this.mesh.traverse(c => { if(c.isMesh && c.material === this.mat) this.flashMats.push(c.material); }); }
-        } else {
-            if (this.type === 'crystal') { this.mat.emissive.setHex(color); this.mat.emissiveIntensity = 1.0; } 
-            else if (this.isGolden) { this.mat.color.setHex(0xffd700); this.mat.emissive.setHex(0xffaa00); this.mat.emissiveIntensity = 2.0; } 
-            else if (this.isElite) { this.mat.color.setHex(color); this.mat.emissive.setHex(0x440000); this.mat.emissiveIntensity = 1.0; } 
-            else { this.mat.color.setHex(color); this.mat.emissive.setHex(0x000000); this.mat.emissiveIntensity = 1.0; }
-            if (this.modelParts && this.modelParts.armL) { this.modelParts.armL.rotation.x = 0; this.modelParts.armR.rotation.x = 0; }
+        } 
+
+        // --- AGGIORNAMENTO DINAMICO A COSTO ZERO ---
+        // Che il modello sia stato appena creato o riutilizzato, aggiorniamo i suoi colori e dimensioni:
+        
+        // 1. Scala Dinamica
+        let visualScale = this.isElite ? 1.5 : 1.0;
+        this.mesh.scale.setScalar(visualScale);
+        
+        // 2. Colori e Glow Dinamici
+        if (this.type === 'crystal') { 
+            this.mat.emissive.setHex(color); 
+            this.mat.emissiveIntensity = 1.0; 
+        } 
+        else if (this.isGolden) { 
+            this.mat.color.setHex(0xffd700); 
+            this.mat.emissive.setHex(0xffaa00); 
+            this.mat.emissiveIntensity = 2.0; 
+        } 
+        else if (this.isElite) { 
+            this.mat.color.setHex(color); 
+            this.mat.emissive.setHex(0x440000); 
+            this.mat.emissiveIntensity = 1.0; 
+        } 
+        else { 
+            this.mat.color.setHex(color); 
+            this.mat.emissive.setHex(0x000000); 
+            this.mat.emissiveIntensity = 0.0; 
+        }
+
+        // Resetta le braccia se necessario
+        if (this.modelParts && this.modelParts.armL) { 
+            this.modelParts.armL.rotation.x = 0; 
+            this.modelParts.armR.rotation.x = 0; 
+        }
+        
+        // Applica le opacità corrette per gli Slime
+        if (type === 'slime' || type === 'slime_mini') {
+            this.mat.emissive.setHex(color); 
+            this.mat.emissiveIntensity = 0.35; 
+            this.mat.transparent = true; 
+            this.mat.opacity = 0.90; 
         }
 
         this.mesh.position.set(x, 0, y); 

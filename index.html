@@ -3725,6 +3725,7 @@ this.enemies.push(boss); this.enemyGrid.insert(boss);
                     }
                     window.prepareFloorScreen();
                     document.getElementById('floorScreen').classList.remove('hidden');
+                    ShopSystem.updateUI();
                     AudioEngine.stopGameMusic();
                     AudioEngine.playLevelCompleteMusic();
                 }
@@ -4671,7 +4672,7 @@ class Player extends Entity {
             passiveUltCharge: false, noHealDrops: false, noMaxHpLevelUp: false, bloodthirst: false, bloodthirstCount: 0, flowMastery: false,
             timeSinceLastHit: 0, explosiveShield: false, shieldDurationAdd: 0, dashCritsEnabled: false, dashCritsStacks: 0, dashLightning: false,
           // NUOVI TRATTI RELIQUIE E SHOP
-            critGold: false, lowHpAtkSpeed: false, dashInvul: false, regen: 0, openerDmg: false, miserPact: false, dashSpeedBuff: false, dashResist: false,
+           critGold: false, lowHpAtkSpeed: false, dashInvul: false, outOfCombatRegen: false, essenceSpeedStacks: false, levelUpNova: false, openerDmg: false, miserPact: false, dashSpeedBuff: false, dashResist: false,
             seismicShield: false, ultDurationPerKill: false, ultKillCount: 0, twinKinetic: false
         };
         
@@ -4725,6 +4726,7 @@ class Player extends Entity {
         if (this.modifiers.essenceSpeedStacks) {
             if (this.essenceSpeedBonus === undefined) this.essenceSpeedBonus = 0;
             this.essenceSpeedBonus = Math.min(0.20, this.essenceSpeedBonus + 0.05); // Max 20%
+            Game.getParticle().spawn(this.x, 2, this.y, SharedMat.spriteWhite, 'dust');
         }
 
         this.essenceList.push(type); this.essence = type;
@@ -4899,7 +4901,7 @@ class Player extends Entity {
             comboStep: 1, comboDecayAdd: 0, comboDecayRate: 1.0, keepEssenceOnCombo: false, pickupRadiusMult: 1.0,
             passiveUltCharge: false, noHealDrops: false, noMaxHpLevelUp: false, bloodthirst: false, bloodthirstCount: oldBlood, flowMastery: false,
             timeSinceLastHit: 0, explosiveShield: false, shieldDurationAdd: 0, dashCritsEnabled: false, dashCritsStacks: 0, dashLightning: false,
-            critGold: false, lowHpAtkSpeed: false, dashInvul: false, regen: 0, openerDmg: false, miserPact: false, dashSpeedBuff: false, dashResist: false,
+            critGold: false, lowHpAtkSpeed: false, dashInvul: false, outOfCombatRegen: false, essenceSpeedStacks: false, levelUpNova: false, openerDmg: false, miserPact: false, dashSpeedBuff: false, dashResist: false,
             seismicShield: false, ultDurationPerKill: false, ultKillCount: oldUlt, twinKinetic: false
         };
         
@@ -5620,7 +5622,7 @@ if (this.modifiers.flowMastery && !wasDead) {
             // NUOVO: Trigger Onda d'urto Apprendimento Rapido
             if (this.modifiers.levelUpNova) {
                 // Sfrutta l'hazard esistente: fa poco danno (10% del maxDmg) ma respinge molto i nemici
-                Game.getHazard().spawn(this.x, this.y, 250, 0.5, this.stats.maxDmg * 0.1, 0x00DDFF, 'nova_ring');
+                Game.getHazard().spawn(this.x, this.y, 250, 0.5, this.stats.maxDmg * 0.1, 0xffd700, 'nova_ring');
                 Game.addTrauma(1.0);
             }
         }
@@ -7792,12 +7794,6 @@ window.nextFloor = function(corrupted = false) {
     ShopSystem.updateUI();
 };
 
-// Aggiorna i coin la prima volta che muori o passi piano
-setInterval(() => {
-    if(document.getElementById('floorScreen') && !document.getElementById('floorScreen').classList.contains('hidden')) {
-        ShopSystem.updateUI();
-    }
-}, 500);
     const DifficultySettings = {
     levels: [
         { val: 0.6, label: "🟢 NORMALE" },

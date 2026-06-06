@@ -7789,7 +7789,12 @@ const Preloader = {
 
     updateUI() {
         if(!document.getElementById('shop-coins')) return;
+        
+        // Aggiorna il testo dentro il negozio
         document.getElementById('shop-coins').innerText = Game.coins;
+        
+        // ---> AGGIUNGI QUESTA RIGA: Sincronizza anche l'HUD in alto a sinistra! <---
+        if (UI.els.coins) UI.els.coins.innerText = Game.coins;
 
         // Vitalità
         let currentHpMax = Game.player ? Game.player.stats.maxHp : 100;

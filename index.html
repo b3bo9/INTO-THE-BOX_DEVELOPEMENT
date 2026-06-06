@@ -2452,7 +2452,11 @@ class SpatialHashGrid {
     }
     
     findNearby(client, radius) {
-        this._tempResults.length = 0; this._seen.clear();
+        this._tempResults.length = 0; 
+        // OTTIMIZZAZIONE ESTREMA: Via il Set! Usiamo un ID di ricerca incrementale.
+        // Zero allocazioni di memoria, operazione istantanea (O(1)).
+        this._searchId = (this._searchId || 0) + 1;
+        
         if (!this._searchProxy) this._searchProxy = {x: 0, y: 0, radius: 0};
         this._searchProxy.x = client.x; 
         this._searchProxy.y = client.y; 
@@ -2462,11 +2466,10 @@ class SpatialHashGrid {
         for(let i=0; i<this._tempKeys.length; i++) {
             let cell = this.cells.get(this._tempKeys[i]);
             if (cell) { 
-                // FIX: Ciclo For classico, ZERO spazzatura generata nella RAM!
                 for (let j = 0; j < cell.length; j++) { 
                     let other = cell[j];
-                    if (client !== other && !this._seen.has(other.id)) { 
-                        this._seen.add(other.id); 
+                    if (client !== other && other._lastSearchId !== this._searchId) { 
+                        other._lastSearchId = this._searchId; 
                         this._tempResults.push(other); 
                     } 
                 } 
@@ -2633,11 +2636,27 @@ const UI = {
         this.els.bloodVignette = document.getElementById('blood-vignette');
     },
     update() {
-        if (!Game.player) return;
-        let hpPct = (Game.player.stats.hp / Game.player.stats.maxHp) * 100; let hpText = `${Math.floor(Game.player.stats.hp)}/${Math.floor(Game.player.stats.maxHp)}`;
-        if (this.cache.hpPct !== hpPct) { this.els.hpFill.style.width = `${hpPct}%`; this.cache.hpPct = hpPct; }
-        if (this.cache.hpText !== hpText) { this.els.hpText.innerText = hpText; this.cache.hpText = hpText; }
-       if (this.cache.lives !== Game.lives) { 
+        update() {
+        if (!Game.player) return;
+        
+        // OTTIMIZZAZIONE DOM: Creiamo la stringa solo se i valori interni sono EFFETTIVAMENTE cambiati.
+        // Impedisce di allocare in RAM 60 stringhe identiche al secondo.
+        let currentHp = Math.floor(Game.player.stats.hp);
+        let maxHp = Math.floor(Game.player.stats.maxHp);
+        
+        if (this.cache.currHp !== currentHp || this.cache.maxHp !== maxHp) {
+            this.els.hpText.innerText = `${currentHp}/${maxHp}`;
+            this.cache.currHp = currentHp;
+            this.cache.maxHp = maxHp;
+        }
+
+        let hpPct = (Game.player.stats.hp / Game.player.stats.maxHp) * 100;
+        if (this.cache.hpPct !== hpPct) { 
+            this.els.hpFill.style.width = `${hpPct}%`; 
+            this.cache.hpPct = hpPct; 
+        }
+
+       if (this.cache.lives !== Game.lives) {
             let hearts = '';
             for(let i = 0; i < Math.max(0, Game.lives); i++) {
                 hearts += '<i class="fa-solid fa-heart text-red-500 drop-shadow-[0_0_5px_rgba(220,38,38,0.9)] transition-all"></i>';
@@ -3878,24 +3897,25 @@ prewarmShaders() {
         UI.update();
     },
     
+   // OTTIMIZZAZIONE GC: Metodo spostato fuori dal loop di Draw per non allocare memoria
+    toScreenPosition(x, y, z) {
+        this._vec3Screen.set(x, y, z); this._vec3Screen.project(this.camera);
+        this._vec3Screen.x = (this._vec3Screen.x * 0.5 + 0.5) * this.width; 
+        this._vec3Screen.y = -(this._vec3Screen.y * 0.5 - 0.5) * this.height;
+        return this._vec3Screen;
+    },
+
     draw() {
         if(!this.scene || !this.uiCtx) return;
         
         if (!AppSettings.isLow && !isTouchDevice && this.composer) {
-            this.composer.render();
-        } else {
-            this.renderer.render(this.scene, this.camera); 
-        }
+            this.composer.render();
+        } else {
+            this.renderer.render(this.scene, this.camera); 
+        }
         
         this.uiCtx.clearRect(0, 0, this.width, this.height);
-        
-        const toScreenPosition = (x, y, z) => {
-            Game._vec3Screen.set(x, y, z); Game._vec3Screen.project(this.camera);
-            Game._vec3Screen.x = (Game._vec3Screen.x * 0.5 + 0.5) * this.width; Game._vec3Screen.y = -(Game._vec3Screen.y * 0.5 - 0.5) * this.height;
-            return Game._vec3Screen;
-        };
-        
-       this._hpBarCount = 0;
+        this._hpBarCount = 0;
         for(let i=0, len=this.enemies.length; i<len; i++) {
             let e = this.enemies[i];
             // Culling estremo: disegna l'HP solo se è ferito, non è un cristallo e non è lontanissimo

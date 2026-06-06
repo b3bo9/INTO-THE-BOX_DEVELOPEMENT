@@ -3226,10 +3226,14 @@ prewarmShaders() {
             this.scene.background.lerp(new THREE.Color(0x050000), dt * 0.4);
             this.scene.fog.color.lerp(new THREE.Color(0x050000), dt * 0.4);
         }
-       // Transizione Arena Boss (Costo CPU zero, usa interpolazioni lineari stabili)
-    
+        
+        // --- QUESTE SONO LE DUE RIGHE CHE MANCAVANO ---
+        // Applica le coordinate calcolate e le vibrazioni (shake) alla telecamera
+        this.camera.position.set(camX + shakeX, camY + shakeY, camZ + shakeZ);
+        this.camera.lookAt(this.player.x + shakeX, 0, this.player.y + shakeZ);
     },
-   updateMouseWorld() {
+    
+    updateMouseWorld() {
         if (isTouchDevice) return; // STOP! Niente calcoli a matrice su smartphone, mira col joystick!
         this._vec2.set((this.mouse.x / this.width) * 2 - 1, -(this.mouse.y / this.height) * 2 + 1);
         this.raycaster.setFromCamera(this._vec2, this.camera); this.raycaster.ray.intersectPlane(this._plane, this._vec3);

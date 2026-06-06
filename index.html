@@ -3358,13 +3358,13 @@ prewarmShaders() {
             this.ambientLight.color.setHex(currentTheme.ambient); 
         }
         this.difficultyMult = this.baseDifficultyMult;
-        if (this.isCorrupted && !this.isBossFloor) {
+        
+        if (this.isCorrupted && !this.isBossFloor) {
             this.difficultyMult *= 1.25; // Aumenta globalmente la difficoltà
-           if (this.corruptedType === 'darkness') { 
+            if (this.corruptedType === 'darkness') { 
                 mutatorText = "OSCURITÀ OPPRIMENTE"; floorColor = "#aa00ff"; 
                 this.scene.fog.color.setHex(0x000000); 
                 // FIX: Allontaniamo l'inizio della nebbia per compensare l'angolo della telecamera.
-                // In questo modo il personaggio e la sua testa sono nel centro perfetto della zona pulita.
                 this.scene.fog.near = camDist - 50; 
                 this.scene.fog.far = camDist + 350; 
                 this.scene.background.setHex(0x000000);
@@ -3372,16 +3372,14 @@ prewarmShaders() {
             }
             else if (this.corruptedType === 'acid_pools') { mutatorText = "POZZE CORROSIVE"; floorColor = "#99ff00"; }
             else if (this.corruptedType === 'unstable') { mutatorText = "PAVIMENTO INSTABILE"; floorColor = "#ff3300"; this.standStillTimer = 0; }
-           else if (this.corruptedType === 'volatile') { mutatorText = "ESSENZE VOLATILI"; floorColor = "#33ff00"; }
+            else if (this.corruptedType === 'volatile') { mutatorText = "ESSENZE VOLATILI"; floorColor = "#33ff00"; }
             else if (this.corruptedType === 'retaliation') { mutatorText = "RAPPRESAGLIA"; floorColor = "#ff00ff"; }
             else if (this.corruptedType === 'pursuer') {
                 mutatorText = "INSEGUITORE IMPLACABILE"; floorColor = "#aa00ff"; 
                 // Evoca un Golem fantasma lontano dal giocatore
-Game.pursuerTimeout = setTimeout(() => {
+                Game.pursuerTimeout = setTimeout(() => {
                     if (this.state !== 'PLAYING') return;
 
-                    // FIX: Troviamo un punto di spawn VALIDO e lontano sulla griglia, 
-                    // invece di sommare brutalmente +800 finendo fuori dalla mappa
                     let pos = this.map.getRandomFloorTile(); 
                     let attempts = 0;
                     while(MathUtils.distance({x: pos.x*TILE_SIZE, y: pos.y*TILE_SIZE}, this.player) < TILE_SIZE * 15 && attempts < 50) { 
@@ -3389,15 +3387,14 @@ Game.pursuerTimeout = setTimeout(() => {
                         attempts++; 
                     }
 
-                  let pursuer = this.getEnemy();
-                    if (pursuer) { // <-- FIX CRITICO: Evita crash se generato mentre il pool è pieno
+                    let pursuer = this.getEnemy();
+                    if (pursuer) {
                         pursuer.spawn(pos.x * TILE_SIZE + TILE_SIZE/2, pos.y * TILE_SIZE + TILE_SIZE/2, 'golem', this.floor);
                         pursuer.isPursuer = true;
-                        // FIX NEMESI: Aumento drastico della velocità (da 1.5x a 4.0x) per renderlo un vero predatore. 
-                        // Essendo il Golem molto lento di base, così raggiungerà quasi la velocità di corsa del giocatore.
+                        // FIX NEMESI: Aumento drastico della velocità
                         pursuer.baseSpeed = pursuer.baseSpeed * 4.0; 
                         pursuer.speed = pursuer.baseSpeed; 
-                        pursuer.aggroRange = 9999; pursuer.aggroRangeSq = 9999 * 9999; // Vede il giocatore ovunque
+                        pursuer.aggroRange = 9999; pursuer.aggroRangeSq = 9999 * 9999; 
                 
                         // Crea ed aggancia gli occhi rossi fisici
                         let eyeGeo = new THREE.BoxGeometry(4, 4, 4);
@@ -3408,29 +3405,28 @@ Game.pursuerTimeout = setTimeout(() => {
                         pursuer.mesh.add(eyeR);
 
                         pursuer.mesh.traverse(c => { 
-                                if (c.isMesh && c.material && c !== eyeL && c !== eyeR) {
-                                    // Clona per non intaccare i golem standard!
-                                    c.material = c.material.clone();
-                                    c.material.transparent = false; 
-                                    c.material.opacity = 1.0; 
-                                    c.material.color.setHex(0x000000); // Corpo oscurità pura
-                                    if (c.material.emissive) {
-                                        c.material.emissive.setHex(0xaa0000); // Glow rosso infernale
-                                        c.material.emissiveIntensity = 2.0;
-                                    }
-                                } else if (c.isSprite && c.material) {
-                                    c.material = c.material.clone();
-                                    c.material.color.setHex(0xff0000); // Aura dello scudo rossa
+                            if (c.isMesh && c.material && c !== eyeL && c !== eyeR) {
+                                c.material = c.material.clone();
+                                c.material.transparent = false; 
+                                c.material.opacity = 1.0; 
+                                c.material.color.setHex(0x000000); 
+                                if (c.material.emissive) {
+                                    c.material.emissive.setHex(0xaa0000); 
+                                    c.material.emissiveIntensity = 2.0;
                                 }
-                            });
-                            
-                            this.enemies.push(pursuer);
-                            this.enemyGrid.insert(pursuer);
-                        }        
-                    }, 1500); // Chiude il setTimeout
-                } // Chiude else if (this.corruptedType === 'pursuer')
-            } // <---- ECCO LA PARENTESI MANCANTE! Chiude il grande if(this.isCorrupted && !this.isBossFloor)
-            
+                            } else if (c.isSprite && c.material) {
+                                c.material = c.material.clone();
+                                c.material.color.setHex(0xff0000); 
+                            }
+                        });
+                        
+                        this.enemies.push(pursuer);
+                        this.enemyGrid.insert(pursuer);
+                    }        
+                }, 1500); 
+            }
+        }
+        
         if (this.player && this.player.modifiers.shieldActive) this.player.modifiers.autoShieldTimer = 0;
         
         if (this.isBossFloor) {
@@ -3438,7 +3434,7 @@ Game.pursuerTimeout = setTimeout(() => {
             let cx = Math.floor(CHUNK_SIZE / 2) * TILE_SIZE + TILE_SIZE/2; let cy = Math.floor(CHUNK_SIZE / 2) * TILE_SIZE + TILE_SIZE/2;
             if(!this.player) { this.player = new Player(cx - TILE_SIZE*6, cy - TILE_SIZE*6); } 
             else { this.player.x = cx - TILE_SIZE*6; this.player.y = cy - TILE_SIZE*6; this.player.mesh.position.set(this.player.x, 0, this.player.y); Game.scene.add(this.player.mesh); }
-           // Sincronizza l'elemento del boss con il tema del piano (0: Foresta/Verde, 1: Lava/Rosso, 2: Ghiaccio/Blu)
+            // Sincronizza l'elemento del boss con il tema del piano (0: Foresta/Verde, 1: Lava/Rosso, 2: Ghiaccio/Blu)
             let themeToElement = { 0: 'green', 1: 'red', 2: 'blue' };
             let chosenElement = themeToElement[this.currentThemeIndex];
             let boss = new BossEnemy(cx, cy, this.floor, chosenElement); 

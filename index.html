@@ -5467,7 +5467,7 @@ class Player extends Entity {
         // -----------------------------------------------------------------
     
    } 
-  flamethrower(dt) {
+  flamethrower(dt) 
         if (Game.frameCount % (isTouchDevice ? 2 : 1) === 0) {
             // Aumentiamo leggermente il numero di particelle per dare volume al fuoco
             let pCount = AppSettings.isLow ? 2 : (isTouchDevice ? 4 : (AppSettings.isUltraPC ? 12 : 6));

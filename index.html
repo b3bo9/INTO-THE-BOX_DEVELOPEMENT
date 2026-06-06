@@ -3370,42 +3370,43 @@ Game.pursuerTimeout = setTimeout(() => {
                         attempts++; 
                     }
 
-                   let pursuer = this.getEnemy();
-                    pursuer.spawn(pos.x * TILE_SIZE + TILE_SIZE/2, pos.y * TILE_SIZE + TILE_SIZE/2, 'golem', this.floor);
-                    pursuer.isPursuer = true;
-                    // FIX NEMESI: Aumento drastico della velocità (da 1.5x a 4.0x) per renderlo un vero predatore. 
-                    // Essendo il Golem molto lento di base, così raggiungerà quasi la velocità di corsa del giocatore.
-                    pursuer.baseSpeed = pursuer.baseSpeed * 4.0; 
-                    pursuer.speed = pursuer.baseSpeed; 
-                    pursuer.aggroRange = 9999; pursuer.aggroRangeSq = 9999 * 9999; // Vede il giocatore ovunque
-            
-            // Crea ed aggancia gli occhi rossi fisici
-            let eyeGeo = new THREE.BoxGeometry(4, 4, 4);
-            let eyeMat = new THREE.MeshBasicMaterial({color: 0xff0000});
-            let eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-6, 56, 10);
-            let eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(6, 56, 10);
-            pursuer.mesh.add(eyeL);
-            pursuer.mesh.add(eyeR);
+                  let pursuer = this.getEnemy();
+                    if (pursuer) { // <-- FIX CRITICO: Evita crash se generato mentre il pool è pieno
+                        pursuer.spawn(pos.x * TILE_SIZE + TILE_SIZE/2, pos.y * TILE_SIZE + TILE_SIZE/2, 'golem', this.floor);
+                        pursuer.isPursuer = true;
+                        // FIX NEMESI: Aumento drastico della velocità (da 1.5x a 4.0x) per renderlo un vero predatore. 
+                        // Essendo il Golem molto lento di base, così raggiungerà quasi la velocità di corsa del giocatore.
+                        pursuer.baseSpeed = pursuer.baseSpeed * 4.0; 
+                        pursuer.speed = pursuer.baseSpeed; 
+                        pursuer.aggroRange = 9999; pursuer.aggroRangeSq = 9999 * 9999; // Vede il giocatore ovunque
+                
+                        // Crea ed aggancia gli occhi rossi fisici
+                        let eyeGeo = new THREE.BoxGeometry(4, 4, 4);
+                        let eyeMat = new THREE.MeshBasicMaterial({color: 0xff0000});
+                        let eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-6, 56, 10);
+                        let eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(6, 56, 10);
+                        pursuer.mesh.add(eyeL);
+                        pursuer.mesh.add(eyeR);
 
-            pursuer.mesh.traverse(c => { 
-                if (c.isMesh && c.material && c !== eyeL && c !== eyeR) {
-                    // Clona per non intaccare i golem standard!
-                    c.material = c.material.clone();
-                    c.material.transparent = false; 
-                    c.material.opacity = 1.0; 
-                    c.material.color.setHex(0x000000); // Corpo oscurità pura
-                    if (c.material.emissive) {
-                        c.material.emissive.setHex(0xaa0000); // Glow rosso infernale
-                        c.material.emissiveIntensity = 2.0;
-                    }
-                } else if (c.isSprite && c.material) {
-                    c.material = c.material.clone();
-                    c.material.color.setHex(0xff0000); // Aura dello scudo rossa
-                }
-            });
-            
-            this.enemies.push(pursuer); this.enemyGrid.insert(pursuer);
-                }, 1500);
+                        pursuer.mesh.traverse(c => { 
+                            if (c.isMesh && c.material && c !== eyeL && c !== eyeR) {
+                                // Clona per non intaccare i golem standard!
+                                c.material = c.material.clone();
+                                c.material.transparent = false; 
+                                c.material.opacity = 1.0; 
+                                c.material.color.setHex(0x000000); // Corpo oscurità pura
+                                if (c.material.emissive) {
+                                    c.material.emissive.setHex(0xaa0000); // Glow rosso infernale
+                                    c.material.emissiveIntensity = 2.0;
+                                }
+                            } else if (c.isSprite && c.material) {
+                                c.material = c.material.clone();
+                                c.material.color.setHex(0xff0000); // Aura dello scudo rossa
+                            }
+                        });
+                        
+                        this.enemies.push(pursuer); this.enemyGrid.insert(pursuer);
+                    }, 1500);
             }
         }
        if (this.player && this.player.modifiers.shieldActive) this.player.modifiers.autoShieldTimer = 0;
@@ -6507,21 +6508,22 @@ Game.scene.add(this.telegraphMesh);
             Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spritePink, 'nova');
             AudioEngine.playShoot('flame');
 
-            // 2. Solo lo Slime GRANDE si divide in due piccoli
+         // 2. Solo lo Slime GRANDE si divide in due piccoli
             if (this.type === 'slime') {
                 for (let i = 0; i < 2; i++) {
                     let sx = this.x + MathUtils.randomRange(-20, 20);
                     let sy = this.y + MathUtils.randomRange(-20, 20);
                     if (!Game.map.isSolid(sx, sy)) {
                         let mini = Game.getEnemy();
-                        mini.spawn(sx, sy, 'slime_mini', this.level);
-                        Game.enemies.push(mini); 
-                        Game.enemyGrid.insert(mini);
-                        Game.floorMaxKills++; // Aggiunge le kill extra necessarie per il portale
+                        if (mini) { // <-- FIX CRITICO: Evita il crash se la memoria nemici è piena
+                            mini.spawn(sx, sy, 'slime_mini', this.level);
+                            Game.enemies.push(mini); 
+                            Game.enemyGrid.insert(mini);
+                            Game.floorMaxKills++; // Aggiunge le kill extra necessarie per il portale
+                        }
                     }
                 }
             }
-        }
         
         // --- INIZIO EFFETTI "JUICY" ---
         // 1. Micro screen-shake ad ogni uccisione
@@ -6784,19 +6786,20 @@ class BossEnemy extends Enemy {
                     sy = this.y + Math.sin(angle) * (spawnRadius * 0.5);
                 }
 
-                let prophet = Game.getEnemy();
-                prophet.spawn(sx, sy, 'dark_prophet', this.level);
-                
-                // Forziamo brutalmente i profeti ad agganciarsi immediatamente al Boss
-                prophet.buffTargets.push(this);
-                this.isProphetBuffed = true; // Attiva l'immunità del boss al 95%
+               let prophet = Game.getEnemy();
+                if (prophet) { // <-- FIX CRITICO: Previene il crash se il pool è esaurito
+                    prophet.spawn(sx, sy, 'dark_prophet', this.level);
+                    
+                    // Forziamo brutalmente i profeti ad agganciarsi immediatamente al Boss
+                    prophet.buffTargets.push(this);
+                    this.isProphetBuffed = true; // Attiva l'immunità del boss al 95%
 
-                Game.enemies.push(prophet); 
-                Game.enemyGrid.insert(prophet);
-                Game.floorMaxKills++; 
-                
-                Game.getParticle().spawn(sx, 20, sy, SharedMat.spriteRed, 'nova');
-            }
+                    Game.enemies.push(prophet); 
+                    Game.enemyGrid.insert(prophet);
+                    Game.floorMaxKills++; 
+                    
+                    Game.getParticle().spawn(sx, 20, sy, SharedMat.spriteRed, 'nova');
+                }
             Game.getFloatingText().spawn(this.x, this.y + 40, "RITUALE OSCURO!", '#ff5500', 40, true);
             // -------------------------------------------------------------
         }

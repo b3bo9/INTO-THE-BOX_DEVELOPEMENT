@@ -3408,29 +3408,31 @@ Game.pursuerTimeout = setTimeout(() => {
                         pursuer.mesh.add(eyeR);
 
                         pursuer.mesh.traverse(c => { 
-                            if (c.isMesh && c.material && c !== eyeL && c !== eyeR) {
-                                // Clona per non intaccare i golem standard!
-                                c.material = c.material.clone();
-                                c.material.transparent = false; 
-                                c.material.opacity = 1.0; 
-                                c.material.color.setHex(0x000000); // Corpo oscurità pura
-                                if (c.material.emissive) {
-                                    c.material.emissive.setHex(0xaa0000); // Glow rosso infernale
-                                    c.material.emissiveIntensity = 2.0;
+                                if (c.isMesh && c.material && c !== eyeL && c !== eyeR) {
+                                    // Clona per non intaccare i golem standard!
+                                    c.material = c.material.clone();
+                                    c.material.transparent = false; 
+                                    c.material.opacity = 1.0; 
+                                    c.material.color.setHex(0x000000); // Corpo oscurità pura
+                                    if (c.material.emissive) {
+                                        c.material.emissive.setHex(0xaa0000); // Glow rosso infernale
+                                        c.material.emissiveIntensity = 2.0;
+                                    }
+                                } else if (c.isSprite && c.material) {
+                                    c.material = c.material.clone();
+                                    c.material.color.setHex(0xff0000); // Aura dello scudo rossa
                                 }
-                            } else if (c.isSprite && c.material) {
-                                c.material = c.material.clone();
-                                c.material.color.setHex(0xff0000); // Aura dello scudo rossa
-                            }
-                        });
-                        
-                        this.enemies.push(pursuer);
-                        this.enemyGrid.insert(pursuer);
-                    }        
-                    }, 1500);
-                    }        
-      
-       if (this.player && this.player.modifiers.shieldActive) this.player.modifiers.autoShieldTimer = 0;
+                            });
+                            
+                            this.enemies.push(pursuer);
+                            this.enemyGrid.insert(pursuer);
+                        }        
+                    }, 1500); // Chiude il setTimeout
+                } // Chiude else if (this.corruptedType === 'pursuer')
+            } // <---- ECCO LA PARENTESI MANCANTE! Chiude il grande if(this.isCorrupted && !this.isBossFloor)
+            
+        if (this.player && this.player.modifiers.shieldActive) this.player.modifiers.autoShieldTimer = 0;
+        
         if (this.isBossFloor) {
             this.floorMaxKills = 1; this.floorKills = 0;
             let cx = Math.floor(CHUNK_SIZE / 2) * TILE_SIZE + TILE_SIZE/2; let cy = Math.floor(CHUNK_SIZE / 2) * TILE_SIZE + TILE_SIZE/2;

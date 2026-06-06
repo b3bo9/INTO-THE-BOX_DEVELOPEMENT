@@ -3187,14 +3187,10 @@ prewarmShaders() {
     },
    updateCamera(dt) {
         let camX = this.player.x; let camY = isTouchDevice ? 750 : 600; let camZ = this.player.y + (isTouchDevice ? 500 : 400);
-      let shakeX = 0, shakeY = 0, shakeZ = 0;
+        let shakeX = 0, shakeY = 0, shakeZ = 0;
         
-        // Distorsione Termica per il tema Lava (costo CPU pari a zero)
-        if (this.currentThemeIndex === 1 && !this.isBossFloor) {
-            let heatWave = Math.sin(this.playTime * 10) * 1.5;
-            shakeX += heatWave;
-            shakeZ += Math.cos(this.playTime * 8) * 1.5;
-        }
+        // Distorsione Termica rimossa: muovere fisicamente la telecamera per simulare il calore
+        // creava un tremolio ingiustificato causando motion sickness a giocatore fermo.
 
         if (this.trauma > 0) {
             let shakeForce = this.trauma * this.trauma * 40; 
@@ -3215,16 +3211,22 @@ prewarmShaders() {
             this.camera.updateProjectionMatrix();
         }
         
-        // Transizione cromatica della Boss Arena Evolutiva (Fase Enraged)
+       // Transizione cromatica della Boss Arena Evolutiva (Fase Enraged)
+        // OTTIMIZZAZIONE: Colori in cache per prevenire un leak di 240+ oggetti al secondo
         if (Game.arenaEvolution) {
+            if (!Game._colorDarkRed) {
+                Game._colorDarkRed = new THREE.Color(0x3a0010);
+                Game._colorBrightRed = new THREE.Color(0xff1100);
+                Game._colorPitchBlack = new THREE.Color(0x050000);
+            }
             this.ambientLight.intensity += (0.12 - this.ambientLight.intensity) * dt * 1.5;
-            this.ambientLight.color.lerp(new THREE.Color(0x3a0010), dt * 0.4); 
+            this.ambientLight.color.lerp(Game._colorDarkRed, dt * 0.4); 
             if (this.dirLight) {
                 this.dirLight.intensity += (0.15 - this.dirLight.intensity) * dt;
-                this.dirLight.color.lerp(new THREE.Color(0xff1100), dt * 0.4); 
+                this.dirLight.color.lerp(Game._colorBrightRed, dt * 0.4); 
             }
-            this.scene.background.lerp(new THREE.Color(0x050000), dt * 0.4);
-            this.scene.fog.color.lerp(new THREE.Color(0x050000), dt * 0.4);
+            this.scene.background.lerp(Game._colorPitchBlack, dt * 0.4);
+            if (this.scene.fog) this.scene.fog.color.lerp(Game._colorPitchBlack, dt * 0.4);
         }
         
         // --- QUESTE SONO LE DUE RIGHE CHE MANCAVANO ---
@@ -5334,28 +5336,14 @@ class Player extends Entity {
                 if (Game.frameCount % 6 === 0) {
                     Game.getParticle().spawn(this.x, 2, this.y, SharedMat.spriteDust, 'dust');
                     
-                    // Suono di movimento sintetizzato a costo zero in base al terreno
-                    if (!AudioEngine.sfxMuted && AudioEngine.ctx) {
-                        let t = AudioEngine.ctx.currentTime;
-                        let osc = AudioEngine.ctx.createOscillator();
-                        let gain = AudioEngine.ctx.createGain();
-                        
-                        if (Game.currentThemeIndex === 2) {
-                            // Ghiaccio: Suono cristallino acuto e breve (scricchiolio)
-                            osc.type = 'triangle';
-                            osc.frequency.setValueAtTime(800 + Math.random()*400, t);
-                            gain.gain.setValueAtTime(0.02, t);
-                            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-                        } else if (Game.currentThemeIndex === 1) {
-                            // Lava: Suono basso e sordo (cenere pressata)
-                            osc.type = 'sine';
-                            osc.frequency.setValueAtTime(100 + Math.random()*50, t);
-                            gain.gain.setValueAtTime(0.04, t);
-                            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-                        }
-                        
-                        osc.connect(gain); gain.connect(AudioEngine.ctx.destination);
-                        osc.start(t); osc.stop(t + 0.1);
+                    // OTTIMIZZAZIONE ZERO-ALLOCATION: Usiamo il buffer del rumore bianco pre-calcolato.
+                    // Risolve l'assordante "BEEP" nel livello foresta e salva la CPU/RAM su mobile.
+                    if (Game.currentThemeIndex === 2) {
+                        AudioEngine.playNoise(0.05, 'high', 0.015); // Ghiaccio (Neve schiacciata)
+                    } else if (Game.currentThemeIndex === 1) {
+                        AudioEngine.playNoise(0.08, 'low', 0.03);   // Lava (Cenere/Lapilli)
+                    } else {
+                        AudioEngine.playNoise(0.06, 'low', 0.015);  // Foresta (Erba/Terra)
                     }
                 }
             }

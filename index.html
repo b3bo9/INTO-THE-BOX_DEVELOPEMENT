@@ -3626,33 +3626,48 @@ prewarmShaders() {
         }
         
 // --- SPAWN PARTICELLE AMBIENTALI TEMA-DIPENDENTI ---
-        if (Game.frameCount % (isTouchDevice ? 30 : 12) === 0) {
-            let angle = Math.random() * Math.PI * 2;
-            let dist = Math.random() * 900; // Si disperdono su tutta la visuale
-            let px = this.player.x + Math.cos(angle) * dist;
-            let pz = this.player.y + Math.sin(angle) * dist;
-            
-            // Nascono altissime nel cielo, fuori dall'inquadratura principale
-            let py = MathUtils.randomRange(500, 800);
+        // OTTIMIZZAZIONE ZERO-COST: Se è il tema ghiaccio, dimezziamo i tempi di attesa
+        // e raddoppiamo i fiocchi riciclando le particelle dal pool per simulare la nevicata.
+        let isIceTheme = this.currentThemeIndex === 2;
+        let spawnRate = isIceTheme ? (isTouchDevice ? 15 : 6) : (isTouchDevice ? 30 : 12);
 
-            let p = this.getParticle();
-            let magicMat;
-            let themeIndex = this.currentThemeIndex;
+        if (Game.frameCount % spawnRate === 0) {
+            // Genera 2 fiocchi per frame nel livello ghiaccio, 1 solo negli altri temi
+            let spawnCount = isIceTheme ? 2 : 1;
 
-            // Tema 0: Foresta (Spore verdi/gialle)
-            if (themeIndex === 0) {
-                magicMat = Math.random() > 0.5 ? SharedMat.spriteGreen : SharedMat.spriteYellow;
-            } 
-            // Tema 1: Abisso (Cenere rossa/gialla)
-            else if (themeIndex === 1) {
-                magicMat = Math.random() > 0.6 ? SharedMat.spriteYellow : SharedMat.spriteRed;
-            } 
-            // Tema 2: Glaciale (Neve azzurra/bianca)
-            else {
-                magicMat = Math.random() > 0.5 ? SharedMat.spriteWhite : SharedMat.spriteBlue;
+            for(let i = 0; i < spawnCount; i++) {
+                let angle = Math.random() * Math.PI * 2;
+                let dist = Math.random() * 900; // Si disperdono su tutta la visuale
+                let px = this.player.x + Math.cos(angle) * dist;
+                let pz = this.player.y + Math.sin(angle) * dist;
+                
+                // Nascono altissime nel cielo, fuori dall'inquadratura principale
+                let py = MathUtils.randomRange(500, 800);
+
+                let p = this.getParticle();
+                let magicMat;
+
+                // Tema 0: Foresta (Spore verdi/gialle)
+                if (this.currentThemeIndex === 0) {
+                    magicMat = Math.random() > 0.5 ? SharedMat.spriteGreen : SharedMat.spriteYellow;
+                } 
+                // Tema 1: Abisso (Cenere rossa/gialla)
+                else if (this.currentThemeIndex === 1) {
+                    magicMat = Math.random() > 0.6 ? SharedMat.spriteYellow : SharedMat.spriteRed;
+                } 
+                // Tema 2: Glaciale (Neve azzurra/bianca)
+                else {
+                    magicMat = Math.random() > 0.6 ? SharedMat.spriteWhite : SharedMat.spriteBlue;
+                }
+
+                p.spawn(px, py, pz, magicMat, 'ambient');
+                
+                // Diamo alla neve una fisica dedicata: fiocchi leggermente più grandi e caduta più decisa
+                if (isIceTheme) {
+                    p.baseSize = MathUtils.randomRange(8, 18);
+                    p.vy = MathUtils.randomRange(-220, -120);
+                }
             }
-
-            p.spawn(px, py, pz, magicMat, 'ambient');
         }
         
         // --- NUOVO: ALBERI INFUOCATI REALISTICI (SOLO TEMA LAVA) ---

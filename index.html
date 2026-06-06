@@ -5441,7 +5441,7 @@ class Player extends Entity {
                 this.modelParts.weaponGroup.rotation.x = 0; 
                 this.modelParts.weaponGroup.position.z = 8; 
             } 
-        }
+        
 
         // --- SFARFALLIO SICURO E FEEDBACK D'ATTACCO (FOTOSENSIBILITÀ) ---
         let baseInt = Game.ultimateActive ? 4.0 : (this.overdrive ? 3.5 : (this.essence ? 2.5 : 1.8));
@@ -5465,8 +5465,8 @@ class Player extends Entity {
         this.fakeBloom.material.opacity = Math.max(0.1, Math.min(1.0, baseOpacity + (flicker * 0.5)));
         this.mesh.updateMatrix();
         // -----------------------------------------------------------------
-    }
     
+   } 
   flamethrower(dt) {
         if (Game.frameCount % (isTouchDevice ? 2 : 1) === 0) {
             // Aumentiamo leggermente il numero di particelle per dare volume al fuoco

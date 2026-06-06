@@ -3426,7 +3426,8 @@ Game.pursuerTimeout = setTimeout(() => {
                         
                         this.enemies.push(pursuer);
                         this.enemyGrid.insert(pursuer);
-                    } 1500);
+                        }
+                    }, 1500);
             }
         }
        if (this.player && this.player.modifiers.shieldActive) this.player.modifiers.autoShieldTimer = 0;

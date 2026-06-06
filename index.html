@@ -2636,7 +2636,7 @@ const UI = {
         this.els.bloodVignette = document.getElementById('blood-vignette');
     },
     update() {
-        update() {
+        
         if (!Game.player) return;
         
         // OTTIMIZZAZIONE DOM: Creiamo la stringa solo se i valori interni sono EFFETTIVAMENTE cambiati.
@@ -3923,7 +3923,7 @@ prewarmShaders() {
                 let distToCamSq = MathUtils.distanceSq(Game.player, e);
                 // 1200 * 1200 = 1.440.000 (Raggio visibile ragionevole della telecamera)
                 if (distToCamSq < 1440000) { 
-                    let pos = toScreenPosition(e.x, e.radius + 35, e.y);
+                    let pos = this.toScreenPosition(e.x, e.radius + 35, e.y);
                     // Margini di sicurezza per non disegnare barre fuori dai bordi fisici dello schermo
                     if(pos.z < 1 && pos.x > -50 && pos.x < this.width + 50 && pos.y > -50 && pos.y < this.height + 50 && this._hpBarCount < this._hpBars.length) {
                     this._hpBars[this._hpBarCount].x = pos.x;
@@ -3950,7 +3950,7 @@ prewarmShaders() {
                
                let distSq = MathUtils.distanceSq(this.player, e);
                if(distSq < (e.aggroRangeSq || 1000000)) {
-                   let pos = toScreenPosition(e.x, 20, e.y);
+                 let pos = this.toScreenPosition(e.x, 20, e.y);
                    let padding = 20;
                    if (pos.x < padding || pos.x > this.width - padding || pos.y < padding || pos.y > this.height - padding || pos.z > 1) {
                        if (offCount < this._offScreenEnemies.length) {
@@ -4016,7 +4016,7 @@ prewarmShaders() {
            // OTTIMIZZAZIONE: Scrivere sul Canvas 2D è lentissimo. Cappa i testi a schermo.
            if (textsDrawn > (isTouchDevice ? 12 : 30)) break;
             
-            let pos = toScreenPosition(ft.x, ft.h, ft.y);
+            let pos = this.toScreenPosition(ft.x, ft.h, ft.y);
             let progress = ft.life / ft.maxLife; 
             
            if(pos.z < 1 && progress > 0.05) {

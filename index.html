@@ -3187,16 +3187,22 @@ prewarmShaders() {
     },
    updateCamera(dt) {
         let camX = this.player.x; let camY = isTouchDevice ? 750 : 600; let camZ = this.player.y + (isTouchDevice ? 500 : 400);
-        let shakeX = 0, shakeY = 0, shakeZ = 0;
+      let shakeX = 0, shakeY = 0, shakeZ = 0;
+        
+        // Distorsione Termica per il tema Lava (costo CPU pari a zero)
+        if (this.currentThemeIndex === 1 && !this.isBossFloor) {
+            let heatWave = Math.sin(this.playTime * 10) * 1.5;
+            shakeX += heatWave;
+            shakeZ += Math.cos(this.playTime * 8) * 1.5;
+        }
+
         if (this.trauma > 0) {
             let shakeForce = this.trauma * this.trauma * 40; 
-            shakeX = MathUtils.randomRange(-shakeForce, shakeForce); shakeY = MathUtils.randomRange(-shakeForce, shakeForce); shakeZ = MathUtils.randomRange(-shakeForce, shakeForce);
+            shakeX += MathUtils.randomRange(-shakeForce, shakeForce); 
+            shakeY += MathUtils.randomRange(-shakeForce, shakeForce); 
+            shakeZ += MathUtils.randomRange(-shakeForce, shakeForce);
             this.trauma -= dt * 2.0; if (this.trauma < 0) this.trauma = 0;
         }
-        this._camTarget.set(camX + shakeX, camY + shakeY, camZ + shakeZ);
-        this.camera.position.lerp(this._camTarget, 0.15); 
-        this.camera.lookAt(this.player.x + shakeX*0.5, 0, this.player.y + shakeZ*0.5); 
-        
         if (this.dirLight) {
             this.dirLight.position.set(this.player.x - 400, 1000, this.player.y - 400);
             this.dirLight.target.position.set(this.player.x, 0, this.player.y);
@@ -3327,7 +3333,20 @@ prewarmShaders() {
         let currentTheme = MAP_THEMES[this.currentThemeIndex];
         // Impostiamo nebbia, sfondo e luci in base al tema corrente!
         this.scene.background = new THREE.Color(currentTheme.fog); 
-        this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 150, camDist + 500);
+        // --- ATMOSFERA E VISIBILITÀ DINAMICA ---
+        if (this.currentThemeIndex === 2) {
+            // Ghiaccio: Visibilità cristallina, nebbia molto lontana, bagliori accecanti
+            this.scene.fog = new THREE.Fog(currentTheme.fog, camDist + 100, camDist + 1000);
+            if (this.bloomPass) this.bloomPass.strength = AppSettings.isUltraPC ? 1.3 : 0.9;
+        } else if (this.currentThemeIndex === 1) {
+            // Lava: Aria densa e soffocante, nebbia vicinissima, bagliore estremo
+            this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 300, camDist + 250);
+            if (this.bloomPass) this.bloomPass.strength = AppSettings.isUltraPC ? 1.5 : 1.1;
+        } else {
+            // Foresta: Atmosfera equilibrata e misteriosa
+            this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 150, camDist + 500);
+            if (this.bloomPass) this.bloomPass.strength = AppSettings.isUltraPC ? 1.1 : 0.8;
+        }
         Game.arenaEvolution = false; // DEVE ESSERE FALSE ALL'INIZIO!
         
         if (this.dirLight) { 
@@ -4374,6 +4393,24 @@ class GameMap {
         activeMats.grass.color.setHex(currentTheme.grass);
         activeMats.rock.color.setHex(currentTheme.rock);
         activeMats.wall.color.setHex(currentTheme.wall);
+      // --- DIFFERENZIAZIONE FISICA DEI MATERIALI (COSTO ZERO) ---
+        if (Game.currentThemeIndex === 2) { 
+            // TEMA GHIACCIO: Pavimento e rocce cristalline e riflettenti
+            activeMats.rock.shininess = 120;
+            activeMats.dirt.shininess = 60;
+            activeMats.rock.emissive.setHex(0x000000);
+        } else if (Game.currentThemeIndex === 1) { 
+            // TEMA LAVA: Rocce opache ma incandescenti alla base
+            activeMats.rock.shininess = 5;
+            activeMats.dirt.shininess = 10;
+            // Le rocce emettono un rosso scurissimo che verrà catturato dal Bloom
+            activeMats.rock.emissive.setHex(0x220000); 
+        } else { 
+            // TEMA FORESTA: Organico, ruvido e opaco
+            activeMats.rock.shininess = 15;
+            activeMats.dirt.shininess = 5;
+            activeMats.rock.emissive.setHex(0x000000);
+        }
         
         if (window.GLOBAL_TREE_MAT) window.GLOBAL_TREE_MAT.color.setHex(currentTheme.tree);
         if (InteractiveGrassSystem.mat) InteractiveGrassSystem.mat.color.setHex(currentTheme.grassShader);
@@ -5289,11 +5326,34 @@ class Player extends Entity {
                 this.move(dx, dy, dt); 
                 this.mesh.position.y = Game.animBounce * 0.75; 
                 
-                // --- NUOVO: Sbuffo di polvere al suolo (ogni 6 frame se cammina)
-                if (Game.frameCount % 6 === 0) Game.getParticle().spawn(this.x, 2, this.y, SharedMat.spriteDust, 'dust');
-            } else { 
-                this.mesh.position.y = 0; 
-            }
+              // --- NUOVO: Sbuffo di polvere al suolo (ogni 6 frame se cammina)
+                if (Game.frameCount % 6 === 0) {
+                    Game.getParticle().spawn(this.x, 2, this.y, SharedMat.spriteDust, 'dust');
+                    
+                    // Suono di movimento sintetizzato a costo zero in base al terreno
+                    if (!AudioEngine.sfxMuted && AudioEngine.ctx) {
+                        let t = AudioEngine.ctx.currentTime;
+                        let osc = AudioEngine.ctx.createOscillator();
+                        let gain = AudioEngine.ctx.createGain();
+                        
+                        if (Game.currentThemeIndex === 2) {
+                            // Ghiaccio: Suono cristallino acuto e breve (scricchiolio)
+                            osc.type = 'triangle';
+                            osc.frequency.setValueAtTime(800 + Math.random()*400, t);
+                            gain.gain.setValueAtTime(0.02, t);
+                            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                        } else if (Game.currentThemeIndex === 1) {
+                            // Lava: Suono basso e sordo (cenere pressata)
+                            osc.type = 'sine';
+                            osc.frequency.setValueAtTime(100 + Math.random()*50, t);
+                            gain.gain.setValueAtTime(0.04, t);
+                            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+                        }
+                        
+                        osc.connect(gain); gain.connect(AudioEngine.ctx.destination);
+                        osc.start(t); osc.stop(t + 0.1);
+                    }
+                }
             
            // --- PENDOLO FISICO E FLUIDO DELLA LANTERNA ---
             // Inizializziamo le variabili di fase se non esistono
@@ -7542,6 +7602,7 @@ function clearScene() {
         });
         Game.scene.remove(Game.map.mapGroup);
         Game.map.fogMesh = null;
+        Game.map.treePositions = []
     }
     
     for(let i=0, len=Game.debris.length; i<len; i++) { Game.debris[i].active = false; Game.debris[i].mesh.visible = false; }

@@ -3352,8 +3352,16 @@ prewarmShaders() {
         this.floorProphets = 0; // CAP PROFETI: Inizializza il contatore
         this.enemyGrid = new SpatialHashGrid([[-1000, -1000], [CHUNK_SIZE*TILE_SIZE+1000, CHUNK_SIZE*TILE_SIZE+1000]], [200, 200]);
         
-        // ---> FIX: ESTRAIAMO IL TEMA QUI, PRIMA DI GENERARE LA MAPPA <---
-        this.currentThemeIndex = Math.floor(Math.random() * MAP_THEMES.length);
+       // ---> FIX: ESTRAIAMO IL TEMA QUI, PRIMA DI GENERARE LA MAPPA <---
+        if (this.currentThemeIndex === undefined) {
+            // Se è il primo livello in assoluto, sceglie a caso tra tutti i temi
+            this.currentThemeIndex = Math.floor(Math.random() * MAP_THEMES.length);
+        } else {
+            // Dal secondo livello in poi, aggiunge 1 o 2 all'indice attuale, 
+            // garantendo matematicamente che il prossimo tema sia SEMPRE diverso dal precedente.
+            let offset = Math.floor(Math.random() * (MAP_THEMES.length - 1)) + 1;
+            this.currentThemeIndex = (this.currentThemeIndex + offset) % MAP_THEMES.length;
+        }
         
         // Ora la mappa sa quale tema leggere!
         this.map = new GameMap(CHUNK_SIZE, CHUNK_SIZE); this.map.generate(this.isBossFloor);
@@ -3487,11 +3495,12 @@ prewarmShaders() {
     },
 
   startGame(diffMult) {
-        document.getElementById('mainMenu').classList.add('hidden'); document.getElementById('hud').classList.remove('hidden');
-        if (isTouchDevice) document.getElementById('mobile-controls').classList.remove('hidden');
-        this.baseDifficultyMult = diffMult || 1.0;
+        document.getElementById('mainMenu').classList.add('hidden'); document.getElementById('hud').classList.remove('hidden');
+        if (isTouchDevice) document.getElementById('mobile-controls').classList.remove('hidden');
+        this.baseDifficultyMult = diffMult || 1.0;
         this.difficultyMult = this.baseDifficultyMult;
         this.floor = 1; this.totalKills = 0; this.lives = 3; this.playTime = 0; this.coins = 0; this.lastRelicCount = 0;
+        this.currentThemeIndex = undefined; // <-- AGGIUNTA QUESTA RIGA PER RESETTARE IL TEMA
         if(UI.els.coins) UI.els.coins.innerText = "0";
         this.ultimateCharge = 0; this.ultimateActive = false;
         this.floorEndTimer = 0; this.floorEndTriggered = false;

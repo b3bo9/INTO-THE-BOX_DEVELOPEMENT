@@ -2691,7 +2691,7 @@ const UI = {
                 if (Game.corruptedType === 'acid_pools') typeText = "CORROSIONE";
                 if (Game.corruptedType === 'retaliation') typeText = "RAPPRESAGLIA";
                 
-                this.els.corruptionLabel.innerText = "- " + typeText;
+                this.els.corruptionLabel.innerText =typeText;
                 this.els.corruptionLabel.classList.remove('hidden');
                 this.els.corruptionLabel.classList.add('animate-pulse');
             } else {

@@ -634,7 +634,7 @@ body.colorblind-mode #opt-colorblind-text {
                         <span id="ui-floor-text" class="text-[10px] sm:text-xs font-black uppercase tracking-widest text-gray-400 flex items-center">
                             <i class="fa-solid fa-layer-group text-gray-500 mr-1.5"></i> Piano <span id="ui-floor" class="text-white ml-1">1</span>
                         </span>
-                        <span id="ui-corruption-label" class="text-[9px] sm:text-[10px] font-black tracking-widest text-purple-300 drop-shadow-[0_0_5px_rgba(168,85,247,0.8)] hidden bg-purple-900/40 px-1.5 py-0.5 rounded border border-purple-500/40 uppercase"></span>
+                       <span id="ui-corruption-label" class="text-[9px] sm:text-[10px] font-black tracking-widest text-purple-300 drop-shadow-[0_0_5px_rgba(168,85,247,0.8)] hidden bg-purple-900/40 px-1.5 py-0.5 rounded border border-purple-500/40 uppercase whitespace-nowrap"></span>
                     </div>
                     <!-- PROGRESS BAR -->
                     <div class="w-full h-2 bg-gray-900/90 rounded-full border border-gray-800 shadow-inner overflow-hidden relative">
@@ -3825,7 +3825,13 @@ prewarmShaders() {
                 c.group.updateMatrix();
                 if (MathUtils.distanceSq(this.player, c) < pRadiusSq) { 
                     c.destroy(); AudioEngine.playCoin();
-                    Game.coins++; UI.els.coins.innerText = Game.coins;
+                    Game.coins++; 
+                    UI.els.coins.innerText = Game.coins;
+                    
+                    // FIX: Aggiorniamo dinamicamente anche lo Shop se i soldi entrano in ritardo
+                    let shopCoinsEl = document.getElementById('shop-coins');
+                    if(shopCoinsEl) shopCoinsEl.innerText = Game.coins;
+
                     Game.getFloatingText().spawn(this.player.x, this.player.y, "+1", '#ffaa00', 25, true);
                     
                     if (this.player.modifiers.miserPact) {
@@ -4866,7 +4872,7 @@ class Player extends Entity {
         this.mesh.add(this.light); this.mesh.position.set(this.x, 0, this.y); Game.scene.add(this.mesh);
         this.mesh.traverse(c => { if(c.material && c.material.emissive && c !== this.modelParts.staffGem) this.flashMats.push(c.material); });
     this.shieldMesh = new THREE.Mesh(SharedGeo.icosahedron, new THREE.MeshBasicMaterial({color: 0x00DDFF, wireframe: true, transparent: true, opacity: 0.6}));
-        this.shieldMesh.scale.set(24, 24, 24);
+        this.shieldMesh.scale.set(28, 28, 28); // <-- Scudo ingrandito
         this.shieldMesh.position.y = 12;
         this.shieldMesh.visible = false;
         this.mesh.add(this.shieldMesh);
@@ -5185,14 +5191,14 @@ class Player extends Entity {
             this.shieldMesh.rotation.y += dt * 5;
             this.shieldMesh.rotation.z += dt * 3;
             
-            if (this.shieldFlashTimer > 0) {
+           if (this.shieldFlashTimer > 0) {
                 this.shieldFlashTimer -= dt;
                 let pulse = this.shieldFlashTimer / 0.15;
                 this.shieldMesh.material.opacity = 0.6 + (0.4 * pulse);
-                this.shieldMesh.scale.set(24 + (12 * pulse), 24 + (12 * pulse), 24 + (12 * pulse));
+                this.shieldMesh.scale.set(28 + (12 * pulse), 28 + (12 * pulse), 28 + (12 * pulse)); // <-- Animazione scalata
             } else {
                 this.shieldMesh.material.opacity = 0.6;
-                this.shieldMesh.scale.set(24, 24, 24);
+                this.shieldMesh.scale.set(28, 28, 28); // <-- Reset alla nuova grandezza
             }
             if (this.activeShieldTimer <= 0) {
                 this.shieldMesh.visible = false;

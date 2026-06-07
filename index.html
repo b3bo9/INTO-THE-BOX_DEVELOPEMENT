@@ -1810,7 +1810,7 @@ class Coin {
     }
     spawn(x, y) { 
         this.active = true; this.x = x; this.y = y; this.life = 15.0; 
-        this.group.position.set(x, 12, y); this.group.updateMatrix(); this.group.visible = true; 
+        this.group.position.set(x, 15, y); this.group.updateMatrix(); this.group.visible = true; 
         if (isTouchDevice) { this.groundGlow.position.set(x, 0.2, y); this.groundGlow.visible = true; }
     }
     destroy() { this.active = false; this.group.visible = false; this.groundGlow.visible = false; }
@@ -3842,7 +3842,7 @@ prewarmShaders() {
             }
         }
 
-        for(let i = 0, len = this.coinDrops.length; i < len; i++) {
+       for(let i = 0, len = this.coinDrops.length; i < len; i++) {
             let c = this.coinDrops[i];
             if(c.active) {
                 if (!this.player.modifiers.miserPact) c.life -= combatDt;
@@ -3850,7 +3850,7 @@ prewarmShaders() {
                 if (!this.player.modifiers.miserPact && c.life < 3.0) c.group.visible = Math.floor(c.life * 8) % 2 === 0;
                 else c.group.visible = true;
 
-                c.group.rotation.y += combatDt * 3; c.group.position.y = 12 + this.animFloat;
+                c.group.rotation.y += combatDt * 3; c.group.position.y = 15 + this.animFloat; // <-- MODIFICATO DA 12 A 15
                 c.group.updateMatrix();
                 if (MathUtils.distanceSq(this.player, c) < pRadiusSq) { 
                     c.destroy(); AudioEngine.playCoin();

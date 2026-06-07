@@ -226,7 +226,7 @@ body.colorblind-mode #opt-colorblind-text {
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 125</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 126</p>
                 </div>
             </div>
         </div>
@@ -2634,6 +2634,14 @@ const UI = {
         this.els.btnDashFill = document.getElementById('btn-dash-fill');
         this.els.vignette = document.getElementById('vignette');
         this.els.bloodVignette = document.getElementById('blood-vignette');
+        // --- NUOVO: Aggiungi queste 7 righe qui sotto ---
+        let flashDiv = document.createElement('div');
+        flashDiv.className = 'absolute inset-0 pointer-events-none z-[6] opacity-0 transition-opacity duration-75';
+        flashDiv.style.background = 'radial-gradient(circle at center, transparent 40%, rgba(255, 0, 0, 0.8) 100%)';
+        flashDiv.style.backgroundColor = 'rgba(200, 0, 0, 0.2)';
+        document.getElementById('hud').appendChild(flashDiv);
+        this.els.damageFlash = flashDiv;
+        // -------------------------------------------------
     },
     update() {
         
@@ -2846,14 +2854,12 @@ const UI = {
                 }
             }
         }
-        // FLASH DANNO HARDWARE ACCELERATED (Zero Reflow)
+       // FLASH DANNO HARDWARE ACCELERATED (VERO Zero Reflow tramite Opacity)
         if (Game.trauma > 0 && !Game.player.dead) {
             let flashStr = Math.min(Game.trauma, 1.0);
-            this.els.vignette.style.backgroundColor = `rgba(200, 0, 0, ${flashStr * 0.25})`;
-            this.els.vignette.style.boxShadow = `inset 0 0 ${flashStr * 150}px rgba(255, 0, 0, ${flashStr * 0.9})`;
+            this.els.damageFlash.style.opacity = flashStr;
         } else {
-            this.els.vignette.style.backgroundColor = 'transparent';
-            this.els.vignette.style.boxShadow = 'none';
+            this.els.damageFlash.style.opacity = '0';
         }
     },
      
@@ -3689,16 +3695,30 @@ prewarmShaders() {
             }
         }
         
-        // --- NUOVO: ALBERI INFUOCATI REALISTICI (SOLO TEMA LAVA) ---
+       // --- NUOVO: ALBERI INFUOCATI REALISTICI (SOLO TEMA LAVA) ---
         if (this.currentThemeIndex === 1 && this.map && this.map.treePositions && this.map.treePositions.length > 0) {
-            // Troviamo gli alberi vicini al giocatore (nella view della camera)
-            let visibleTrees = this.map.treePositions.filter(t => MathUtils.distanceSq({x: t.x, y: t.z}, this.player) < 1200*1200);
+            // OTTIMIZZAZIONE ZERO-ALLOCATION: Evitiamo il .filter() e la creazione di oggetti {x,y}
+            if (!this._tempVisibleTrees) this._tempVisibleTrees = [];
+            this._tempVisibleTrees.length = 0; // Svuota l'array senza distruggerlo dalla RAM
+            
+            let pX = this.player.x, pY = this.player.y;
+            let maxDistSq = 1440000; // 1200 * 1200 precalcolato
+            
+            for (let i = 0; i < this.map.treePositions.length; i++) {
+                let t = this.map.treePositions[i];
+                let dx = t.x - pX;
+                let dy = t.z - pY; // Z è la profondità
+                if ((dx * dx + dy * dy) < maxDistSq) {
+                    this._tempVisibleTrees.push(t);
+                }
+            }
 
             // Capping dinamico per non fondere la CPU/GPU: elaboriamo max 3 alberi su mobile, 8 su PC
             let maxTreesToProcess = isTouchDevice ? 3 : 8;
+            let visibleCount = this._tempVisibleTrees.length;
             
-            for (let i = 0; i < Math.min(visibleTrees.length, maxTreesToProcess); i++) {
-                let tree = visibleTrees[Math.floor(Math.random() * visibleTrees.length)];
+            for (let i = 0; i < Math.min(visibleCount, maxTreesToProcess); i++) {
+                let tree = this._tempVisibleTrees[Math.floor(Math.random() * visibleCount)];
 
                 // 30% di probabilità per frame di emettere fuoco su quell'albero
                 if (Math.random() < 0.3) {
@@ -5273,24 +5293,27 @@ class Player extends Entity {
 
         if (this.modifiers.passiveUltCharge && !Game.ultimateActive) { Game.addUltimateCharge(2.0 * dt); }
 
-        // Gestione Invincibilità (con esclusione sicura degli scudi)
+       // Gestione Invincibilità (con esclusione sicura degli scudi)
+        // OTTIMIZZAZIONE CPU: Ciclo for standard per evitare la creazione di funzioni anonime ad ogni frame
         if (this.invincibilityTimer > 0) {
             this.invincibilityTimer -= dt; 
             let isVisible = (Math.floor(this.invincibilityTimer * 15) % 2 === 0);
             
-            this.mesh.children.forEach(child => { 
-                // Escludiamo esplicitamente gli scudi e la luce
+            let children = this.mesh.children;
+            for (let i = 0; i < children.length; i++) {
+                let child = children[i];
                 if (child !== this.light && child !== this.shieldMesh && child !== this.glacialShieldMesh) {
                     child.visible = isVisible; 
                 }
-            });
+            }
             
             if (this.invincibilityTimer <= 0) { 
-                this.mesh.children.forEach(child => { 
+                for (let i = 0; i < children.length; i++) {
+                    let child = children[i];
                     if (child !== this.light && child !== this.shieldMesh && child !== this.glacialShieldMesh) {
                         child.visible = true; 
                     }
-                }); 
+                }
             }
         }
         if (!Game.ultimateActive && this.modelParts.body.material.emissive.getHex() === 0x00DDFF) this.updateAppearance();

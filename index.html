@@ -279,7 +279,7 @@ body.colorblind-mode #opt-colorblind-text {
                     <div class="text-cyan-400 text-xl sm:text-2xl mt-0.5 drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"><i class="fa-solid fa-shield-halved"></i></div>
                     <div>
                         <h3 class="text-cyan-300 font-black uppercase text-xs tracking-wide">Scudo Cinetico</h3>
-                        <p class="text-gray-400 mt-0.5">Attiva la barriera (<span id="info-shield-btn" class="text-white bg-white/10 px-1 py-0.5 rounded border border-white/20 font-bold text-[9px] uppercase shadow-inner"></span>) per <span class="text-white font-bold">2s</span>. Distrugge i proiettili curandoti del <span class="text-cyan-400 font-bold">5% HP</span> a colpo bloccato.</p>
+                       <p class="text-gray-400 mt-0.5">Attiva la barriera (<span id="info-shield-btn" class="text-white bg-white/10 px-1 py-0.5 rounded border border-white/20 font-bold text-[9px] uppercase shadow-inner"></span>) per <span class="text-white font-bold">3s</span>. Distrugge i proiettili curandoti del <span class="text-cyan-400 font-bold">5% HP</span> a colpo bloccato.</p>
                     </div>
                 </div>
             </div>
@@ -2364,19 +2364,20 @@ class Hazard {
                         }
                     }
                 }
-                if ((this.type === 'enemy_fire' || this.type === 'crystal_fire' || this.type === 'snake_fire') && (Game.frameCount + this.updateOffset) % 6 === 0) {
-                    let pCd = this.hitCooldown['player'] || 0;
-                   if (Game.playTime >= pCd && MathUtils.distanceSq(this, Game.player) < (this.radius + Game.player.radius)**2) { 
-                        if (Game.player.activeShieldTimer > 0) {
+               if ((this.type === 'enemy_fire' || this.type === 'crystal_fire' || this.type === 'snake_fire') && (Game.frameCount + this.updateOffset) % 6 === 0) {
+                    let pCd = this.hitCooldown['player'] || 0;
+                   if (Game.playTime >= pCd && MathUtils.distanceSq(this, Game.player) < (this.radius + Game.player.radius)**2) { 
+                        if (Game.player.activeShieldTimer > 0) {
                             Game.player.shieldAbsorbed++; // <-- POTENZIAMENTO AEGIS!
-                            Game.getParticle().spawn(Game.player.x, 15, Game.player.y, SharedMat.spriteBlue, 'spark');
-                        } else {
-                            let playerDmg = this.type === 'crystal_fire' ? 35 * Game.difficultyMult : this.damage;
-                            Game.player.takeDamage(playerDmg, null); 
-                            this.hitCooldown['player'] = Game.playTime + 1.0; 
-                        }
-                    }
-                }
+                            Game.getParticle().spawn(Game.player.x, 15, Game.player.y, SharedMat.spriteBlue, 'spark');
+                            this.hitCooldown['player'] = Game.playTime + 1.0; // FIX: Messo fuori dall'else per evitare un assorbimento infinito a frame singolo
+                        } else {
+                            let playerDmg = this.type === 'crystal_fire' ? 35 * Game.difficultyMult : this.damage;
+                            Game.player.takeDamage(playerDmg, null); 
+                            this.hitCooldown['player'] = Game.playTime + 1.0; 
+                        }
+                    }
+                }
             }
         }
 
@@ -5286,7 +5287,7 @@ class Player extends Entity {
             this.modifiers.autoShieldTimer += dt;
             if (this.modifiers.autoShieldTimer >= 15.0) {
                 this.modifiers.autoShieldTimer = 0;
-                this.activeShieldTimer = 2.0 + this.modifiers.shieldDurationAdd;
+                this.activeShieldTimer = 3.0 + this.modifiers.shieldDurationAdd;
                 this.shieldAbsorbed = 0;
                 this.shieldMesh.visible = true;
                 this.shieldMesh.material.color.setHex(0x00DDFF);
@@ -5855,7 +5856,7 @@ if (this.modifiers.flowMastery && !wasDead) {
     }
    activateShield() {
         if (this.activeShieldCooldown <= 0 && this.activeShieldTimer <= 0) {
-            this.activeShieldTimer = 2.0 + this.modifiers.shieldDurationAdd; 
+            this.activeShieldTimer = 3.0 + this.modifiers.shieldDurationAdd; 
             if (this.modifiers.seismicShield) {
                 Game.getHazard().spawn(this.x, this.y, 250, 0.4, this.stats.maxDmg * 0.2, 0xffffff, 'nova_ring');
             }
@@ -6078,15 +6079,25 @@ Game.scene.add(this.telegraphMesh);
             }, 100);
         }
     }
-   update(dt) {
+  update(dt) {
         if (!this.active || this.dead) return; 
         
-        // BUGFIX INVINCIBILITA' INSEGUITORE: Immune a malus, veleni e congelamenti
+        // BUGFIX INVINCIBILITA' INSEGUITORE E SCIA DI LAVA
         if (this.isPursuer) {
             this.frozenTimer = 0;
             this.slowedTimer = 0;
             this.fireDebuffTimer = 0;
             this.infected = false;
+
+            // --- NUOVO: La Nemesi lascia una scia di lava mortale ---
+            if (!this.snakeTrailTimer) this.snakeTrailTimer = 0;
+            this.snakeTrailTimer += dt;
+            // Esegue lo spawn ogni 0.25 secondi (4 pozze al secondo) per ottimizzare la batteria/CPU mobile
+            if (this.snakeTrailTimer >= 0.25) {
+                // Genera la pozza (Raggio: 25, Durata: 4s, Danno: 25% del suo max, Colore: Rosso/Lava, Tipo: enemy_fire)
+                Game.getHazard().spawn(this.x, this.y, 25, 4.0, this.stats.maxDmg * 0.25, 0xff3300, 'enemy_fire');
+                this.snakeTrailTimer = 0;
+            }
         }
 
         // --- NUOVA LOGICA: CONGELAMENTO ASSOLUTO PULSANTE ---
@@ -6332,11 +6343,17 @@ Game.scene.add(this.telegraphMesh);
                                 let pdx = Game.player.x - projX;
                                 let pdy = Game.player.y - projY;
                                 
-                                // Verifica del raggio d'azione + piccolo margine di sicurezza
+                               // Verifica del raggio d'azione + piccolo margine di sicurezza
                                 if ((pdx*pdx + pdy*pdy) < (Game.player.radius + 12)**2) {
-                                    Game.player.takeDamage(this.stats.maxDmg * 0.35, this);
-                                    Game.getParticle().spawn(Game.player.x, 15, Game.player.y, SharedMat.spriteWhite, 'spark');
-                                    // Ripete il danno ogni 200ms finché il giocatore ci sta sopra
+                                    // --- FIX: Immunità Scudo Cinetico al raggio del profeta ---
+                                    if (Game.player.activeShieldTimer > 0) {
+                                        Game.player.shieldAbsorbed++; // Carica l'Aegis
+                                        Game.getParticle().spawn(Game.player.x, 15, Game.player.y, SharedMat.spriteBlue, 'spark');
+                                    } else {
+                                        Game.player.takeDamage(this.stats.maxDmg * 0.35, this);
+                                        Game.getParticle().spawn(Game.player.x, 15, Game.player.y, SharedMat.spriteWhite, 'spark');
+                                    }
+                                    // Ripete il danno o l'assorbimento ogni 200ms finché il giocatore ci sta sopra
                                     this.beamHitCooldown[i] = Game.playTime + 0.2; 
                                 }
                             }

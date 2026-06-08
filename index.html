@@ -760,19 +760,18 @@ const AppSettings = {
                 if (treeShadows) treeShadows.visible = showFakeShadows;
             }
         }
-        if (Game.bloomPass) { Game.bloomPass.strength = this.isUltraPC ? 1.1 : 0.8; Game.bloomPass.radius = this.isUltraPC ? 0.6 : 0.4; }
+       if (Game.bloomPass) { Game.bloomPass.strength = this.isUltraPC ? 0.9 : 0.7; Game.bloomPass.radius = 0.4; }
         if (window.GLOBAL_THEME_MATS) {
-            const variants = ['', '_lava', '_ice'];
-            window.GLOBAL_THEME_MATS.forEach((mats, i) => {
-                let v = variants[i];
-                mats.dirt.roughness = this.isUltraPC ? 0.65 : 0.9; mats.dirt.metalness = this.isUltraPC ? 0.25 : 0.1; mats.dirt.bumpScale = this.isUltraPC ? 3.0 : 1.5; mats.dirt.needsUpdate = true;
-                mats.wall.roughness = this.isUltraPC ? 0.5 : 0.8; mats.wall.metalness = this.isUltraPC ? 0.5 : 0.3; mats.wall.bumpScale = this.isUltraPC ? 4.0 : 2.0; mats.wall.needsUpdate = true;
+            window.GLOBAL_THEME_MATS.forEach((mats) => {
+                mats.dirt.roughness = this.isUltraPC ? 0.7 : 0.9; mats.dirt.metalness = 0.1;
+                mats.wall.roughness = this.isUltraPC ? 0.6 : 0.8; mats.wall.metalness = 0.2;
                 
-                let useBump = this.isUltraPC || (!this.isLow && !isTouchDevice);
-                mats.dirt.bumpMap = useBump ? Preloader.textures['dirt' + v] : null;
-                mats.grass.bumpMap = useBump ? Preloader.textures['grass' + v] : null;
-                mats.rock.bumpMap = useBump ? Preloader.textures['rock' + v] : null;
-                mats.wall.bumpMap = useBump ? Preloader.textures['wall' + v] : null;
+                // OTTIMIZZAZIONE: Rimosse le bumpMap per uniformare lo stile PC a quello Mobile e salvare il Framerate
+                mats.dirt.bumpMap = null; mats.grass.bumpMap = null;
+                mats.rock.bumpMap = null; mats.wall.bumpMap = null;
+                
+                mats.dirt.needsUpdate = true; mats.wall.needsUpdate = true;
+                mats.grass.needsUpdate = true; mats.rock.needsUpdate = true;
             });
         }
         if(Game.scene) Game.scene.traverse(child => { if (child.material) child.material.needsUpdate = true; });
@@ -3019,8 +3018,8 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         this.scene.add(this.dirLight.target);
 
         const renderScene = new THREE.RenderPass(this.scene, this.camera);
-        let initialStrength = AppSettings.isUltraPC ? 1.1 : 0.8;
-        let initialRadius = AppSettings.isUltraPC ? 0.6 : 0.4;
+        let initialStrength = AppSettings.isUltraPC ? 0.9 : 0.7;
+        let initialRadius = 0.4;
         // FIX BLOOM GPU: Calcoliamo il bagliore a un quarto (1/4) della risoluzione!
         // Salva il 75% del calcolo sui frammenti senza perdere qualità visibile.
         this.bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(this.width / 4, this.height / 4), initialStrength, initialRadius, 0.35);
@@ -3373,19 +3372,19 @@ prewarmShaders() {
         let currentTheme = MAP_THEMES[this.currentThemeIndex];
         // Impostiamo nebbia, sfondo e luci in base al tema corrente!
         this.scene.background = new THREE.Color(currentTheme.fog); 
-        // --- ATMOSFERA E VISIBILITÀ DINAMICA ---
+       // --- ATMOSFERA E VISIBILITÀ DINAMICA ---
         if (this.currentThemeIndex === 2) {
             // Ghiaccio: Visibilità cristallina, nebbia molto lontana, bagliori accecanti
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist + 100, camDist + 1000);
-            if (this.bloomPass) this.bloomPass.strength = AppSettings.isUltraPC ? 1.3 : 0.9;
+            if (this.bloomPass) this.bloomPass.strength = AppSettings.isUltraPC ? 1.0 : 0.8;
         } else if (this.currentThemeIndex === 1) {
             // Lava: Aria densa e soffocante, nebbia vicinissima, bagliore estremo
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 300, camDist + 250);
-            if (this.bloomPass) this.bloomPass.strength = AppSettings.isUltraPC ? 1.5 : 1.1;
+            if (this.bloomPass) this.bloomPass.strength = AppSettings.isUltraPC ? 1.1 : 0.9;
         } else {
             // Foresta: Atmosfera equilibrata e misteriosa
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 150, camDist + 500);
-            if (this.bloomPass) this.bloomPass.strength = AppSettings.isUltraPC ? 1.1 : 0.8;
+            if (this.bloomPass) this.bloomPass.strength = AppSettings.isUltraPC ? 0.9 : 0.7;
         }
         Game.arenaEvolution = false; // DEVE ESSERE FALSE ALL'INIZIO!
         
@@ -4450,11 +4449,12 @@ class GameMap {
                     tWall.repeat.set(1, 1.5);
                 }
 
+               // MATERIALI OTTIMIZZATI: Rimosse le bumpMap per un look arcade pulito e massime performance.
                 window.GLOBAL_THEME_MATS[i] = {
-                    dirt: new MapMaterialClass({ map: tDirt, shininess: 5, roughness: 0.6, bumpMap: isHighQ ? tDirt : null, bumpScale: 1.5 }),
-                    grass: new MapMaterialClass({ map: tGrass, shininess: 2, roughness: 0.7, bumpMap: isHighQ ? tGrass : null, bumpScale: 2.0, alphaMap: alphaTex, transparent: true, depthWrite: false }),
-                    rock: new MapMaterialClass({ map: tRock, shininess: 40, roughness: 0.4, metalness: 0.3, bumpMap: isHighQ ? tRock : null, bumpScale: 3.0, alphaMap: alphaTex, transparent: true, depthWrite: false }),
-                    wall: new MapMaterialClass({ map: tWall, shininess: 15, roughness: 0.5, metalness: 0.2, bumpMap: isHighQ ? tWall : null, bumpScale: 3.0 })
+                    dirt: new MapMaterialClass({ map: tDirt, shininess: 5, roughness: 0.7 }),
+                    grass: new MapMaterialClass({ map: tGrass, shininess: 2, roughness: 0.7, alphaMap: alphaTex, transparent: true, depthWrite: false }),
+                    rock: new MapMaterialClass({ map: tRock, shininess: 40, roughness: 0.4, metalness: 0.3, alphaMap: alphaTex, transparent: true, depthWrite: false }),
+                    wall: new MapMaterialClass({ map: tWall, shininess: 15, roughness: 0.6, metalness: 0.2 })
                 };
             }
         }

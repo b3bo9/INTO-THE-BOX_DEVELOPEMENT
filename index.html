@@ -1276,11 +1276,11 @@ const TILE_SIZE = 64; const CHUNK_SIZE = 30; const FIXED_TIME_STEP = 1 / 60; con
         grassShader: 0x1a2b16, tree: 0x0a0807,
         ambient: 0x1a1c3a, dirLight: 0x335577, fog: 0x020205
     },
-    // TEMA 2: ABISSO INFERNALE (Rosso Fuoco)
+   // TEMA 2: ABISSO INFERNALE (Rosso Fuoco più saturo)
     { 
-        dirt: 0x4a2020, grass: 0x882020, rock: 0x3a1515, wall: 0x2a1010, 
-        grassShader: 0x3a0505, tree: 0x1a0505,
-        ambient: 0x2a0a0a, dirLight: 0x883322, fog: 0x150505
+        dirt: 0x702020, grass: 0xbb2020, rock: 0x501515, wall: 0x301010, 
+        grassShader: 0x600505, tree: 0x200505,
+        ambient: 0x301010, dirLight: 0xcc4422, fog: 0x200505
     },
     // TEMA 3: CAVERNA GLACIALE (Ghiaccio e Ciano Intenso)
     { 
@@ -3248,7 +3248,7 @@ prewarmShaders() {
    updateCamera(dt) {
        let isUlt = Game.ultimateActive;
         let zoom = isUlt ? 0.85 : 1.0; // Zoom leggero: riduce la distanza del 15%
-        let camX = this.player.x; let camY = isTouchDevice ? 750 : 700; let camZ = this.player.y + (isTouchDevice ? 500 : 400);
+        let camX = this.player.x; let camY = isTouchDevice ? 750 : 600; let camZ = this.player.y + (isTouchDevice ? 500 : 400);
         let shakeX = 0, shakeY = 0, shakeZ = 0;
         
         // Distorsione Termica rimossa: muovere fisicamente la telecamera per simulare il calore
@@ -3267,7 +3267,7 @@ prewarmShaders() {
         }
 
         // FOV Dinamico: allarga la visuale per enfatizzare la potenza dell'Ultimate
-        let targetFov = Game.ultimateActive ? 70 : 50;
+        let targetFov = Game.ultimateActive ? 56 : 50;
         if (Math.abs(targetFov - this.camera.fov) > 0.1) {
             this.camera.fov += (targetFov - this.camera.fov) * 8 * dt;
             this.camera.updateProjectionMatrix();
@@ -4546,7 +4546,11 @@ if (rw > 7 && rh > 7 && Math.random() > (1 - probability)) {
         } else if (Game.currentThemeIndex === 1) { 
             // TEMA LAVA: Rocce opache ma incandescenti alla base
             activeMats.rock.shininess = 5;
-            activeMats.rock.emissive.setHex(0x220000); 
+            activeMats.rock.emissive.setHex(0x220505);
+            if (AppSettings.isLow) {
+                activeMats.dirt.emissive.setHex(0x220505);
+                activeMats.dirt.emissiveIntensity = 0.5;
+            }
         } else { 
             // TEMA FORESTA: Organico, ruvido e opaco
             activeMats.rock.shininess = 15;

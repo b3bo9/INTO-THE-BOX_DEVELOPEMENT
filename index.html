@@ -4583,13 +4583,7 @@ class GameMap {
         obeliskMesh.castShadow = true; obeliskMesh.receiveShadow = true;
 
         Game.auras = []; Game.auraIcons = [];
-        const imBlueDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraBlueDome, pillarCount);
-        const imBlueRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraBlueRing, pillarCount);
-        const imGreenDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraGreenDome, pillarCount);
-        const imGreenRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraGreenRing, pillarCount);
-        const imRedDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraRedDome, pillarCount);
-        const imRedRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraRedRing, pillarCount);
-        let cBlue = 0, cGreen = 0, cRed = 0;
+       
         const imBlueRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraBlueRing, pillarCount);
         const imGreenDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraGreenDome, pillarCount);
         const imGreenRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraGreenRing, pillarCount);

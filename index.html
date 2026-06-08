@@ -4408,7 +4408,9 @@ class GameMap {
             // Calcoliamo la probabilità: parte da 0.3 (30%) ai primi piani 
 // e cresce fino a un massimo di 0.7 (70%) ai piani alti.
 let probability = Math.min(0.7, 0.3 + (Game.floor * 0.02));
-
+if (!isBossFloor && rw > 7 && rh > 7 && Math.random() < probability) {
+                this.grid[room.center.x][room.center.y] = 3;
+            }
 if (rw > 7 && rh > 7 && Math.random() > (1 - probability)) {
     this.grid[room.center.x][room.center.y] = 3;
 }
@@ -4513,12 +4515,12 @@ if (rw > 7 && rh > 7 && Math.random() > (1 - probability)) {
                     tWall.repeat.set(1, 1.5);
                 }
 
-               // MATERIALI OTTIMIZZATI: Rimosse le bumpMap per un look arcade pulito e massime performance.
+               // MATERIALI OTTIMIZZATI: Usiamo specular e shininess dato che è un PhongMaterial
                 window.GLOBAL_THEME_MATS[i] = {
-                    dirt: new MapMaterialClass({ map: tDirt, shininess: 5, roughness: 0.7 }),
-                    grass: new MapMaterialClass({ map: tGrass, shininess: 2, roughness: 0.7, alphaMap: alphaTex, transparent: true, depthWrite: false }),
-                    rock: new MapMaterialClass({ map: tRock, shininess: 40, roughness: 0.4, metalness: 0.3, alphaMap: alphaTex, transparent: true, depthWrite: false }),
-                    wall: new MapMaterialClass({ map: tWall, shininess: 15, roughness: 0.6, metalness: 0.2 })
+                    dirt: new MapMaterialClass({ map: tDirt, shininess: 0, specular: 0x000000 }), // Zero riflessi speculari!
+                    grass: new MapMaterialClass({ map: tGrass, shininess: 0, specular: 0x000000, alphaMap: alphaTex, transparent: true, depthWrite: false }),
+                    rock: new MapMaterialClass({ map: tRock, shininess: 15, specular: 0x222222, alphaMap: alphaTex, transparent: true, depthWrite: false }),
+                    wall: new MapMaterialClass({ map: tWall, shininess: 10, specular: 0x111111 })
                 };
             }
         }
@@ -4534,27 +4536,20 @@ if (rw > 7 && rh > 7 && Math.random() > (1 - probability)) {
         activeMats.grass.color.setHex(currentTheme.grass);
         activeMats.rock.color.setHex(currentTheme.rock);
         activeMats.wall.color.setHex(currentTheme.wall);
-      // --- DIFFERENZIAZIONE FISICA DEI MATERIALI (COSTO ZERO) ---
+     // --- DIFFERENZIAZIONE FISICA DEI MATERIALI (COSTO ZERO) ---
         if (Game.currentThemeIndex === 2) { 
-            // TEMA GHIACCIO: Pavimento e rocce cristalline e riflettenti
-            activeMats.rock.shininess = 120;
-            activeMats.dirt.shininess = 5; // <--- MODIFICATO DA 60 A 5
+            // TEMA GHIACCIO: Rocce riflettenti ma terreno opaco
+            activeMats.rock.shininess = 60;
             activeMats.rock.emissive.setHex(0x000000);
-        } else if (Game.currentThemeIndex === 1) {
+        } else if (Game.currentThemeIndex === 1) { 
             // TEMA LAVA: Rocce opache ma incandescenti alla base
             activeMats.rock.shininess = 5;
-            activeMats.dirt.shininess = 10;
-            // Le rocce emettono un rosso scurissimo che verrà catturato dal Bloom
             activeMats.rock.emissive.setHex(0x220000); 
         } else { 
             // TEMA FORESTA: Organico, ruvido e opaco
             activeMats.rock.shininess = 15;
-            activeMats.dirt.shininess = 5;
             activeMats.rock.emissive.setHex(0x000000);
         }
-        
-        if (window.GLOBAL_TREE_MAT) window.GLOBAL_TREE_MAT.color.setHex(currentTheme.tree);
-        if (InteractiveGrassSystem.mat) InteractiveGrassSystem.mat.color.setHex(currentTheme.grassShader);
         // --- FINE SISTEMA TEMI ---
         
         this.floorMat = activeMats.dirt; 

@@ -4538,9 +4538,9 @@ if (rw > 7 && rh > 7 && Math.random() > (1 - probability)) {
         if (Game.currentThemeIndex === 2) { 
             // TEMA GHIACCIO: Pavimento e rocce cristalline e riflettenti
             activeMats.rock.shininess = 120;
-            activeMats.dirt.shininess = 60;
+            activeMats.dirt.shininess = 5; // <--- MODIFICATO DA 60 A 5
             activeMats.rock.emissive.setHex(0x000000);
-        } else if (Game.currentThemeIndex === 1) { 
+        } else if (Game.currentThemeIndex === 1) {
             // TEMA LAVA: Rocce opache ma incandescenti alla base
             activeMats.rock.shininess = 5;
             activeMats.dirt.shininess = 10;
@@ -4909,6 +4909,12 @@ class Entity {
         this.auraRingMesh.scale.set(radius * 1.5, radius * 1.5, 2);
         this.auraRingMesh.visible = false;
         this.mesh.add(this.auraRingMesh);
+
+        this.auraGlow = new THREE.Mesh(new THREE.PlaneGeometry(radius * 6, radius * 6), new THREE.MeshBasicMaterial({map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
+        this.auraGlow.rotation.x = -Math.PI / 2;
+        this.auraGlow.position.y = 0.4;
+        this.auraGlow.visible = false;
+        this.mesh.add(this.auraGlow);
         // --- FINE ALONE OBELISCO ---
     }
     move(dx, dy, dt) {
@@ -5494,15 +5500,20 @@ class Player extends Entity {
         // ---------------------------------------------
         let flowCapMult = this.modifiers.flowMastery ? 2 : 1;
         let aura = Game.getAuraAt(this.x, this.y);
-        // --- EFFETTO VISIVO ALONE OBELISCO SUL PLAYER ---
+       // --- EFFETTO VISIVO ALONE OBELISCO SUL PLAYER ---
         if (aura) {
             this.auraRingMesh.visible = true;
             this.auraRingMesh.material.color.setHex(aura === 'blue' ? 0x00aaff : (aura === 'green' ? 0x66ff33 : 0xff3333));
             this.auraRingMesh.rotation.z -= dt * 2;
+            
+            this.auraGlow.visible = true;
+            this.auraGlow.material.color.setHex(aura === 'blue' ? 0x00aaff : (aura === 'green' ? 0x66ff33 : 0xff3333));
+            
             // Tinta extra sul corpo
             this.modelParts.body.material.emissive.setHex(aura === 'blue' ? 0x002255 : (aura === 'green' ? 0x113311 : 0x440000));
         } else {
             this.auraRingMesh.visible = false;
+            this.auraGlow.visible = false;
             if (!this.overdrive && !Game.ultimateActive) this.modelParts.body.material.emissive.setHex(0x000000);
         }
         // ------------------------------------------------
@@ -6455,14 +6466,17 @@ Game.scene.add(this.telegraphMesh);
        // --- FINE AI STAGGERING ---
 
        
-        
-        // --- EFFETTO VISIVO ALONE OBELISCO SUI NEMICI ---
+       // --- EFFETTO VISIVO ALONE OBELISCO SUI NEMICI ---
         if (aura) {
             this.auraRingMesh.visible = true;
             this.auraRingMesh.material.color.setHex(aura === 'blue' ? 0x00aaff : (aura === 'green' ? 0x66ff33 : 0xff3333));
             this.auraRingMesh.rotation.z -= dt * 2;
+            
+            this.auraGlow.visible = true;
+            this.auraGlow.material.color.setHex(aura === 'blue' ? 0x00aaff : (aura === 'green' ? 0x66ff33 : 0xff3333));
         } else {
             this.auraRingMesh.visible = false;
+            this.auraGlow.visible = false;
         }
         // ------------------------------------------------
 

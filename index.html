@@ -1779,6 +1779,7 @@ const RelicSystem = {
 
 
 const SharedGeo = {
+    auraDome: new THREE.SphereGeometry(1, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), auraRing: new THREE.TorusGeometry(1, 0.03, 8, 32),
     box: new THREE.BoxGeometry(1, 1, 1), sphere: new THREE.SphereGeometry(1, 8, 8), cylinder: new THREE.CylinderGeometry(1, 1, 1, 8), 
     cone: new THREE.ConeGeometry(1, 2, 8), icosahedron: new THREE.IcosahedronGeometry(1, 0), torus: new THREE.TorusGeometry(1, 0.1, 8, 24),
     tetrahedron: new THREE.TetrahedronGeometry(1, 0), bloodPlane: new THREE.PlaneGeometry(40, 40),
@@ -1947,7 +1948,13 @@ const SharedMat = {
     enemyDark: new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9}),
     enemyEye: new THREE.MeshBasicMaterial({color: 0xff0000}),
     leaperTeeth: new THREE.MeshBasicMaterial({color: 0xffffff}),
-    dashLine: new THREE.MeshBasicMaterial({color: 0x00ffff, blending: THREE.AdditiveBlending, transparent: true})
+  dashLine: new THREE.MeshBasicMaterial({color: 0x00ffff, blending: THREE.AdditiveBlending, transparent: true}),
+    auraBlueDome: new THREE.MeshBasicMaterial({color: 0x0088ff, transparent: true, opacity: 0.15, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending}),
+    auraBlueRing: new THREE.MeshBasicMaterial({color: 0x00aaff, transparent: true, opacity: 0.8, depthWrite: false}),
+    auraGreenDome: new THREE.MeshBasicMaterial({color: 0x33ff00, transparent: true, opacity: 0.15, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending}),
+    auraGreenRing: new THREE.MeshBasicMaterial({color: 0x66ff33, transparent: true, opacity: 0.8, depthWrite: false}),
+    auraRedDome: new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: 0.15, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending}),
+    auraRedRing: new THREE.MeshBasicMaterial({color: 0xff3333, transparent: true, opacity: 0.8, depthWrite: false})
 };
 SharedMat.coin = new THREE.MeshStandardMaterial({color: 0xffd700, emissive: 0xaa6600, metalness: 1.0, roughness: 0.2});
     const SharedGeoSet = new Set(Object.values(SharedGeo));
@@ -2927,6 +2934,16 @@ triggerComboAnim(combo) {
     }
 };
 const Game = {
+    auras: [],
+    getAuraAt(x, y) {
+        if (!this.auras) return null;
+        for (let i = 0; i < this.auras.length; i++) {
+            let a = this.auras[i];
+            let dx = x - a.x, dy = y - a.y;
+            if (dx * dx + dy * dy <= a.radiusSq) return a.type;
+        }
+        return null;
+    },
     _dummyQuat: new THREE.Quaternion(),
 _dummyScale: new THREE.Vector3(3, 3, 3),
     _dummyFog: new THREE.Object3D(),
@@ -3581,9 +3598,15 @@ prewarmShaders() {
             }
         }
         
-        this.animBounce = Math.sin(this.frameCount * 0.4) * 4;
+       this.animBounce = Math.sin(this.frameCount * 0.4) * 4;
         this.animFloat = Math.sin(this.frameCount * 0.1) * 5;
         this.animArm = Math.sin(this.frameCount * 0.3) * 0.5;
+        
+        // --- ANIMAZIONE AUREE OBLISCHI ---
+        let auraPulse = Math.sin(this.playTime * 2.5) * 0.05;
+        SharedMat.auraBlueDome.opacity = 0.15 + auraPulse;
+        SharedMat.auraGreenDome.opacity = 0.15 + auraPulse;
+        SharedMat.auraRedDome.opacity = 0.15 + auraPulse;
         
        // --- LAMPI SPETTRALI ---
         if (this.lightningCooldown === undefined) this.lightningCooldown = 0;
@@ -4511,10 +4534,19 @@ class GameMap {
     window.GLOBAL_TELEGRAPH_GEO = new THREE.PlaneGeometry(1, 1);
     window.GLOBAL_TELEGRAPH_GEO.rotateX(-Math.PI / 2);
 }
-        const wallMesh = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, this.wallMat, wallCount);
+       const wallMesh = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, this.wallMat, wallCount);
         const pillarBaseMesh = new THREE.InstancedMesh(window.GLOBAL_BASE_GEO, this.wallMat, pillarCount);
         const pillarShaftMesh = new THREE.InstancedMesh(window.GLOBAL_SHAFT_GEO, this.wallMat, pillarCount);
         const pillarCapMesh = new THREE.InstancedMesh(window.GLOBAL_CAP_GEO, this.wallMat, pillarCount);
+        
+        Game.auras = [];
+        const imBlueDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraBlueDome, pillarCount);
+        const imBlueRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraBlueRing, pillarCount);
+        const imGreenDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraGreenDome, pillarCount);
+        const imGreenRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraGreenRing, pillarCount);
+        const imRedDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraRedDome, pillarCount);
+        const imRedRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraRedRing, pillarCount);
+        let cBlue = 0, cGreen = 0, cRed = 0;
 
         meshDirt.receiveShadow = true; meshGrass.receiveShadow = true; meshRock.receiveShadow = true;
         wallMesh.castShadow = true; wallMesh.receiveShadow = false; 
@@ -4649,14 +4681,31 @@ class GameMap {
                     wallMesh.setMatrixAt(wIdx++, dummy.matrix);
                 }
 
-                // Strutture interattive (Colonne e Cristalli nel Labirinto)
+               // Strutture interattive (Colonne e Cristalli nel Labirinto)
                 if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
                     if (this.grid[x][y] === 3) {
                         let px = x * TILE_SIZE + TILE_SIZE / 2; let pz = y * TILE_SIZE + TILE_SIZE / 2;
                         let isBroken = Math.random() < 0.15; 
+                        
+                        // --- SPAWN AUREE MAGICHE ---
+                        let auraRadius = 140;
+                        let rType = Math.random();
+                        let aType = rType < 0.33 ? 'blue' : (rType < 0.66 ? 'green' : 'red');
+                        Game.auras.push({ x: px, y: pz, type: aType, radiusSq: auraRadius * auraRadius });
+                        
+                        dummy.position.set(px, 0, pz); dummy.scale.set(auraRadius, auraRadius, auraRadius); dummy.rotation.set(0, 0, 0); dummy.updateMatrix();
+                        if(aType === 'blue') imBlueDome.setMatrixAt(cBlue, dummy.matrix);
+                        if(aType === 'green') imGreenDome.setMatrixAt(cGreen, dummy.matrix);
+                        if(aType === 'red') imRedDome.setMatrixAt(cRed, dummy.matrix);
+                        
+                        dummy.position.y = 0.5; dummy.rotation.x = -Math.PI / 2; dummy.updateMatrix();
+                        if(aType === 'blue') imBlueRing.setMatrixAt(cBlue++, dummy.matrix);
+                        if(aType === 'green') imGreenRing.setMatrixAt(cGreen++, dummy.matrix);
+                        if(aType === 'red') imRedRing.setMatrixAt(cRed++, dummy.matrix);
+                        // -------------------------
+
                         dummy.position.set(px, 7.5, pz); dummy.scale.set(1, 1, 1); dummy.rotation.set(0, 0, 0);
                         dummy.updateMatrix(); pillarBaseMesh.setMatrixAt(pIdx, dummy.matrix);
-
                         if (isBroken) {
                             dummy.scale.set(1, MathUtils.randomRange(0.2, 0.6), 1);
                             dummy.rotation.z = MathUtils.randomRange(-0.1, 0.1); dummy.rotation.x = MathUtils.randomRange(-0.1, 0.1);
@@ -4709,7 +4758,14 @@ class GameMap {
         this.mapGroup.add(meshDirt, meshGrass, meshRock); 
         this.mapGroup.add(wallMesh); 
         
-       if(pillarCount > 0) this.mapGroup.add(pillarBaseMesh, pillarShaftMesh, pillarCapMesh);
+      if(pillarCount > 0) this.mapGroup.add(pillarBaseMesh, pillarShaftMesh, pillarCapMesh);
+        
+        imBlueDome.count = cBlue; imBlueRing.count = cBlue;
+        imGreenDome.count = cGreen; imGreenRing.count = cGreen;
+        imRedDome.count = cRed; imRedRing.count = cRed;
+        if(cBlue > 0) this.mapGroup.add(imBlueDome, imBlueRing);
+        if(cGreen > 0) this.mapGroup.add(imGreenDome, imGreenRing);
+        if(cRed > 0) this.mapGroup.add(imRedDome, imRedRing);
         
         // --- INIZIO SISTEMA NEBBIA BASSA 3D ---
         const texSmoke = Preloader.textures.smoke;
@@ -5372,9 +5428,10 @@ class Player extends Entity {
         }
         let miserSpdBonus = 1.0 + (this.miserBuffStacks * 0.06); // +6% velocità per stack (max +30% a 5 stack)
         // ---------------------------------------------
-
         let flowCapMult = this.modifiers.flowMastery ? 2 : 1;
-        let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult * shockSpdMult * dashSpdMult * miserSpdBonus * (1.0 + (this.essenceSpeedBonus || 0));
+        let aura = Game.getAuraAt(this.x, this.y);
+        let auraSpdMult = (aura === 'blue') ? 0.6 : 1.0; 
+        let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult * shockSpdMult * dashSpdMult * miserSpdBonus * (1.0 + (this.essenceSpeedBonus || 0)) * auraSpdMult;
         if (Game.ultimateActive) currentSpeed *= 1.5; currentSpeed = Math.min(currentSpeed, Game.ultimateActive ? 750 : 550);
         
         if (Game.ultimateActive && Game.frameCount % (isTouchDevice ? 8 : 3) === 0) Game.getParticle().spawn(this.x + MathUtils.randomRange(-15, 15), 15, this.y + MathUtils.randomRange(-15, 15), SharedMat.spriteBlue, 'trail');
@@ -5610,10 +5667,12 @@ class Player extends Entity {
         
         // MODIFICA VELOCITÀ D'ATTACCO: +30% se l'Onda d'Urto è attiva (shockSpeedTimer) 
         // e +6% a stack per ogni moneta raccolta (miserBuffStacks)
-        let shockAtkSpeed = this.shockSpeedTimer > 0 ? 1.30 : 1.0;
+       let shockAtkSpeed = this.shockSpeedTimer > 0 ? 1.30 : 1.0;
         let miserAtkSpeedBonus = 1.0 + ((this.miserBuffStacks || 0) * 0.06);
         
-        let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult * shopSpeed * adrenalineSpeed * (1 + shieldSpeed) * shockAtkSpeed * miserAtkSpeedBonus;
+        let aura = Game.getAuraAt(this.x, this.y); 
+        let auraAtkSpd = (aura === 'blue') ? 0.6 : 1.0; 
+        let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult * shopSpeed * adrenalineSpeed * (1 + shieldSpeed) * shockAtkSpeed * miserAtkSpeedBonus * auraAtkSpd;
         if (this.overdrive && this.essence === 'blue') spdMult *= 3.0; 
         
         // --- MODIFICA CADENZA ARMA ROSSA ---
@@ -5621,8 +5680,9 @@ class Player extends Entity {
         
         if (Game.ultimateActive) spdMult *= 2.0; 
         this.attackTimer = 1 / (this.baseAttackSpeed * spdMult); this.isAttacking = true; this.attackSwing = 0;
-        let critChance = this.modifiers.critChance + this.modifiers.bonusCritChance + Math.min(Game.combo * 0.005, 0.5 * flowCapMult); let isCrit = Math.random() < critChance;
-        if (this.modifiers.dashCritsStacks > 0) { isCrit = true; this.modifiers.dashCritsStacks--; }
+       let critChance = this.modifiers.critChance + this.modifiers.bonusCritChance + Math.min(Game.combo * 0.005, 0.5 * flowCapMult); let isCrit = Math.random() < critChance;
+        if (this.modifiers.dashCritsStacks > 0) { isCrit = true; this.modifiers.dashCritsStacks--; }
+        if (aura === 'red') isCrit = true; // 100% crit
         let baseDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * (1 + Math.min(Game.combo * 0.04, 2.0 * flowCapMult)) * this.modifiers.dmgMult;
         
         // Applicazione Maestria del Flow sul danno INFLITTO
@@ -5723,6 +5783,9 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
     
   takeDamage(amount, source) {
         if (this.invincibilityTimer > 0) return; 
+        
+        let aura = Game.getAuraAt(this.x, this.y); 
+        if (aura === 'green') amount *= 0.6; 
         
         // Riduzione del 25% se lo Scudo Cinetico base è attivo
         if (this.activeShieldTimer > 0) {
@@ -6188,6 +6251,9 @@ Game.scene.add(this.telegraphMesh);
             this.slowType = null; // Resetta il tipo di rallentamento
         }
         
+        let aura = Game.getAuraAt(this.x, this.y);
+        if (aura === 'blue') this.speed *= 0.6; 
+        
         if (this.fireDebuffTimer > 0) this.fireDebuffTimer -= dt;
 
         if (this.infected && Game.frameCount % 10 === 0 && !isTouchDevice) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'trail');
@@ -6466,8 +6532,11 @@ Game.scene.add(this.telegraphMesh);
         let cdMult = Math.max(0.4, 1.0 / Game.difficultyMult); 
         let spdMult = 0.75 + (Game.difficultyMult * 0.25);     
         
-        let buffDmgMult = this.isProphetBuffed ? 2.5 : 1.0; 
+       let buffDmgMult = this.isProphetBuffed ? 2.5 : 1.0; 
         if (this.isProphetBuffed) cdMult *= 0.3;
+        
+        let aura = Game.getAuraAt(this.x, this.y); 
+        if (aura === 'blue') cdMult /= 0.6; 
         
         // POTENZIAMENTO OSCURITÀ: Ranged attaccano il 20% più velocemente (Cooldown ridotto)
         let isRanged = (this.type === 'skeleton_archer' || this.type === 'mage' || this.type === 'pyromancer' || this.type === 'fire_demon');
@@ -6475,10 +6544,11 @@ Game.scene.add(this.telegraphMesh);
             cdMult *= 0.80; 
         }
         
-        this.attackCooldown = 0.9 * cdMult; 
+       this.attackCooldown = 0.9 * cdMult; 
         let actualDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * buffDmgMult;
+        if (aura === 'red') actualDmg *= 2.0; // Danno Raddoppiato perché crittano al 100%!
         
-        if (this.type === 'skeleton_archer') { 
+        if (this.type === 'skeleton_archer') {
             Game.getProjectile().spawn(this.x, this.y, this.angle, 250 * spdMult, actualDmg, 'enemy', 'arrow'); 
             this.attackCooldown = 1.0 * cdMult; 
         } 
@@ -6502,16 +6572,19 @@ Game.scene.add(this.telegraphMesh);
     }
     
  takeDamage(amount, source, isCrit = false, canInfect = true) {
-      if (this.isPursuer) {
-          // FIX NEMESI: Mostra la scritta IMMUNE.
-          if (!this.immuneTimer || Game.playTime > this.immuneTimer) {
-              Game.getFloatingText().spawn(this.x, this.y + 20, "IMMUNE", '#aa00ff', 35, true);
-              this.immuneTimer = Game.playTime + 0.5;
-          }
-          return; 
-      }
+     if (this.isPursuer) {
+          // FIX NEMESI: Mostra la scritta IMMUNE.
+          if (!this.immuneTimer || Game.playTime > this.immuneTimer) {
+              Game.getFloatingText().spawn(this.x, this.y + 20, "IMMUNE", '#aa00ff', 35, true);
+              this.immuneTimer = Game.playTime + 0.5;
+          }
+          return; 
+      }
 
-        // 1. Calcola PRIMA i modificatori di danno del Giocatore (Esecuzione, Danni Opener, ecc.)
+        let aura = Game.getAuraAt(this.x, this.y);
+        if (aura === 'green') amount *= 0.6;
+
+        // 1. Calcola PRIMA i modificatori di danno del Giocatore (Esecuzione, Danni Opener, ecc.)
         if (source === Game.player && Game.player.modifiers.executioner && (this.stats.hp / this.stats.maxHp) < 0.3) amount *= 2.0;
         if (source === Game.player && Game.player.modifiers.openerDmg && (this.stats.hp / this.stats.maxHp) >= 0.8) amount *= 1.2;
         

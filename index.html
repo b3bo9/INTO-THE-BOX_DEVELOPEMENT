@@ -4791,15 +4791,31 @@ Game.auras = []; Game.auraIcons = [];
         this.mapGroup.add(meshDirt, meshGrass, meshRock); 
         this.mapGroup.add(wallMesh); 
         
-      if(pillarCount > 0) this.mapGroup.add(obeliskMesh);
+     if(pillarCount > 0) {
+            this.mapGroup.add(obeliskMesh);
+            obeliskMesh.instanceMatrix.needsUpdate = true; // <-- FIX: Forza il disegno dell'obelisco
+        }
         
         imBlueDome.count = cBlue; imBlueRing.count = cBlue;
         imGreenDome.count = cGreen; imGreenRing.count = cGreen;
         imRedDome.count = cRed; imRedRing.count = cRed;
-        if(cBlue > 0) this.mapGroup.add(imBlueDome, imBlueRing);
-        if(cGreen > 0) this.mapGroup.add(imGreenDome, imGreenRing);
-        if(cRed > 0) this.mapGroup.add(imRedDome, imRedRing);
-        
+        
+        if (cBlue > 0) { 
+            this.mapGroup.add(imBlueDome, imBlueRing); 
+            imBlueDome.instanceMatrix.needsUpdate = true; 
+            imBlueRing.instanceMatrix.needsUpdate = true; 
+        }
+        if (cGreen > 0) { 
+            this.mapGroup.add(imGreenDome, imGreenRing); 
+            imGreenDome.instanceMatrix.needsUpdate = true; 
+            imGreenRing.instanceMatrix.needsUpdate = true; 
+        }
+        if (cRed > 0) { 
+            this.mapGroup.add(imRedDome, imRedRing); 
+            imRedDome.instanceMatrix.needsUpdate = true; 
+            imRedRing.instanceMatrix.needsUpdate = true; 
+        }
+        
         // --- INIZIO SISTEMA NEBBIA BASSA 3D ---
         const texSmoke = Preloader.textures.smoke;
         if (texSmoke) {
@@ -5747,21 +5763,39 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         }
     }
     
-    dash() {
-        if (this.dashCooldown > 0 && !(this.overdrive && this.essence === 'blue')) return; 
-        
-        let perfectDodge = false; let grazeRange = this.radius + 30; let nearby = Game.enemyGrid.findNearby(this, grazeRange);
-        if (nearby.length > 0) { 
-            perfectDodge = true; Game.getFloatingText().spawn(this.x, this.y, "PERFECT!", '#ffffff', 40, true); 
-            Game.hitStop = 0.1; Game.addCombo(2);
-            AudioEngine.playPerfectDodge(); 
-        } else {
-            AudioEngine.playDash();
-        }
-        
-        this.isDashing = true; this.dashTimer = 0.25; this.dashAngle = Game.inputs.left.active ? Math.atan2(Game.inputs.left.y, Game.inputs.left.x) : this.angle;
-        this.dashCooldown = perfectDodge ? 0.5 : 2.0 * this.modifiers.dashCooldownMult; // (mantieni 2.0 o 1.0 a seconda di quello che avevi scelto)
-        if (this.modifiers.dashCritsEnabled) this.modifiers.dashCritsStacks = 2;
+   dash() {
+        if (this.dashCooldown > 0 && !(this.overdrive && this.essence === 'blue')) return; 
+        
+        let perfectDodge = false; let grazeRange = this.radius + 30; let nearby = Game.enemyGrid.findNearby(this, grazeRange);
+        if (nearby.length > 0) { 
+            perfectDodge = true; Game.getFloatingText().spawn(this.x, this.y, "PERFECT!", '#ffffff', 40, true); 
+            Game.hitStop = 0.1; Game.addCombo(2);
+            AudioEngine.playPerfectDodge(); 
+        } else {
+            AudioEngine.playDash();
+        }
+        
+        // FIX SCATTO: Rileva i tasti di movimento della tastiera per decidere dove scattare su PC
+        let dX = 0, dY = 0;
+        if (Game.keys['w']) dY -= 1;
+        if (Game.keys['s']) dY += 1;
+        if (Game.keys['a']) dX -= 1;
+        if (Game.keys['d']) dX += 1;
+
+        if (Game.inputs.left.active) {
+            // Su Mobile segue l'angolo del Joystick analogico sinistro
+            this.dashAngle = Math.atan2(Game.inputs.left.y, Game.inputs.left.x);
+        } else if (dX !== 0 || dY !== 0) {
+            // Su PC segue la direzione dei tasti di movimento premuti (WASD)
+            this.dashAngle = Math.atan2(dY, dX);
+        } else {
+            // Se sei fermo immobile, scatta verso il mirino del mouse
+            this.dashAngle = this.angle;
+        }
+
+        this.isDashing = true; this.dashTimer = 0.25; 
+        this.dashCooldown = perfectDodge ? 0.5 : 2.0 * this.modifiers.dashCooldownMult;
+        if (this.modifiers.dashCritsEnabled) this.modifiers.dashCritsStacks = 2;
         
         if (this.essence === 'blue') {
             let maxDist = 250; 

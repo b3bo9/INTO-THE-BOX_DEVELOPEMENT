@@ -1823,6 +1823,7 @@ class Coin {
         this.group.add(core); this.group.visible = false; Game.scene.add(this.group);
         this.groundGlow = new THREE.Mesh(new THREE.PlaneGeometry(55, 55), new THREE.MeshBasicMaterial({map: GLOW_TEX, color: 0xffaa00, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
         this.groundGlow.rotation.x = -Math.PI / 2; this.groundGlow.visible = false; Game.scene.add(this.groundGlow);
+        this.isHealingFromShield = false;
     }
     spawn(x, y) { 
         this.active = true; this.x = x; this.y = y; this.life = 15.0; 
@@ -5434,7 +5435,19 @@ class Player extends Entity {
         }
 
         if (this.modifiers.passiveUltCharge && !Game.ultimateActive) { Game.addUltimateCharge(2.0 * dt); }
-
+// --- LOGICA RIGENERAZIONE SCUDO CINETICO (2% HP/s + 2% Ultimate/s) ---
+        if (this.isHealingFromShield && this.activeShieldTimer > 0) {
+            // Cura del 2% al secondo (0.02 * dt)
+            let healAmount = this.stats.maxHp * 0.02 * dt;
+            this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
+            
+            // Carica Ultimate del 2% al secondo (2.0 * dt)
+            Game.addUltimateCharge(2.0 * dt);
+            
+            // Resetta il flag per il prossimo frame
+            this.isHealingFromShield = false;
+        }
+        // ---------------------------------------------------------------------
        // Gestione Invincibilità (con esclusione sicura degli scudi)
         // OTTIMIZZAZIONE CPU: Ciclo for standard per evitare la creazione di funzioni anonime ad ogni frame
         if (this.invincibilityTimer > 0) {
@@ -7584,6 +7597,7 @@ class Projectile {
             
             if ((dx * dx) + (dy * dy) < pRadCheck) {
                 if (Game.player.activeShieldTimer > 0 && this.type !== 'fire_shape') {
+                    Game.player.isHealingFromShield = true;
                     Game.player.shieldAbsorbed++;
                     Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'spark');
                     AudioEngine.playCollect(); 

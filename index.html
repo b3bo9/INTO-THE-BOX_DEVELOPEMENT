@@ -5737,7 +5737,7 @@ class Player extends Entity {
         this.attackTimer = 1 / (this.baseAttackSpeed * spdMult); this.isAttacking = true; this.attackSwing = 0;
        let critChance = this.modifiers.critChance + this.modifiers.bonusCritChance + Math.min(Game.combo * 0.005, 0.5 * flowCapMult); let isCrit = Math.random() < critChance;
         if (this.modifiers.dashCritsStacks > 0) { isCrit = true; this.modifiers.dashCritsStacks--; }
-        if (aura === 'red') isCrit = true; // 100% crit
+        if (aura === 'red') baseDmg *= 1.4;
         let baseDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * (1 + Math.min(Game.combo * 0.04, 2.0 * flowCapMult)) * this.modifiers.dmgMult;
         
         // Applicazione Maestria del Flow sul danno INFLITTO
@@ -6619,7 +6619,7 @@ Game.scene.add(this.telegraphMesh);
         
        this.attackCooldown = 0.9 * cdMult; 
         let actualDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * buffDmgMult;
-        if (aura === 'red') actualDmg *= 2.0; // Danno Raddoppiato perché crittano al 100%!
+        if (aura === 'red') actualDmg *= 1.4; // Danno Raddoppiato perché crittano al 100%!
         
         if (this.type === 'skeleton_archer') {
             Game.getProjectile().spawn(this.x, this.y, this.angle, 250 * spdMult, actualDmg, 'enemy', 'arrow'); 

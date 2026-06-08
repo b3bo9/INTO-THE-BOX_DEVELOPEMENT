@@ -3246,6 +3246,8 @@ prewarmShaders() {
         }
     },
    updateCamera(dt) {
+       let isUlt = Game.ultimateActive;
+        let zoom = isUlt ? 0.85 : 1.0; // Zoom leggero: riduce la distanza del 15%
         let camX = this.player.x; let camY = isTouchDevice ? 750 : 700; let camZ = this.player.y + (isTouchDevice ? 500 : 400);
         let shakeX = 0, shakeY = 0, shakeZ = 0;
         

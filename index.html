@@ -4581,9 +4581,9 @@ class GameMap {
         this.obeliskMat = new THREE.MeshPhongMaterial({color: 0x111111, emissive: obEmissive, emissiveIntensity: 0.3, shininess: 20});
         const obeliskMesh = new THREE.InstancedMesh(window.GLOBAL_OBELISK_GEO, this.obeliskMat, pillarCount);
         obeliskMesh.castShadow = true; obeliskMesh.receiveShadow = true;
-
-        Game.auras = []; Game.auraIcons = [];
+Game.auras = []; Game.auraIcons = [];
        
+        const imBlueDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraBlueDome, pillarCount); // <-- RIGA MANCANTE
         const imBlueRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraBlueRing, pillarCount);
         const imGreenDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraGreenDome, pillarCount);
         const imGreenRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraGreenRing, pillarCount);

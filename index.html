@@ -4405,7 +4405,13 @@ class GameMap {
             let room = {x: rx, y: ry, w: rw, h: rh, center: {x: Math.floor(rx + rw/2), y: Math.floor(ry + rh/2)}}; rooms.push(room);
             for(let x=rx; x<rx+rw; x++) for(let y=ry; y<ry+rh; y++) this.grid[x][y] = 2;
             if (i > 0) this.carveCorridor(rooms[i-1].center.x, rooms[i-1].center.y, room.center.x, room.center.y);
-            if (rw > 7 && rh > 7 && Math.random() > 0.5) this.grid[room.center.x][room.center.y] = 3; 
+            // Calcoliamo la probabilità: parte da 0.3 (30%) ai primi piani 
+// e cresce fino a un massimo di 0.7 (70%) ai piani alti.
+let probability = Math.min(0.7, 0.3 + (Game.floor * 0.02));
+
+if (rw > 7 && rh > 7 && Math.random() > (1 - probability)) {
+    this.grid[room.center.x][room.center.y] = 3;
+}
         }
 
         if (isBossFloor) {

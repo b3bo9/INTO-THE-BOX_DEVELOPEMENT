@@ -1778,22 +1778,38 @@ const RelicSystem = {
 };
 
 
+const BLOB_SHADOW_TEX = createBlobShadowTexture();
+const BLOOD_TEX = createPatternTexture('blood'); const GLOW_TEX = createGlowTexture();
+
+// --- ICONE AUREE E MODELLO OBELISCO ---
+function createAuraIcon(type) {
+    const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64; const ctx = canvas.getContext('2d');
+    ctx.shadowBlur = 12; ctx.shadowColor = type === 'blue' ? '#00aaff' : (type === 'green' ? '#66ff33' : '#ff3333'); 
+    ctx.fillStyle = '#ffffff'; ctx.beginPath();
+    if (type === 'blue') { // Clessidra
+        ctx.moveTo(16, 12); ctx.lineTo(48, 12); ctx.lineTo(36, 32); ctx.lineTo(48, 52); ctx.lineTo(16, 52); ctx.lineTo(28, 32);
+    } else if (type === 'green') { // Scudo
+        ctx.moveTo(32, 10); ctx.lineTo(52, 18); ctx.lineTo(50, 40); ctx.arcTo(32, 60, 14, 40, 24); ctx.lineTo(12, 18);
+    } else if (type === 'red') { // Pugnale
+        ctx.moveTo(32, 6); ctx.lineTo(38, 24); ctx.lineTo(35, 24); ctx.lineTo(35, 42); ctx.lineTo(42, 42); ctx.lineTo(42, 46); ctx.lineTo(22, 46); ctx.lineTo(22, 42); ctx.lineTo(29, 42); ctx.lineTo(29, 24); ctx.lineTo(26, 24);
+    }
+    ctx.closePath(); ctx.fill();
+    let tex = new THREE.CanvasTexture(canvas); tex.encoding = THREE.sRGBEncoding; return tex;
+}
+function createObeliskGeometry() {
+    let base = new THREE.BoxGeometry(22, 10, 22); base.translate(0, 5, 0);
+    let shaft = new THREE.CylinderGeometry(6, 10, 50, 4); shaft.rotateY(Math.PI/4); shaft.translate(0, 35, 0);
+    let cap = new THREE.ConeGeometry(6 * Math.SQRT2, 12, 4); cap.rotateY(Math.PI/4); cap.translate(0, 66, 0);
+    let merged = THREE.BufferGeometryUtils.mergeBufferGeometries([base, shaft, cap]); merged.computeVertexNormals(); return merged;
+}
+
 const SharedGeo = {
     auraDome: new THREE.SphereGeometry(1, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), auraRing: new THREE.TorusGeometry(1, 0.03, 8, 32),
     box: new THREE.BoxGeometry(1, 1, 1), sphere: new THREE.SphereGeometry(1, 8, 8), cylinder: new THREE.CylinderGeometry(1, 1, 1, 8), 
     cone: new THREE.ConeGeometry(1, 2, 8), icosahedron: new THREE.IcosahedronGeometry(1, 0), torus: new THREE.TorusGeometry(1, 0.1, 8, 24),
-    tetrahedron: new THREE.TetrahedronGeometry(1, 0), bloodPlane: new THREE.PlaneGeometry(40, 40),
-    rockDebris: new THREE.DodecahedronGeometry(1.5, 0),
-    heart: (function(){
-        const shape = new THREE.Shape();
-        shape.moveTo(0, 1.5);
-        shape.bezierCurveTo(2, 3.5, 4, 1.5, 0, -2.5);
-        shape.bezierCurveTo(-4, 1.5, -2, 3.5, 0, 1.5);
-        const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.5, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.2, bevelThickness: 0.2 });
-        geo.center();
-        return geo;
-    })(),
-    coin: new THREE.CylinderGeometry(10, 10, 2, 16)
+    tetrahedron: new THREE.TetrahedronGeometry(1, 0), bloodPlane: new THREE.PlaneGeometry(40, 40), rockDebris: new THREE.DodecahedronGeometry(1.5, 0),
+    heart: (function(){ const shape = new THREE.Shape(); shape.moveTo(0, 1.5); shape.bezierCurveTo(2, 3.5, 4, 1.5, 0, -2.5); shape.bezierCurveTo(-4, 1.5, -2, 3.5, 0, 1.5); const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.5, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.2, bevelThickness: 0.2 }); geo.center(); return geo; })(),
+    coin: new THREE.CylinderGeometry(10, 10, 2, 16)
 };
 
 
@@ -1947,14 +1963,17 @@ const SharedMat = {
     
     enemyDark: new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9}),
     enemyEye: new THREE.MeshBasicMaterial({color: 0xff0000}),
-    leaperTeeth: new THREE.MeshBasicMaterial({color: 0xffffff}),
-  dashLine: new THREE.MeshBasicMaterial({color: 0x00ffff, blending: THREE.AdditiveBlending, transparent: true}),
+   leaperTeeth: new THREE.MeshBasicMaterial({color: 0xffffff}),
+    dashLine: new THREE.MeshBasicMaterial({color: 0x00ffff, blending: THREE.AdditiveBlending, transparent: true}),
     auraBlueDome: new THREE.MeshBasicMaterial({color: 0x0088ff, transparent: true, opacity: 0.15, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending}),
     auraBlueRing: new THREE.MeshBasicMaterial({color: 0x00aaff, transparent: true, opacity: 0.8, depthWrite: false}),
     auraGreenDome: new THREE.MeshBasicMaterial({color: 0x33ff00, transparent: true, opacity: 0.15, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending}),
     auraGreenRing: new THREE.MeshBasicMaterial({color: 0x66ff33, transparent: true, opacity: 0.8, depthWrite: false}),
     auraRedDome: new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: 0.15, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending}),
-    auraRedRing: new THREE.MeshBasicMaterial({color: 0xff3333, transparent: true, opacity: 0.8, depthWrite: false})
+    auraRedRing: new THREE.MeshBasicMaterial({color: 0xff3333, transparent: true, opacity: 0.8, depthWrite: false}),
+    iconTime: new THREE.SpriteMaterial({map: createAuraIcon('blue'), color: 0xffffff, transparent: true, depthWrite: false}),
+    iconMountain: new THREE.SpriteMaterial({map: createAuraIcon('green'), color: 0xffffff, transparent: true, depthWrite: false}),
+    iconHysteria: new THREE.SpriteMaterial({map: createAuraIcon('red'), color: 0xffffff, transparent: true, depthWrite: false})
 };
 SharedMat.coin = new THREE.MeshStandardMaterial({color: 0xffd700, emissive: 0xaa6600, metalness: 1.0, roughness: 0.2});
     const SharedGeoSet = new Set(Object.values(SharedGeo));
@@ -3601,12 +3620,29 @@ prewarmShaders() {
        this.animBounce = Math.sin(this.frameCount * 0.4) * 4;
         this.animFloat = Math.sin(this.frameCount * 0.1) * 5;
         this.animArm = Math.sin(this.frameCount * 0.3) * 0.5;
-        
-        // --- ANIMAZIONE AUREE OBLISCHI ---
+       // --- ANIMAZIONE AUREE E ICONE ---
         let auraPulse = Math.sin(this.playTime * 2.5) * 0.05;
         SharedMat.auraBlueDome.opacity = 0.15 + auraPulse;
         SharedMat.auraGreenDome.opacity = 0.15 + auraPulse;
         SharedMat.auraRedDome.opacity = 0.15 + auraPulse;
+        
+        let iconPulse = Math.sin(this.playTime * 3) * 5;
+        if (this.auraIcons) {
+            for(let i=0; i<this.auraIcons.length; i++) this.auraIcons[i].position.y = 90 + iconPulse;
+        }
+
+        // Particelle che salgono dal pavimento all'interno dell'Aura
+        if (this.auras && Game.frameCount % (isTouchDevice ? 12 : 5) === 0) {
+            for(let i=0; i<this.auras.length; i++) {
+                let a = this.auras[i];
+                let r = Math.sqrt(a.radiusSq) * Math.random();
+                let angle = Math.random() * Math.PI * 2;
+                let px = a.x + Math.cos(angle) * r;
+                let pz = a.y + Math.sin(angle) * r;
+                let pMat = (a.type === 'blue') ? SharedMat.spriteBlue : (a.type === 'green' ? SharedMat.spriteGreen : SharedMat.spriteRed);
+                Game.getParticle().spawn(px, 2, pz, pMat, 'trail');
+            }
+        }
         
        // --- LAMPI SPETTRALI ---
         if (this.lightningCooldown === undefined) this.lightningCooldown = 0;
@@ -4534,13 +4570,27 @@ class GameMap {
     window.GLOBAL_TELEGRAPH_GEO = new THREE.PlaneGeometry(1, 1);
     window.GLOBAL_TELEGRAPH_GEO.rotateX(-Math.PI / 2);
 }
-       const wallMesh = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, this.wallMat, wallCount);
-        const pillarBaseMesh = new THREE.InstancedMesh(window.GLOBAL_BASE_GEO, this.wallMat, pillarCount);
-        const pillarShaftMesh = new THREE.InstancedMesh(window.GLOBAL_SHAFT_GEO, this.wallMat, pillarCount);
-        const pillarCapMesh = new THREE.InstancedMesh(window.GLOBAL_CAP_GEO, this.wallMat, pillarCount);
+      const wallMesh = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, this.wallMat, wallCount);
         
-        Game.auras = [];
+        // --- PREPARAZIONE VERI OBELISCHI ---
+        if (!window.GLOBAL_OBELISK_GEO) window.GLOBAL_OBELISK_GEO = createObeliskGeometry();
+        // 0: Foresta -> Verde, 1: Lava -> Rosso, 2: Ghiaccio -> Blu
+        let aType = Game.currentThemeIndex === 2 ? 'blue' : (Game.currentThemeIndex === 1 ? 'red' : 'green');
+        let obColor = aType === 'blue' ? 0x0044aa : (aType === 'green' ? 0x11aa11 : 0xaa0000);
+        let obEmissive = aType === 'blue' ? 0x0088ff : (aType === 'green' ? 0x33ff00 : 0xff3300);
+        
+        this.obeliskMat = new THREE.MeshPhongMaterial({color: 0x111111, emissive: obEmissive, emissiveIntensity: 0.3, shininess: 20});
+        const obeliskMesh = new THREE.InstancedMesh(window.GLOBAL_OBELISK_GEO, this.obeliskMat, pillarCount);
+        obeliskMesh.castShadow = true; obeliskMesh.receiveShadow = true;
+
+        Game.auras = []; Game.auraIcons = [];
         const imBlueDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraBlueDome, pillarCount);
+        const imBlueRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraBlueRing, pillarCount);
+        const imGreenDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraGreenDome, pillarCount);
+        const imGreenRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraGreenRing, pillarCount);
+        const imRedDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraRedDome, pillarCount);
+        const imRedRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraRedRing, pillarCount);
+        let cBlue = 0, cGreen = 0, cRed = 0;
         const imBlueRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraBlueRing, pillarCount);
         const imGreenDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraGreenDome, pillarCount);
         const imGreenRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraGreenRing, pillarCount);
@@ -4687,12 +4737,12 @@ class GameMap {
                         let px = x * TILE_SIZE + TILE_SIZE / 2; let pz = y * TILE_SIZE + TILE_SIZE / 2;
                         let isBroken = Math.random() < 0.15; 
                         
-                        // --- SPAWN AUREE MAGICHE ---
-                        let auraRadius = 140;
-                        let rType = Math.random();
-                        let aType = rType < 0.33 ? 'blue' : (rType < 0.66 ? 'green' : 'red');
+                       // --- SPAWN AUREE E OBELISCHI ---
+                        // Aumentiamo enormemente il raggio per dare senso tattico
+                        let auraRadius = 250; 
                         Game.auras.push({ x: px, y: pz, type: aType, radiusSq: auraRadius * auraRadius });
                         
+                        // Cupole e Anelli
                         dummy.position.set(px, 0, pz); dummy.scale.set(auraRadius, auraRadius, auraRadius); dummy.rotation.set(0, 0, 0); dummy.updateMatrix();
                         if(aType === 'blue') imBlueDome.setMatrixAt(cBlue, dummy.matrix);
                         if(aType === 'green') imGreenDome.setMatrixAt(cGreen, dummy.matrix);
@@ -4702,27 +4752,19 @@ class GameMap {
                         if(aType === 'blue') imBlueRing.setMatrixAt(cBlue++, dummy.matrix);
                         if(aType === 'green') imGreenRing.setMatrixAt(cGreen++, dummy.matrix);
                         if(aType === 'red') imRedRing.setMatrixAt(cRed++, dummy.matrix);
+
+                        // Obelisco Vero e Proprio
+                        dummy.position.set(px, 0, pz); dummy.scale.set(1, 1, 1); dummy.rotation.set(0, 0, 0);
+                        dummy.updateMatrix(); obeliskMesh.setMatrixAt(pIdx++, dummy.matrix);
+
+                        // Icona Fluttuante
+                        let iconMat = aType === 'blue' ? SharedMat.iconTime : (aType === 'green' ? SharedMat.iconMountain : SharedMat.iconHysteria);
+                        let iconSprite = new THREE.Sprite(iconMat);
+                        iconSprite.position.set(px, 95, pz);
+                        iconSprite.scale.set(20, 20, 1);
+                        this.mapGroup.add(iconSprite);
+                        Game.auraIcons.push(iconSprite);
                         // -------------------------
-
-                        dummy.position.set(px, 7.5, pz); dummy.scale.set(1, 1, 1); dummy.rotation.set(0, 0, 0);
-                        dummy.updateMatrix(); pillarBaseMesh.setMatrixAt(pIdx, dummy.matrix);
-                        if (isBroken) {
-                            dummy.scale.set(1, MathUtils.randomRange(0.2, 0.6), 1);
-                            dummy.rotation.z = MathUtils.randomRange(-0.1, 0.1); dummy.rotation.x = MathUtils.randomRange(-0.1, 0.1);
-                            dummy.position.y = 15 + (TILE_SIZE * 1.5 * dummy.scale.y) / 2; 
-                        } else {
-                            dummy.position.set(px, TILE_SIZE * 0.75, pz);
-                        }
-                        dummy.updateMatrix(); pillarShaftMesh.setMatrixAt(pIdx, dummy.matrix);
-
-                        if (!isBroken) {
-                            dummy.scale.set(1, 1, 1); dummy.rotation.set(0, Math.PI / 4, 0); 
-                            dummy.position.set(px, TILE_SIZE * 1.5 + 5, pz); 
-                            dummy.updateMatrix(); pillarCapMesh.setMatrixAt(pIdx, dummy.matrix);
-                        } else {
-                            dummy.scale.set(0, 0, 0); dummy.updateMatrix(); pillarCapMesh.setMatrixAt(pIdx, dummy.matrix);
-                        }
-                        pIdx++;
                     } else if (!isBossFloor && Math.random() < 0.015 && this.grid[x][y] !== 1) {
                         let crystal = Game.getEnemy();
                         crystal.spawn(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 'crystal', 1);
@@ -4758,7 +4800,7 @@ class GameMap {
         this.mapGroup.add(meshDirt, meshGrass, meshRock); 
         this.mapGroup.add(wallMesh); 
         
-      if(pillarCount > 0) this.mapGroup.add(pillarBaseMesh, pillarShaftMesh, pillarCapMesh);
+      if(pillarCount > 0) this.mapGroup.add(obeliskMesh);
         
         imBlueDome.count = cBlue; imBlueRing.count = cBlue;
         imGreenDome.count = cGreen; imGreenRing.count = cGreen;
@@ -7756,9 +7798,11 @@ function clearScene() {
                 if (child.dispose) child.dispose(); // Svuota i buffer instanced
             }
         });
+       if (Game.map.obeliskMat) Game.map.obeliskMat.dispose();
         Game.scene.remove(Game.map.mapGroup);
         Game.map.fogMesh = null;
-        Game.map.treePositions = []
+        Game.map.treePositions = [];
+        Game.auras = []; Game.auraIcons = [];
     }
     
     for(let i=0, len=Game.debris.length; i<len; i++) { Game.debris[i].active = false; Game.debris[i].mesh.visible = false; }

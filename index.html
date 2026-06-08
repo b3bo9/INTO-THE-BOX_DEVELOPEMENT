@@ -1964,15 +1964,15 @@ const SharedMat = {
     enemyEye: new THREE.MeshBasicMaterial({color: 0xff0000}),
    leaperTeeth: new THREE.MeshBasicMaterial({color: 0xffffff}),
     dashLine: new THREE.MeshBasicMaterial({color: 0x00ffff, blending: THREE.AdditiveBlending, transparent: true}),
-    auraBlueDome: new THREE.MeshBasicMaterial({color: 0x0088ff, transparent: true, opacity: 0.15, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending}),
+    auraBlueDome: new THREE.MeshBasicMaterial({color: 0x0088ff, transparent: true, opacity: 0.04, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending}),
     auraBlueRing: new THREE.MeshBasicMaterial({color: 0x00aaff, transparent: true, opacity: 0.8, depthWrite: false}),
-    auraGreenDome: new THREE.MeshBasicMaterial({color: 0x33ff00, transparent: true, opacity: 0.15, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending}),
+    auraGreenDome: new THREE.MeshBasicMaterial({color: 0x33ff00, transparent: true, opacity: 0.04, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending}),
     auraGreenRing: new THREE.MeshBasicMaterial({color: 0x66ff33, transparent: true, opacity: 0.8, depthWrite: false}),
-    auraRedDome: new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: 0.15, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending}),
+    auraRedDome: new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: 0.04, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending}),
     auraRedRing: new THREE.MeshBasicMaterial({color: 0xff3333, transparent: true, opacity: 0.8, depthWrite: false}),
-    iconTime: new THREE.SpriteMaterial({map: createAuraIcon('blue'), color: 0xffffff, transparent: true, depthWrite: false}),
-    iconMountain: new THREE.SpriteMaterial({map: createAuraIcon('green'), color: 0xffffff, transparent: true, depthWrite: false}),
-    iconHysteria: new THREE.SpriteMaterial({map: createAuraIcon('red'), color: 0xffffff, transparent: true, depthWrite: false})
+    iconTime: new THREE.SpriteMaterial({map: createAuraIcon('blue'), color: 0xa8a8a8, transparent: true, depthWrite: false}),
+    iconMountain: new THREE.SpriteMaterial({map: createAuraIcon('green'), color: 0xa8a8a8, transparent: true, depthWrite: false}),
+    iconHysteria: new THREE.SpriteMaterial({map: createAuraIcon('red'), color: 0xa8a8a8, transparent: true, depthWrite: false})
 };
 SharedMat.coin = new THREE.MeshStandardMaterial({color: 0xffd700, emissive: 0xaa6600, metalness: 1.0, roughness: 0.2});
     const SharedGeoSet = new Set(Object.values(SharedGeo));
@@ -3252,8 +3252,8 @@ prewarmShaders() {
         // Distorsione Termica rimossa: muovere fisicamente la telecamera per simulare il calore
         // creava un tremolio ingiustificato causando motion sickness a giocatore fermo.
 
-        if (this.trauma > 0) {
-            let shakeForce = this.trauma * this.trauma * 40; 
+       if (this.trauma > 0) {
+            let shakeForce = this.trauma * this.trauma * 15; // RIDOTTO DA 40 A 15
             shakeX += MathUtils.randomRange(-shakeForce, shakeForce); 
             shakeY += MathUtils.randomRange(-shakeForce, shakeForce); 
             shakeZ += MathUtils.randomRange(-shakeForce, shakeForce);
@@ -4894,13 +4894,22 @@ class Entity {
         this.angle = 0; this.dead = false; this.mesh = new THREE.Group(); this.stats = { hp: 100, maxHp: 100, minDmg: 5, maxDmg: 10 };
         this.mesh.matrixAutoUpdate = false; // OTTIMIZZAZIONE GPU MASSICCIA: Disabilita il calcolo matriciale automatico
         this.flashTimer = 0; this.flashMats = []; 
-        // --- INIZIO FAKE SHADOW ---
+       // --- INIZIO FAKE SHADOW ---
         this.shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), SharedMat.blobShadow);
         this.shadowMesh.rotation.x = -Math.PI / 2; // La sdraiamo sul pavimento
         this.shadowMesh.matrixAutoUpdate = false;
         this.shadowMesh.visible = false;
         Game.scene.add(this.shadowMesh); // La aggiungiamo alla scena, indipendente dai salti del personaggio
         // --- FINE FAKE SHADOW ---
+        
+        // --- INIZIO ALONE OBELISCO ---
+        this.auraRingMesh = new THREE.Mesh(SharedGeo.torus, new THREE.MeshBasicMaterial({transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending}));
+        this.auraRingMesh.rotation.x = -Math.PI / 2;
+        this.auraRingMesh.position.y = 0.5;
+        this.auraRingMesh.scale.set(radius * 1.5, radius * 1.5, 2);
+        this.auraRingMesh.visible = false;
+        this.mesh.add(this.auraRingMesh);
+        // --- FINE ALONE OBELISCO ---
     }
     move(dx, dy, dt) {
         let len = Math.sqrt(dx*dx + dy*dy); if (len > 0) { dx /= len; dy /= len; }
@@ -5485,6 +5494,18 @@ class Player extends Entity {
         // ---------------------------------------------
         let flowCapMult = this.modifiers.flowMastery ? 2 : 1;
         let aura = Game.getAuraAt(this.x, this.y);
+        // --- EFFETTO VISIVO ALONE OBELISCO SUL PLAYER ---
+        if (aura) {
+            this.auraRingMesh.visible = true;
+            this.auraRingMesh.material.color.setHex(aura === 'blue' ? 0x00aaff : (aura === 'green' ? 0x66ff33 : 0xff3333));
+            this.auraRingMesh.rotation.z -= dt * 2;
+            // Tinta extra sul corpo
+            this.modelParts.body.material.emissive.setHex(aura === 'blue' ? 0x002255 : (aura === 'green' ? 0x113311 : 0x440000));
+        } else {
+            this.auraRingMesh.visible = false;
+            if (!this.overdrive && !Game.ultimateActive) this.modelParts.body.material.emissive.setHex(0x000000);
+        }
+        // ------------------------------------------------
         let auraSpdMult = (aura === 'blue') ? 0.6 : 1.0; 
         let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult * shockSpdMult * dashSpdMult * miserSpdBonus * (1.0 + (this.essenceSpeedBonus || 0)) * auraSpdMult;
         if (Game.ultimateActive) currentSpeed *= 1.5; currentSpeed = Math.min(currentSpeed, Game.ultimateActive ? 750 : 550);
@@ -6431,7 +6452,19 @@ Game.scene.add(this.telegraphMesh);
                 }
             }
         }
-        // --- FINE AI STAGGERING ---
+       // --- FINE AI STAGGERING ---
+
+        let aura = Game.getAuraAt(this.x, this.y);
+        
+        // --- EFFETTO VISIVO ALONE OBELISCO SUI NEMICI ---
+        if (aura) {
+            this.auraRingMesh.visible = true;
+            this.auraRingMesh.material.color.setHex(aura === 'blue' ? 0x00aaff : (aura === 'green' ? 0x66ff33 : 0xff3333));
+            this.auraRingMesh.rotation.z -= dt * 2;
+        } else {
+            this.auraRingMesh.visible = false;
+        }
+        // ------------------------------------------------
 
        // --- AGGIORNAMENTO VISIVO A 60 FPS (Nessun Lag/Stuttering sui Raggi) ---
         if (this.type === 'dark_prophet' && this.buffTargets) {

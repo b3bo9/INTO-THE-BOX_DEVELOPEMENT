@@ -1917,8 +1917,7 @@ function createBlobShadowTexture() {
     tex.encoding = THREE.sRGBEncoding; // <--- MANCAVA QUESTO
     return tex;
 }
-const BLOB_SHADOW_TEX = createBlobShadowTexture();
-const BLOOD_TEX = createPatternTexture('blood'); const GLOW_TEX = createGlowTexture();
+
 
 // OTTIMIZZAZIONE 1: Cache Globale delle texture del pavimento per evitare VRAM Leaks
 const GLOBAL_WALL_TEX = createPatternTexture('wall'); 

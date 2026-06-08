@@ -3246,7 +3246,7 @@ prewarmShaders() {
         }
     },
    updateCamera(dt) {
-        let camX = this.player.x; let camY = isTouchDevice ? 750 : 600; let camZ = this.player.y + (isTouchDevice ? 500 : 400);
+        let camX = this.player.x; let camY = isTouchDevice ? 750 : 700; let camZ = this.player.y + (isTouchDevice ? 500 : 400);
         let shakeX = 0, shakeY = 0, shakeZ = 0;
         
         // Distorsione Termica rimossa: muovere fisicamente la telecamera per simulare il calore
@@ -3265,7 +3265,7 @@ prewarmShaders() {
         }
 
         // FOV Dinamico: allarga la visuale per enfatizzare la potenza dell'Ultimate
-        let targetFov = Game.ultimateActive ? 56 : 50;
+        let targetFov = Game.ultimateActive ? 70 : 50;
         if (Math.abs(targetFov - this.camera.fov) > 0.1) {
             this.camera.fov += (targetFov - this.camera.fov) * 8 * dt;
             this.camera.updateProjectionMatrix();

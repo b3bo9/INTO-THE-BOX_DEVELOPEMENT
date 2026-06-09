@@ -3417,27 +3417,27 @@ prewarmShaders() {
         let currentTheme = MAP_THEMES[this.currentThemeIndex];
         // Impostiamo nebbia, sfondo e luci in base al tema corrente!
         this.scene.background = new THREE.Color(currentTheme.fog); 
-      // --- ATMOSFERA E VISIBILITÀ DINAMICA ---
+    // --- ATMOSFERA E VISIBILITÀ DINAMICA ---
         if (this.currentThemeIndex === 2) {
             // Ghiaccio: Visibilità cristallina, nebbia molto lontana
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist + 100, camDist + 1000);
             if (this.bloomPass) {
                 this.bloomPass.strength = AppSettings.isUltraPC ? 1.0 : 0.8;
-                this.bloomPass.threshold = 0.65; // FIX: Soglia più alta. Il ghiaccio non sbaverà, solo la magia brillerà!
+                this.bloomPass.threshold = 0.65; // FIX BLOOM: Aumentata la soglia di tolleranza
             }
         } else if (this.currentThemeIndex === 1) {
             // Lava: Aria densa e soffocante, nebbia vicinissima, bagliore estremo
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 300, camDist + 250);
             if (this.bloomPass) {
                 this.bloomPass.strength = AppSettings.isUltraPC ? 1.1 : 0.9;
-                this.bloomPass.threshold = 0.35; // Reset
+                this.bloomPass.threshold = 0.35; // Reset standard
             }
         } else {
             // Foresta: Atmosfera equilibrata e misteriosa
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 150, camDist + 500);
             if (this.bloomPass) {
                 this.bloomPass.strength = AppSettings.isUltraPC ? 0.9 : 0.7;
-                this.bloomPass.threshold = 0.35; // Reset
+                this.bloomPass.threshold = 0.35; // Reset standard
             }
         }
         Game.arenaEvolution = false; // DEVE ESSERE FALSE ALL'INIZIO!
@@ -3588,10 +3588,10 @@ update(combatDt, visualDt) {
             this.camera.fov += visualDt * 40;
             this.camera.updateProjectionMatrix();
             
-            // 3. Scuriamo la scena
+            // 3. FIX SCHERMATA NERA: Scuriamo usando gli stili inline puri
             if (UI.els.bloodVignette) {
                 UI.els.bloodVignette.style.background = `rgba(5, 5, 10, ${progress})`;
-                UI.els.bloodVignette.classList.add('death-fade-active');
+                UI.els.bloodVignette.style.opacity = progress; // <-- Il trucco vitale per non incastrare l'HUD
             }
             
             // Effetti visivi che continuano a muoversi
@@ -3609,9 +3609,10 @@ update(combatDt, visualDt) {
                 this.camera.fov = 50; 
                 this.camera.updateProjectionMatrix();
                 
+                // RESET PULTISSIMO della schermata nera
                 if (UI.els.bloodVignette) {
-                    UI.els.bloodVignette.classList.remove('death-fade-active');
                     UI.els.bloodVignette.style.background = ''; 
+                    UI.els.bloodVignette.style.opacity = '0'; 
                 }
 
                 if (this.isCorrupted && this.corruptedReward === 'relic') {
@@ -3628,7 +3629,9 @@ update(combatDt, visualDt) {
                 window.prepareFloorScreen();
                 document.getElementById('floorScreen').classList.remove('hidden');
                 ShopSystem.updateUI();
-             
+                
+                // FIX AUDIO: Suona ESATTAMENTE nel frame in cui compare il negozio e il calcolo statistiche!
+                AudioEngine.playLevelCompleteMusic();
             }
             return; // Blocca il resto della fisica, lasciando solo l'animazione!
         }
@@ -4052,7 +4055,7 @@ update(combatDt, visualDt) {
                     
                     AudioEngine.playShoot('explosive_arrow');
                     AudioEngine.stopGameMusic();
-                    AudioEngine.playLevelCompleteMusic(); // <-- COPIATO QUI: La musica parte subito insieme all'animazione!
+                 
                 }
             }
         }
@@ -4251,7 +4254,7 @@ update(combatDt, visualDt) {
        
 };
 // --- SISTEMA ERBA INTERATTIVA (GPU SHADER) ---
-const MAX_WIND = isTouchDevice ? 3 : 10;
+const MAX_WIND = isTouchDevice ? 6 : 15;
 
 const InteractiveGrassSystem = {
     uniforms: {
@@ -4515,13 +4518,18 @@ class GameMap {
             let room = {x: rx, y: ry, w: rw, h: rh, center: {x: Math.floor(rx + rw/2), y: Math.floor(ry + rh/2)}}; rooms.push(room);
             for(let x=rx; x<rx+rw; x++) for(let y=ry; y<ry+rh; y++) this.grid[x][y] = 2;
             if (i > 0) this.carveCorridor(rooms[i-1].center.x, rooms[i-1].center.y, room.center.x, room.center.y);
-            // Calcoliamo la probabilità: parte da 0.3 (30%) ai primi piani 
-// e cresce fino a un massimo di 0.7 (70%) ai piani alti.
-// MODIFICA PROBABILITÀ: Parte dal 40% di base e cresce più velocemente (+3% a piano) fino a un cap dell'80% max
-let probability = Math.min(0.8, 0.4 + (Game.floor * 0.03));
-if (!isBossFloor && rw > 7 && rh > 7 && Math.random() < probability) {
-    this.grid[room.center.x][room.center.y] = 3;
-}
+        }
+
+        // FIX OBELISCHI: Piazziamoli solo ORA che tutti i corridoi sono stati creati!
+        if (!isBossFloor) {
+            let probability = Math.min(0.8, 0.4 + (Game.floor * 0.03));
+            for(let i=0; i<numRooms; i++) {
+                let room = rooms[i];
+                // Stanza >= 7x7 (più frequenti)
+                if (room.w >= 7 && room.h >= 7 && Math.random() < probability) {
+                    this.grid[room.center.x][room.center.y] = 3;
+                }
+            }
         }
 
         if (isBossFloor) {
@@ -4646,9 +4654,9 @@ if (!isBossFloor && rw > 7 && rh > 7 && Math.random() < probability) {
         activeMats.wall.color.setHex(currentTheme.wall);
    // --- DIFFERENZIAZIONE FISICA DEI MATERIALI (COSTO ZERO) ---
         if (Game.currentThemeIndex === 2) { 
-            // TEMA GHIACCIO: Riflessi ammorbiditi per evitare i pixel bianchi puri su PC
+            // TEMA GHIACCIO: Riflessi ammorbiditi e attenuati (evita i cluster di pixel bianchi)
             activeMats.rock.shininess = 35;
-            activeMats.rock.specular.setHex(0x112233); // Speculare ciano-scuro, mai bianco accecante!
+            activeMats.rock.specular.setHex(0x112233); // Speculare scuro e ciano, previene le sbavature bloom
             activeMats.rock.emissive.setHex(0x000000);
         } else if (Game.currentThemeIndex === 1) {
             // TEMA LAVA: Rocce opache ma incandescenti alla base

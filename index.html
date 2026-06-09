@@ -5576,11 +5576,7 @@ class Player extends Entity {
         // Se il giocatore copre 1 o 10 pozze contemporaneamente, la class Hazard lo riporterà a 'true' una sola volta, garantendo il Cap matematico.
         this.isHealingFromShield = false;
         // ---------------------------------------------------------------------
-        } else {
-            // Se esci dalla pozza (o lo scudo cade), resetta il timer visivo per il prossimo ingresso
-            this.shieldHoTTickTimer = 0; 
-        }
-        // ---------------------------------------------------------------------
+     
        // Gestione Invincibilità (con esclusione sicura degli scudi)
         // OTTIMIZZAZIONE CPU: Ciclo for standard per evitare la creazione di funzioni anonime ad ogni frame
         if (this.invincibilityTimer > 0) {

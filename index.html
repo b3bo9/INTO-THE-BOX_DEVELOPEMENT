@@ -4005,7 +4005,7 @@ prewarmShaders() {
         return this._vec3Screen;
     },
 
-    draw() {
+   draw() {
         if(!this.scene || !this.uiCtx) return;
         
         if (!AppSettings.isLow && !isTouchDevice && this.composer) {
@@ -4014,43 +4014,61 @@ prewarmShaders() {
             this.renderer.render(this.scene, this.camera); 
         }
         
-      this.uiCtx.clearRect(0, 0, this.width, this.height);
+        this.uiCtx.clearRect(0, 0, this.width, this.height);
         this._hpBarCount = 0;
         
+        // FIX CRITICO: Calcolo distanza sicura (usa la telecamera se il giocatore è morto/assente)
+        let refX = this.player ? this.player.x : (this.camera ? this.camera.position.x : 0);
+        let refY = this.player ? this.player.y : (this.camera ? this.camera.position.z : 0);
+
         for(let i=0, len=this.enemies.length; i<len; i++) {
             let e = this.enemies[i];
             
-            // Calcolo distanza dalla telecamera (Culling)
-            let distToCamSq = MathUtils.distanceSq(Game.player, e);
+            // Culling basato sul riferimento sicuro
+            let dx = refX - e.x;
+            let dy = refY - e.y;
+            let distToCamSq = (dx * dx) + (dy * dy);
+            
+            // Se è nell'inquadratura (distanza ~1200)
             if (distToCamSq < 1440000) { 
                 let pos = this.toScreenPosition(e.x, e.radius + 35, e.y);
                 
-                // 1. Logica HP Bar
-                if (e.stats.hp < e.stats.maxHp && e.type !== 'crystal' && pos.z < 1) {
-                    if (pos.x > -50 && pos.x < this.width + 50 && pos.y > -50 && pos.y < this.height + 50 && this._hpBarCount < this._hpBars.length) {
-                        this._hpBars[this._hpBarCount].x = pos.x;
-                        this._hpBars[this._hpBarCount].y = pos.y;
-                        this._hpBars[this._hpBarCount].pct = e.stats.hp / e.stats.maxHp;
-                        this._hpBarCount++;
+                // Assicuriamoci che l'indicatore sia davanti alla telecamera e dentro lo schermo
+                if (pos.z < 1 && pos.x > -50 && pos.x < this.width + 50 && pos.y > -50 && pos.y < this.height + 50) {
+                    
+                    // 1. Logica Barre HP
+                    if (e.stats.hp < e.stats.maxHp && e.type !== 'crystal') {
+                        if (this._hpBarCount < this._hpBars.length) {
+                            this._hpBars[this._hpBarCount].x = pos.x;
+                            this._hpBars[this._hpBarCount].y = pos.y;
+                            this._hpBars[this._hpBarCount].pct = e.stats.hp / e.stats.maxHp;
+                            this._hpBarCount++;
+                        }
                     }
-                }
-                
-                // 2. NUOVO: Disegna Icona Aura sopra il nemico se è dentro un obelisco
-                let auraType = this.getAuraAt(e.x, e.y);
-                if (auraType && pos.z < 1 && typeof AuraIcons !== 'undefined') {
-                    let iconImg = AuraIcons[auraType].image;
-                    // Disegna a Y - 30 rispetto alla barra della vita
-                    this.uiCtx.drawImage(iconImg, pos.x - 12, pos.y - 30, 24, 24);
+
+                    // 2. Logica Icona Aura (Disegnata estraendo il canvas dalla texture già in memoria!)
+                    let auraType = this.getAuraAt(e.x, e.y);
+                    if (auraType) {
+                        let iconTex = auraType === 'blue' ? SharedMat.iconTime.map : (auraType === 'green' ? SharedMat.iconMountain.map : SharedMat.iconHysteria.map);
+                        if (iconTex && iconTex.image) {
+                            this.uiCtx.drawImage(iconTex.image, pos.x - 12, pos.y - 30, 24, 24);
+                        }
+                    }
                 }
             }
         } 
         
-        // 3. NUOVO: Disegna Icona Aura anche sopra il Giocatore
-        let pAura = this.getAuraAt(this.player.x, this.player.y);
-        if (pAura && typeof AuraIcons !== 'undefined') {
-            let pPos = this.toScreenPosition(this.player.x, 80, this.player.y);
-            if (pPos.z < 1) {
-                this.uiCtx.drawImage(AuraIcons[pAura].image, pPos.x - 16, pPos.y - 40, 32, 32);
+        // 3. Logica Icona Aura sul Giocatore
+        if (this.player && !this.player.dead) {
+            let pAura = this.getAuraAt(this.player.x, this.player.y);
+            if (pAura) {
+                let pPos = this.toScreenPosition(this.player.x, 80, this.player.y);
+                if (pPos.z < 1) {
+                    let pIconTex = pAura === 'blue' ? SharedMat.iconTime.map : (pAura === 'green' ? SharedMat.iconMountain.map : SharedMat.iconHysteria.map);
+                    if (pIconTex && pIconTex.image) {
+                        this.uiCtx.drawImage(pIconTex.image, pPos.x - 16, pPos.y - 40, 32, 32);
+                    }
+                }
             }
         }
 

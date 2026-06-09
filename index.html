@@ -3414,19 +3414,28 @@ prewarmShaders() {
         let currentTheme = MAP_THEMES[this.currentThemeIndex];
         // Impostiamo nebbia, sfondo e luci in base al tema corrente!
         this.scene.background = new THREE.Color(currentTheme.fog); 
-       // --- ATMOSFERA E VISIBILITÀ DINAMICA ---
+      // --- ATMOSFERA E VISIBILITÀ DINAMICA ---
         if (this.currentThemeIndex === 2) {
-            // Ghiaccio: Visibilità cristallina, nebbia molto lontana, bagliori accecanti
+            // Ghiaccio: Visibilità cristallina, nebbia molto lontana
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist + 100, camDist + 1000);
-            if (this.bloomPass) this.bloomPass.strength = AppSettings.isUltraPC ? 1.0 : 0.8;
+            if (this.bloomPass) {
+                this.bloomPass.strength = AppSettings.isUltraPC ? 1.0 : 0.8;
+                this.bloomPass.threshold = 0.65; // FIX: Soglia più alta. Il ghiaccio non sbaverà, solo la magia brillerà!
+            }
         } else if (this.currentThemeIndex === 1) {
             // Lava: Aria densa e soffocante, nebbia vicinissima, bagliore estremo
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 300, camDist + 250);
-            if (this.bloomPass) this.bloomPass.strength = AppSettings.isUltraPC ? 1.1 : 0.9;
+            if (this.bloomPass) {
+                this.bloomPass.strength = AppSettings.isUltraPC ? 1.1 : 0.9;
+                this.bloomPass.threshold = 0.35; // Reset
+            }
         } else {
             // Foresta: Atmosfera equilibrata e misteriosa
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 150, camDist + 500);
-            if (this.bloomPass) this.bloomPass.strength = AppSettings.isUltraPC ? 0.9 : 0.7;
+            if (this.bloomPass) {
+                this.bloomPass.strength = AppSettings.isUltraPC ? 0.9 : 0.7;
+                this.bloomPass.threshold = 0.35; // Reset
+            }
         }
         Game.arenaEvolution = false; // DEVE ESSERE FALSE ALL'INIZIO!
         
@@ -3964,36 +3973,83 @@ prewarmShaders() {
                     AudioEngine.playCountdown();
                 }
                 
-                if (this.floorEndTimer <= 0 || enemiesLeft <= 0) {
+               if (this.floorEndTimer <= 0 || enemiesLeft <= 0) {
+                    // Uccidiamo i nemici restanti (se ce ne sono)
                     for (let i = this.enemies.length - 1; i >= 0; i--) {
                         let e = this.enemies[i];
-                        if (!e.dead) { 
-                            e.isPursuer = false; 
-                            e.takeDamage(999999, this.player, false, false); 
-                            e.onDeath(); 
-                        }
+                        if (!e.dead) { e.isPursuer = false; e.takeDamage(999999, this.player, false, false); e.onDeath(); }
                     }
-                    this.state = 'FLOOR_TRANSITION'; 
                     
-                    if (this.isCorrupted && this.corruptedReward === 'relic') {
-                        let choices = RelicSystem.getChoices();
-                        if (choices.length > 0) {
-                            let dropRelic = choices[0]; 
-                            dropRelic.apply(this.player); this.player.relics.push(dropRelic);
-                            Game.getFloatingText().spawn(this.player.x, this.player.y, "RELIQUIA OTTENUTA!", '#fbbf24', 50, true);
-                        } else {
-                            Game.coins += 50;
-                            Game.getFloatingText().spawn(this.player.x, this.player.y, "+50 MONETE (RELIQUIE ESAURITE)!", '#fbbf24', 40, true);
-                        }
-                    }
-                    window.prepareFloorScreen();
-                    document.getElementById('floorScreen').classList.remove('hidden');
-                    ShopSystem.updateUI();
+                    // Invece di far comparire il menu, attiviamo l'animazione di discesa!
+                    this.state = 'WARPING_OUT';
+                    this.warpTimer = 1.2; // Durata dell'animazione
+                    
+                    // Spegniamo fisicamente l'ombra e le auree per un tuffo pulito
+                    if (this.player.shadowMesh) this.player.shadowMesh.visible = false;
+                    if (this.player.auraRingMesh) { this.player.auraRingMesh.visible = false; this.player.auraGlow.visible = false; }
+                    
+                    AudioEngine.playShoot('explosive_arrow');
                     AudioEngine.stopGameMusic();
-                    AudioEngine.playLevelCompleteMusic();
                 }
             }
         }
+        
+        // --- NUOVO STATO: ANIMAZIONE DI DISCESA NEL PORTALE ---
+        if (this.state === 'WARPING_OUT') {
+            this.warpTimer -= dt;
+            let progress = 1.0 - (this.warpTimer / 1.2); // Va da 0.0 a 1.0
+            
+            // 1. Il giocatore ruota velocemente e viene "aspirato" verso il basso
+            if (this.player && this.player.mesh) {
+                this.player.mesh.rotation.y += dt * (15 + progress * 20); // Trottola!
+                this.player.mesh.position.y -= dt * 60 * progress; // Affonda nel pavimento
+                this.player.mesh.scale.setScalar(Math.max(0.01, 1.0 - progress)); // Si restringe
+            }
+            
+            // 2. La telecamera subisce un Warp-Effect (allarga il FOV)
+            this.camera.fov += dt * 40;
+            this.camera.updateProjectionMatrix();
+            
+            // 3. Scuriamo la scena usando la Death Fade già pronta
+            if (UI.els.bloodVignette) {
+                UI.els.bloodVignette.style.background = `rgba(5, 5, 10, ${progress})`;
+                UI.els.bloodVignette.classList.add('death-fade-active');
+            }
+            
+            // Genera scintille di warp
+            if (Game.frameCount % 2 === 0) Game.getParticle().spawn(this.player.x, this.player.mesh.position.y + 15, this.player.y, SharedMat.spriteBlue, 'spark');
+
+            // Quando l'animazione finisce, mostra finalmente l'UI
+            if (this.warpTimer <= 0) {
+                this.state = 'FLOOR_TRANSITION'; 
+                
+                // Reset della telecamera e HUD
+                this.camera.fov = 50; 
+                this.camera.updateProjectionMatrix();
+                if (UI.els.bloodVignette) {
+                    UI.els.bloodVignette.classList.remove('death-fade-active');
+                    UI.els.bloodVignette.style.background = ''; // reset
+                }
+
+                if (this.isCorrupted && this.corruptedReward === 'relic') {
+                    let choices = RelicSystem.getChoices();
+                    if (choices.length > 0) {
+                        let dropRelic = choices[0]; 
+                        dropRelic.apply(this.player); this.player.relics.push(dropRelic);
+                        Game.getFloatingText().spawn(this.player.x, this.player.y, "RELIQUIA OTTENUTA!", '#fbbf24', 50, true);
+                    } else {
+                        Game.coins += 50;
+                        Game.getFloatingText().spawn(this.player.x, this.player.y, "+50 MONETE (RELIQUIE ESAURITE)!", '#fbbf24', 40, true);
+                    }
+                }
+                window.prepareFloorScreen();
+                document.getElementById('floorScreen').classList.remove('hidden');
+                ShopSystem.updateUI();
+                AudioEngine.playLevelCompleteMusic();
+            }
+        }
+        // --------------------------------------------------------
+
         UI.update();
     },
     
@@ -4581,12 +4637,13 @@ if (rw > 7 && rh > 7 && Math.random() > (1 - probability)) {
         activeMats.grass.color.setHex(currentTheme.grass);
         activeMats.rock.color.setHex(currentTheme.rock);
         activeMats.wall.color.setHex(currentTheme.wall);
-     // --- DIFFERENZIAZIONE FISICA DEI MATERIALI (COSTO ZERO) ---
+   // --- DIFFERENZIAZIONE FISICA DEI MATERIALI (COSTO ZERO) ---
         if (Game.currentThemeIndex === 2) { 
-            // TEMA GHIACCIO: Rocce riflettenti ma terreno opaco
-            activeMats.rock.shininess = 60;
+            // TEMA GHIACCIO: Riflessi ammorbiditi per evitare i pixel bianchi puri su PC
+            activeMats.rock.shininess = 35;
+            activeMats.rock.specular.setHex(0x112233); // Speculare ciano-scuro, mai bianco accecante!
             activeMats.rock.emissive.setHex(0x000000);
-        } else if (Game.currentThemeIndex === 1) { 
+        } else if (Game.currentThemeIndex === 1) {
             // TEMA LAVA: Rocce opache ma incandescenti alla base
             activeMats.rock.shininess = 5;
             activeMats.rock.emissive.setHex(0x220505);

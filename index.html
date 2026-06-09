@@ -3567,7 +3567,69 @@ prewarmShaders() {
         if (this.player) this.player.invincibilityTimer = 1.5;
     },
     
- update(combatDt, visualDt) {
+update(combatDt, visualDt) {
+        // --- GESTIONE ANIMAZIONE TRANSIZIONE PIANO ---
+        if (this.state === 'WARPING_OUT') {
+            this.warpTimer -= visualDt;
+            let progress = 1.0 - (this.warpTimer / 1.2); 
+            
+            // 1. Il giocatore ruota velocemente e viene "aspirato" verso il basso
+            if (this.player && this.player.mesh) {
+                this.player.mesh.rotation.y += visualDt * (15 + progress * 20); 
+                this.player.mesh.position.y -= visualDt * 60 * progress; 
+                this.player.mesh.scale.setScalar(Math.max(0.01, 1.0 - progress)); 
+                this.player.mesh.updateMatrix();
+            }
+            
+            // 2. La telecamera subisce un Warp-Effect
+            this.camera.fov += visualDt * 40;
+            this.camera.updateProjectionMatrix();
+            
+            // 3. Scuriamo la scena
+            if (UI.els.bloodVignette) {
+                UI.els.bloodVignette.style.background = `rgba(5, 5, 10, ${progress})`;
+                UI.els.bloodVignette.classList.add('death-fade-active');
+            }
+            
+            // Effetti visivi che continuano a muoversi
+            if (this.frameCount % 2 === 0) Game.getParticle().spawn(this.player.x, this.player.mesh.position.y + 15, this.player.y, SharedMat.spriteBlue, 'spark');
+            for (let i = 0; i < this.particles.length; i++) if(this.particles[i].active) this.particles[i].update(visualDt);
+            for (let i = 0; i < this.floatingTexts.length; i++) if(this.floatingTexts[i].active) this.floatingTexts[i].update(visualDt);
+            
+            this.frameCount++;
+            this.updateCamera(visualDt);
+            UI.update();
+
+            // Fine animazione: transizione vera e propria
+            if (this.warpTimer <= 0) {
+                this.state = 'FLOOR_TRANSITION'; 
+                this.camera.fov = 50; 
+                this.camera.updateProjectionMatrix();
+                
+                if (UI.els.bloodVignette) {
+                    UI.els.bloodVignette.classList.remove('death-fade-active');
+                    UI.els.bloodVignette.style.background = ''; 
+                }
+
+                if (this.isCorrupted && this.corruptedReward === 'relic') {
+                    let choices = RelicSystem.getChoices();
+                    if (choices.length > 0) {
+                        let dropRelic = choices[0]; 
+                        dropRelic.apply(this.player); this.player.relics.push(dropRelic);
+                        Game.getFloatingText().spawn(this.player.x, this.player.y, "RELIQUIA OTTENUTA!", '#fbbf24', 50, true);
+                    } else {
+                        Game.coins += 50;
+                        Game.getFloatingText().spawn(this.player.x, this.player.y, "+50 MONETE (RELIQUIE ESAURITE)!", '#fbbf24', 40, true);
+                    }
+                }
+                window.prepareFloorScreen();
+                document.getElementById('floorScreen').classList.remove('hidden');
+                ShopSystem.updateUI();
+                AudioEngine.playLevelCompleteMusic();
+            }
+            return; // Blocca il resto della fisica, lasciando solo l'animazione!
+        }
+
         if (this.state !== 'PLAYING') return;
         let dt = combatDt; // Preserva compatibilità con calcoli interni esistenti
 
@@ -3994,61 +4056,7 @@ prewarmShaders() {
             }
         }
         
-        // --- NUOVO STATO: ANIMAZIONE DI DISCESA NEL PORTALE ---
-        if (this.state === 'WARPING_OUT') {
-            this.warpTimer -= dt;
-            let progress = 1.0 - (this.warpTimer / 1.2); // Va da 0.0 a 1.0
-            
-            // 1. Il giocatore ruota velocemente e viene "aspirato" verso il basso
-            if (this.player && this.player.mesh) {
-                this.player.mesh.rotation.y += dt * (15 + progress * 20); // Trottola!
-                this.player.mesh.position.y -= dt * 60 * progress; // Affonda nel pavimento
-                this.player.mesh.scale.setScalar(Math.max(0.01, 1.0 - progress)); // Si restringe
-            }
-            
-            // 2. La telecamera subisce un Warp-Effect (allarga il FOV)
-            this.camera.fov += dt * 40;
-            this.camera.updateProjectionMatrix();
-            
-            // 3. Scuriamo la scena usando la Death Fade già pronta
-            if (UI.els.bloodVignette) {
-                UI.els.bloodVignette.style.background = `rgba(5, 5, 10, ${progress})`;
-                UI.els.bloodVignette.classList.add('death-fade-active');
-            }
-            
-            // Genera scintille di warp
-            if (Game.frameCount % 2 === 0) Game.getParticle().spawn(this.player.x, this.player.mesh.position.y + 15, this.player.y, SharedMat.spriteBlue, 'spark');
-
-            // Quando l'animazione finisce, mostra finalmente l'UI
-            if (this.warpTimer <= 0) {
-                this.state = 'FLOOR_TRANSITION'; 
-                
-                // Reset della telecamera e HUD
-                this.camera.fov = 50; 
-                this.camera.updateProjectionMatrix();
-                if (UI.els.bloodVignette) {
-                    UI.els.bloodVignette.classList.remove('death-fade-active');
-                    UI.els.bloodVignette.style.background = ''; // reset
-                }
-
-                if (this.isCorrupted && this.corruptedReward === 'relic') {
-                    let choices = RelicSystem.getChoices();
-                    if (choices.length > 0) {
-                        let dropRelic = choices[0]; 
-                        dropRelic.apply(this.player); this.player.relics.push(dropRelic);
-                        Game.getFloatingText().spawn(this.player.x, this.player.y, "RELIQUIA OTTENUTA!", '#fbbf24', 50, true);
-                    } else {
-                        Game.coins += 50;
-                        Game.getFloatingText().spawn(this.player.x, this.player.y, "+50 MONETE (RELIQUIE ESAURITE)!", '#fbbf24', 40, true);
-                    }
-                }
-                window.prepareFloorScreen();
-                document.getElementById('floorScreen').classList.remove('hidden');
-                ShopSystem.updateUI();
-                AudioEngine.playLevelCompleteMusic();
-            }
-        }
-        // --------------------------------------------------------
+       
 
         UI.update();
     },

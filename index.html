@@ -226,7 +226,7 @@ body.colorblind-mode #opt-colorblind-text {
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 126</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 128</p>
                 </div>
             </div>
         </div>
@@ -3255,12 +3255,16 @@ prewarmShaders() {
         // Distorsione Termica rimossa: muovere fisicamente la telecamera per simulare il calore
         // creava un tremolio ingiustificato causando motion sickness a giocatore fermo.
 
-       if (this.trauma > 0) {
-            let shakeForce = this.trauma * this.trauma * 15; // RIDOTTO DA 40 A 15
+      if (this.trauma > 0) {
+            // FIX: Shake più croccante ma meno invasivo (moltiplicato per 8 invece che 15 o 40)
+            let shakeForce = this.trauma * this.trauma * 8; 
             shakeX += MathUtils.randomRange(-shakeForce, shakeForce); 
             shakeY += MathUtils.randomRange(-shakeForce, shakeForce); 
             shakeZ += MathUtils.randomRange(-shakeForce, shakeForce);
-            this.trauma -= dt * 2.0; if (this.trauma < 0) this.trauma = 0;
+            
+            // Decadimento più veloce (da 2.0 a 3.0) per far finire il tremolio prima
+            this.trauma -= dt * 3.0; 
+            if (this.trauma < 0) this.trauma = 0;
         }
         if (this.dirLight) {
             this.dirLight.position.set(this.player.x - 400, 1000, this.player.y - 400);
@@ -4010,26 +4014,46 @@ prewarmShaders() {
             this.renderer.render(this.scene, this.camera); 
         }
         
-        this.uiCtx.clearRect(0, 0, this.width, this.height);
+      this.uiCtx.clearRect(0, 0, this.width, this.height);
         this._hpBarCount = 0;
+        
         for(let i=0, len=this.enemies.length; i<len; i++) {
             let e = this.enemies[i];
-            // Culling estremo: disegna l'HP solo se è ferito, non è un cristallo e non è lontanissimo
-            if (e.stats.hp < e.stats.maxHp && e.type !== 'crystal') {
-                let distToCamSq = MathUtils.distanceSq(Game.player, e);
-                // 1200 * 1200 = 1.440.000 (Raggio visibile ragionevole della telecamera)
-                if (distToCamSq < 1440000) { 
-                    let pos = this.toScreenPosition(e.x, e.radius + 35, e.y);
-                    // Margini di sicurezza per non disegnare barre fuori dai bordi fisici dello schermo
-                    if(pos.z < 1 && pos.x > -50 && pos.x < this.width + 50 && pos.y > -50 && pos.y < this.height + 50 && this._hpBarCount < this._hpBars.length) {
-                    this._hpBars[this._hpBarCount].x = pos.x;
-                    this._hpBars[this._hpBarCount].y = pos.y;
-                    this._hpBars[this._hpBarCount].pct = e.stats.hp / e.stats.maxHp;
-                    this._hpBarCount++;
+            
+            // Calcolo distanza dalla telecamera (Culling)
+            let distToCamSq = MathUtils.distanceSq(Game.player, e);
+            if (distToCamSq < 1440000) { 
+                let pos = this.toScreenPosition(e.x, e.radius + 35, e.y);
+                
+                // 1. Logica HP Bar
+                if (e.stats.hp < e.stats.maxHp && e.type !== 'crystal' && pos.z < 1) {
+                    if (pos.x > -50 && pos.x < this.width + 50 && pos.y > -50 && pos.y < this.height + 50 && this._hpBarCount < this._hpBars.length) {
+                        this._hpBars[this._hpBarCount].x = pos.x;
+                        this._hpBars[this._hpBarCount].y = pos.y;
+                        this._hpBars[this._hpBarCount].pct = e.stats.hp / e.stats.maxHp;
+                        this._hpBarCount++;
+                    }
+                }
+                
+                // 2. NUOVO: Disegna Icona Aura sopra il nemico se è dentro un obelisco
+                let auraType = this.getAuraAt(e.x, e.y);
+                if (auraType && pos.z < 1 && typeof AuraIcons !== 'undefined') {
+                    let iconImg = AuraIcons[auraType].image;
+                    // Disegna a Y - 30 rispetto alla barra della vita
+                    this.uiCtx.drawImage(iconImg, pos.x - 12, pos.y - 30, 24, 24);
                 }
             }
+        } 
+        
+        // 3. NUOVO: Disegna Icona Aura anche sopra il Giocatore
+        let pAura = this.getAuraAt(this.player.x, this.player.y);
+        if (pAura && typeof AuraIcons !== 'undefined') {
+            let pPos = this.toScreenPosition(this.player.x, 80, this.player.y);
+            if (pPos.z < 1) {
+                this.uiCtx.drawImage(AuraIcons[pAura].image, pPos.x - 16, pPos.y - 40, 32, 32);
+            }
         }
-       } //fix
+
         if (this._hpBarCount > 0) {
             this.uiCtx.fillStyle = 'rgba(0,0,0,0.8)';
             for(let i=0; i<this._hpBarCount; i++) this.uiCtx.fillRect(this._hpBars[i].x - 16, this._hpBars[i].y-2, 32, 6);

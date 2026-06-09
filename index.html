@@ -3630,8 +3630,8 @@ update(combatDt, visualDt) {
                 document.getElementById('floorScreen').classList.remove('hidden');
                 ShopSystem.updateUI();
                 
-                // FIX AUDIO: Suona ESATTAMENTE nel frame in cui compare il negozio e il calcolo statistiche!
-                AudioEngine.playLevelCompleteMusic();
+       
+          
             }
             return; // Blocca il resto della fisica, lasciando solo l'animazione!
         }
@@ -4055,6 +4055,7 @@ update(combatDt, visualDt) {
                     
                     AudioEngine.playShoot('explosive_arrow');
                     AudioEngine.stopGameMusic();
+                   AudioEngine.playLevelCompleteMusic();
                  
                 }
             }
@@ -4520,15 +4521,26 @@ class GameMap {
             if (i > 0) this.carveCorridor(rooms[i-1].center.x, rooms[i-1].center.y, room.center.x, room.center.y);
         }
 
-        // FIX OBELISCHI: Piazziamoli solo ORA che tutti i corridoi sono stati creati!
+       // FIX OBELISCHI: Hard Cap da 1 a 3 obelischi massimo per livello
         if (!isBossFloor) {
-            let probability = Math.min(0.8, 0.4 + (Game.floor * 0.03));
-            for(let i=0; i<numRooms; i++) {
-                let room = rooms[i];
-                // Stanza >= 7x7 (più frequenti)
-                if (room.w >= 7 && room.h >= 7 && Math.random() < probability) {
-                    this.grid[room.center.x][room.center.y] = 3;
-                }
+            // Filtriamo le stanze per trovare quelle grandi abbastanza (almeno 6x6)
+            let validRooms = rooms.filter(r => r.w >= 6 && r.h >= 6);
+            if (validRooms.length === 0) validRooms = rooms; // Fallback di sicurezza
+            
+            // Mischiamo l'array delle stanze in modo casuale (Algoritmo Fisher-Yates)
+            for (let i = validRooms.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [validRooms[i], validRooms[j]] = [validRooms[j], validRooms[i]];
+            }
+            
+            // Determiniamo il numero: 1 garantito, sale a 2 o 3 man mano che si scende nei piani
+            let obeliskCount = MathUtils.randomInt(1, Math.min(3, 1 + Math.floor(Game.floor / 5)));
+            obeliskCount = Math.min(obeliskCount, validRooms.length); // Evita errori se ci sono poche stanze
+            
+            // Piazziamo esattamente quel numero di obelischi
+            for(let i = 0; i < obeliskCount; i++) {
+                let r = validRooms[i];
+                this.grid[r.center.x][r.center.y] = 3;
             }
         }
 

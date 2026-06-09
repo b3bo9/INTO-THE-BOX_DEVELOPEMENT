@@ -5548,28 +5548,34 @@ class Player extends Entity {
 // --- LOGICA RIGENERAZIONE SCUDO CINETICO DA POZZE (2% HP/s + 2% Ultimate/s) ---
         if (this.shieldHoTTickTimer === undefined) this.shieldHoTTickTimer = 0;
 
-        if (this.isHealingFromShield && this.activeShieldTimer > 0) {
-            // Cura fluida invisibile basata sul tempo reale
+        // L'effetto non stacka con altre cure over time (es. Caos Elementale)
+        let isAlreadyHealingOverTime = (this.chaosHoTTimer > 0);
+
+        if (this.isHealingFromShield && this.activeShieldTimer > 0 && !isAlreadyHealingOverTime) {
+            // Cura fluida basata sul delta time (garantisce ESATTAMENTE un cap del 2% al sec. totale)
             let healAmount = this.stats.maxHp * 0.02 * dt;
             this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
             Game.addUltimateCharge(2.0 * dt);
 
-            // Numeretti visivi e particelle a "scatti" (ogni 0.5 secondi) per non intasare lo schermo
+            // Feedback visivo mostrato solo ogni 1.0 secondi esatti per pulizia visiva
             this.shieldHoTTickTimer -= dt;
             if (this.shieldHoTTickTimer <= 0) {
-                this.shieldHoTTickTimer = 0.5;
+                this.shieldHoTTickTimer = 1.0; 
                 
-                // Calcola quanto abbiamo curato in questo mezzo secondo per stamparlo
-                let tickHp = Math.floor(this.stats.maxHp * 0.02 * 0.5); 
-                let tickUlt = 1; // 2% al secondo * 0.5s = 1%
-                
-                if (tickHp > 0) Game.getFloatingText().spawn(this.x - 10, this.y + 10, `+${tickHp}`, '#00ffaa', 18);
-                Game.getFloatingText().spawn(this.x + 10, this.y + 10, `+${tickUlt}% ULT`, '#00DDFF', 18);
+                let tickHp = Math.floor(this.stats.maxHp * 0.02); 
+                if (tickHp > 0) Game.getFloatingText().spawn(this.x - 12, this.y + 10, `+${tickHp}`, '#00ffaa', 18);
+                Game.getFloatingText().spawn(this.x + 12, this.y + 10, `+2% ULT`, '#00DDFF', 18);
                 Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteBlue, 'spark');
             }
+        } else {
+            // Se usciamo dalla pozza, il timer si azzera così ripartirà istantaneamente al prossimo ingresso
+            this.shieldHoTTickTimer = 0; 
+        }
 
-            // Resetta il flag. Le pozze lo riattiveranno al frame successivo se ci sei ancora dentro
-            this.isHealingFromShield = false;
+        // Resettiamo sempre il flag a fine frame. 
+        // Se il giocatore copre 1 o 10 pozze contemporaneamente, la class Hazard lo riporterà a 'true' una sola volta, garantendo il Cap matematico.
+        this.isHealingFromShield = false;
+        // ---------------------------------------------------------------------
         } else {
             // Se esci dalla pozza (o lo scudo cade), resetta il timer visivo per il prossimo ingresso
             this.shieldHoTTickTimer = 0; 
@@ -5700,17 +5706,14 @@ class Player extends Entity {
                 this.move(dx, dy, dt); 
                 this.mesh.position.y = Game.animBounce * 0.75; 
                 
-              // --- NUOVO: Sbuffo di polvere al suolo (ogni 6 frame se cammina)
+             // --- NUOVO: Sbuffo di polvere al suolo (ogni 6 frame se cammina)
                 if (Game.frameCount % 6 === 0) {
                     Game.getParticle().spawn(this.x, 2, this.y, SharedMat.spriteDust, 'dust');
                     
-                    // OTTIMIZZAZIONE ZERO-ALLOCATION: Usiamo il buffer del rumore bianco pre-calcolato.
-                    // Risolve l'assordante "BEEP" nel livello foresta e salva la CPU/RAM su mobile.
-                    if (Game.currentThemeIndex === 2) {
-                        AudioEngine.playNoise(0.05, 'high', 0.015); // Ghiaccio (Neve schiacciata)
-                    } else if (Game.currentThemeIndex === 1) {
+                    // Suono della camminata escluso volontariamente per il Tema Ghiaccio
+                    if (Game.currentThemeIndex === 1) {
                         AudioEngine.playNoise(0.08, 'low', 0.03);   // Lava (Cenere/Lapilli)
-                    } else {
+                    } else if (Game.currentThemeIndex === 0) {
                         AudioEngine.playNoise(0.06, 'low', 0.015);  // Foresta (Erba/Terra)
                     }
                 }
@@ -7726,17 +7729,20 @@ class Projectile {
             
             if ((dx * dx) + (dy * dy) < pRadCheck) {
                 if (Game.player.activeShieldTimer > 0 && this.type !== 'fire_shape') {
-                    Game.player.isHealingFromShield = true;
                     Game.player.shieldAbsorbed++;
-                    Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteWhite, 'spark');
+                    Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteBlue, 'spark');
                     AudioEngine.playCollect(); 
-                    Game.addUltimateCharge(5); 
                     
+                    // RECUPERO FLAT: +5% HP e +5% Ultimate Istantanei ad ogni proiettile assorbito
                     let heal = Game.player.stats.maxHp * 0.05; 
                     Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + heal);
-                    Game.getFloatingText().spawn(Game.player.x, Game.player.y + 10, `+${Math.floor(heal)}`, '#00DDFF', 22, true);
-                    Game.player.shieldFlashTimer = 0.15; 
+                    Game.addUltimateCharge(5); 
                     
+                    // Testi Fluttuanti Distinti (HP verde a sinistra, Ulti blu a destra)
+                    Game.getFloatingText().spawn(Game.player.x - 12, Game.player.y + 15, `+${Math.floor(heal)}`, '#00ffaa', 22, true);
+                    Game.getFloatingText().spawn(Game.player.x + 12, Game.player.y + 15, `+5% ULT`, '#00DDFF', 22, true);
+                    
+                    Game.player.shieldFlashTimer = 0.15; 
                     this.handleHit(null);
                 } else {
                     if (this.type !== 'fire_shape') Game.player.takeDamage(this.damage, null); 

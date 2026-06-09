@@ -3628,7 +3628,7 @@ update(combatDt, visualDt) {
                 window.prepareFloorScreen();
                 document.getElementById('floorScreen').classList.remove('hidden');
                 ShopSystem.updateUI();
-                AudioEngine.playLevelCompleteMusic();
+             
             }
             return; // Blocca il resto della fisica, lasciando solo l'animazione!
         }
@@ -4039,22 +4039,20 @@ update(combatDt, visualDt) {
                 }
                 
                if (this.floorEndTimer <= 0 || enemiesLeft <= 0) {
-                    // Uccidiamo i nemici restanti (se ce ne sono)
                     for (let i = this.enemies.length - 1; i >= 0; i--) {
                         let e = this.enemies[i];
                         if (!e.dead) { e.isPursuer = false; e.takeDamage(999999, this.player, false, false); e.onDeath(); }
                     }
                     
-                    // Invece di far comparire il menu, attiviamo l'animazione di discesa!
                     this.state = 'WARPING_OUT';
-                    this.warpTimer = 1.2; // Durata dell'animazione
+                    this.warpTimer = 1.2; 
                     
-                    // Spegniamo fisicamente l'ombra e le auree per un tuffo pulito
                     if (this.player.shadowMesh) this.player.shadowMesh.visible = false;
                     if (this.player.auraRingMesh) { this.player.auraRingMesh.visible = false; this.player.auraGlow.visible = false; }
                     
                     AudioEngine.playShoot('explosive_arrow');
                     AudioEngine.stopGameMusic();
+                    AudioEngine.playLevelCompleteMusic(); // <-- COPIATO QUI: La musica parte subito insieme all'animazione!
                 }
             }
         }
@@ -4519,11 +4517,9 @@ class GameMap {
             if (i > 0) this.carveCorridor(rooms[i-1].center.x, rooms[i-1].center.y, room.center.x, room.center.y);
             // Calcoliamo la probabilità: parte da 0.3 (30%) ai primi piani 
 // e cresce fino a un massimo di 0.7 (70%) ai piani alti.
-let probability = Math.min(0.7, 0.3 + (Game.floor * 0.02));
+// MODIFICA PROBABILITÀ: Parte dal 40% di base e cresce più velocemente (+3% a piano) fino a un cap dell'80% max
+let probability = Math.min(0.8, 0.4 + (Game.floor * 0.03));
 if (!isBossFloor && rw > 7 && rh > 7 && Math.random() < probability) {
-                this.grid[room.center.x][room.center.y] = 3;
-            }
-if (rw > 7 && rh > 7 && Math.random() > (1 - probability)) {
     this.grid[room.center.x][room.center.y] = 3;
 }
         }

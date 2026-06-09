@@ -2389,17 +2389,20 @@ class Hazard {
                         }
                     }
                 }
-               if ((this.type === 'enemy_fire' || this.type === 'crystal_fire' || this.type === 'snake_fire') && (Game.frameCount + this.updateOffset) % 6 === 0) {
-                    let pCd = this.hitCooldown['player'] || 0;
-                   if (Game.playTime >= pCd && MathUtils.distanceSq(this, Game.player) < (this.radius + Game.player.radius)**2) { 
+               if (this.type === 'enemy_fire' || this.type === 'crystal_fire' || this.type === 'snake_fire') {
+                    // Controlliamo costantemente se il giocatore è dentro la pozza
+                    if (MathUtils.distanceSq(this, Game.player) < (this.radius + Game.player.radius)**2) { 
                         if (Game.player.activeShieldTimer > 0) {
-                            Game.player.shieldAbsorbed++; // <-- POTENZIAMENTO AEGIS!
-                            Game.getParticle().spawn(Game.player.x, 15, Game.player.y, SharedMat.spriteBlue, 'spark');
-                            this.hitCooldown['player'] = Game.playTime + 1.0; // FIX: Messo fuori dall'else per evitare un assorbimento infinito a frame singolo
+                            // SE HA LO SCUDO: Invia il flag al giocatore di curarsi in modo fluido
+                            Game.player.isHealingFromShield = true;
                         } else {
-                            let playerDmg = this.type === 'crystal_fire' ? 35 * Game.difficultyMult : this.damage;
-                            Game.player.takeDamage(playerDmg, null); 
-                            this.hitCooldown['player'] = Game.playTime + 1.0; 
+                            // SE NON HA LO SCUDO: Danno a tick ogni secondo
+                            let pCd = this.hitCooldown['player'] || 0;
+                            if (Game.playTime >= pCd) {
+                                let playerDmg = this.type === 'crystal_fire' ? 35 * Game.difficultyMult : this.damage;
+                                Game.player.takeDamage(playerDmg, null); 
+                                this.hitCooldown['player'] = Game.playTime + 1.0; 
+                            }
                         }
                     }
                 }
@@ -5542,17 +5545,34 @@ class Player extends Entity {
         }
 
         if (this.modifiers.passiveUltCharge && !Game.ultimateActive) { Game.addUltimateCharge(2.0 * dt); }
-// --- LOGICA RIGENERAZIONE SCUDO CINETICO (2% HP/s + 2% Ultimate/s) ---
+// --- LOGICA RIGENERAZIONE SCUDO CINETICO DA POZZE (2% HP/s + 2% Ultimate/s) ---
+        if (this.shieldHoTTickTimer === undefined) this.shieldHoTTickTimer = 0;
+
         if (this.isHealingFromShield && this.activeShieldTimer > 0) {
-            // Cura del 2% al secondo (0.02 * dt)
+            // Cura fluida invisibile basata sul tempo reale
             let healAmount = this.stats.maxHp * 0.02 * dt;
             this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
-            
-            // Carica Ultimate del 2% al secondo (2.0 * dt)
             Game.addUltimateCharge(2.0 * dt);
-            
-            // Resetta il flag per il prossimo frame
+
+            // Numeretti visivi e particelle a "scatti" (ogni 0.5 secondi) per non intasare lo schermo
+            this.shieldHoTTickTimer -= dt;
+            if (this.shieldHoTTickTimer <= 0) {
+                this.shieldHoTTickTimer = 0.5;
+                
+                // Calcola quanto abbiamo curato in questo mezzo secondo per stamparlo
+                let tickHp = Math.floor(this.stats.maxHp * 0.02 * 0.5); 
+                let tickUlt = 1; // 2% al secondo * 0.5s = 1%
+                
+                if (tickHp > 0) Game.getFloatingText().spawn(this.x - 10, this.y + 10, `+${tickHp}`, '#00ffaa', 18);
+                Game.getFloatingText().spawn(this.x + 10, this.y + 10, `+${tickUlt}% ULT`, '#00DDFF', 18);
+                Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteBlue, 'spark');
+            }
+
+            // Resetta il flag. Le pozze lo riattiveranno al frame successivo se ci sei ancora dentro
             this.isHealingFromShield = false;
+        } else {
+            // Se esci dalla pozza (o lo scudo cade), resetta il timer visivo per il prossimo ingresso
+            this.shieldHoTTickTimer = 0; 
         }
         // ---------------------------------------------------------------------
        // Gestione Invincibilità (con esclusione sicura degli scudi)
@@ -5897,10 +5917,12 @@ class Player extends Entity {
         
         if (Game.ultimateActive) spdMult *= 2.0; 
         this.attackTimer = 1 / (this.baseAttackSpeed * spdMult); this.isAttacking = true; this.attackSwing = 0;
-       let critChance = this.modifiers.critChance + this.modifiers.bonusCritChance + Math.min(Game.combo * 0.005, 0.5 * flowCapMult); let isCrit = Math.random() < critChance;
+      let critChance = this.modifiers.critChance + this.modifiers.bonusCritChance + Math.min(Game.combo * 0.005, 0.5 * flowCapMult); let isCrit = Math.random() < critChance;
         if (this.modifiers.dashCritsStacks > 0) { isCrit = true; this.modifiers.dashCritsStacks--; }
+        
+        let baseDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * (1 + Math.min(Game.combo * 0.04, 2.0 * flowCapMult)) * this.modifiers.dmgMult;
+        // FIX: Applica il 40% in più se sei nel raggio dell'Obelisco Rosso (DOPO aver calcolato baseDmg)
         if (aura === 'red') baseDmg *= 1.4;
-        let baseDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * (1 + Math.min(Game.combo * 0.04, 2.0 * flowCapMult)) * this.modifiers.dmgMult;
         
         // Applicazione Maestria del Flow sul danno INFLITTO
         if (this.modifiers.flowMastery) {

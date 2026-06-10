@@ -5566,11 +5566,11 @@ class Player extends Entity {
 // --- LOGICA RIGENERAZIONE SCUDO CINETICO DA POZZE (2% HP/s + 2% Ultimate/s) ---
         if (this.shieldHoTTickTimer === undefined) this.shieldHoTTickTimer = 0;
 
-        // L'effetto non stacka con altre cure over time (es. Caos Elementale)
-        let isAlreadyHealingOverTime = (this.chaosHoTTimer > 0);
+        // L'effetto non stacka con altre cure over time (es. Caos Elementale o Cristallo Vitale fuori combattimento)
+        let isAlreadyHealingOverTime = (this.chaosHoTTimer > 0) || (this.modifiers.outOfCombatRegen && this.outOfCombatTimer <= 0 && this.stats.hp < this.stats.maxHp);
 
         if (this.isHealingFromShield && this.activeShieldTimer > 0 && !isAlreadyHealingOverTime) {
-            // Cura fluida basata sul delta time (garantisce ESATTAMENTE un cap del 2% al sec. totale)
+            // Cura fluida basata sul delta time (garantisce ESATTAMENTE un cap totale del 2% al sec.)
             let healAmount = this.stats.maxHp * 0.02 * dt;
             this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
             Game.addUltimateCharge(2.0 * dt);
@@ -5581,8 +5581,8 @@ class Player extends Entity {
                 this.shieldHoTTickTimer = 1.0; 
                 
                 let tickHp = Math.floor(this.stats.maxHp * 0.02); 
-                if (tickHp > 0) Game.getFloatingText().spawn(this.x - 12, this.y + 10, `+${tickHp}`, '#00ffaa', 18);
-                Game.getFloatingText().spawn(this.x + 12, this.y + 10, `+2% ULT`, '#00DDFF', 18);
+                if (tickHp > 0) Game.getFloatingText().spawn(this.x - 15, this.y + 10, `+${tickHp}`, '#00ffaa', 20);
+                Game.getFloatingText().spawn(this.x + 15, this.y + 10, `+2% ULT`, '#00DDFF', 20);
                 Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteBlue, 'spark');
             }
         } else {
@@ -5720,7 +5720,7 @@ class Player extends Entity {
                 this.move(dx, dy, dt); 
                 this.mesh.position.y = Game.animBounce * 0.75; 
                 
-             // --- NUOVO: Sbuffo di polvere al suolo (ogni 6 frame se cammina)
+           // --- NUOVO: Sbuffo di polvere al suolo (ogni 6 frame se cammina)
                 if (Game.frameCount % 6 === 0) {
                     Game.getParticle().spawn(this.x, 2, this.y, SharedMat.spriteDust, 'dust');
                     
@@ -7745,7 +7745,7 @@ class Projectile {
             let dx = Game.player.x - this.x;
             let dy = Game.player.y - this.y;
             
-            if ((dx * dx) + (dy * dy) < pRadCheck) {
+           if ((dx * dx) + (dy * dy) < pRadCheck) {
                 if (Game.player.activeShieldTimer > 0 && this.type !== 'fire_shape') {
                     Game.player.shieldAbsorbed++;
                     Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteBlue, 'spark');
@@ -7754,11 +7754,11 @@ class Projectile {
                     // RECUPERO FLAT: +5% HP e +5% Ultimate Istantanei ad ogni proiettile assorbito
                     let heal = Game.player.stats.maxHp * 0.05; 
                     Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + heal);
-                    Game.addUltimateCharge(5); 
+                    Game.addUltimateCharge(5.0); 
                     
                     // Testi Fluttuanti Distinti (HP verde a sinistra, Ulti blu a destra)
-                    Game.getFloatingText().spawn(Game.player.x - 12, Game.player.y + 15, `+${Math.floor(heal)}`, '#00ffaa', 22, true);
-                    Game.getFloatingText().spawn(Game.player.x + 12, Game.player.y + 15, `+5% ULT`, '#00DDFF', 22, true);
+                    Game.getFloatingText().spawn(Game.player.x - 15, Game.player.y + 15, `+${Math.floor(heal)}`, '#00ffaa', 22, true);
+                    Game.getFloatingText().spawn(Game.player.x + 15, Game.player.y + 15, `+5% ULT`, '#00DDFF', 22, true);
                     
                     Game.player.shieldFlashTimer = 0.15; 
                     this.handleHit(null);
@@ -7948,72 +7948,78 @@ class Particle {
     }
 }
 class Debris {
-    constructor() {
-        this.active = false;
-        this.mesh = new THREE.Mesh(SharedGeo.tetrahedron, new THREE.MeshStandardMaterial({roughness: 0.8, metalness: 0.2}));
-        // FIX: matrixAutoUpdate riattivato per i detriti. Zero glitch di teletrasporto!
-        this.mesh.visible = false; 
-        this.mesh.castShadow = false; 
-        this.mesh.receiveShadow = false;
-        Game.scene.add(this.mesh);
-    }
-   spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, enemyRadius, isElite = false) {
-        if (Game.debrisThisFrame > (isTouchDevice ? 8 : 20)) return;
-        Game.debrisThisFrame = (Game.debrisThisFrame || 0) + 1;
+    constructor() {
+        this.active = false;
+        this.mesh = new THREE.Mesh(SharedGeo.tetrahedron, new THREE.MeshStandardMaterial({roughness: 0.8, metalness: 0.2}));
+        this.mesh.matrixAutoUpdate = false; // FIX ASSOLUTO: Spegniamo l'aggiornamento automatico
+        this.mesh.visible = false; 
+        this.mesh.castShadow = false; 
+        this.mesh.receiveShadow = false;
+        Game.scene.add(this.mesh);
+    }
+    spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, enemyRadius, isElite = false) {
+        if (Game.debrisThisFrame > (isTouchDevice ? 8 : 20)) return;
+        Game.debrisThisFrame = (Game.debrisThisFrame || 0) + 1;
 
-        this.active = true;
-        this.mesh.geometry = geometry;
-        this.mesh.material.color.setHex(colorHex);
-        this.mesh.material.emissive.setHex(isElite ? 0x440000 : 0x000000);
-        this.mesh.position.copy(worldPos);
-        this.mesh.quaternion.copy(worldQuat);
-        
-        let maxScale = Math.max(scaleVec.x, scaleVec.y, scaleVec.z);
-        maxScale = Math.min(maxScale, enemyRadius * 1.2); 
-        this.baseScale = maxScale * 0.85; 
-        this.mesh.scale.setScalar(this.baseScale); 
-        
-        let a = Math.random() * Math.PI * 2;
-        let speed = MathUtils.randomRange(40, 110); 
-        this.vx = Math.cos(a) * speed;
-        this.vz = Math.sin(a) * speed;
-        this.vy = MathUtils.randomRange(250, 450); 
-        this.rx = MathUtils.randomRange(-15, 15);
-        this.ry = MathUtils.randomRange(-15, 15);
-        this.rz = MathUtils.randomRange(-15, 15);
-        this.life = MathUtils.randomRange(0.6, 0.9); 
-        this.maxLife = this.life;
-        this.mesh.visible = true;
-    }
-    
-    update(dt) {
-        if (!this.active) return;
-        this.vy -= 600 * dt; 
-        this.mesh.position.x += this.vx * dt;
-        this.mesh.position.y += this.vy * dt;
-        this.mesh.position.z += this.vz * dt;
-        this.mesh.rotation.x += this.rx * dt;
-        this.mesh.rotation.y += this.ry * dt;
-        this.mesh.rotation.z += this.rz * dt;
-        
-        let floorLimit = this.baseScale * 0.3;
-        if (this.mesh.position.y < floorLimit) {
-            this.mesh.position.y = floorLimit;
-            this.vy *= -0.3; 
-            this.vx *= 0.5; 
-            this.vz *= 0.5;
-            this.rx *= 0.5;
-            this.ry *= 0.5;
-            this.rz *= 0.5;
-        }
-        
-        let pct = this.life / this.maxLife;
-        let easeShrink = 1.0; 
-        if (pct < 0.6) easeShrink = Math.pow(pct / 0.6, 1.2); 
-        this.mesh.scale.setScalar(Math.max(0.001, this.baseScale * easeShrink));
-        this.life -= dt;
-        if (this.life <= 0) { this.active = false; this.mesh.visible = false; }
-    }
+        this.active = true;
+        this.mesh.geometry = geometry;
+        this.mesh.material.color.setHex(colorHex);
+        this.mesh.material.emissive.setHex(isElite ? 0x440000 : 0x000000);
+        this.mesh.position.copy(worldPos);
+        this.mesh.quaternion.copy(worldQuat);
+        
+        // Pulizia dei valori per evitare scale sballate (NaN o infiniti)
+        let maxScale = Math.max(Math.abs(scaleVec.x), Math.abs(scaleVec.y), Math.abs(scaleVec.z));
+        maxScale = Math.min(maxScale, enemyRadius * 1.2); 
+        this.baseScale = maxScale * 0.85; 
+        this.mesh.scale.setScalar(Math.max(0.01, this.baseScale)); 
+        
+        let a = Math.random() * Math.PI * 2;
+        let speed = MathUtils.randomRange(40, 110); 
+        this.vx = Math.cos(a) * speed;
+        this.vz = Math.sin(a) * speed;
+        this.vy = MathUtils.randomRange(250, 450); 
+        this.rx = MathUtils.randomRange(-15, 15);
+        this.ry = MathUtils.randomRange(-15, 15);
+        this.rz = MathUtils.randomRange(-15, 15);
+        this.life = MathUtils.randomRange(0.6, 0.9); 
+        this.maxLife = this.life;
+
+        this.mesh.updateMatrix(); // FORZA SUBITO IL RICALCOLO: Nessun teletrasporto!
+        this.mesh.visible = true;
+    }
+    
+    update(dt) {
+        if (!this.active) return;
+        this.vy -= 600 * dt; 
+        this.mesh.position.x += this.vx * dt;
+        this.mesh.position.y += this.vy * dt;
+        this.mesh.position.z += this.vz * dt;
+        this.mesh.rotation.x += this.rx * dt;
+        this.mesh.rotation.y += this.ry * dt;
+        this.mesh.rotation.z += this.rz * dt;
+        
+        let floorLimit = this.baseScale * 0.3;
+        if (this.mesh.position.y < floorLimit) {
+            this.mesh.position.y = floorLimit;
+            this.vy *= -0.3; 
+            this.vx *= 0.5; 
+            this.vz *= 0.5;
+            this.rx *= 0.5;
+            this.ry *= 0.5;
+            this.rz *= 0.5;
+        }
+        
+        let pct = this.life / this.maxLife;
+        let easeShrink = 1.0; 
+        if (pct < 0.6) easeShrink = Math.pow(pct / 0.6, 1.2); 
+        this.mesh.scale.setScalar(Math.max(0.001, this.baseScale * easeShrink));
+        
+        this.mesh.updateMatrix(); // AGGIORNA MANUALMENTE AD OGNI FRAME
+        
+        this.life -= dt;
+        if (this.life <= 0) { this.active = false; this.mesh.visible = false; }
+    }
 }
 class FloatingText {
     constructor() { this.active = false; }

@@ -226,7 +226,7 @@ body.colorblind-mode #opt-colorblind-text {
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 128</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 130</p>
                 </div>
             </div>
         </div>
@@ -1749,32 +1749,42 @@ const RelicSystem = {
         }
     },
 
-   proceedToNextFloor(forceSkip = false) {
-        // Se non abbiamo forzato lo skip, e non c'è una selezione e c'è qualcosa da scegliere -> blocca
-        if (!this.selectedMainRelic && !forceSkip && this.currentChoices.length > 0) return;
-        
-        AudioEngine.playClick();
-        
-        // Applica l'oggetto principale (se è stato selezionato)
-        if (this.selectedMainRelic) {
-            this.selectedMainRelic.apply(Game.player);
-            Game.player.relics.push(this.selectedMainRelic);
-            Game.getFloatingText().spawn(Game.player.x, Game.player.y, "POTERE ACQUISITO", '#ffff00', 40, true);
-        }
-        
-        document.getElementById('relicScreen').classList.add('hidden'); 
-        Game.state = 'FLOOR_TRANSITION'; 
-        window.prepareFloorScreen(); 
-        document.getElementById('floorScreen').classList.remove('hidden'); 
-    },
+  proceedToNextFloor(forceSkip = false) {
+        if (!this.selectedMainRelic && !forceSkip && this.currentChoices.length > 0) return;
+        AudioEngine.playClick();
+        
+        if (this.selectedMainRelic) {
+            this.selectedMainRelic.apply(Game.player);
+            Game.player.relics.push(this.selectedMainRelic);
+            Game.getFloatingText().spawn(Game.player.x, Game.player.y, "POTERE ACQUISITO", '#ffff00', 40, true);
+        }
+        
+        document.getElementById('relicScreen').classList.add('hidden'); 
+        
+        // INVECE DEL TAGLIO NETTO, ATTIVIAMO IL TUFFO NEL PORTALE
+        Game.state = 'WARPING_OUT'; 
+        Game.warpTimer = 1.2;
+        if (Game.player.shadowMesh) Game.player.shadowMesh.visible = false;
+        if (Game.player.auraRingMesh) { Game.player.auraRingMesh.visible = false; Game.player.auraGlow.visible = false; }
+        
+        AudioEngine.playShoot('explosive_arrow');
+        AudioEngine.stopBossMusic();
+        AudioEngine.playLevelCompleteMusic(); 
+    },
 
-    skipRelic() {
-        AudioEngine.playClick();
-        document.getElementById('relicScreen').classList.add('hidden'); 
-        Game.state = 'FLOOR_TRANSITION'; 
-        window.prepareFloorScreen(); 
-        document.getElementById('floorScreen').classList.remove('hidden'); 
-    }
+    skipRelic() {
+        AudioEngine.playClick();
+        document.getElementById('relicScreen').classList.add('hidden'); 
+        
+        Game.state = 'WARPING_OUT'; 
+        Game.warpTimer = 1.2;
+        if (Game.player.shadowMesh) Game.player.shadowMesh.visible = false;
+        if (Game.player.auraRingMesh) { Game.player.auraRingMesh.visible = false; Game.player.auraGlow.visible = false; }
+        
+        AudioEngine.playShoot('explosive_arrow');
+        AudioEngine.stopBossMusic();
+        AudioEngine.playLevelCompleteMusic(); 
+    }
 };
 
 
@@ -2549,7 +2559,7 @@ const TouchControls = {
         }, {passive: true});
         // ------------------------------------
 
-        document.getElementById('btn-dash').addEventListener('touchstart', (e) => { e.preventDefault(); if(Game.state === 'PLAYING') Game.player.dash(); });
+        document.getElementById('btn-dash').addEventListener('touchstart', (e) => { e.preventDefault(); if(Game.state === 'PLAYING' && !Game.player.dead) Game.player.dash(); });
         document.getElementById('btn-ult').addEventListener('touchstart', (e) => { e.preventDefault(); Game.activateUltimate(); });
         document.getElementById('btn-shield').addEventListener('touchstart', (e) => { e.preventDefault(); if(Game.state === 'PLAYING') Game.player.activateShield(); });
     },
@@ -2565,7 +2575,7 @@ const TouchControls = {
                 const now = Date.now();
                 // Se tocchi due volte rapidamente l'area del joystick rosso
                 if (now - TouchControls.lastRightTapTime < 300 && now - TouchControls.lastRightTapTime > 0) {
-                    if (Game.state === 'PLAYING') Game.player.dash();
+                   if (Game.state === 'PLAYING' && !Game.player.dead) Game.player.dash();
                 }
                 TouchControls.lastRightTapTime = now;
             }
@@ -3197,7 +3207,7 @@ prewarmShaders() {
         if(this.composer) this.composer.setSize(this.width, this.height);
     },
     setupInputs() {
-        window.addEventListener('keydown', e => { this.keys[e.key.toLowerCase()] = true; if(e.code === 'Space' && this.state === 'PLAYING') this.player.dash(); });
+       window.addEventListener('keydown', e => { this.keys[e.key.toLowerCase()] = true; if(e.code === 'Space' && this.state === 'PLAYING' && !this.player.dead) this.player.dash(); });
         window.addEventListener('keyup', e => { this.keys[e.key.toLowerCase()] = false; });
         window.addEventListener('mousemove', e => { this.mouse.x = e.clientX; this.mouse.y = e.clientY; });
         window.addEventListener('mousedown', e => { if (e.button === 0) this.mouse.leftDown = true; if (e.button === 2) { this.mouse.rightDown = true; this.activateUltimate(); } });
@@ -3588,10 +3598,11 @@ update(combatDt, visualDt) {
             this.camera.fov += visualDt * 40;
             this.camera.updateProjectionMatrix();
             
-            // 3. FIX SCHERMATA NERA: Scuriamo usando gli stili inline puri
+           // 3. Scuriamo la scena (NO CSS CLASS, usiamo inline styles per bypassare gli !important)
             if (UI.els.bloodVignette) {
-                UI.els.bloodVignette.style.background = `rgba(5, 5, 10, ${progress})`;
-                UI.els.bloodVignette.style.opacity = progress; // <-- Il trucco vitale per non incastrare l'HUD
+                UI.els.bloodVignette.style.background = `rgba(5, 5, 10, 1)`;
+                UI.els.bloodVignette.style.opacity = progress; 
+                UI.els.bloodVignette.style.zIndex = '90';
             }
             
             // Effetti visivi che continuano a muoversi
@@ -3609,13 +3620,15 @@ update(combatDt, visualDt) {
                 this.camera.fov = 50; 
                 this.camera.updateProjectionMatrix();
                 
-                // RESET PULTISSIMO della schermata nera
+                // Reset pulitissimo dello schermo nero
                 if (UI.els.bloodVignette) {
                     UI.els.bloodVignette.style.background = ''; 
-                    UI.els.bloodVignette.style.opacity = '0'; 
+                    UI.els.bloodVignette.style.opacity = '0';
+                    UI.els.bloodVignette.style.zIndex = '';
                 }
 
-                if (this.isCorrupted && this.corruptedReward === 'relic') {
+                // Diamo la reliquia corrotta in automatico SOLO se non siamo dal Boss
+                if (this.isCorrupted && this.corruptedReward === 'relic' && !this.isBossFloor) {
                     let choices = RelicSystem.getChoices();
                     if (choices.length > 0) {
                         let dropRelic = choices[0]; 
@@ -3629,9 +3642,7 @@ update(combatDt, visualDt) {
                 window.prepareFloorScreen();
                 document.getElementById('floorScreen').classList.remove('hidden');
                 ShopSystem.updateUI();
-                
-       
-          
+                // FIX: Rimosso il doppio AudioEngine.playLevelCompleteMusic() da qui!
             }
             return; // Blocca il resto della fisica, lasciando solo l'animazione!
         }

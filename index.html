@@ -5124,10 +5124,12 @@ class Player extends Entity {
         super(x, y, 16, 200); this.baseSpeed = 200; this.level = 1; this.xp = 0; this.xpNeeded = 100; this.tempHp = 0;
         this.attackTimer = 0; this.baseAttackSpeed = 3.5; this.isAttacking = false; this.attackSwing = 0;
         this.dashTimer = 0; this.isDashing = false; this.dashCooldown = 0; 
-        this.stats = { hp: 100, maxHp: 100, minDmg: 8, maxDmg: 15 };
-        // NUOVO: "Memoria Genetica" per annullare i malus delle reliquie sacrificate
+       this.stats = { hp: 100, maxHp: 100, minDmg: 8, maxDmg: 15 };
         this.baseStats = { maxHp: 100, minDmg: 8, maxDmg: 15 };
-       this.essenceList.length = 0; this.essence = null; this.essenceTimer = 0; this.overdrive = false; this.invincibilityTimer = 0; this.relics = [];
+        
+        // FIX: Nel constructor l'array deve essere creato da zero con []!
+        this.essenceList = []; 
+        this.essence = null; this.essenceTimer = 0; this.overdrive = false; this.invincibilityTimer = 0; this.relics = [];
         this.activeShieldTimer = 0;
         this.activeShieldCooldown = 0;
         this.shieldAbsorbed = 0;

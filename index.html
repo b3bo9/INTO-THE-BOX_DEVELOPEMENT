@@ -2239,7 +2239,7 @@ class ExtraLife {
 class Hazard {
     constructor() {
         this.active = false; this.updateOffset = Math.floor(Math.random() * 6);
-        this.hitCooldown = Object.create(null); 
+        this.hitCooldown = new Map(); // FIX MEMORIA: Uso mappa nativa invece di Object
         this.group = new THREE.Group();
         // FIX: Materiali privati per ogni Hazard! Evita il flickering globale!
         this.planeMat = new THREE.MeshBasicMaterial({color: 0x33ff00, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false});
@@ -2253,7 +2253,7 @@ class Hazard {
     spawn(x, z, radius, duration, damage, colorHex, type='fire') {
         this.active = true; this.x = x; this.y = z; this.life = duration; this.maxLife = duration;
         this.damage = damage; this.type = type;
-        this.hitCooldown = Object.create(null);
+        this.hitCooldown.clear(); // Zero-Allocation svuotamento istantaneo
         this.activationTimer = (type === 'enemy_fire') ? 1.0 : (type === 'snake_fire' ? 0.6 : 0.0);
         this.group.position.set(x, 0, z);
 
@@ -2308,7 +2308,7 @@ class Hazard {
             let nearby = Game.enemyGrid.findNearby(this, this.radius + 30);
             for (let i=0, len=nearby.length; i<len; i++) {
                 let e = nearby[i];
-                let cd = this.hitCooldown[e.id] || 0;
+               let cd = this.hitCooldown.get(e.id) || 0;
                 if (Game.playTime < cd) continue; 
                 
                 let dx = this.x - e.x; let dy = this.y - e.y;
@@ -2384,7 +2384,7 @@ class Hazard {
                                 e.takeDamage(this.damage, Game.player, false, false); 
                                 if(this.type === 'poison') e.slowedTimer = 2.0; 
                                 if(this.type === 'fire' && Game.player && Game.player.modifiers.fireTrailDebuff) e.fireDebuffTimer = 3.0;
-                                this.hitCooldown[e.id] = Game.playTime + 0.5;
+                                this.hitCooldown.set(e.id, Game.playTime + 0.5);
                             }
                         }
                     }
@@ -2397,11 +2397,11 @@ class Hazard {
                             Game.player.isHealingFromShield = true;
                         } else {
                             // SE NON HA LO SCUDO: Danno a tick ogni secondo
-                            let pCd = this.hitCooldown['player'] || 0;
+                            let pCd = this.hitCooldown.get('player') || 0;
                             if (Game.playTime >= pCd) {
                                 let playerDmg = this.type === 'crystal_fire' ? 35 * Game.difficultyMult : this.damage;
                                 Game.player.takeDamage(playerDmg, null); 
-                                this.hitCooldown['player'] = Game.playTime + 1.0; 
+                               this.hitCooldown.set('player', Game.playTime + 1.0);
                             }
                         }
                     }
@@ -5127,7 +5127,7 @@ class Player extends Entity {
         this.stats = { hp: 100, maxHp: 100, minDmg: 8, maxDmg: 15 };
         // NUOVO: "Memoria Genetica" per annullare i malus delle reliquie sacrificate
         this.baseStats = { maxHp: 100, minDmg: 8, maxDmg: 15 };
-        this.essenceList = []; this.essence = null; this.essenceTimer = 0; this.overdrive = false; this.invincibilityTimer = 0; this.relics = [];
+       this.essenceList.length = 0; this.essence = null; this.essenceTimer = 0; this.overdrive = false; this.invincibilityTimer = 0; this.relics = [];
         this.activeShieldTimer = 0;
         this.activeShieldCooldown = 0;
         this.shieldAbsorbed = 0;
@@ -5193,7 +5193,7 @@ class Player extends Entity {
     collectEssence(type) {
         if (this.overdrive) { 
             let kept = this.modifiers.keepEssenceOnCombo ? this.essence : null;
-            this.overdrive = false; this.essenceList = []; 
+            this.overdrive = false; this.essenceList.length = 0; // FIX MEMORIA: Svuota array senza distruggerlo
             if (kept) this.essenceList.push(kept);
         }
         // NUOVO: Accumulo velocità per Magnete delle Anime
@@ -5622,7 +5622,7 @@ class Player extends Entity {
             this.essenceTimer -= dt; 
             if (this.essenceTimer <= 0) { 
                 let kept = (this.overdrive && this.modifiers.keepEssenceOnCombo) ? this.essence : null;
-                this.essenceList = []; this.essence = null; this.overdrive = false; 
+               this.essenceList.length = 0; this.essence = null; this.overdrive = false;
                 if (kept) { this.essenceList.push(kept); this.essence = kept; this.essenceTimer = 8.0 * this.modifiers.essenceDurationMult; }
                 this.updateAppearance(); 
             } 
@@ -6396,7 +6396,8 @@ Game.scene.add(this.telegraphMesh);
             this.mat.opacity = 0.90; 
         }
 
-        this.mesh.position.set(x, 0, y); 
+       this.mesh.position.set(x, 0, y); 
+        this.mesh.updateMatrix(); // FIX SCATTI: Assegna subito le coordinate corrette
         this.mesh.visible = true;
         
         this.shadowMesh.position.set(x, 0.2, y);
@@ -6912,7 +6913,10 @@ Game.scene.add(this.telegraphMesh);
                 // Fa brillare lo scudo 3D
                 if (this.modelParts && this.modelParts.shield) {
                     this.modelParts.shield.material.opacity = 0.9;
-                    setTimeout(() => { if (this.modelParts && this.modelParts.shield) this.modelParts.shield.material.opacity = 0.4; }, 150);
+                   setTimeout(() => { 
+    if (this.active && !this.dead && this.modelParts && this.modelParts.shield) 
+        this.modelParts.shield.material.opacity = 0.4; 
+}, 150);
                 }
             }
         }
@@ -6977,7 +6981,10 @@ Game.scene.add(this.telegraphMesh);
                 Game.getFloatingText().spawn(Game.player.x, Game.player.y + 30, "+0.5s ASCENSIONE!", '#00DDFF', 25, true);
             }
         }
-        let cHex = this.mat.color.getHex();
+      let cHex = this.mat.color.getHex();
+        // FIX DETRITI: Forza l'aggiornamento della matrice locale prima di calcolare il mondo!
+        this.mesh.position.set(this.x, this.mesh.position.y, this.y);
+        this.mesh.updateMatrix(); 
         this.mesh.updateMatrixWorld(true);
 
         // OTTIMIZZAZIONE RAM: Zero-Allocation.

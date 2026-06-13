@@ -6143,7 +6143,7 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); }
     }
     
-  takeDamage(amount, source) {
+takeDamage(amount, source) {
         if (this.invincibilityTimer > 0) return; 
         
         let aura = Game.getAuraAt(this.x, this.y); 
@@ -6163,12 +6163,12 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
             amount *= 0.75;
         }
         
-       // 2. Priorità: Scudo Glaciale (Temp Hp Verde/Blu)
+        // 2. Priorità: Scudo Glaciale (Temp Hp Verde/Blu)
         if (this.tempHp > 0) {
             Game.getFloatingText().spawn(this.x, this.y + 20, "ASSORBITO!", '#00ffaa', 25, true);
             Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark');
             
-           // Flash visivo dello scudo glaciale quando colpito (Zero-Allocation Fix)
+            // Flash visivo dello scudo glaciale quando colpito
             this.glacialShieldMesh.material.opacity = 0.8; 
             this.invincibilityTimer = 0.2; // L'update si occuperà di riabbassare l'opacità
             
@@ -6178,35 +6178,34 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
             } else {
                 amount -= this.tempHp;
                 this.tempHp = 0;
-                this.glacialShieldMesh.visible = false; // <-- FIX: Ora nasconde quello giusto!
+                this.glacialShieldMesh.visible = false; 
                 AudioEngine.playShoot('explosive_arrow'); 
             }
         }
         
-        let wasDead = this.dead; amount *= this.modifiers.dmgTakenMult; 
+        let wasDead = this.dead; 
+        amount *= this.modifiers.dmgTakenMult; 
         
-  
-if (this.modifiers.flowMastery && !wasDead) {
-    if (Game.combo > 50) {
-        // Sei una macchina da guerra, ma fragile
-        amount *= 1.20;
-        Game.getFloatingText().spawn(this.x, this.y + 30, "SOVRACCARICO!", '#ff0000', 30, true);
-    } else {
-        // Sei in fase di ricarica/difesa
-        amount *= 0.80;
-        Game.getFloatingText().spawn(this.x, this.y + 30, "DIFESA!", '#00DDFF', 30, true);
-    }
-}
-
+        if (this.modifiers.flowMastery && !wasDead) {
+            if (Game.combo > 50) {
+                // Sei una macchina da guerra, ma fragile
+                amount *= 1.20;
+                Game.getFloatingText().spawn(this.x, this.y + 30, "SOVRACCARICO!", '#ff0000', 30, true);
+            } else {
+                // Sei in fase di ricarica/difesa
+                amount *= 0.80;
+                Game.getFloatingText().spawn(this.x, this.y + 30, "DIFESA!", '#00DDFF', 30, true);
+            }
+        }
 
         super.takeDamage(amount, source);
-        this.invincibilityTimer = 0.2; // <-- 0.2 secondi di invincibilità ad ogni hit
-      this.outOfCombatTimer = 5.0;
-        AudioEngine.playHit('player');
-       Haptics.vibrate([40, 30, 40]);
-      // La combo si spezza sempre quando vieni colpito
+        this.invincibilityTimer = 0.2; // <-- 0.2 secondi di invincibilità ad ogni hit
+        this.outOfCombatTimer = 5.0;
+        AudioEngine.playHit('player');
+        Haptics.vibrate([40, 30, 40]);
+        
+        // La combo si spezza sempre quando vieni colpito
         Game.resetCombo();
-      
 
         if (!wasDead) {
             Game.addTrauma(0.8);
@@ -6247,11 +6246,26 @@ if (this.modifiers.flowMastery && !wasDead) {
                     // I suoni sono stati rimossi da qui, gestiamo solo la Grafica/UI
                     if (Game.lives > 0) {
                         ds.style.backgroundImage = "url('bg_morte.png')";
-                        document.getElementById('deathTitle').innerText = "SEI CADUTO"; document.getElementById('deathSubtitle').innerText = `Vite rimaste: ${Game.lives}`; document.getElementById('deathQuote').classList.add('hidden'); document.getElementById('btn-respawn').classList.remove('hidden'); document.getElementById('btn-restart').classList.add('hidden');
+                        document.getElementById('deathTitle').innerText = "SEI CADUTO"; 
+                        document.getElementById('deathSubtitle').innerText = `Vite rimaste: ${Game.lives}`; 
+                        document.getElementById('deathQuote').classList.add('hidden'); 
+                        document.getElementById('btn-respawn').classList.remove('hidden'); 
+                        document.getElementById('btn-restart').classList.add('hidden');
                     } else {
                         ds.style.backgroundImage = "url('bg_box.png')";
-                        document.getElementById('deathTitle').innerText = "R I P"; document.getElementById('deathSubtitle').innerText = `Piano: ${Game.floor} | Demoni: ${Game.totalKills} | Tempo: ${ScoreManager.formatTime(Game.playTime)}`; document.getElementById('deathQuote').innerText = `"${DEATH_QUOTES[Math.floor(Math.random() * DEATH_QUOTES.length)]}"`; document.getElementById('deathQuote').classList.remove('hidden'); document.getElementById('btn-respawn').classList.add('hidden'); document.getElementById('btn-restart').classList.remove('hidden'); document.getElementById('score-save-container').classList.remove('hidden'); document.getElementById('playerName').value = '';
-                        let btnSave = document.getElementById('btn-save-score'); btnSave.innerText = 'SALVA PUNTEGGIO'; btnSave.disabled = false; btnSave.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-700'); btnSave.classList.add('bg-red-900', 'hover:bg-red-700');
+                        document.getElementById('deathTitle').innerText = "R I P"; 
+                        document.getElementById('deathSubtitle').innerText = `Piano: ${Game.floor} | Demoni: ${Game.totalKills} | Tempo: ${ScoreManager.formatTime(Game.playTime)}`; 
+                        document.getElementById('deathQuote').innerText = `"${DEATH_QUOTES[Math.floor(Math.random() * DEATH_QUOTES.length)]}"`; 
+                        document.getElementById('deathQuote').classList.remove('hidden'); 
+                        document.getElementById('btn-respawn').classList.add('hidden'); 
+                        document.getElementById('btn-restart').classList.remove('hidden'); 
+                        document.getElementById('score-save-container').classList.remove('hidden'); 
+                        document.getElementById('playerName').value = '';
+                        
+                        let btnSave = document.getElementById('btn-save-score'); 
+                        btnSave.innerText = 'SALVA PUNTEGGIO'; btnSave.disabled = false; 
+                        btnSave.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-700'); 
+                        btnSave.classList.add('bg-red-900', 'hover:bg-red-700');
                     }
                 }, 1500);
             }

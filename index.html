@@ -5929,7 +5929,7 @@ class Player extends Entity {
         this.fakeBloom.material.opacity = Math.max(0.1, Math.min(1.0, baseOpacity + (flicker * 0.5)));
         this.mesh.updateMatrix();
         // -----------------------------------------------------------------
-    
+    }
    } 
   flamethrower(dt) {
         if (Game.frameCount % (isTouchDevice ? 2 : 1) === 0) {

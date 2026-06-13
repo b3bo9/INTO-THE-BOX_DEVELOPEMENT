@@ -1269,24 +1269,27 @@ const MathUtils = {
 };
 
 const TILE_SIZE = 64; const CHUNK_SIZE = 30; const FIXED_TIME_STEP = 1 / 60; const MAX_TIME_STEP = 0.1;
-   const MAP_THEMES = [
-    // TEMA 1: FORESTA OSCURA (Classico)
+ const MAP_THEMES = [
+    // TEMA 1: FORESTA OSCURA (Contrasto Teal & Orange)
+    // Ombre blu notte profondo, luce della luna arancio/calda
     { 
         dirt: 0x705848, grass: 0x446048, rock: 0x5c5c6e, wall: 0x3a3a48, 
         grassShader: 0x1a2b16, tree: 0x0a0807,
-        ambient: 0x1a1c3a, dirLight: 0x335577, fog: 0x020205
+        ambient: 0x0a1128, dirLight: 0xffa055, fog: 0x050a14
     },
-   // TEMA 2: ABISSO INFERNALE (Rosso Fuoco più saturo)
+   // TEMA 2: ABISSO INFERNALE (Contrasto Viola & Giallo Zolfo)
+   // Ombre viola/cremisi scuro, luce giallo accecante
     { 
         dirt: 0x702020, grass: 0xbb2020, rock: 0x501515, wall: 0x301010, 
         grassShader: 0x600505, tree: 0x200505,
-        ambient: 0x301010, dirLight: 0xcc4422, fog: 0x200505
+        ambient: 0x1a0515, dirLight: 0xffcc00, fog: 0x11020a
     },
-    // TEMA 3: CAVERNA GLACIALE (Ghiaccio e Ciano Intenso)
+    // TEMA 3: CAVERNA GLACIALE (Contrasto Blu Abissale & Ciano Elettrico)
+    // Ombre blu scurissimo, luce azzurro/bianco tagliente
     { 
         dirt: 0x0f2035, grass: 0x155b88, rock: 0x10253a, wall: 0x0a1525, 
         grassShader: 0x052a55, tree: 0x051a35,
-        ambient: 0x051a3a, dirLight: 0x44ccff, fog: 0x051530
+        ambient: 0x050a1a, dirLight: 0x99eeff, fog: 0x02050f
     }
 ];
 
@@ -5190,7 +5193,8 @@ class Player extends Entity {
        // Luce più calda (ambra/arancio), raggio esteso e decadimento più morbido (1.5 invece di 2) 
         // OTTIMIZZAZIONE GPU: Raggio dimezzato su smartphone. Identico a schermo, ma salva il 50% del calcolo luce.
         let lightRadius = isTouchDevice ? 700 : 1200;
-        this.light = new THREE.PointLight(0xffddaa, 3.2, lightRadius, 1.5); this.light.position.y = 30;
+        // FIX ILLUMINAZIONE: Decay a 2.0 per un falloff fotorealistico e ombre più morbide ai bordi
+        this.light = new THREE.PointLight(0xffddaa, 5.0, lightRadius, 2.0); this.light.position.y = 30;
         
         this.mesh.add(this.light); this.mesh.position.set(this.x, 0, this.y); Game.scene.add(this.mesh);
         this.mesh.traverse(c => { if(c.material && c.material.emissive && c !== this.modelParts.staffGem) this.flashMats.push(c.material); });
@@ -5851,8 +5855,9 @@ class Player extends Entity {
             } 
         }
 
-        // --- SFARFALLIO SICURO E FEEDBACK D'ATTACCO (FOTOSENSIBILITÀ) ---
-        let baseInt = Game.ultimateActive ? 4.0 : (this.overdrive ? 3.5 : (this.essence ? 2.5 : 1.8));
+       // --- SFARFALLIO SICURO E FEEDBACK D'ATTACCO (FOTOSENSIBILITÀ) ---
+        // FIX ILLUMINAZIONE: Valori alzati per compensare il nuovo decay a 2.0
+        let baseInt = Game.ultimateActive ? 8.0 : (this.overdrive ? 6.5 : (this.essence ? 4.5 : 3.0));
         
         // 1. Respiro naturale morbido e asincrono
         let flicker = (Math.sin(Game.playTime * 4.3) * 0.1) + (Math.sin(Game.playTime * 7.8) * 0.12);

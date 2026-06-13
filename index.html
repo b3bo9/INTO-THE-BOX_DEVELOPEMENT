@@ -6008,10 +6008,11 @@ class Player extends Entity {
         
         // MODIFICA VELOCITÀ D'ATTACCO: +30% se l'Onda d'Urto è attiva (shockSpeedTimer) 
         // e +6% a stack per ogni moneta raccolta (miserBuffStacks)
-       let shockAtkSpeed = this.shockSpeedTimer > 0 ? 1.30 : 1.0;
+      let shockAtkSpeed = this.shockSpeedTimer > 0 ? 1.30 : 1.0;
         let miserAtkSpeedBonus = 1.0 + ((this.miserBuffStacks || 0) * 0.06);
         
-       let aura = Game.getAuraAt(this.x, this.y); 
+       // FIX BUG SPARO: L'oggetto Game deve chiamare getAuraAt passandogli le coordinate corrette del Player!
+       let aura = Game.getAuraAt(this.mesh.position.x, this.mesh.position.z); 
         // FIX OBELISCO ROSSO: +20% Velocità d'attacco se sei nell'Aura Rossa
         let auraAtkSpd = (aura === 'blue') ? 0.6 : (aura === 'red' ? 1.2 : 1.0);
         let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult * shopSpeed * adrenalineSpeed * (1 + shieldSpeed) * shockAtkSpeed * miserAtkSpeedBonus * auraAtkSpd;
@@ -6611,8 +6612,9 @@ Game.scene.add(this.telegraphMesh);
             this.slowType = null; // Resetta il tipo di rallentamento
         }
         
-        let aura = Game.getAuraAt(this.x, this.y);
-        if (aura === 'blue') this.speed *= 0.6; 
+       // FIX SICUREZZA NEMICI
+      let aura = Game.getAuraAt(this.mesh.position.x, this.mesh.position.z); 
+        if (aura === 'blue') cdMult /= 0.6;
         
         if (this.fireDebuffTimer > 0) this.fireDebuffTimer -= dt;
 

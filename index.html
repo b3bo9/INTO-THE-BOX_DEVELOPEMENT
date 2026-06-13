@@ -1454,7 +1454,7 @@ const RelicSystem = {
         { id: 'e4', name: "Sovraccarico Etereo", desc: "La durata dell'Ascensione Finale aumenta di 0.5s ogni 15 nemici uccisi.", rarity: "epic", image: "icona_sovraccarico.png", icon: "fa-bolt-lightning", apply: (p) => p.modifiers.ultDurationPerKill = true },
         { id: 'e5', name: "Sovraccarico Sismico", desc: "Attivare lo Scudo genera un'onda d'urto che respinge i nemici infliggendo lievi danni.", rarity: "epic", image: "icona_zanna_del_vampiro.png", icon: "fa-wifi", apply: (p) => p.modifiers.seismicShield = true },
         { id: 'e9', name: "Gemelli Cinetici", desc: "Mentre lo Scudo è attivo, spari 2 proiettili alla volta (danno ridotto al 70%).", rarity: "epic", image: "icona_gemelli_cinetici.png", icon: "fa-clone", apply: (p) => p.modifiers.twinKinetic = true },
-        { id: 'e6', name: "Batteria a Ioni", desc: "Lo Scudo Cinetico dura 2 secondi in più.", rarity: "epic", image: "icona_batteria_ioni.png", icon: "fa-battery-full", apply: (p) => p.modifiers.shieldDurationAdd += 2.0   },
+        { id: 'e6', name: "Batteria a Ioni", desc: "Lo Scudo Cinetico dura 2 secondi in più e resiste più a lungo al fuoco nemico.", rarity: "epic", image: "icona_batteria_ioni.png", icon: "fa-battery-full", apply: (p) => p.modifiers.shieldDurationAdd += 2.0   },
        { id: 'e7', name: "Lama del Vento", desc: "Subito dopo uno Scatto, i tuoi prossimi 2 attacchi sono Colpi Critici garantiti.", rarity: "epic", image: "icona_lama_vento.png", icon: "fa-wind", apply: (p) => { p.modifiers.dashCritsEnabled = true; } },
         { id: 'e8', name: "Patto dell'Avaro", desc: "Le monete non scompaiono col tempo. Ogni moneta raccolta aumenta velocità di attacco e movimento per 3 sec.", rarity: "epic", image: "icona_patto_avaro.png", icon: "fa-sack-dollar", apply: (p) => { p.modifiers.miserPact = true; } },
 
@@ -1462,10 +1462,10 @@ const RelicSystem = {
         { id: 'l1', name: "Follia Omicida", desc: "I tuoi Colpi Critici infliggono danni estremi, ma subisci +25% Danni dai nemici.", rarity: "legendary", image: "icona_follia_omicida.png", icon: "fa-skull", apply: (p) => { p.modifiers.critDmgMult = 2.5; p.modifiers.dmgTakenMult += 0.25; } },
         { id: 'l2', name: "Lama del Giudizio", desc: "Infliggi il DOPPIO dei danni se il nemico ha Meno del 30% di Salute (Esecuzione).", rarity: "legendary", image: "icona_lama_del_giudizio.png", icon: "fa-gavel", apply: (p) => p.modifiers.executioner = true },
         { id: 'l3', name: "Patto Ascetico", desc: "La Ultimate si ricarica passivamente da sola, ma la tua Salute Massima scende del 30%.", rarity: "legendary", image: "icona_patto_ascetico.png", icon: "fa-link", apply: (p) => { p.modifiers.passiveUltCharge = true; p.stats.maxHp = Math.floor(p.stats.maxHp * 0.7); if(p.stats.hp > p.stats.maxHp) p.stats.hp = p.stats.maxHp; } },
-        { id: 'l4', name: "Sete di Sangue Eterna", desc: "Ogni nemico ucciso ti cura dell'1% HP. Tuttavia, sanguini perdendo lo 0.5% HP al secondo (emorragia disattivata contro i Boss).", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", icon: "fa-droplet", apply: (p) => { p.modifiers.bloodthirst = true; } },
+        { id: 'l4', name: "Sete di Sangue Eterna", desc: "Ti curi del 5% ogni 10 uccisioni. I nemici NON droppano cuori. I Level Up non danno HP.", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", icon: "fa-droplet", apply: (p) => { p.modifiers.bloodthirst = true; p.modifiers.noHealDrops = true; p.modifiers.noMaxHpLevelUp = true; } },
         { id: 'l5', name: "Maestria del Flow", desc: "Cap Combo raddoppiato. Se Combo > 50, fai e subisci +20% danni. Se < 50, fai e subisci -20% danni.", rarity: "legendary", image: "icona_maestria_del_flow.png", icon: "fa-infinity",  apply: (p) => {  p.modifiers.flowMastery = true; p.modifiers.comboDecayRate *= 0.5;  } },
         { id: 'l6', name: "Aegis del Guardiano", desc: "Lo Scudo esplode quando finisce. Il danno e l'area scalano in base ai colpi bloccati.", rarity: "legendary", image: "fa_shieldx.png", icon: "fa-shield", apply: (p) => { p.modifiers.explosiveShield = true; } },
-       { id: 'l7', name: "Impatto Tonante", desc: "Lo scatto genera 3 fulmini nella zona d'arrivo che infliggono danni e stordiscono i nemici", rarity: "legendary", image: "icona_impatto_tonante.png", icon: "fa-bolt", apply: (p) => { p.modifiers.dashLightning = true; } },
+       { id: 'l7', name: "Impatto Tonante", desc: "Lo scatto genera 3 fulmini nella zona d'arrivo che infliggono danni e stordiscono i nemici vicini per 1.5s.", rarity: "legendary", image: "icona_impatto_tonante.png", icon: "fa-bolt", apply: (p) => { p.modifiers.dashLightning = true; } },
     ],
     getRandomRarity() { 
         let r = Math.random() * 100; 
@@ -1536,7 +1536,7 @@ const RelicSystem = {
 
        // RESETTA IL TASTO PROCEDI ALLA SITUAZIONE DI PARTENZA
         if (this.currentChoices.length === 0) {
-            if (Game.player && Game.player.relics.length === 0) {
+            if (Game.player.relics.length === 0) {
                 this.proceedToNextFloor(true); 
                 return;
             } else {
@@ -5142,18 +5142,7 @@ class Entity {
         this.flashTimer = 0.1; 
         this.hitSquashTimer = 0.15; // Innesca lo Squash & Stretch
         for (let i = 0; i < this.flashMats.length; i++) this.flashMats[i].emissive.setHex(0x555555);
-       if (this.stats.hp <= 0) { 
-            this.stats.hp = 0; 
-            this.dead = true; 
-            
-            // NUOVO: Sete di Sangue Eterna (Cura 1% alla morte del nemico)
-            if (Game.player.modifiers.bloodthirst) {
-                let heal = Game.player.stats.maxHp * 0.01;
-                Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + heal);
-                // Feedback visivo rosso sangue, piccolo ma soddisfacente
-                Game.getFloatingText().spawn(this.x, this.y, `+${Math.max(1, Math.floor(heal))}`, '#FF1133', 18);
-            }
-        }
+        if (this.stats.hp <= 0) { this.stats.hp = 0; this.dead = true; }
     }
     updateFlash(dt) {
         if (this.flashTimer > 0) {
@@ -5505,18 +5494,7 @@ class Player extends Entity {
                 Game.getParticle().spawn(this.x + MathUtils.randomRange(-10, 10), 15, this.y + MathUtils.randomRange(-10, 10), SharedMat.spriteGreen, 'spark');
             }
         }
-        // --- EMORRAGIA (SETE DI SANGUE ETERNA) ---
-        if (this.modifiers.bloodthirst && !Game.isBossFloor) {
-            let bleedAmount = this.stats.maxHp * 0.005 * dt; // 0.5% al secondo fluido
-            
-            // Il sanguinamento ti porta fino a 1 HP, ma non ti uccide in modo diretto
-            this.stats.hp = Math.max(1, this.stats.hp - bleedAmount);
-            
-            // Dettaglio visivo succoso: il mago lascia cadere gocce di sangue mentre corre
-            if (Game.frameCount % 25 === 0 && !isTouchDevice && this.speed > 0) {
-                Game.getParticle().spawn(this.x, 2, this.y, SharedMat.spriteBlood, 'dust');
-            }
-        }
+        
       // FIX BUG IMMORTALITÀ: Ripristinato il timer di 3 secondi per la reliquia Cristallo Rigenerante
       // FIX: Nuovo Cristallo Rigenerante Out of Combat
         if (this.modifiers.outOfCombatRegen) {
@@ -5888,6 +5866,7 @@ class Player extends Entity {
                         });
                     });
                 }
+            }
         }
 
         this.attackTimer -= dt;
@@ -6011,9 +5990,8 @@ class Player extends Entity {
        let shockAtkSpeed = this.shockSpeedTimer > 0 ? 1.30 : 1.0;
         let miserAtkSpeedBonus = 1.0 + ((this.miserBuffStacks || 0) * 0.06);
         
-       let aura = Game.getAuraAt(this.x, this.y); 
-        // FIX OBELISCO ROSSO: +20% Velocità d'attacco se sei nell'Aura Rossa
-        let auraAtkSpd = (aura === 'blue') ? 0.6 : (aura === 'red' ? 1.2 : 1.0);
+        let aura = Game.getAuraAt(this.x, this.y); 
+        let auraAtkSpd = (aura === 'blue') ? 0.6 : 1.0; 
         let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult * shopSpeed * adrenalineSpeed * (1 + shieldSpeed) * shockAtkSpeed * miserAtkSpeedBonus * auraAtkSpd;
         if (this.overdrive && this.essence === 'blue') spdMult *= 3.0; 
         
@@ -6143,7 +6121,7 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); }
     }
     
-takeDamage(amount, source) {
+  takeDamage(amount, source) {
         if (this.invincibilityTimer > 0) return; 
         
         let aura = Game.getAuraAt(this.x, this.y); 
@@ -6163,12 +6141,12 @@ takeDamage(amount, source) {
             amount *= 0.75;
         }
         
-        // 2. Priorità: Scudo Glaciale (Temp Hp Verde/Blu)
+       // 2. Priorità: Scudo Glaciale (Temp Hp Verde/Blu)
         if (this.tempHp > 0) {
             Game.getFloatingText().spawn(this.x, this.y + 20, "ASSORBITO!", '#00ffaa', 25, true);
             Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark');
             
-            // Flash visivo dello scudo glaciale quando colpito
+           // Flash visivo dello scudo glaciale quando colpito (Zero-Allocation Fix)
             this.glacialShieldMesh.material.opacity = 0.8; 
             this.invincibilityTimer = 0.2; // L'update si occuperà di riabbassare l'opacità
             
@@ -6178,34 +6156,35 @@ takeDamage(amount, source) {
             } else {
                 amount -= this.tempHp;
                 this.tempHp = 0;
-                this.glacialShieldMesh.visible = false; 
+                this.glacialShieldMesh.visible = false; // <-- FIX: Ora nasconde quello giusto!
                 AudioEngine.playShoot('explosive_arrow'); 
             }
         }
         
-        let wasDead = this.dead; 
-        amount *= this.modifiers.dmgTakenMult; 
+        let wasDead = this.dead; amount *= this.modifiers.dmgTakenMult; 
         
-        if (this.modifiers.flowMastery && !wasDead) {
-            if (Game.combo > 50) {
-                // Sei una macchina da guerra, ma fragile
-                amount *= 1.20;
-                Game.getFloatingText().spawn(this.x, this.y + 30, "SOVRACCARICO!", '#ff0000', 30, true);
-            } else {
-                // Sei in fase di ricarica/difesa
-                amount *= 0.80;
-                Game.getFloatingText().spawn(this.x, this.y + 30, "DIFESA!", '#00DDFF', 30, true);
-            }
-        }
+   // Dentro Player.takeDamage
+if (this.modifiers.flowMastery && !wasDead) {
+    if (Game.combo > 50) {
+        // Sei una macchina da guerra, ma fragile
+        amount *= 1.20;
+        Game.getFloatingText().spawn(this.x, this.y + 30, "SOVRACCARICO!", '#ff0000', 30, true);
+    } else {
+        // Sei in fase di ricarica/difesa
+        amount *= 0.80;
+        Game.getFloatingText().spawn(this.x, this.y + 30, "DIFESA!", '#00DDFF', 30, true);
+    }
+}
+
 
         super.takeDamage(amount, source);
-        this.invincibilityTimer = 0.2; // <-- 0.2 secondi di invincibilità ad ogni hit
-        this.outOfCombatTimer = 5.0;
-        AudioEngine.playHit('player');
-        Haptics.vibrate([40, 30, 40]);
-        
-        // La combo si spezza sempre quando vieni colpito
+        this.invincibilityTimer = 0.2; // <-- 0.2 secondi di invincibilità ad ogni hit
+      this.outOfCombatTimer = 5.0;
+        AudioEngine.playHit('player');
+       Haptics.vibrate([40, 30, 40]);
+      // La combo si spezza sempre quando vieni colpito
         Game.resetCombo();
+      
 
         if (!wasDead) {
             Game.addTrauma(0.8);
@@ -6246,26 +6225,11 @@ takeDamage(amount, source) {
                     // I suoni sono stati rimossi da qui, gestiamo solo la Grafica/UI
                     if (Game.lives > 0) {
                         ds.style.backgroundImage = "url('bg_morte.png')";
-                        document.getElementById('deathTitle').innerText = "SEI CADUTO"; 
-                        document.getElementById('deathSubtitle').innerText = `Vite rimaste: ${Game.lives}`; 
-                        document.getElementById('deathQuote').classList.add('hidden'); 
-                        document.getElementById('btn-respawn').classList.remove('hidden'); 
-                        document.getElementById('btn-restart').classList.add('hidden');
+                        document.getElementById('deathTitle').innerText = "SEI CADUTO"; document.getElementById('deathSubtitle').innerText = `Vite rimaste: ${Game.lives}`; document.getElementById('deathQuote').classList.add('hidden'); document.getElementById('btn-respawn').classList.remove('hidden'); document.getElementById('btn-restart').classList.add('hidden');
                     } else {
                         ds.style.backgroundImage = "url('bg_box.png')";
-                        document.getElementById('deathTitle').innerText = "R I P"; 
-                        document.getElementById('deathSubtitle').innerText = `Piano: ${Game.floor} | Demoni: ${Game.totalKills} | Tempo: ${ScoreManager.formatTime(Game.playTime)}`; 
-                        document.getElementById('deathQuote').innerText = `"${DEATH_QUOTES[Math.floor(Math.random() * DEATH_QUOTES.length)]}"`; 
-                        document.getElementById('deathQuote').classList.remove('hidden'); 
-                        document.getElementById('btn-respawn').classList.add('hidden'); 
-                        document.getElementById('btn-restart').classList.remove('hidden'); 
-                        document.getElementById('score-save-container').classList.remove('hidden'); 
-                        document.getElementById('playerName').value = '';
-                        
-                        let btnSave = document.getElementById('btn-save-score'); 
-                        btnSave.innerText = 'SALVA PUNTEGGIO'; btnSave.disabled = false; 
-                        btnSave.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-700'); 
-                        btnSave.classList.add('bg-red-900', 'hover:bg-red-700');
+                        document.getElementById('deathTitle').innerText = "R I P"; document.getElementById('deathSubtitle').innerText = `Piano: ${Game.floor} | Demoni: ${Game.totalKills} | Tempo: ${ScoreManager.formatTime(Game.playTime)}`; document.getElementById('deathQuote').innerText = `"${DEATH_QUOTES[Math.floor(Math.random() * DEATH_QUOTES.length)]}"`; document.getElementById('deathQuote').classList.remove('hidden'); document.getElementById('btn-respawn').classList.add('hidden'); document.getElementById('btn-restart').classList.remove('hidden'); document.getElementById('score-save-container').classList.remove('hidden'); document.getElementById('playerName').value = '';
+                        let btnSave = document.getElementById('btn-save-score'); btnSave.innerText = 'SALVA PUNTEGGIO'; btnSave.disabled = false; btnSave.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-700'); btnSave.classList.add('bg-red-900', 'hover:bg-red-700');
                     }
                 }, 1500);
             }
@@ -6927,12 +6891,8 @@ Game.scene.add(this.telegraphMesh);
        let buffDmgMult = this.isProphetBuffed ? 2.5 : 1.0; 
         if (this.isProphetBuffed) cdMult *= 0.3;
         
-      let aura = Game.getAuraAt(this.x, this.y); 
+        let aura = Game.getAuraAt(this.x, this.y); 
         if (aura === 'blue') cdMult /= 0.6; 
-        // FIX OBELISCO ROSSO: I nemici riducono il loro cooldown per colpire il 20% più in fretta
-        else if (aura === 'red') cdMult /= 1.2; 
-        
-     
         
         // POTENZIAMENTO OSCURITÀ: Ranged attaccano il 20% più velocemente (Cooldown ridotto)
         let isRanged = (this.type === 'skeleton_archer' || this.type === 'mage' || this.type === 'pyromancer' || this.type === 'fire_demon');
@@ -7171,7 +7131,15 @@ Game.scene.add(this.telegraphMesh);
             Game.getFloatingText().spawn(this.x, this.y, `+${Math.floor(heal)} HP`, '#ff0000', 16); 
         }
 
-      
+        if (Game.player.modifiers.bloodthirst) {
+            Game.player.modifiers.bloodthirstCount++;
+            if (Game.player.modifiers.bloodthirstCount >= 10) {
+                Game.player.modifiers.bloodthirstCount = 0;
+                let heal = Game.player.stats.maxHp * 0.05;
+                Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + heal);
+                Game.getFloatingText().spawn(Game.player.x, Game.player.y, `SETE PLACATA (+${Math.floor(heal)})`, '#FF1133', 30, true);
+            }
+        }
 
        // --- SANGUE CORRETTAMENTE POSIZIONATO ---
         if (Game.bloodMesh) {

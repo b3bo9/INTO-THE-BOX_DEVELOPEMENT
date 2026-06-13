@@ -5741,16 +5741,9 @@ class Player extends Entity {
                 this.move(dx, dy, dt); 
                 this.mesh.position.y = Game.animBounce * 0.75; 
                 
-           // --- NUOVO: Sbuffo di polvere al suolo (ogni 6 frame se cammina)
+          // --- NUOVO: Sbuffo di polvere al suolo (ogni 6 frame se cammina)
                 if (Game.frameCount % 6 === 0) {
                     Game.getParticle().spawn(this.x, 2, this.y, SharedMat.spriteDust, 'dust');
-                    
-                    // Suono della camminata escluso volontariamente per il Tema Ghiaccio
-                    if (Game.currentThemeIndex === 1) {
-                        AudioEngine.playNoise(0.08, 'low', 0.03);   // Lava (Cenere/Lapilli)
-                    } else if (Game.currentThemeIndex === 0) {
-                        AudioEngine.playNoise(0.06, 'low', 0.015);  // Foresta (Erba/Terra)
-                    }
                 }
             }
            // --- PENDOLO FISICO E FLUIDO DELLA LANTERNA ---

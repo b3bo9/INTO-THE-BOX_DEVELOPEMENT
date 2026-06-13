@@ -3012,7 +3012,7 @@ getEnemy() {
 
    init() {
         UI.init(); TouchControls.init(); const container = document.getElementById('game-container');
-       this.scene = new THREE.Scene(); this.scene.fog = new THREE.FogExp2(0x050508, 0.0015);
+       this.scene = new THREE.Scene(); this.scene.fog = new THREE.Fog(0x050508, 400, 1800);;
        this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 100, 3000);
         
         // OTTIMIZZAZIONE PC: Assegnazione corretta della risoluzione al lancio
@@ -3500,18 +3500,29 @@ loop(timestamp) {
         let currentTheme = MAP_THEMES[this.currentThemeIndex];
         // Impostiamo nebbia, sfondo e luci in base al tema corrente!
         this.scene.background = new THREE.Color(currentTheme.fog); 
-    // --- ATMOSFERA E VISIBILITÀ DINAMICA ---
-     // --- ATMOSFERA E VISIBILITÀ DINAMICA (FOG EXP2) ---
-        this.scene.fog.color.setHex(currentTheme.fog);
+ 
+     // --- ATMOSFERA E VISIBILITÀ DINAMICA ---
         if (this.currentThemeIndex === 2) {
-            this.scene.fog.density = AppSettings.isLow ? 0.0008 : 0.0012; // Ghiaccio: Visibilità chiara
-            if (this.bloomPass) { this.bloomPass.strength = AppSettings.isUltraPC ? 1.0 : 0.8; this.bloomPass.threshold = 0.65; }
+            // Ghiaccio: Visibilità cristallina, nebbia molto lontana
+            this.scene.fog = new THREE.Fog(currentTheme.fog, camDist + 100, camDist + 1000);
+            if (this.bloomPass) {
+                this.bloomPass.strength = AppSettings.isUltraPC ? 1.0 : 0.8;
+                this.bloomPass.threshold = 0.65; 
+            }
         } else if (this.currentThemeIndex === 1) {
-            this.scene.fog.density = AppSettings.isLow ? 0.0020 : 0.0030; // Lava: Aria densa
-            if (this.bloomPass) { this.bloomPass.strength = AppSettings.isUltraPC ? 1.1 : 0.9; this.bloomPass.threshold = 0.35; }
+            // Lava: Aria densa e soffocante, nebbia vicinissima, bagliore estremo
+            this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 300, camDist + 250);
+            if (this.bloomPass) {
+                this.bloomPass.strength = AppSettings.isUltraPC ? 1.1 : 0.9;
+                this.bloomPass.threshold = 0.35; 
+            }
         } else {
-            this.scene.fog.density = AppSettings.isLow ? 0.0012 : 0.0018; // Foresta: Equilibrata
-            if (this.bloomPass) { this.bloomPass.strength = AppSettings.isUltraPC ? 0.9 : 0.7; this.bloomPass.threshold = 0.35; }
+            // Foresta: Atmosfera equilibrata e misteriosa
+            this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 150, camDist + 500);
+            if (this.bloomPass) {
+                this.bloomPass.strength = AppSettings.isUltraPC ? 0.9 : 0.7;
+                this.bloomPass.threshold = 0.35; 
+            }
         }
         Game.arenaEvolution = false; // DEVE ESSERE FALSE ALL'INIZIO!
         
@@ -3530,8 +3541,9 @@ loop(timestamp) {
             if (this.corruptedType === 'darkness') { 
                 mutatorText = "OSCURITÀ OPPRIMENTE"; floorColor = "#aa00ff"; 
                 this.scene.fog.color.setHex(0x000000); 
-               // Nebbia esponenziale densissima per l'Oscurità Opprimente
-                this.scene.fog.density = 0.0045;
+             // Nebbia vicinissima per l'Oscurità Opprimente
+                this.scene.fog.near = camDist - 50; 
+                this.scene.fog.far = camDist + 350;
                 this.scene.background.setHex(0x000000);
                 if (this.dirLight) this.dirLight.intensity = 0.05;
             }

@@ -1749,7 +1749,7 @@ const RelicSystem = {
         }
     },
 
-  proceedToNextFloor(forceSkip = false) {
+ proceedToNextFloor(forceSkip = false) {
         if (!this.selectedMainRelic && !forceSkip && this.currentChoices.length > 0) return;
         AudioEngine.playClick();
         
@@ -1761,29 +1761,21 @@ const RelicSystem = {
         
         document.getElementById('relicScreen').classList.add('hidden'); 
         
-        // INVECE DEL TAGLIO NETTO, ATTIVIAMO IL TUFFO NEL PORTALE
-        Game.state = 'WARPING_OUT'; 
-        Game.warpTimer = 1.2;
-        if (Game.player.shadowMesh) Game.player.shadowMesh.visible = false;
-        if (Game.player.auraRingMesh) { Game.player.auraRingMesh.visible = false; Game.player.auraGlow.visible = false; }
-        
-        AudioEngine.playShoot('explosive_arrow');
-        AudioEngine.stopBossMusic();
-        AudioEngine.playLevelCompleteMusic(); 
+        // Passa direttamente allo Shop (l'animazione è già avvenuta sotto il portale)
+        Game.state = 'FLOOR_TRANSITION'; 
+        window.prepareFloorScreen(); 
+        document.getElementById('floorScreen').classList.remove('hidden'); 
+        ShopSystem.updateUI();
     },
 
     skipRelic() {
         AudioEngine.playClick();
         document.getElementById('relicScreen').classList.add('hidden'); 
         
-        Game.state = 'WARPING_OUT'; 
-        Game.warpTimer = 1.2;
-        if (Game.player.shadowMesh) Game.player.shadowMesh.visible = false;
-        if (Game.player.auraRingMesh) { Game.player.auraRingMesh.visible = false; Game.player.auraGlow.visible = false; }
-        
-        AudioEngine.playShoot('explosive_arrow');
-        AudioEngine.stopBossMusic();
-        AudioEngine.playLevelCompleteMusic(); 
+        Game.state = 'FLOOR_TRANSITION'; 
+        window.prepareFloorScreen(); 
+        document.getElementById('floorScreen').classList.remove('hidden'); 
+        ShopSystem.updateUI();
     }
 };
 
@@ -2330,7 +2322,6 @@ class Hazard {
                     
                     if (distSq <= outerRad * outerRad && distSq >= innerRad * innerRad) {
                         e.takeDamage(this.damage, Game.player, true, true);
-                        e.infected = true;
                         e.slowedTimer = 2.0;
                         let angleToEnemy = Math.atan2(-dy, -dx);
                         e.push(Math.cos(angleToEnemy), Math.sin(angleToEnemy), 80);
@@ -3326,47 +3317,47 @@ prewarmShaders() {
         this.raycaster.setFromCamera(this._vec2, this.camera); this.raycaster.ray.intersectPlane(this._plane, this._vec3);
         if (this._vec3) { this.mouse.worldX = this._vec3.x; this.mouse.worldY = this._vec3.z; }
     },
-  loop(timestamp) {
+loop(timestamp) {
         // --- INIZIO CAP FPS ---
         if (this.frameInterval > 0) {
             if (!this.lastDrawTime) this.lastDrawTime = timestamp;
             const elapsed = timestamp - this.lastDrawTime;
             if (elapsed < this.frameInterval) {
                 requestAnimationFrame(this._boundLoop);
-                return; // Salta il frame se è passato troppo poco tempo
+                return;
             }
-            // Sincronizza il tempo per evitare micro-stuttering
             this.lastDrawTime = timestamp - (elapsed % this.frameInterval);
         }
         // --- FINE CAP FPS ---
-        // --- INIZIO CALCOLO FPS E RISOLUZIONE DINAMICA ---
+        
+        // Calcolo delta time reale
+        if (!this.lastTime) this.lastTime = timestamp; 
+        let frameTime = (timestamp - this.lastTime) / 1000; 
+        this.lastTime = timestamp;
+        if (frameTime > MAX_TIME_STEP) frameTime = MAX_TIME_STEP; 
+
+        // --- CALCOLO FPS E RISOLUZIONE DINAMICA ---
         this.fpsFrames++;
         if (timestamp > this.fpsLastTime + 1000) {
             let fps = Math.round((this.fpsFrames * 1000) / (timestamp - this.fpsLastTime));
             let fpsEl = UI.els.fpsValue;
-            
             if (fpsEl) {
                 fpsEl.innerText = fps;
                 if (fps >= 50) fpsEl.className = "text-green-400";
                 else if (fps >= 30) fpsEl.className = "text-yellow-400";
                 else fpsEl.className = "text-red-500 animate-pulse";
             }
-            
-            // DRS: Abbassa la risoluzione se lagga, la rialza se è fluido (solo Mobile)
             if (isTouchDevice && !AppSettings.isLow) {
                 if (!this.drsHistory) this.drsHistory = []; 
                 this.drsHistory.push(fps);
                 if (this.drsHistory.length > 3) this.drsHistory.shift(); 
-                
                 if (this.drsHistory.length === 3) {
                     let avgFps = (this.drsHistory[0] + this.drsHistory[1] + this.drsHistory[2]) / 3;
                     let currentRatio = this.renderer.getPixelRatio();
-                    
                     if (avgFps < 45 && currentRatio > 0.5) {
                         this.renderer.setPixelRatio(Math.max(0.5, currentRatio - 0.2));
                         this.drsHistory.length = 0; 
-                    } 
-                    else if (avgFps >= 58 && currentRatio < 0.9) {
+                    } else if (avgFps >= 58 && currentRatio < 0.9) {
                         let maxRatio = Math.min(window.devicePixelRatio, 0.9);
                         if (currentRatio < maxRatio) {
                             this.renderer.setPixelRatio(Math.min(maxRatio, currentRatio + 0.1));
@@ -3375,20 +3366,81 @@ prewarmShaders() {
                     }
                 }
             }
-            
             this.fpsLastTime = timestamp;
             this.fpsFrames = 0;
         }
-        // --- FINE CALCOLO FPS E RISOLUZIONE DINAMICA ---
-        if (!this.lastTime) this.lastTime = timestamp; 
-        let frameTime = (timestamp - this.lastTime) / 1000; 
-        this.lastTime = timestamp;
-        if (frameTime > MAX_TIME_STEP) frameTime = MAX_TIME_STEP; 
+
+        // --- NUOVO POSIZIONAMENTO FRAME-RATE INDEPENDENT PER IL WARP ---
+        if (this.state === 'WARPING_OUT') {
+            this.warpTimer -= frameTime; // Scalamento in tempo reale fluido!
+            let progress = 1.0 - (this.warpTimer / 1.2); 
+            
+            if (this.player && this.player.mesh) {
+                this.player.mesh.rotation.y += frameTime * (15 + progress * 20); 
+                this.player.mesh.position.y -= frameTime * 60 * progress; 
+                this.player.mesh.scale.setScalar(Math.max(0.01, 1.0 - progress)); 
+                this.player.mesh.updateMatrix();
+            }
+            
+            this.camera.fov += frameTime * 40;
+            this.camera.updateProjectionMatrix();
+            
+            if (UI.els.bloodVignette) {
+                UI.els.bloodVignette.style.background = `rgba(5, 5, 10, 1)`;
+                UI.els.bloodVignette.style.opacity = progress; 
+                UI.els.bloodVignette.style.zIndex = '90';
+            }
+            
+            if (this.frameCount % 2 === 0) Game.getParticle().spawn(this.player.x, this.player.mesh.position.y + 15, this.player.y, SharedMat.spriteBlue, 'spark');
+            for (let i = 0; i < this.particles.length; i++) if(this.particles[i].active) this.particles[i].update(frameTime);
+            for (let i = 0; i < this.floatingTexts.length; i++) if(this.floatingTexts[i].active) this.floatingTexts[i].update(frameTime);
+            
+            this.frameCount++;
+            this.updateCamera(frameTime);
+            UI.update();
+
+            if (this.warpTimer <= 0) {
+                // Ripristino camera e dissolvenza
+                this.camera.fov = 50; 
+                this.camera.updateProjectionMatrix();
+                if (UI.els.bloodVignette) {
+                    UI.els.bloodVignette.style.background = ''; 
+                    UI.els.bloodVignette.style.opacity = '0';
+                    UI.els.bloodVignette.style.zIndex = '';
+                }
+
+                // CONTROLLO FLUSSO: Se siamo al piano del Boss, ora passiamo a RELIC_SELECTION!
+                if (this.isBossFloor) {
+                    this.state = 'RELIC_SELECTION';
+                    RelicSystem.showChoices();
+                } else {
+                    // Altrimenti (piani normali) va dritto allo Shop delle Statistiche
+                    this.state = 'FLOOR_TRANSITION'; 
+                    if (this.isCorrupted && this.corruptedReward === 'relic') {
+                        let choices = RelicSystem.getChoices();
+                        if (choices.length > 0) {
+                            let dropRelic = choices[0]; 
+                            dropRelic.apply(this.player); this.player.relics.push(dropRelic);
+                            Game.getFloatingText().spawn(this.player.x, this.player.y, "RELIQUIA OTTENUTA!", '#fbbf24', 50, true);
+                        } else {
+                            Game.coins += 50;
+                            Game.getFloatingText().spawn(this.player.x, this.player.y, "+50 MONETE (RELIQUIE ESAURITE)!", '#fbbf24', 40, true);
+                        }
+                    }
+                    window.prepareFloorScreen();
+                    document.getElementById('floorScreen').classList.remove('hidden');
+                    ShopSystem.updateUI();
+                }
+            }
+            this.draw();
+            requestAnimationFrame(this._boundLoop);
+            return; 
+        }
+
+        // Continua con il normale accumulatore della fisica per il gameplay standard
         this.accumulator += frameTime;
-        
         let updateCount = 0;
         while(this.accumulator >= FIXED_TIME_STEP) {
-            // Dividiamo il tempo di combattimento (che subisce l'Hit-Stop) da quello visivo (sempre fluido)
             let combatDt = this.hitStop > 0 ? 0 : FIXED_TIME_STEP;
             if (this.hitStop > 0) this.hitStop -= FIXED_TIME_STEP; 
             
@@ -3586,71 +3638,7 @@ prewarmShaders() {
     },
     
 update(combatDt, visualDt) {
-        // --- GESTIONE ANIMAZIONE TRANSIZIONE PIANO ---
-        if (this.state === 'WARPING_OUT') {
-            this.warpTimer -= visualDt;
-            let progress = 1.0 - (this.warpTimer / 1.2); 
-            
-            // 1. Il giocatore ruota velocemente e viene "aspirato" verso il basso
-            if (this.player && this.player.mesh) {
-                this.player.mesh.rotation.y += visualDt * (15 + progress * 20); 
-                this.player.mesh.position.y -= visualDt * 60 * progress; 
-                this.player.mesh.scale.setScalar(Math.max(0.01, 1.0 - progress)); 
-                this.player.mesh.updateMatrix();
-            }
-            
-            // 2. La telecamera subisce un Warp-Effect
-            this.camera.fov += visualDt * 40;
-            this.camera.updateProjectionMatrix();
-            
-           // 3. Scuriamo la scena (NO CSS CLASS, usiamo inline styles per bypassare gli !important)
-            if (UI.els.bloodVignette) {
-                UI.els.bloodVignette.style.background = `rgba(5, 5, 10, 1)`;
-                UI.els.bloodVignette.style.opacity = progress; 
-                UI.els.bloodVignette.style.zIndex = '90';
-            }
-            
-            // Effetti visivi che continuano a muoversi
-            if (this.frameCount % 2 === 0) Game.getParticle().spawn(this.player.x, this.player.mesh.position.y + 15, this.player.y, SharedMat.spriteBlue, 'spark');
-            for (let i = 0; i < this.particles.length; i++) if(this.particles[i].active) this.particles[i].update(visualDt);
-            for (let i = 0; i < this.floatingTexts.length; i++) if(this.floatingTexts[i].active) this.floatingTexts[i].update(visualDt);
-            
-            this.frameCount++;
-            this.updateCamera(visualDt);
-            UI.update();
-
-            // Fine animazione: transizione vera e propria
-            if (this.warpTimer <= 0) {
-                this.state = 'FLOOR_TRANSITION'; 
-                this.camera.fov = 50; 
-                this.camera.updateProjectionMatrix();
-                
-                // Reset pulitissimo dello schermo nero
-                if (UI.els.bloodVignette) {
-                    UI.els.bloodVignette.style.background = ''; 
-                    UI.els.bloodVignette.style.opacity = '0';
-                    UI.els.bloodVignette.style.zIndex = '';
-                }
-
-                // Diamo la reliquia corrotta in automatico SOLO se non siamo dal Boss
-                if (this.isCorrupted && this.corruptedReward === 'relic' && !this.isBossFloor) {
-                    let choices = RelicSystem.getChoices();
-                    if (choices.length > 0) {
-                        let dropRelic = choices[0]; 
-                        dropRelic.apply(this.player); this.player.relics.push(dropRelic);
-                        Game.getFloatingText().spawn(this.player.x, this.player.y, "RELIQUIA OTTENUTA!", '#fbbf24', 50, true);
-                    } else {
-                        Game.coins += 50;
-                        Game.getFloatingText().spawn(this.player.x, this.player.y, "+50 MONETE (RELIQUIE ESAURITE)!", '#fbbf24', 40, true);
-                    }
-                }
-                window.prepareFloorScreen();
-                document.getElementById('floorScreen').classList.remove('hidden');
-                ShopSystem.updateUI();
-                // FIX: Rimosso il doppio AudioEngine.playLevelCompleteMusic() da qui!
-            }
-            return; // Blocca il resto della fisica, lasciando solo l'animazione!
-        }
+     
 
         if (this.state !== 'PLAYING') return;
         let dt = combatDt; // Preserva compatibilità con calcoli interni esistenti
@@ -4033,7 +4021,18 @@ update(combatDt, visualDt) {
 
         if (this.isBossFloor && this.bossDefeatedTimer > 0) {
             this.bossDefeatedTimer -= combatDt;
-            if (this.bossDefeatedTimer <= 0 && this.state === 'PLAYING') { this.state = 'RELIC_SELECTION'; RelicSystem.showChoices(); }
+            if (this.bossDefeatedTimer <= 0 && this.state === 'PLAYING') { 
+                // ORDINE REWORK: Attiva prima l'animazione di discesa, non la UI!
+                this.state = 'WARPING_OUT';
+                this.warpTimer = 1.2; 
+                
+                if (this.player.shadowMesh) this.player.shadowMesh.visible = false;
+                if (this.player.auraRingMesh) { this.player.auraRingMesh.visible = false; this.player.auraGlow.visible = false; }
+                
+                AudioEngine.playShoot('explosive_arrow');
+                AudioEngine.stopBossMusic();
+                AudioEngine.playLevelCompleteMusic(); // La musica parte in sincrono con il warp!
+            }
         } else if (!this.isBossFloor && this.state === 'PLAYING') {
             let enemiesLeft = this.floorMaxKills - this.floorKills;
             
@@ -5682,7 +5681,7 @@ class Player extends Entity {
         // ---------------------------------------------
         let flowCapMult = this.modifiers.flowMastery ? 2 : 1;
         let aura = Game.getAuraAt(this.x, this.y);
-      // --- EFFETTO VISIVO ALONE OBELISCO SUL PLAYER ---
+     // --- EFFETTO VISIVO ALONE OBELISCO SUL PLAYER ---
         if (aura) {
             this.auraRingMesh.visible = true;
             this.auraRingMesh.material.color.setHex(aura === 'blue' ? 0x00aaff : (aura === 'green' ? 0x66ff33 : 0xff3333));
@@ -5695,13 +5694,15 @@ class Player extends Entity {
             this.auraGlow.position.set(this.x, 0.4, this.y);
             this.auraGlow.updateMatrix();
             
-            // FIX COLORE: Tinta extra sul corpo SOLO se non sei in Ultimate o Overdrive
+            // FIX COLORE: Tinta extra sul corpo SOLO se non sei in Ultimate o Overdrive attivo
             if (!Game.ultimateActive && !this.overdrive) {
                 this.modelParts.body.material.emissive.setHex(aura === 'blue' ? 0x002255 : (aura === 'green' ? 0x113311 : 0x440000));
+                this.modelParts.body.material.emissiveIntensity = 1.0;
             }
         } else {
             this.auraRingMesh.visible = false;
             this.auraGlow.visible = false;
+            // Ripristina il nero solo se non ci sono altri stati grafici attivi dominanti
             if (!Game.ultimateActive && !this.overdrive) {
                 this.modelParts.body.material.emissive.setHex(0x000000);
             }

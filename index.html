@@ -3386,6 +3386,7 @@ loop(timestamp) {
             this.camera.updateProjectionMatrix();
             
             if (UI.els.bloodVignette) {
+                UI.els.bloodVignette.style.transition = 'none'; // FIX: Evita che il CSS rallenti il fade
                 UI.els.bloodVignette.style.background = `rgba(5, 5, 10, 1)`;
                 UI.els.bloodVignette.style.opacity = progress; 
                 UI.els.bloodVignette.style.zIndex = '90';
@@ -3403,7 +3404,8 @@ loop(timestamp) {
                 // Ripristino camera e dissolvenza
                 this.camera.fov = 50; 
                 this.camera.updateProjectionMatrix();
-                if (UI.els.bloodVignette) {
+               if (UI.els.bloodVignette) {
+                    UI.els.bloodVignette.style.transition = ''; // FIX: Ripristina la transizione originale
                     UI.els.bloodVignette.style.background = ''; 
                     UI.els.bloodVignette.style.opacity = '0';
                     UI.els.bloodVignette.style.zIndex = '';
@@ -4057,10 +4059,14 @@ update(combatDt, visualDt) {
                 }
                 
                if (this.floorEndTimer <= 0 || enemiesLeft <= 0) {
+                    // SILENT WIPE: Nessun calo di frame rate! Fa svanire i nemici senza innescare esplosioni/loot
                     for (let i = this.enemies.length - 1; i >= 0; i--) {
                         let e = this.enemies[i];
-                        if (!e.dead) { e.isPursuer = false; e.takeDamage(999999, this.player, false, false); e.onDeath(); }
+                        e.dead = true; e.active = false; e.mesh.visible = false;
+                        if(e.shadowMesh) e.shadowMesh.visible = false;
+                        e.hideAuras();
                     }
+                    this.enemies.length = 0; // Svuotamento array istantaneo a costo zero
                     
                     this.state = 'WARPING_OUT';
                     this.warpTimer = 1.2; 

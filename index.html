@@ -3012,7 +3012,7 @@ getEnemy() {
 
    init() {
         UI.init(); TouchControls.init(); const container = document.getElementById('game-container');
-       this.scene = new THREE.Scene(); this.scene.fog = new THREE.Fog(0x050508, 400, 1800);;
+        this.scene = new THREE.Scene(); this.scene.fog = new THREE.Fog(0x050508, 400, 1800); 
        this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 100, 3000);
         
         // OTTIMIZZAZIONE PC: Assegnazione corretta della risoluzione al lancio
@@ -3500,28 +3500,27 @@ loop(timestamp) {
         let currentTheme = MAP_THEMES[this.currentThemeIndex];
         // Impostiamo nebbia, sfondo e luci in base al tema corrente!
         this.scene.background = new THREE.Color(currentTheme.fog); 
- 
-     // --- ATMOSFERA E VISIBILITÀ DINAMICA ---
+    // --- ATMOSFERA E VISIBILITÀ DINAMICA ---
         if (this.currentThemeIndex === 2) {
             // Ghiaccio: Visibilità cristallina, nebbia molto lontana
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist + 100, camDist + 1000);
             if (this.bloomPass) {
                 this.bloomPass.strength = AppSettings.isUltraPC ? 1.0 : 0.8;
-                this.bloomPass.threshold = 0.65; 
+                this.bloomPass.threshold = 0.65; // FIX BLOOM: Aumentata la soglia di tolleranza
             }
         } else if (this.currentThemeIndex === 1) {
             // Lava: Aria densa e soffocante, nebbia vicinissima, bagliore estremo
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 300, camDist + 250);
             if (this.bloomPass) {
                 this.bloomPass.strength = AppSettings.isUltraPC ? 1.1 : 0.9;
-                this.bloomPass.threshold = 0.35; 
+                this.bloomPass.threshold = 0.35; // Reset standard
             }
         } else {
             // Foresta: Atmosfera equilibrata e misteriosa
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 150, camDist + 500);
             if (this.bloomPass) {
                 this.bloomPass.strength = AppSettings.isUltraPC ? 0.9 : 0.7;
-                this.bloomPass.threshold = 0.35; 
+                this.bloomPass.threshold = 0.35; // Reset standard
             }
         }
         Game.arenaEvolution = false; // DEVE ESSERE FALSE ALL'INIZIO!
@@ -3541,9 +3540,9 @@ loop(timestamp) {
             if (this.corruptedType === 'darkness') { 
                 mutatorText = "OSCURITÀ OPPRIMENTE"; floorColor = "#aa00ff"; 
                 this.scene.fog.color.setHex(0x000000); 
-             // Nebbia vicinissima per l'Oscurità Opprimente
+                // FIX: Allontaniamo l'inizio della nebbia per compensare l'angolo della telecamera.
                 this.scene.fog.near = camDist - 50; 
-                this.scene.fog.far = camDist + 350;
+                this.scene.fog.far = camDist + 350; 
                 this.scene.background.setHex(0x000000);
                 if (this.dirLight) this.dirLight.intensity = 0.05;
             }
@@ -3794,11 +3793,7 @@ update(combatDt, visualDt) {
         this.updateMouseWorld(); 
         this.player.update(combatDt); 
         this.updateCamera(visualDt); // La telecamera segue fluida il tempo reale
-// --- AGGIORNAMENTO DERIVA DELL'ABISSO ---
-        if (this.map && this.map.abyssPlane) {
-            this.map.abyssPlane.material.map.offset.x += visualDt * 0.015;
-            this.map.abyssPlane.material.map.offset.y += visualDt * 0.01;
-        }
+
         // --- AGGIORNAMENTO DERIVA DELLA NEBBIA BASSA ---
         if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
             if (AppSettings.isUltraPC || Game.frameCount % 2 === 0) {
@@ -4769,9 +4764,8 @@ Game.auras = []; Game.auraIcons = [];
         wallMesh.castShadow = true; wallMesh.receiveShadow = false; 
        
 
-       let dummy = new THREE.Object3D(); 
+        let dummy = new THREE.Object3D(); 
         let idxDirt = 0, idxGrass = 0, idxRock = 0, wIdx = 0, pIdx = 0;
-        let _dummyColor = new THREE.Color(); // Colore temporaneo per il terreno
         
         // 3. SECONDO LOOP: PIAZZIAMO EFFETTIVAMENTE GLI ELEMENTI
         for(let x = -PADDING; x < this.width + PADDING; x++) {
@@ -4784,11 +4778,7 @@ Game.auras = []; Game.auraIcons = [];
                         dummy.scale.set(1, 1, 1);
                         dummy.rotation.set(0, 0, 0); 
                         dummy.updateMatrix(); 
-                        meshDirt.setMatrixAt(idxDirt, dummy.matrix);
-                        // Variazione cromatica: scurisce a caso alcuni blocchi fino al 15%
-                        _dummyColor.setHex(currentTheme.dirt).lerp(new THREE.Color(0x000000), Math.random() * 0.15);
-                        meshDirt.setColorAt(idxDirt, _dummyColor);
-                        idxDirt++;
+                        meshDirt.setMatrixAt(idxDirt++, dummy.matrix);
                         
                         let noiseRaw = (Math.sin(x * 0.3) + Math.cos(y * 0.3)) / 2.0; 
                         let noiseSafe = (noiseRaw + 1.0) / 2.0; 
@@ -4882,11 +4872,7 @@ Game.auras = []; Game.auraIcons = [];
                             dummy.rotation.y = Math.random() * Math.PI * 2;
                             dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, 0.4, y * TILE_SIZE + TILE_SIZE / 2);
                             dummy.updateMatrix();
-                            meshRock.setMatrixAt(idxRock, dummy.matrix);
-                            // Variazione cromatica rocce
-                            _dummyColor.setHex(currentTheme.rock).lerp(new THREE.Color(0x000000), Math.random() * 0.15);
-                            meshRock.setColorAt(idxRock, _dummyColor);
-                            idxRock++;
+                            meshRock.setMatrixAt(idxRock++, dummy.matrix);
                         }
                     } else { 
                         // Confine Interno Conficcato: DISEGNA I VERI MURI INTERNI
@@ -4948,11 +4934,9 @@ Game.auras = []; Game.auraIcons = [];
             }
         }
         
-      meshDirt.count = idxDirt;
-        if (meshDirt.instanceColor) meshDirt.instanceColor.needsUpdate = true;
+        meshDirt.count = idxDirt;
         meshGrass.count = idxGrass;
         meshRock.count = idxRock;
-        if (meshRock.instanceColor) meshRock.instanceColor.needsUpdate = true;
         interactiveGrassMesh.count = idxInteractiveGrass;
         meshDebris.count = idxDebris;
         meshDebris.instanceMatrix.needsUpdate = true;
@@ -5043,25 +5027,10 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
             }
             this.mapGroup.add(this.fogMesh);
         }
-       // --- FINE SISTEMA NEBBIA ---
+        // --- FINE SISTEMA NEBBIA ---
 
-        // L'ABISSO INFINITO: Un piano gigante molto sotto la mappa a costo GPU = 0
-        if (texSmoke && !this.abyssPlane) {
-            let abyssGeo = new THREE.PlaneGeometry(8000, 8000);
-            abyssGeo.rotateX(-Math.PI / 2);
-            let abyssMat = new THREE.MeshBasicMaterial({
-                map: texSmoke, color: currentTheme.dirLight, 
-                transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false
-            });
-            this.abyssPlane = new THREE.Mesh(abyssGeo, abyssMat);
-            this.abyssPlane.position.y = -150; // Molto sotto il livello del suolo
-            Game.scene.add(this.abyssPlane);
-        } else if (this.abyssPlane) {
-            this.abyssPlane.material.color.setHex(currentTheme.dirLight);
-        }
-
-        Game.scene.add(this.mapGroup);
-    }
+        Game.scene.add(this.mapGroup);
+    }
     
     isAdjacentToFloor(x,y) {
         if(x>0 && this.grid[x-1][y]===2) return true; if(x<this.width-1 && this.grid[x+1][y]===2) return true;
@@ -5169,13 +5138,13 @@ class Entity {
         }
 
         let pCount = AppSettings.isLow ? (isCrit ? 2 : 1) : (isCrit ? (isTouchDevice ? 4 : (AppSettings.isUltraPC ? 16 : 8)) : (isTouchDevice ? 2 : (AppSettings.isUltraPC ? 8 : 4)));
-        for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
-        this.flashTimer = 0.1;
+       for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
+        this.flashTimer = 0.1; 
         this.hitSquashTimer = 0.15; // Innesca lo Squash & Stretch
         for (let i = 0; i < this.flashMats.length; i++) this.flashMats[i].emissive.setHex(0x555555);
         if (this.stats.hp <= 0) { this.stats.hp = 0; this.dead = true; }
     }
-   updateFlash(dt) {
+    updateFlash(dt) {
         if (this.flashTimer > 0) {
             this.flashTimer -= dt;
             if (this.flashTimer <= 0) {

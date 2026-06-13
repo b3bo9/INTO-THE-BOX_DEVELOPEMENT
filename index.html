@@ -3280,11 +3280,14 @@ prewarmShaders() {
             this.dirLight.target.position.set(this.player.x, 0, this.player.y);
         }
 
-        // FOV Dinamico: allarga la visuale per enfatizzare la potenza dell'Ultimate
-        let targetFov = Game.ultimateActive ? 56 : 50;
-        if (Math.abs(targetFov - this.camera.fov) > 0.1) {
-            this.camera.fov += (targetFov - this.camera.fov) * 8 * dt;
-            this.camera.updateProjectionMatrix();
+       // FOV Dinamico: allarga la visuale per enfatizzare la potenza dell'Ultimate
+        // FIX WARP: Blocchiamo il ricalcolo della camera se l'animazione di fine livello è in corso!
+        if (this.state !== 'WARPING_OUT') {
+            let targetFov = Game.ultimateActive ? 56 : 50;
+            if (Math.abs(targetFov - this.camera.fov) > 0.1) {
+                this.camera.fov += (targetFov - this.camera.fov) * 8 * dt;
+                this.camera.updateProjectionMatrix();
+            }
         }
         
        // Transizione cromatica della Boss Arena Evolutiva (Fase Enraged)
@@ -3371,11 +3374,19 @@ loop(timestamp) {
         }
 
         // --- NUOVO POSIZIONAMENTO FRAME-RATE INDEPENDENT PER IL WARP ---
+   
         if (this.state === 'WARPING_OUT') {
             this.warpTimer -= frameTime; // Scalamento in tempo reale fluido!
             let progress = 1.0 - (this.warpTimer / 1.2); 
             
             if (this.player && this.player.mesh) {
+                // FIX INVISIBILITÀ: Forza il rendering dei pezzi del player se era in fase di "Blink" per aver subito danni
+                this.player.mesh.children.forEach(child => child.visible = true);
+                // Spegniamo solo gli scudi per pulizia visiva
+                if (this.player.shieldMesh) this.player.shieldMesh.visible = false;
+                if (this.player.glacialShieldMesh) this.player.glacialShieldMesh.visible = false;
+                if (this.player.shadowMesh) this.player.shadowMesh.visible = false;
+
                 this.player.mesh.rotation.y += frameTime * (15 + progress * 20); 
                 this.player.mesh.position.y -= frameTime * 60 * progress; 
                 this.player.mesh.scale.setScalar(Math.max(0.01, 1.0 - progress)); 
@@ -3404,7 +3415,7 @@ loop(timestamp) {
                 // Ripristino camera e dissolvenza
                 this.camera.fov = 50; 
                 this.camera.updateProjectionMatrix();
-               if (UI.els.bloodVignette) {
+                if (UI.els.bloodVignette) {
                     UI.els.bloodVignette.style.transition = ''; // FIX: Ripristina la transizione originale
                     UI.els.bloodVignette.style.background = ''; 
                     UI.els.bloodVignette.style.opacity = '0';

@@ -4049,7 +4049,7 @@ update(combatDt, visualDt) {
                 AudioEngine.stopBossMusic();
                 AudioEngine.playLevelCompleteMusic(); // La musica parte in sincrono con il warp!
             }
-        } else if (!this.isBossFloor && this.state === 'PLAYING') {
+ } else if (!this.isBossFloor && this.state === 'PLAYING') {
             let enemiesLeft = this.floorMaxKills - this.floorKills;
             
             if (enemiesLeft <= 3 && enemiesLeft > 0 && !this.floorEndTriggered) {
@@ -4058,11 +4058,13 @@ update(combatDt, visualDt) {
                 Game.getFloatingText().spawn(this.player.x, this.player.y, "IL PORTALE SI APRE!", '#00DDFF', 40, true);
             } 
             else if (enemiesLeft <= 0 && !this.floorEndTriggered) {
+                // Se il giocatore polverizza troppi nemici insieme saltando l'avviso dei 3 rimasti,
+                // diamogli comunque una chiusura morbida di 2 secondi invece dello zero assoluto.
                 this.floorEndTriggered = true;
-                this.floorEndTimer = 0.0;
+                this.floorEndTimer = 2.0;
             }
             
-   if (this.floorEndTriggered) {
+            if (this.floorEndTriggered) {
                 let oldSec = Math.ceil(this.floorEndTimer);
                 this.floorEndTimer -= combatDt;
                 let newSec = Math.ceil(this.floorEndTimer);
@@ -4072,7 +4074,9 @@ update(combatDt, visualDt) {
                     AudioEngine.playCountdown();
                 }
                 
-                if (this.floorEndTimer <= 0 || enemiesLeft <= 0) {
+                // MODIFICA CHIAVE: Rimosso "|| enemiesLeft <= 0". 
+                // Ora l'unico modo per uscire dal livello è aspettare che il timer finisca regolarmente!
+                if (this.floorEndTimer <= 0) {
                     // SILENT WIPE: Nessun calo di frame rate! Fa svanire i nemici senza innescare esplosioni/loot
                     for (let i = this.enemies.length - 1; i >= 0; i--) {
                         let e = this.enemies[i];
@@ -4082,13 +4086,11 @@ update(combatDt, visualDt) {
                     }
                     this.enemies.length = 0; // Svuotamento array istantaneo a costo zero
                     
-                    // FIX: Previene che il trigger scatti di nuovo nei frame successivi
                     this.floorEndTriggered = false; 
                     
                     this.state = 'WARPING_OUT';
                     this.warpTimer = 1.2; 
                     
-                    // Ferma eventuali scatti in corso per evitare che il giocatore voli fuori dalla mappa durante l'animazione
                     this.player.isDashing = false;
                     
                     if (this.player.shadowMesh) this.player.shadowMesh.visible = false;

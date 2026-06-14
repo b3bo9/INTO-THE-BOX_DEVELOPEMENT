@@ -4062,7 +4062,7 @@ update(combatDt, visualDt) {
                 this.floorEndTimer = 0.0;
             }
             
-            if (this.floorEndTriggered) {
+   if (this.floorEndTriggered) {
                 let oldSec = Math.ceil(this.floorEndTimer);
                 this.floorEndTimer -= combatDt;
                 let newSec = Math.ceil(this.floorEndTimer);
@@ -4072,7 +4072,7 @@ update(combatDt, visualDt) {
                     AudioEngine.playCountdown();
                 }
                 
-               if (this.floorEndTimer <= 0 || enemiesLeft <= 0) {
+                if (this.floorEndTimer <= 0 || enemiesLeft <= 0) {
                     // SILENT WIPE: Nessun calo di frame rate! Fa svanire i nemici senza innescare esplosioni/loot
                     for (let i = this.enemies.length - 1; i >= 0; i--) {
                         let e = this.enemies[i];
@@ -4082,16 +4082,21 @@ update(combatDt, visualDt) {
                     }
                     this.enemies.length = 0; // Svuotamento array istantaneo a costo zero
                     
+                    // FIX: Previene che il trigger scatti di nuovo nei frame successivi
+                    this.floorEndTriggered = false; 
+                    
                     this.state = 'WARPING_OUT';
                     this.warpTimer = 1.2; 
+                    
+                    // Ferma eventuali scatti in corso per evitare che il giocatore voli fuori dalla mappa durante l'animazione
+                    this.player.isDashing = false;
                     
                     if (this.player.shadowMesh) this.player.shadowMesh.visible = false;
                     if (this.player.auraRingMesh) { this.player.auraRingMesh.visible = false; this.player.auraGlow.visible = false; }
                     
                     AudioEngine.playShoot('explosive_arrow');
                     AudioEngine.stopGameMusic();
-                   AudioEngine.playLevelCompleteMusic();
-                 
+                    AudioEngine.playLevelCompleteMusic();
                 }
             }
         }
@@ -5740,6 +5745,24 @@ class Player extends Entity {
         // ---------------------------------------------
         let flowCapMult = this.modifiers.flowMastery ? 2 : 1;
         let aura = Game.getAuraAt(this.x, this.y);
+        // --- RIGENERAZIONE OBELISCO VERDE (PLAYER) ---
+        if (aura === 'green') {
+            let healAmount = this.stats.maxHp * 0.015 * dt; // Cura fluida dell'1.5% al secondo
+            this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
+            
+            if (this.auraHealTimer === undefined) this.auraHealTimer = 0;
+            this.auraHealTimer += dt;
+            
+            // Mostra il testo fluttuante ogni secondo esatto per non inondare lo schermo
+            if (this.auraHealTimer >= 1.0 && this.stats.hp < this.stats.maxHp) {
+                this.auraHealTimer = 0;
+                Game.getFloatingText().spawn(this.x, this.y + 15, `+${Math.max(1, Math.floor(this.stats.maxHp * 0.015))}`, '#66ff33', 18);
+                Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark');
+            }
+        }
+        // ---------------------------------------------
+
+      
      // --- EFFETTO VISIVO ALONE OBELISCO SUL PLAYER ---
         if (aura) {
             this.auraRingMesh.visible = true;
@@ -6238,7 +6261,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                 // 4. Ritardo di 1.5 secondi prima della schermata reale
                 setTimeout(() => {
                     // Controlla che nel frattempo il player non abbia riavviato dal menu
-                    if (!this.dead) return; 
+                    if (!this.dead || Game.state === 'WARPING_OUT' || Game.state === 'FLOOR_TRANSITION' || Game.state === 'RELIC_SELECTION') return;
                     
                     Game.state = 'DEAD';
                     let ds = document.getElementById('deathScreen');
@@ -6614,7 +6637,22 @@ Game.scene.add(this.telegraphMesh);
         
         let aura = Game.getAuraAt(this.x, this.y);
         if (aura === 'blue') this.speed *= 0.6; 
-        
+        // --- RIGENERAZIONE OBELISCO VERDE (NEMICI) ---
+        if (aura === 'green' && !this.dead && this.type !== 'crystal') {
+            let healAmount = this.stats.maxHp * 0.05 * dt; // Cura fluida del 5% al secondo
+            this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
+            
+            if (this.auraHealTimer === undefined) this.auraHealTimer = 0;
+            this.auraHealTimer += dt;
+            
+            // Mostra testo verde curativo
+            if (this.auraHealTimer >= 1.0 && this.stats.hp < this.stats.maxHp) {
+                this.auraHealTimer = 0;
+                Game.getFloatingText().spawn(this.x, this.y + 20, `+${Math.max(1, Math.floor(this.stats.maxHp * 0.05))}`, '#66ff33', 15);
+                Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark');
+            }
+        }
+        // ---------------------------------------------
         if (this.fireDebuffTimer > 0) this.fireDebuffTimer -= dt;
 
         if (this.infected && Game.frameCount % 10 === 0 && !isTouchDevice) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'trail');

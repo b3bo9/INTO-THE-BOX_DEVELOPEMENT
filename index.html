@@ -226,7 +226,7 @@ body.colorblind-mode #opt-colorblind-text {
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 130</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 131</p>
                 </div>
             </div>
         </div>
@@ -1454,7 +1454,7 @@ const RelicSystem = {
         { id: 'e4', name: "Sovraccarico Etereo", desc: "La durata dell'Ascensione Finale aumenta di 0.5s ogni 15 nemici uccisi.", rarity: "epic", image: "icona_sovraccarico.png", icon: "fa-bolt-lightning", apply: (p) => p.modifiers.ultDurationPerKill = true },
         { id: 'e5', name: "Sovraccarico Sismico", desc: "Attivare lo Scudo genera un'onda d'urto che respinge i nemici infliggendo lievi danni.", rarity: "epic", image: "icona_zanna_del_vampiro.png", icon: "fa-wifi", apply: (p) => p.modifiers.seismicShield = true },
         { id: 'e9', name: "Gemelli Cinetici", desc: "Mentre lo Scudo è attivo, spari 2 proiettili alla volta (danno ridotto al 70%).", rarity: "epic", image: "icona_gemelli_cinetici.png", icon: "fa-clone", apply: (p) => p.modifiers.twinKinetic = true },
-        { id: 'e6', name: "Batteria a Ioni", desc: "Lo Scudo Cinetico dura 2 secondi in più e resiste più a lungo al fuoco nemico.", rarity: "epic", image: "icona_batteria_ioni.png", icon: "fa-battery-full", apply: (p) => p.modifiers.shieldDurationAdd += 2.0   },
+        { id: 'e6', name: "Batteria a Ioni", desc: "Lo Scudo Cinetico dura 2 secondi in più.", rarity: "epic", image: "icona_batteria_ioni.png", icon: "fa-battery-full", apply: (p) => p.modifiers.shieldDurationAdd += 2.0   },
        { id: 'e7', name: "Lama del Vento", desc: "Subito dopo uno Scatto, i tuoi prossimi 2 attacchi sono Colpi Critici garantiti.", rarity: "epic", image: "icona_lama_vento.png", icon: "fa-wind", apply: (p) => { p.modifiers.dashCritsEnabled = true; } },
         { id: 'e8', name: "Patto dell'Avaro", desc: "Le monete non scompaiono col tempo. Ogni moneta raccolta aumenta velocità di attacco e movimento per 3 sec.", rarity: "epic", image: "icona_patto_avaro.png", icon: "fa-sack-dollar", apply: (p) => { p.modifiers.miserPact = true; } },
 
@@ -1465,7 +1465,7 @@ const RelicSystem = {
         { id: 'l4', name: "Sete di Sangue Eterna", desc: "Ogni nemico ucciso ti cura dell'1% HP. Tuttavia, sanguini perdendo lo 0.5% HP al secondo (emorragia disattivata contro i Boss).", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", icon: "fa-droplet", apply: (p) => { p.modifiers.bloodthirst = true; } },
         { id: 'l5', name: "Maestria del Flow", desc: "Cap Combo raddoppiato. Se Combo > 50, fai e subisci +20% danni. Se < 50, fai e subisci -20% danni.", rarity: "legendary", image: "icona_maestria_del_flow.png", icon: "fa-infinity",  apply: (p) => {  p.modifiers.flowMastery = true; p.modifiers.comboDecayRate *= 0.5;  } },
         { id: 'l6', name: "Aegis del Guardiano", desc: "Lo Scudo esplode quando finisce. Il danno e l'area scalano in base ai colpi bloccati.", rarity: "legendary", image: "fa_shieldx.png", icon: "fa-shield", apply: (p) => { p.modifiers.explosiveShield = true; } },
-       { id: 'l7', name: "Impatto Tonante", desc: "Lo scatto genera 3 fulmini nella zona d'arrivo che infliggono danni e stordiscono i nemici vicini per 1.5s.", rarity: "legendary", image: "icona_impatto_tonante.png", icon: "fa-bolt", apply: (p) => { p.modifiers.dashLightning = true; } },
+       { id: 'l7', name: "Impatto Tonante", desc: "Lo scatto genera 3 fulmini nella zona d'arrivo che danneggiano e stordiscono i nemici vicini per 1.5s.", rarity: "legendary", image: "icona_impatto_tonante.png", icon: "fa-bolt", apply: (p) => { p.modifiers.dashLightning = true; } },
     ],
     getRandomRarity() { 
         let r = Math.random() * 100; 
@@ -5747,7 +5747,7 @@ class Player extends Entity {
         let aura = Game.getAuraAt(this.x, this.y);
         // --- RIGENERAZIONE OBELISCO VERDE (PLAYER) ---
         if (aura === 'green') {
-            let healAmount = this.stats.maxHp * 0.015 * dt; // Cura fluida dell'1.5% al secondo
+            let healAmount = this.stats.maxHp * 0.01 * dt; // Cura fluida dell'1% al secondo
             this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
             
             if (this.auraHealTimer === undefined) this.auraHealTimer = 0;

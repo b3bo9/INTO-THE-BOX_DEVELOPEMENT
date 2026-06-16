@@ -3093,7 +3093,31 @@ prewarmShaders() {
         this.renderer.compile(warmScene, warmCam);
     },
     initPools() {
-        this.debris = Array.from({length: isTouchDevice ? 90 : 250}, () => new Debris());
+        const maxDynamicDebris = isTouchDevice ? 90 : 250;
+// Passiamo l'indice (i) al costruttore per sapere quale "slot" della matrice aggiornare
+this.debris = Array.from({length: maxDynamicDebris}, (_, i) => new Debris(i));
+
+if (!this._dummyDebris) this._dummyDebris = new THREE.Object3D();
+
+// Creiamo UN SOLO materiale e UNA SOLA geometria per tutti i detriti di combattimento
+const debrisGeo = SharedGeo.tetrahedron; 
+const debrisMat = new THREE.MeshStandardMaterial({roughness: 0.8, metalness: 0.2});
+
+this.dynamicDebrisMesh = new THREE.InstancedMesh(debrisGeo, debrisMat, maxDynamicDebris);
+this.dynamicDebrisMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+this.dynamicDebrisMesh.castShadow = false; // Spento per massimizzare gli FPS
+this.dynamicDebrisMesh.receiveShadow = false;
+
+// Nascondiamo tutto sotto terra all'avvio
+let hideMat = new THREE.Matrix4().makeTranslation(0, -1000, 0);
+let defColor = new THREE.Color(0x000000);
+
+for(let i = 0; i < maxDynamicDebris; i++) {
+    this.dynamicDebrisMesh.setMatrixAt(i, hideMat);
+    this.dynamicDebrisMesh.setColorAt(i, defColor);
+}
+
+Game.scene.add(this.dynamicDebrisMesh);
         this.enemyPool = Array.from({length: 80}, () => new Enemy()); // Pre-alloca 80 nemici
         this.particles = Array.from({length: isTouchDevice ? 400 : 2500}, () => new Particle());
         this.projectiles = Array.from({length: 300}, () => new Projectile());
@@ -8018,7 +8042,8 @@ class Particle {
         this.mesh.material = mat; 
         this.mesh.position.set(x, y, z); 
         this.mesh.scale.set(this.baseSize, this.baseSize, 1);
-        this.mesh.visible = true;
+        this.mesh.updateMatrixWorld(true); // Previene il ghosting delle particelle
+        this.mesh.visible = true;
     }
     
     update(dt) {
@@ -8070,32 +8095,43 @@ class Particle {
     }
 }
 class Debris {
-    constructor() {
+    constructor(index) {
+        this.index = index; // Lo slot assegnato a questo detrito
         this.active = false;
-        this.mesh = new THREE.Mesh(SharedGeo.tetrahedron, new THREE.MeshStandardMaterial({roughness: 0.8, metalness: 0.2}));
-        this.mesh.matrixAutoUpdate = false; // FIX ASSOLUTO: Spegniamo l'aggiornamento automatico
-        this.mesh.visible = false; 
-        this.mesh.castShadow = false; 
-        this.mesh.receiveShadow = false;
-        Game.scene.add(this.mesh);
+        // RAM purissima: zero mesh create qui dentro!
     }
+    
     spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, enemyRadius, isElite = false) {
         if (Game.debrisThisFrame > (isTouchDevice ? 8 : 20)) return;
         Game.debrisThisFrame = (Game.debrisThisFrame || 0) + 1;
 
         this.active = true;
-        this.mesh.geometry = geometry;
-        this.mesh.material.color.setHex(colorHex);
-        this.mesh.material.emissive.setHex(isElite ? 0x440000 : 0x000000);
-        this.mesh.position.copy(worldPos);
-        this.mesh.quaternion.copy(worldQuat);
         
-        // Pulizia dei valori per evitare scale sballate (NaN o infiniti)
+        /* COMPROMESSO: Un InstancedMesh usa una sola geometria. Il parametro "geometry" 
+        passato dai vari nemici viene ignorato a favore del tetraedro standard. 
+        Nel caos dell'esplosione, il giocatore non noterà la differenza.
+        */
+
+        // 1. Colore dell'istanza (Zero-Allocation)
+        Game._dummyColor = Game._dummyColor || new THREE.Color();
+        Game._dummyColor.setHex(colorHex);
+        // Gli InstancedMesh non supportano l'emissivo per-istanza nativamente, 
+        // quindi scuriamo/mischiamo il colore se è un Elite per distinguerlo.
+        if (isElite) Game._dummyColor.lerp(new THREE.Color(0x440000), 0.5);
+        
+        Game.dynamicDebrisMesh.setColorAt(this.index, Game._dummyColor);
+        Game.dynamicDebrisMesh.instanceColor.needsUpdate = true;
+
+        // 2. Setup Fisica
+        this.x = worldPos.x;
+        this.y = worldPos.y;
+        this.z = worldPos.z;
+        this.rotX = 0; this.rotY = 0; this.rotZ = 0;
+
         let maxScale = Math.max(Math.abs(scaleVec.x), Math.abs(scaleVec.y), Math.abs(scaleVec.z));
         maxScale = Math.min(maxScale, enemyRadius * 1.2); 
         this.baseScale = maxScale * 0.85; 
-        this.mesh.scale.setScalar(Math.max(0.01, this.baseScale)); 
-        
+
         let a = Math.random() * Math.PI * 2;
         let speed = MathUtils.randomRange(40, 110); 
         this.vx = Math.cos(a) * speed;
@@ -8107,23 +8143,28 @@ class Debris {
         this.life = MathUtils.randomRange(0.6, 0.9); 
         this.maxLife = this.life;
 
-        this.mesh.updateMatrix(); // FORZA SUBITO IL RICALCOLO: Nessun teletrasporto!
-        this.mesh.visible = true;
+        this.update(0); // Forza il disegno immediato
     }
     
     update(dt) {
         if (!this.active) return;
-        this.vy -= 600 * dt; 
-        this.mesh.position.x += this.vx * dt;
-        this.mesh.position.y += this.vy * dt;
-        this.mesh.position.z += this.vz * dt;
-        this.mesh.rotation.x += this.rx * dt;
-        this.mesh.rotation.y += this.ry * dt;
-        this.mesh.rotation.z += this.rz * dt;
         
+        // Calcolo traiettorie e gravità
+        if (dt > 0) {
+            this.vy -= 600 * dt; 
+            this.x += this.vx * dt;
+            this.y += this.vy * dt;
+            this.z += this.vz * dt;
+            this.rotX += this.rx * dt;
+            this.rotY += this.ry * dt;
+            this.rotZ += this.rz * dt;
+            this.life -= dt;
+        }
+
+        // Rimbalzo sul pavimento
         let floorLimit = this.baseScale * 0.3;
-        if (this.mesh.position.y < floorLimit) {
-            this.mesh.position.y = floorLimit;
+        if (this.y < floorLimit) {
+            this.y = floorLimit;
             this.vy *= -0.3; 
             this.vx *= 0.5; 
             this.vz *= 0.5;
@@ -8131,16 +8172,31 @@ class Debris {
             this.ry *= 0.5;
             this.rz *= 0.5;
         }
-        
+
+        // Ridimensionamento fluido a fine vita
         let pct = this.life / this.maxLife;
         let easeShrink = 1.0; 
         if (pct < 0.6) easeShrink = Math.pow(pct / 0.6, 1.2); 
-        this.mesh.scale.setScalar(Math.max(0.001, this.baseScale * easeShrink));
+        let finalScale = Math.max(0.001, this.baseScale * easeShrink);
+
+        // 3. AGGIORNAMENTO MATRICE (Nessun .updateMatrixWorld!)
+        let dummy = Game._dummyDebris;
+        dummy.position.set(this.x, this.y, this.z);
+        dummy.rotation.set(this.rotX, this.rotY, this.rotZ);
+        dummy.scale.setScalar(finalScale);
         
-        this.mesh.updateMatrix(); // AGGIORNA MANUALMENTE AD OGNI FRAME
+        // Se il detrito è "morto", nascondilo in un buco nero profondo
+        if (this.life <= 0) {
+            this.active = false;
+            dummy.position.set(0, -1000, 0);
+        }
         
-        this.life -= dt;
-        if (this.life <= 0) { this.active = false; this.mesh.visible = false; }
+        dummy.updateMatrix();
+        
+        // Inietta la matrice del dummy nell'InstancedMesh globale
+        Game.dynamicDebrisMesh.setMatrixAt(this.index, dummy.matrix);
+        // Flagga la GPU: "Ehi, ci sono novità!"
+        Game.dynamicDebrisMesh.instanceMatrix.needsUpdate = true;
     }
 }
 class FloatingText {
@@ -8200,7 +8256,14 @@ function clearScene() {
         Game.auras = []; Game.auraIcons = [];
     }
     
-    for(let i=0, len=Game.debris.length; i<len; i++) { Game.debris[i].active = false; Game.debris[i].mesh.visible = false; }
+   if (Game.dynamicDebrisMesh) {
+    let hideMat = new THREE.Matrix4().makeTranslation(0, -1000, 0);
+    for(let i = 0, len = Game.debris.length; i < len; i++) { 
+        Game.debris[i].active = false; 
+        Game.dynamicDebrisMesh.setMatrixAt(i, hideMat);
+    }
+    Game.dynamicDebrisMesh.instanceMatrix.needsUpdate = true;
+}
     
   // Pulizia profonda SOLO per i Boss (che sono istanze uniche, fuori dal pool)
     for(let i=0, len=Game.enemies.length; i<len; i++) { 

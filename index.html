@@ -47,7 +47,8 @@
         #uiCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
         
         .health-bar-container { background: #111; border: 1px solid #444; border-radius: 4px; overflow: hidden; position: relative; box-shadow: 0 0 10px rgba(0,0,0,0.8); }
-        .health-bar-fill { height: 100%; background: linear-gradient(90deg, #bb0000, #ff4444); width: 100%; transition: width 0.1s; }
+        #ui-floor-progress { transform-origin: left; width: 100%; }
+        #combo-bar { transform-origin: bottom; width: 100%; height: 100%; }
         .stack-dot { width: 22px; height: 22px; border-radius: 50%; background: #1a1a1a; border: 2px solid #555; transition: all 0.3s; box-shadow: inset 0 0 8px #000; }
         @media (min-width: 640px) { .stack-dot { width: 30px; height: 30px; border-width: 3px; } }
         
@@ -2698,7 +2699,7 @@ const UI = {
 
         let hpPct = (Game.player.stats.hp / Game.player.stats.maxHp) * 100;
         if (this.cache.hpPct !== hpPct) { 
-            this.els.hpFill.style.width = `${hpPct}%`; 
+           this.els.hpFill.style.transform = `scaleX(${hpPct / 100})`;
             this.cache.hpPct = hpPct; 
         }
 
@@ -2745,7 +2746,7 @@ const UI = {
         let progressPct = Game.isBossFloor ? ((Game.floorMaxKills - eLeft) / Game.floorMaxKills) * 100 : Math.min(100, (Game.floorKills / Math.max(1, Game.floorMaxKills - 3)) * 100);
         
         if (this.cache.progressPct !== progressPct) { 
-            this.els.floorProgress.style.width = `${progressPct}%`; 
+           this.els.floorProgress.style.transform = `scaleX(${progressPct / 100})`;
             // Aumenta la luminosità statica della barra da 1.0x (inizio) a 2.0x (fine)
             this.els.floorProgress.style.filter = `brightness(${1 + (progressPct / 100)})`;
             this.cache.progressPct = progressPct; 
@@ -2818,7 +2819,7 @@ const UI = {
        if (isCombo) {
             let cPct = Math.round((Game.comboTimer / Game.comboMaxTime) * 100);
             if (this.cache.comboWidth !== cPct) {
-               this.els.comboBar.style.height = `${cPct}%`;
+              this.els.comboBar.style.transform = `scaleY(${cPct / 100})`;
                 this.cache.comboWidth = cPct;
             }
         }
@@ -3718,7 +3719,15 @@ update(combatDt, visualDt) {
         // ----------------------------------------------
 
         // EFFETTI VISIVI: si muovono sempre a tempo reale (visualDt), liberi dall'Hit-Stop
-        for (let i = 0, len = this.debris.length; i < len; i++) if(this.debris[i].active) this.debris[i].update(visualDt);
+        let debrisMoved = false;
+        for (let i = 0, len = this.debris.length; i < len; i++) {
+            if(this.debris[i].active) {
+                this.debris[i].update(visualDt);
+                debrisMoved = true;
+            }
+        }
+        // Inviamo il pacchetto di dati alla GPU una volta sola!
+        if (debrisMoved && Game.dynamicDebrisMesh) Game.dynamicDebrisMesh.instanceMatrix.needsUpdate = true;
         for (let i = 0, len = this.particles.length; i < len; i++) if(this.particles[i].active) this.particles[i].update(visualDt);
         for (let i = 0, len = this.floatingTexts.length; i < len; i++) if(this.floatingTexts[i].active) this.floatingTexts[i].update(visualDt);
 
@@ -3959,9 +3968,17 @@ update(combatDt, visualDt) {
         if (isLow) AudioEngine.playHeartbeat(combatDt);
 
         // AGGIORNAMENTO NEMICI: congelati se siamo in Hit-Stop (combatDt === 0)
-        if (combatDt > 0) {
+       if (combatDt > 0) {
+            let camX = this.camera.position.x;
+            let camY = this.camera.position.z; // La Z della telecamera corrisponde alla Y 2D
+
             for (let i = this.enemies.length - 1; i >= 0; i--) {
                 let e = this.enemies[i]; 
+                
+                // CULLING MANUALE A COSTO ZERO: Nasconde i nemici distanti per salvare Draw Calls
+                let distToCamSq = (camX - e.x) * (camX - e.x) + (camY - e.y) * (camY - e.y);
+                e.mesh.visible = (distToCamSq < 1600000); // circa 1250 unità di distanza visiva
+                
                 e.update(combatDt); 
                 if ((Game.frameCount + e.thinkOffset) % 2 === 0) {
                     this.enemyGrid.updateClient(e); 
@@ -8196,7 +8213,7 @@ class Debris {
         // Inietta la matrice del dummy nell'InstancedMesh globale
         Game.dynamicDebrisMesh.setMatrixAt(this.index, dummy.matrix);
         // Flagga la GPU: "Ehi, ci sono novità!"
-        Game.dynamicDebrisMesh.instanceMatrix.needsUpdate = true;
+
     }
 }
 class FloatingText {

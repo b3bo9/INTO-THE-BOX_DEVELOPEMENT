@@ -226,7 +226,7 @@ body.colorblind-mode #opt-colorblind-text {
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 131</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 132</p>
                 </div>
             </div>
         </div>
@@ -3711,6 +3711,24 @@ update(combatDt, visualDt) {
 
                 if ((dx * dx + dy * dy) <= detectionRadiusSq) {
                     a.radius -= 30 * combatDt;
+                    // --- HAZARD CORROTTI ---
+                    if (a.type === 'corrupted') {
+                        if (a.hazardTimer === undefined) a.hazardTimer = 0;
+                        a.hazardTimer -= combatDt;
+                        
+                        // Genera una pozza ogni ~1 secondo
+                        if (a.hazardTimer <= 0) {
+                            let angle = Math.random() * Math.PI * 2;
+                            // Genera la pozza ALL'INTERNO del raggio visivo attuale dell'obelisco
+                            let dist = Math.random() * Math.max(10, (a.radius - 30)); 
+                            let hx = a.x + Math.cos(angle) * dist;
+                            let hy = a.y + Math.sin(angle) * dist;
+                            
+                            // Pozza velenosa Viola (usa i danni max del player come scala)
+                            Game.getHazard().spawn(hx, hy, 35, 2.5, Game.player.stats.maxDmg * 0.4, 0xaa00ff, 'crystal_fire');
+                            a.hazardTimer = MathUtils.randomRange(0.8, 1.5);
+                        }
+                    }
                     a.radiusSq = a.radius * a.radius;
                     
                     let meshes = this.map.auraMeshes[a.type];
@@ -3765,11 +3783,23 @@ update(combatDt, visualDt) {
                         let pCount = AppSettings.isLow ? 10 : 30;
                         for(let p=0; p<pCount; p++) this.getParticle().spawn(a.x, 20, a.y, SharedMat.spriteWhite, 'nova');
                         
-                       // DROP DA ELITE ESTREMO
+                       // DROP DA ELITE ESTREMO O CORROTTO
                         let itemsToSpawn = ['life'];
-                        for(let c=0; c<MathUtils.randomInt(4, 8); c++) itemsToSpawn.push('coin');
-                        itemsToSpawn.push('essence');
-                        if (Math.random() < 0.6) itemsToSpawn.push('essence'); 
+                        let dropsRelic = false;
+
+                        if (a.type === 'corrupted') {
+                            // 50% Reliquia, 50% Pioggia di Monete (+20 monete)
+                            if (Math.random() < 0.5) {
+                                dropsRelic = true;
+                            } else {
+                                for(let c=0; c<25; c++) itemsToSpawn.push('coin');
+                            }
+                        } else {
+                            // Obelisco normale
+                            for(let c=0; c<MathUtils.randomInt(4, 8); c++) itemsToSpawn.push('coin');
+                            itemsToSpawn.push('essence');
+                            if (Math.random() < 0.6) itemsToSpawn.push('essence'); 
+                        }
                         
                         // FIX COMPENETRAZIONE: Raggio minimo 45 (L'obelisco è largo 32)
                         let minRadius = 45; 
@@ -3796,6 +3826,19 @@ update(combatDt, visualDt) {
                             if (type === 'coin') this.getCoin().spawn(dropX, dropY);
                             if (type === 'life') this.getExtraLife().spawn(dropX, dropY);
                             if (type === 'essence') this.getEssence().spawn(dropX, dropY, ESSENCE_TYPES[Math.floor(Math.random() * ESSENCE_TYPES.length)]);
+                        }
+                        if (dropsRelic) {
+                            let choices = RelicSystem.getChoices();
+                            if (choices.length > 0) {
+                                let dropRelic = choices[0]; 
+                                dropRelic.apply(Game.player);
+                                Game.player.relics.push(dropRelic);
+                                AudioEngine.playRelicDrop();
+                                Game.getFloatingText().spawn(a.x, a.y + 60, "RELIQUIA: " + dropRelic.name.toUpperCase(), '#cc33ff', 45, true);
+                            } else {
+                                // Se ha finito le reliquie, diamogli 15 monete di compensazione
+                                for(let c=0; c<15; c++) this.getCoin().spawn(a.x + MathUtils.randomRange(-20,20), a.y + MathUtils.randomRange(-20,20));
+                            }
                         }
                         
                         this.getFloatingText().spawn(a.x, a.y + 40, "OBELISCO PROSCIUGATO!", '#00DDFF', 40, true);
@@ -4902,10 +4945,13 @@ class GameMap {
       const wallMesh = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, this.wallMat, wallCount);
        // --- PREPARAZIONE VERI OBELISCHI ---
         if (!window.GLOBAL_OBELISK_GEO) window.GLOBAL_OBELISK_GEO = createObeliskGeometry();
-        // 0: Foresta -> Verde, 1: Lava -> Rosso, 2: Ghiaccio -> Blu
+        
         let aType = Game.currentThemeIndex === 2 ? 'blue' : (Game.currentThemeIndex === 1 ? 'red' : 'green');
-        let obColor = aType === 'blue' ? 0x0044aa : (aType === 'green' ? 0x11aa11 : 0xaa0000);
-        let obEmissive = aType === 'blue' ? 0x0088ff : (aType === 'green' ? 0x33ff00 : 0xff3300);
+        // 5% di probabilità che l'obelisco sia Corrotto
+        if (Math.random() < 0.05) aType = 'corrupted';
+
+        let obColor = aType === 'blue' ? 0x0044aa : (aType === 'green' ? 0x11aa11 : (aType === 'red' ? 0xaa0000 : 0x4400aa));
+        let obEmissive = aType === 'blue' ? 0x0088ff : (aType === 'green' ? 0x33ff00 : (aType === 'red' ? 0xff3300 : 0xcc33ff));
         
         // NUOVO: Texture Eterea Scorrevole
         let emTex = Preloader.textures.smoke ? Preloader.textures.smoke.clone() : null;
@@ -4923,19 +4969,25 @@ class GameMap {
         obeliskMesh.castShadow = true; obeliskMesh.receiveShadow = true;
         Game.auras = []; Game.auraIcons = [];
         
-        const imBlueDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraBlueDome, pillarCount); 
+       const imBlueDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraBlueDome, pillarCount); 
         const imBlueRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraBlueRing, pillarCount);
         const imGreenDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraGreenDome, pillarCount);
         const imGreenRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraGreenRing, pillarCount);
         const imRedDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraRedDome, pillarCount);
         const imRedRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraRedRing, pillarCount);
-        let cBlue = 0, cGreen = 0, cRed = 0;
+        
+        // Materiali per la variante Corrotta creati on-the-fly a zero-cost
+        const imCorruptedDome = new THREE.InstancedMesh(SharedGeo.auraDome, new THREE.MeshBasicMaterial({color: 0xaa00ff, transparent: true, opacity: 0.04, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending}), pillarCount);
+        const imCorruptedRing = new THREE.InstancedMesh(SharedGeo.auraRing, new THREE.MeshBasicMaterial({color: 0xcc33ff, transparent: true, opacity: 0.8, depthWrite: false}), pillarCount);
+        
+        let cBlue = 0, cGreen = 0, cRed = 0, cCorrupted = 0;
 
         // SALVIAMO I RIFERIMENTI PER MODIFICARLI IN TEMPO REALE
         this.auraMeshes = {
             blue: { dome: imBlueDome, ring: imBlueRing },
             green: { dome: imGreenDome, ring: imGreenRing },
             red: { dome: imRedDome, ring: imRedRing },
+            corrupted: { dome: imCorruptedDome, ring: imCorruptedRing },
             obelisks: obeliskMesh
         };
 
@@ -5077,19 +5129,21 @@ class GameMap {
                         let isBroken = Math.random() < 0.15; 
                         
                       // --- SPAWN AUREE E OBELISCHI ---
-                        let auraRadius = 240; // AREA DI PARTENZA INGRANDITA
-                        let colorIdx = aType === 'blue' ? cBlue : (aType === 'green' ? cGreen : cRed);
+                        let auraRadius = 240; 
+                        let colorIdx = aType === 'blue' ? cBlue : (aType === 'green' ? cGreen : (aType === 'red' ? cRed : cCorrupted));
                         
                         // Cupole e Anelli
                         dummy.position.set(px, 0, pz); dummy.scale.set(auraRadius, auraRadius, auraRadius); dummy.rotation.set(0, 0, 0); dummy.updateMatrix();
                         if(aType === 'blue') imBlueDome.setMatrixAt(cBlue, dummy.matrix);
                         if(aType === 'green') imGreenDome.setMatrixAt(cGreen, dummy.matrix);
                         if(aType === 'red') imRedDome.setMatrixAt(cRed, dummy.matrix);
+                        if(aType === 'corrupted') imCorruptedDome.setMatrixAt(cCorrupted, dummy.matrix);
                         
                         dummy.position.y = 0.5; dummy.rotation.x = -Math.PI / 2; dummy.updateMatrix();
                         if(aType === 'blue') imBlueRing.setMatrixAt(cBlue++, dummy.matrix);
                         if(aType === 'green') imGreenRing.setMatrixAt(cGreen++, dummy.matrix);
                         if(aType === 'red') imRedRing.setMatrixAt(cRed++, dummy.matrix);
+                        if(aType === 'corrupted') imCorruptedRing.setMatrixAt(cCorrupted++, dummy.matrix);
 
                         // Obelisco Vero e Proprio
                         dummy.position.set(px, 0, pz); dummy.scale.set(1, 1, 1); dummy.rotation.set(0, 0, 0);
@@ -5102,6 +5156,7 @@ class GameMap {
                         iconSprite.scale.set(20, 20, 1);
                         this.mapGroup.add(iconSprite);
                         Game.auraIcons.push(iconSprite);
+                        
 
                         // SALVATAGGIO DEI DATI COMPLETI NELL'ARRAY
                         Game.auras.push({ 
@@ -5168,6 +5223,11 @@ class GameMap {
             this.mapGroup.add(imRedDome, imRedRing); 
             imRedDome.instanceMatrix.needsUpdate = true; 
             imRedRing.instanceMatrix.needsUpdate = true; 
+        }
+      if (cCorrupted > 0) { 
+            this.mapGroup.add(imCorruptedDome, imCorruptedRing); 
+            imCorruptedDome.instanceMatrix.needsUpdate = true; 
+            imCorruptedRing.instanceMatrix.needsUpdate = true; 
         }
         
         // --- INIZIO SISTEMA NEBBIA BASSA 3D ---
@@ -5957,8 +6017,13 @@ class Player extends Entity {
             this.auraGlow.updateMatrix();
             
             // FIX COLORE: Tinta extra sul corpo SOLO se non sei in Ultimate o Overdrive attivo
+          let ringColor = aura === 'blue' ? 0x00aaff : (aura === 'green' ? 0x66ff33 : (aura === 'red' ? 0xff3333 : 0xcc33ff));
+            this.auraRingMesh.material.color.setHex(ringColor);
+            this.auraGlow.material.color.setHex(ringColor);
+            
             if (!Game.ultimateActive && !this.overdrive) {
-                this.modelParts.body.material.emissive.setHex(aura === 'blue' ? 0x002255 : (aura === 'green' ? 0x113311 : 0x440000));
+                let emitColor = aura === 'blue' ? 0x002255 : (aura === 'green' ? 0x113311 : (aura === 'red' ? 0x440000 : 0x440055));
+                this.modelParts.body.material.emissive.setHex(emitColor);
                 this.modelParts.body.material.emissiveIntensity = 1.0;
             }
         } else {
@@ -5970,7 +6035,15 @@ class Player extends Entity {
             }
         }
         // ------------------------------------------------
-        let auraSpdMult = (aura === 'blue') ? 0.6 : 1.0; 
+       let auraSpdMult = (aura === 'blue') ? 0.6 : (aura === 'corrupted' ? 1.2 : 1.0); 
+
+        // Debuff: Sanguinamento Corrotto 1% HP/sec
+        if (aura === 'corrupted') {
+            this.stats.hp = Math.max(1, this.stats.hp - (this.stats.maxHp * 0.01 * dt));
+            if (Game.frameCount % 20 === 0 && !isTouchDevice) {
+                Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'dust');
+            }
+        }
         let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult * shockSpdMult * dashSpdMult * miserSpdBonus * (1.0 + (this.essenceSpeedBonus || 0)) * auraSpdMult;
         if (Game.ultimateActive) currentSpeed *= 1.5; currentSpeed = Math.min(currentSpeed, Game.ultimateActive ? 750 : 550);
         
@@ -6232,6 +6305,7 @@ class Player extends Entity {
         let baseDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * (1 + Math.min(Game.combo * 0.04, 2.0 * flowCapMult)) * this.modifiers.dmgMult;
         // FIX: Applica il 40% in più se sei nel raggio dell'Obelisco Rosso (DOPO aver calcolato baseDmg)
         if (aura === 'red') baseDmg *= 1.4;
+        if (aura === 'corrupted') baseDmg *= 1.2; // +20% Danni inflitti
         
         // Applicazione Maestria del Flow sul danno INFLITTO
         if (this.modifiers.flowMastery) {
@@ -6352,6 +6426,7 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         
         let aura = Game.getAuraAt(this.x, this.y); 
         if (aura === 'green') amount *= 0.6; 
+        if (aura === 'corrupted') amount *= 1.2; // +20% Danni subiti
         
         // Riduzione del 25% se lo Scudo Cinetico base è attivo
         if (this.activeShieldTimer > 0) {

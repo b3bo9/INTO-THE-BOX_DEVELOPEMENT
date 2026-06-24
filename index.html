@@ -2959,13 +2959,17 @@ triggerComboAnim(combo) {
 };
 const Game = {
     auras: [],
-    getAuraAt(x, y) {
+   getAuraAt(x, y) {
         if (!this.auras) return null;
         for (let i = 0; i < this.auras.length; i++) {
             let a = this.auras[i];
             if (!a.active) continue; // IGNORA GLI OBELISCHI ESPLOSI
+            
             let dx = x - a.x, dy = y - a.y;
-            if (dx * dx + dy * dy <= a.radiusSq) return a.type;
+            // Usa il raggio originale se esiste, altrimenti quello corrente
+            let checkRadiusSq = a.originalRadiusSq || a.radiusSq; 
+            
+            if (dx * dx + dy * dy <= checkRadiusSq) return a.type;
         }
         return null;
     },
@@ -3687,10 +3691,13 @@ update(combatDt, visualDt) {
                 let a = this.auras[i];
                 if (!a.active) continue;
 
-                // Controlla se il giocatore è dentro
+               // Salva il raggio originale al primo avvio
+                if (!a.originalRadiusSq) a.originalRadiusSq = a.radiusSq; 
+
+                // Controlla se il giocatore è dentro (basandosi sull'area larga originale!)
                 let dx = this.player.x - a.x;
                 let dy = this.player.y - a.y;
-                if ((dx * dx + dy * dy) <= a.radiusSq) {
+                if ((dx * dx + dy * dy) <= a.originalRadiusSq) {
                     
                     // Restringi il raggio (30 unità/s = impiega circa 6-7 secondi per esplodere)
                     a.radius -= 30 * combatDt;
@@ -3748,21 +3755,33 @@ update(combatDt, visualDt) {
                         let pCount = AppSettings.isLow ? 10 : 30;
                         for(let p=0; p<pCount; p++) this.getParticle().spawn(a.x, 20, a.y, SharedMat.spriteWhite, 'nova');
                         
-                        // DROP DA ELITE ESTREMO
+                       // DROP DA ELITE ESTREMO
                         let itemsToSpawn = ['life'];
                         for(let c=0; c<MathUtils.randomInt(4, 8); c++) itemsToSpawn.push('coin');
                         itemsToSpawn.push('essence');
                         if (Math.random() < 0.6) itemsToSpawn.push('essence'); 
                         
-                        let dropRadius = 40;
+                        // FIX COMPENETRAZIONE: Raggio minimo 45 (L'obelisco è largo 32)
+                        let minRadius = 45; 
+                        let maxRadius = 80;
                         let angleStep = (Math.PI * 2) / itemsToSpawn.length;
+                        
                         for (let j = 0; j < itemsToSpawn.length; j++) {
                             let type = itemsToSpawn[j];
-                            let dist = itemsToSpawn.length === 1 ? 0 : MathUtils.randomRange(20, dropRadius);
+                            
+                            // Niente dist = 0! Lo spariamo sempre verso l'esterno.
+                            let dist = MathUtils.randomRange(minRadius, maxRadius);
                             let angle = angleStep * j + Math.random();
+                            
                             let dropX = a.x + Math.cos(angle) * dist;
                             let dropY = a.y + Math.sin(angle) * dist;
-                            if (this.map.isSolid(dropX, dropY)) { dropX = a.x; dropY = a.y; }
+                            
+                            // FALLBACK SICURO: Se l'angolazione spinge il drop dentro un muro della mappa, 
+                            // lo facciamo cadere dolcemente vicino al giocatore (che è al sicuro).
+                            if (this.map.isSolid(dropX, dropY)) { 
+                                dropX = this.player.x + MathUtils.randomRange(-15, 15); 
+                                dropY = this.player.y + MathUtils.randomRange(-15, 15); 
+                            }
                             
                             if (type === 'coin') this.getCoin().spawn(dropX, dropY);
                             if (type === 'life') this.getExtraLife().spawn(dropX, dropY);

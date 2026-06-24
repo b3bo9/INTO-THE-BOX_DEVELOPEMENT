@@ -161,6 +161,13 @@ body.colorblind-mode .stack-dot.active.green {
 body.colorblind-mode #opt-colorblind-text {
     color: #FF00AA !important; /* Colore più visibile nel menu opzioni */
 }
+        /* FIX: Forza l'origine delle barre per l'accelerazione GPU */
+        #ui-hp-fill, #ui-floor-progress {
+            transform-origin: left center !important;
+        }
+        #combo-bar {
+            transform-origin: bottom center !important; 
+        }
     </style>
 </head>
 <body class="text-white selection:bg-red-900">
@@ -2963,13 +2970,13 @@ const Game = {
         if (!this.auras) return null;
         for (let i = 0; i < this.auras.length; i++) {
             let a = this.auras[i];
-            if (!a.active) continue; // IGNORA GLI OBELISCHI ESPLOSI
+            if (!a.active) continue; 
             
             let dx = x - a.x, dy = y - a.y;
-            // Usa il raggio originale se esiste, altrimenti quello corrente
-            let checkRadiusSq = a.originalRadiusSq || a.radiusSq; 
+            // Il raggio di rilevamento è identico a quello visivo, ma non scende mai sotto i 65
+            let detectionRadius = Math.max(a.radius, 65); 
             
-            if (dx * dx + dy * dy <= checkRadiusSq) return a.type;
+            if (dx * dx + dy * dy <= detectionRadius * detectionRadius) return a.type;
         }
         return null;
     },
@@ -3695,11 +3702,14 @@ update(combatDt, visualDt) {
                 if (!a.originalRadiusSq) a.originalRadiusSq = a.radiusSq; 
 
                 // Controlla se il giocatore è dentro (basandosi sull'area larga originale!)
-                let dx = this.player.x - a.x;
+              let dx = this.player.x - a.x;
                 let dy = this.player.y - a.y;
-                if ((dx * dx + dy * dy) <= a.originalRadiusSq) {
-                    
-                    // Restringi il raggio (30 unità/s = impiega circa 6-7 secondi per esplodere)
+                
+                // Segue il raggio visivo, con un limite minimo per non sbattere nel muro
+                let detectionRadius = Math.max(a.radius, 65);
+                let detectionRadiusSq = detectionRadius * detectionRadius;
+
+                if ((dx * dx + dy * dy) <= detectionRadiusSq) {
                     a.radius -= 30 * combatDt;
                     a.radiusSq = a.radius * a.radius;
                     

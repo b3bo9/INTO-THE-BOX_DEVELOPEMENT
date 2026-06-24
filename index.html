@@ -2963,6 +2963,7 @@ const Game = {
         if (!this.auras) return null;
         for (let i = 0; i < this.auras.length; i++) {
             let a = this.auras[i];
+            if (!a.active) continue; // IGNORA GLI OBELISCHI ESPLOSI
             let dx = x - a.x, dy = y - a.y;
             if (dx * dx + dy * dy <= a.radiusSq) return a.type;
         }
@@ -3675,7 +3676,104 @@ update(combatDt, visualDt) {
 
         if (this.state !== 'PLAYING') return;
         let dt = combatDt; // Preserva compatibilità con calcoli interni esistenti
+// --- SCROLLING UV OBELISCO MAGICO ---
+        if (this.map && this.map.obeliskMat && this.map.obeliskMat.emissiveMap) {
+            this.map.obeliskMat.emissiveMap.offset.y -= visualDt * 0.3; 
+        }
 
+        // --- GESTIONE "KING OF THE HILL" DEGLI OBELISCHI ---
+        if (this.auras && combatDt > 0) {
+            for (let i = 0; i < this.auras.length; i++) {
+                let a = this.auras[i];
+                if (!a.active) continue;
+
+                // Controlla se il giocatore è dentro
+                let dx = this.player.x - a.x;
+                let dy = this.player.y - a.y;
+                if ((dx * dx + dy * dy) <= a.radiusSq) {
+                    
+                    // Restringi il raggio (30 unità/s = impiega circa 6-7 secondi per esplodere)
+                    a.radius -= 30 * combatDt;
+                    a.radiusSq = a.radius * a.radius;
+                    
+                    let meshes = this.map.auraMeshes[a.type];
+                    let dummy = this._dummyFog; // Ricicliamo un oggetto 3D
+                    
+                    // 1. Rimpicciolisci la Cupola
+                    meshes.dome.getMatrixAt(a.colorIdx, dummy.matrix);
+                    dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+                    dummy.scale.set(a.radius, a.radius, a.radius);
+                    dummy.updateMatrix();
+                    meshes.dome.setMatrixAt(a.colorIdx, dummy.matrix);
+                    meshes.dome.instanceMatrix.needsUpdate = true;
+                    
+                    // 2. Rimpicciolisci l'Anello
+                    meshes.ring.getMatrixAt(a.colorIdx, dummy.matrix);
+                    dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+                    dummy.scale.set(a.radius, a.radius, 1);
+                    dummy.updateMatrix();
+                    meshes.ring.setMatrixAt(a.colorIdx, dummy.matrix);
+                    meshes.ring.instanceMatrix.needsUpdate = true;
+
+                    // 3. ESPLOSIONE! Sotto il raggio di 45 unità
+                    if (a.radius < 45) {
+                        a.active = false;
+                        
+                        // Nascondi Cupola e Anello spedendoli a -1000 sottoterra
+                        dummy.position.y = -1000; dummy.updateMatrix();
+                        meshes.dome.setMatrixAt(a.colorIdx, dummy.matrix);
+                        meshes.ring.setMatrixAt(a.colorIdx, dummy.matrix);
+                        meshes.dome.instanceMatrix.needsUpdate = true;
+                        meshes.ring.instanceMatrix.needsUpdate = true;
+                        if (a.icon) a.icon.visible = false;
+                        
+                        // Nascondi Obelisco Luminoso Instanziato
+                        this.map.auraMeshes.obelisks.getMatrixAt(a.obeliskIdx, dummy.matrix);
+                        dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+                        dummy.position.y = -1000; dummy.updateMatrix();
+                        this.map.auraMeshes.obelisks.setMatrixAt(a.obeliskIdx, dummy.matrix);
+                        this.map.auraMeshes.obelisks.instanceMatrix.needsUpdate = true;
+                        
+                        // Spawna il Cadavere Oscuro e Inerte dell'obelisco
+                        let deadObelisk = new THREE.Mesh(window.GLOBAL_OBELISK_GEO, new THREE.MeshStandardMaterial({color: 0x050505, roughness: 0.9}));
+                        deadObelisk.position.set(a.x, 0, a.y);
+                        this.scene.add(deadObelisk);
+                        if (!this.deadObelisks) this.deadObelisks = [];
+                        this.deadObelisks.push(deadObelisk);
+                        
+                        // Effetto Esplosione Neutrale (non fa danni, è solo gratificazione visiva)
+                        this.getHazard().spawn(a.x, a.y, 250, 0.4, 0, 0xffffff, 'nova_ring');
+                        this.addTrauma(2.0);
+                        AudioEngine.playShoot('explosive_arrow');
+                        let pCount = AppSettings.isLow ? 10 : 30;
+                        for(let p=0; p<pCount; p++) this.getParticle().spawn(a.x, 20, a.y, SharedMat.spriteWhite, 'nova');
+                        
+                        // DROP DA ELITE ESTREMO
+                        let itemsToSpawn = ['life'];
+                        for(let c=0; c<MathUtils.randomInt(4, 8); c++) itemsToSpawn.push('coin');
+                        itemsToSpawn.push('essence');
+                        if (Math.random() < 0.6) itemsToSpawn.push('essence'); 
+                        
+                        let dropRadius = 40;
+                        let angleStep = (Math.PI * 2) / itemsToSpawn.length;
+                        for (let j = 0; j < itemsToSpawn.length; j++) {
+                            let type = itemsToSpawn[j];
+                            let dist = itemsToSpawn.length === 1 ? 0 : MathUtils.randomRange(20, dropRadius);
+                            let angle = angleStep * j + Math.random();
+                            let dropX = a.x + Math.cos(angle) * dist;
+                            let dropY = a.y + Math.sin(angle) * dist;
+                            if (this.map.isSolid(dropX, dropY)) { dropX = a.x; dropY = a.y; }
+                            
+                            if (type === 'coin') this.getCoin().spawn(dropX, dropY);
+                            if (type === 'life') this.getExtraLife().spawn(dropX, dropY);
+                            if (type === 'essence') this.getEssence().spawn(dropX, dropY, ESSENCE_TYPES[Math.floor(Math.random() * ESSENCE_TYPES.length)]);
+                        }
+                        
+                        this.getFloatingText().spawn(a.x, a.y + 40, "OBELISCO PROSCIUGATO!", '#00DDFF', 40, true);
+                    }
+                }
+            }
+        }
         // --- AGGIORNAMENTO SHADER ERBA INTERATTIVA ---
         InteractiveGrassSystem.uniforms.uTime.value = this.playTime;
         
@@ -4773,20 +4871,30 @@ class GameMap {
     window.GLOBAL_TELEGRAPH_GEO.rotateX(-Math.PI / 2);
 }
       const wallMesh = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, this.wallMat, wallCount);
-        
-        // --- PREPARAZIONE VERI OBELISCHI ---
+       // --- PREPARAZIONE VERI OBELISCHI ---
         if (!window.GLOBAL_OBELISK_GEO) window.GLOBAL_OBELISK_GEO = createObeliskGeometry();
         // 0: Foresta -> Verde, 1: Lava -> Rosso, 2: Ghiaccio -> Blu
         let aType = Game.currentThemeIndex === 2 ? 'blue' : (Game.currentThemeIndex === 1 ? 'red' : 'green');
         let obColor = aType === 'blue' ? 0x0044aa : (aType === 'green' ? 0x11aa11 : 0xaa0000);
         let obEmissive = aType === 'blue' ? 0x0088ff : (aType === 'green' ? 0x33ff00 : 0xff3300);
         
-        this.obeliskMat = new THREE.MeshPhongMaterial({color: 0x111111, emissive: obEmissive, emissiveIntensity: 0.3, shininess: 20});
+        // NUOVO: Texture Eterea Scorrevole
+        let emTex = Preloader.textures.smoke ? Preloader.textures.smoke.clone() : null;
+        if (emTex) { emTex.wrapS = THREE.RepeatWrapping; emTex.wrapT = THREE.RepeatWrapping; }
+        
+        this.obeliskMat = new THREE.MeshPhongMaterial({
+            color: 0x111111, 
+            emissive: obEmissive, 
+            emissiveMap: emTex, // Assegnazione della texture
+            emissiveIntensity: 0.8, 
+            shininess: 20
+        });
+        
         const obeliskMesh = new THREE.InstancedMesh(window.GLOBAL_OBELISK_GEO, this.obeliskMat, pillarCount);
         obeliskMesh.castShadow = true; obeliskMesh.receiveShadow = true;
-Game.auras = []; Game.auraIcons = [];
-       
-        const imBlueDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraBlueDome, pillarCount); // <-- RIGA MANCANTE
+        Game.auras = []; Game.auraIcons = [];
+        
+        const imBlueDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraBlueDome, pillarCount); 
         const imBlueRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraBlueRing, pillarCount);
         const imGreenDome = new THREE.InstancedMesh(SharedGeo.auraDome, SharedMat.auraGreenDome, pillarCount);
         const imGreenRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraGreenRing, pillarCount);
@@ -4794,8 +4902,16 @@ Game.auras = []; Game.auraIcons = [];
         const imRedRing = new THREE.InstancedMesh(SharedGeo.auraRing, SharedMat.auraRedRing, pillarCount);
         let cBlue = 0, cGreen = 0, cRed = 0;
 
+        // SALVIAMO I RIFERIMENTI PER MODIFICARLI IN TEMPO REALE
+        this.auraMeshes = {
+            blue: { dome: imBlueDome, ring: imBlueRing },
+            green: { dome: imGreenDome, ring: imGreenRing },
+            red: { dome: imRedDome, ring: imRedRing },
+            obelisks: obeliskMesh
+        };
+
         meshDirt.receiveShadow = true; meshGrass.receiveShadow = true; meshRock.receiveShadow = true;
-        wallMesh.castShadow = true; wallMesh.receiveShadow = false; 
+        wallMesh.castShadow = true; wallMesh.receiveShadow = false;
        
 
         let dummy = new THREE.Object3D(); 
@@ -4931,10 +5047,9 @@ Game.auras = []; Game.auraIcons = [];
                         let px = x * TILE_SIZE + TILE_SIZE / 2; let pz = y * TILE_SIZE + TILE_SIZE / 2;
                         let isBroken = Math.random() < 0.15; 
                         
-                       // --- SPAWN AUREE E OBELISCHI ---
-                        // Aumentiamo enormemente il raggio per dare senso tattico
-                        let auraRadius = 180; 
-                        Game.auras.push({ x: px, y: pz, type: aType, radiusSq: auraRadius * auraRadius });
+                      // --- SPAWN AUREE E OBELISCHI ---
+                        let auraRadius = 240; // AREA DI PARTENZA INGRANDITA
+                        let colorIdx = aType === 'blue' ? cBlue : (aType === 'green' ? cGreen : cRed);
                         
                         // Cupole e Anelli
                         dummy.position.set(px, 0, pz); dummy.scale.set(auraRadius, auraRadius, auraRadius); dummy.rotation.set(0, 0, 0); dummy.updateMatrix();
@@ -4958,6 +5073,13 @@ Game.auras = []; Game.auraIcons = [];
                         iconSprite.scale.set(20, 20, 1);
                         this.mapGroup.add(iconSprite);
                         Game.auraIcons.push(iconSprite);
+
+                        // SALVATAGGIO DEI DATI COMPLETI NELL'ARRAY
+                        Game.auras.push({ 
+                            x: px, y: pz, type: aType, 
+                            radius: auraRadius, radiusSq: auraRadius * auraRadius, 
+                            active: true, colorIdx: colorIdx, obeliskIdx: (pIdx - 1), icon: iconSprite
+                        });
                         // -------------------------
                     } else if (!isBossFloor && Math.random() < 0.015 && this.grid[x][y] !== 1) {
                         let crystal = Game.getEnemy();
@@ -8225,6 +8347,13 @@ update(dt) {
 }
 }
 function clearScene() {
+    if (Game.deadObelisks) {
+        for (let i = 0; i < Game.deadObelisks.length; i++) {
+            Game.scene.remove(Game.deadObelisks[i]);
+            if (Game.deadObelisks[i].material) Game.deadObelisks[i].material.dispose();
+        }
+        Game.deadObelisks = [];
+    }
     if (Game.pursuerTimeout) clearTimeout(Game.pursuerTimeout);
     if (Game.map) {
         Game.map.mapGroup.traverse((child) => {

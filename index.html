@@ -4974,9 +4974,7 @@ class GameMap {
         let emTex = Preloader.textures.smoke ? Preloader.textures.smoke.clone() : null;
         if (emTex) { emTex.wrapS = THREE.RepeatWrapping; emTex.wrapT = THREE.RepeatWrapping; }
         
-      // RIPRISTINO: L'obelisco DEVE avere il materiale emissivo e la texture per brillare finché è vivo!
-        let emTex = Preloader.textures.smoke ? Preloader.textures.smoke.clone() : null;
-        if (emTex) { emTex.wrapS = THREE.RepeatWrapping; emTex.wrapT = THREE.RepeatWrapping; }
+     
         
         this.obeliskMat = new THREE.MeshPhongMaterial({
             color: 0x111111, 

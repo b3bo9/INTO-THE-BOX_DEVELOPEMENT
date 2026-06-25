@@ -7039,17 +7039,23 @@ Game.scene.add(this.telegraphMesh);
        // --- FINE AI STAGGERING ---
 
        
-    // OTTIMIZZAZIONE CPU (PLAYER):
+    // OTTIMIZZAZIONE CPU (ENEMY):
         if (this._lastAuraType !== aura) {
             this._lastAuraType = aura;
             if (aura) {
                 this.auraRingMesh.visible = true;
                 this.auraGlow.visible = true;
+                
+                // Aggiorniamo il colore direttamente qui senza chiamare metodi esterni
+                // (Questa logica sostituisce la chiamata a updateAppearance)
+                let ringColor = aura === 'blue' ? 0x00aaff : (aura === 'green' ? 0x66ff33 : (aura === 'red' ? 0xff3333 : 0xcc33ff));
+                this.auraRingMesh.material.color.setHex(ringColor);
+                this.auraGlow.material.color.setHex(ringColor);
             } else {
                 this.auraRingMesh.visible = false;
                 this.auraGlow.visible = false;
             }
-            this.updateAppearance(); // Deleghiamo il ricalcolo dei colori ad updateAppearance!
+            // ATTENZIONE: abbiamo rimosso this.updateAppearance() perché il nemico non lo possiede
         }
 
         if (aura) {

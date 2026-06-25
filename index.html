@@ -3770,9 +3770,23 @@ update(combatDt, visualDt) {
                         this.map.auraMeshes.obelisks.setMatrixAt(a.obeliskIdx, dummy.matrix);
                         this.map.auraMeshes.obelisks.instanceMatrix.needsUpdate = true;
                         
-                       // Spawna il Cadavere Oscuro e Inerte dell'obelisco (Spento e scuro)
-                        let deadObelisk = new THREE.Mesh(window.GLOBAL_OBELISK_GEO, new THREE.MeshStandardMaterial({color: 0x08080c, roughness: 0.9, metalness: 0.1}));
+                       // Spawna il Cadavere Oscuro e Inerte dell'obelisco (Spento e carbonizzato)
+                        let deadObelisk = new THREE.Mesh(window.GLOBAL_OBELISK_GEO, new THREE.MeshStandardMaterial({color: 0x050505, roughness: 1.0, metalness: 0.0}));
                         deadObelisk.position.set(a.x, 0, a.y);
+                        
+                        // EFFETTO A COSTO ZERO: Terra bruciata alla base (Decalcomania)
+                        // Ricicliamo la texture dell'ombra radiale, la tingiamo di nero opaco e la allarghiamo a dismisura
+                        let scorchMark = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), new THREE.MeshBasicMaterial({
+                            map: BLOB_SHADOW_TEX, 
+                            color: 0x000000, 
+                            transparent: true, 
+                            opacity: 0.85, 
+                            depthWrite: false
+                        }));
+                        scorchMark.rotation.x = -Math.PI / 2; // La sdraiamo a terra
+                        scorchMark.position.y = 0.2; // Appena sopra il pavimento per evitare compenetrazioni (Z-fighting)
+                        deadObelisk.add(scorchMark); // La leghiamo all'obelisco morto, così verrà pulita in automatico a fine livello!
+
                         this.scene.add(deadObelisk);
                         if (!this.deadObelisks) this.deadObelisks = [];
                         this.deadObelisks.push(deadObelisk);
@@ -4960,11 +4974,16 @@ class GameMap {
         let emTex = Preloader.textures.smoke ? Preloader.textures.smoke.clone() : null;
         if (emTex) { emTex.wrapS = THREE.RepeatWrapping; emTex.wrapT = THREE.RepeatWrapping; }
         
-       // NUOVO: Materiale dell'obelisco non più emissivo statico, la luce viene gestita per-colore
+      // RIPRISTINO: L'obelisco DEVE avere il materiale emissivo e la texture per brillare finché è vivo!
+        let emTex = Preloader.textures.smoke ? Preloader.textures.smoke.clone() : null;
+        if (emTex) { emTex.wrapS = THREE.RepeatWrapping; emTex.wrapT = THREE.RepeatWrapping; }
+        
         this.obeliskMat = new THREE.MeshPhongMaterial({
-            color: 0x15151c, 
-            shininess: 30,
-            specular: 0x222222
+            color: 0x111111, 
+            emissive: obEmissive, 
+            emissiveMap: emTex, 
+            emissiveIntensity: 0.8, 
+            shininess: 20
         });
         
         const obeliskMesh = new THREE.InstancedMesh(window.GLOBAL_OBELISK_GEO, this.obeliskMat, pillarCount);

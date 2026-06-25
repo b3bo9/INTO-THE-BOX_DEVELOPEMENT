@@ -67,11 +67,11 @@
         .dot-glow-blue { animation: pulse-glow-blue 2s infinite ease-in-out 0.6s; }
         .dot-glow-green { animation: pulse-glow-green 2s infinite ease-in-out 1.2s; }
         
-        @keyframes ult-glow-anim {
-            0%, 100% { box-shadow: 0 0 8px rgba(0, 221, 255, 0.3); border-color: #4b5563; }
-            50% { box-shadow: 0 0 20px rgba(0, 221, 255, 1); border-color: #00DDFF; }
+       @keyframes ult-glow-anim {
+            0%, 100% { box-shadow: 0 0 12px rgba(0, 221, 255, 0.4); border-color: #4b5563; filter: brightness(1); }
+            50% { box-shadow: 0 0 35px rgba(0, 221, 255, 1), inset 0 0 15px rgba(0, 221, 255, 0.6); border-color: #00DDFF; filter: brightness(1.3); transform: scale(1.04); }
         }
-        .ult-ready { animation: ult-glow-anim 1.5s infinite ease-in-out !important; }
+        .ult-ready { animation: ult-glow-anim 1.2s infinite ease-in-out !important; }
 
         @keyframes shimmer { 100% { transform: translateX(100%); } }
        .animate-shimmer { animation: shimmer 1.5s infinite linear; }
@@ -3663,7 +3663,8 @@ loop(timestamp) {
   startGame(diffMult) {
         document.getElementById('mainMenu').classList.add('hidden'); document.getElementById('hud').classList.remove('hidden');
         if (isTouchDevice) document.getElementById('mobile-controls').classList.remove('hidden');
-        this.baseDifficultyMult = diffMult || 1.0;
+      // Default assoluto forzato su NORMALE (0.6) dato che il tasto è stato rimosso
+        this.baseDifficultyMult = 0.6;
         this.difficultyMult = this.baseDifficultyMult;
         this.floor = 1; this.totalKills = 0; this.lives = 3; this.playTime = 0; this.coins = 0; this.lastRelicCount = 0;
         this.currentThemeIndex = undefined; // <-- AGGIUNTA QUESTA RIGA PER RESETTARE IL TEMA
@@ -3769,33 +3770,35 @@ update(combatDt, visualDt) {
                         this.map.auraMeshes.obelisks.setMatrixAt(a.obeliskIdx, dummy.matrix);
                         this.map.auraMeshes.obelisks.instanceMatrix.needsUpdate = true;
                         
-                        // Spawna il Cadavere Oscuro e Inerte dell'obelisco
-                        let deadObelisk = new THREE.Mesh(window.GLOBAL_OBELISK_GEO, new THREE.MeshStandardMaterial({color: 0x050505, roughness: 0.9}));
+                       // Spawna il Cadavere Oscuro e Inerte dell'obelisco (Spento e scuro)
+                        let deadObelisk = new THREE.Mesh(window.GLOBAL_OBELISK_GEO, new THREE.MeshStandardMaterial({color: 0x08080c, roughness: 0.9, metalness: 0.1}));
                         deadObelisk.position.set(a.x, 0, a.y);
                         this.scene.add(deadObelisk);
                         if (!this.deadObelisks) this.deadObelisks = [];
                         this.deadObelisks.push(deadObelisk);
                         
-                        // Effetto Esplosione Neutrale (non fa danni, è solo gratificazione visiva)
+                        // Effetto Esplosione Neutrale
                         this.getHazard().spawn(a.x, a.y, 250, 0.4, 0, 0xffffff, 'nova_ring');
-                        this.addTrauma(2.0);
+                        this.addTrauma(1.5);
                         AudioEngine.playShoot('explosive_arrow');
                         let pCount = AppSettings.isLow ? 10 : 30;
                         for(let p=0; p<pCount; p++) this.getParticle().spawn(a.x, 20, a.y, SharedMat.spriteWhite, 'nova');
                         
-                       // DROP DA ELITE ESTREMO O CORROTTO
-                        let itemsToSpawn = ['life'];
+                        // BILANCIAMENTO DROP: Ridotta la % di drop cuore al 25% su obelischi normali
+                        let itemsToSpawn = [];
                         let dropsRelic = false;
 
                         if (a.type === 'corrupted') {
-                            // 50% Reliquia, 50% Pioggia di Monete (+20 monete)
+                            // 50% Reliquia, 50% Pioggia di Monete (+25 monete)
                             if (Math.random() < 0.5) {
                                 dropsRelic = true;
                             } else {
                                 for(let c=0; c<25; c++) itemsToSpawn.push('coin');
                             }
+                            if (Math.random() < 0.25) itemsToSpawn.push('life'); // 25% cuore anche qui
                         } else {
-                            // Obelisco normale
+                            // Obelisco normale: 25% probabilità Cuore Vitale
+                            if (Math.random() < 0.25) itemsToSpawn.push('life');
                             for(let c=0; c<MathUtils.randomInt(4, 8); c++) itemsToSpawn.push('coin');
                             itemsToSpawn.push('essence');
                             if (Math.random() < 0.6) itemsToSpawn.push('essence'); 
@@ -4062,7 +4065,7 @@ update(combatDt, visualDt) {
         }
         
        // --- NUOVO: ALBERI INFUOCATI REALISTICI (SOLO TEMA LAVA) ---
-        if (this.currentThemeIndex === 1 && this.map && this.map.treePositions && this.map.treePositions.length > 0) {
+       if (Game.currentThemeIndex === 1 && this.map && this.map.treePositions && this.map.treePositions.length > 0) {
             // OTTIMIZZAZIONE ZERO-ALLOCATION: Evitiamo il .filter() e la creazione di oggetti {x,y}
             if (!this._tempVisibleTrees) this._tempVisibleTrees = [];
             this._tempVisibleTrees.length = 0; // Svuota l'array senza distruggerlo dalla RAM
@@ -4957,12 +4960,11 @@ class GameMap {
         let emTex = Preloader.textures.smoke ? Preloader.textures.smoke.clone() : null;
         if (emTex) { emTex.wrapS = THREE.RepeatWrapping; emTex.wrapT = THREE.RepeatWrapping; }
         
+       // NUOVO: Materiale dell'obelisco non più emissivo statico, la luce viene gestita per-colore
         this.obeliskMat = new THREE.MeshPhongMaterial({
-            color: 0x111111, 
-            emissive: obEmissive, 
-            emissiveMap: emTex, // Assegnazione della texture
-            emissiveIntensity: 0.8, 
-            shininess: 20
+            color: 0x15151c, 
+            shininess: 30,
+            specular: 0x222222
         });
         
         const obeliskMesh = new THREE.InstancedMesh(window.GLOBAL_OBELISK_GEO, this.obeliskMat, pillarCount);
@@ -5703,32 +5705,33 @@ class Player extends Entity {
     }
     updateAppearance() {
         let colorHex = 0x222222; let lColor = 0xffffff; let gemColor = 0xffff00;
-        let isUltra = AppSettings.isUltraPC;
         if (this.essence) { colorHex = ESSENCE_COLORS[this.essence]; lColor = ESSENCE_COLORS[this.essence]; gemColor = ESSENCE_COLORS[this.essence]; }
+        
+        // PRIORITÀ ASSOLUTA ULTIMATE: Se attiva, ignora qualsiasi colore di essenza o overdrive
+        if (Game.ultimateActive) {
+            colorHex = 0x0088ff; lColor = 0x00DDFF; gemColor = 0x00DDFF;
+        }
+
         this.modelParts.body.material.color.setHex(colorHex); this.light.color.setHex(lColor);
         this.staffGemMat.color.setHex(gemColor); this.staffGemMat.emissive.setHex(gemColor);
         this.fakeBloom.material.color.setHex(gemColor);
-        this.fakeBloom.material.opacity = this.overdrive ? 1.0 : 0.6;
+        this.fakeBloom.material.opacity = (this.overdrive || Game.ultimateActive) ? 1.0 : 0.6;
         
-        if (this.overdrive) { 
-            this.light.intensity = 3.5; // Bagliore fortissimo durante l'overdrive
-            this.modelParts.body.material.emissive.setHex(colorHex); 
-            this.modelParts.body.material.emissiveIntensity = 1.0; 
-        } else { 
-            // Intensità base calibrata per vedere bene il terreno circostante
-            this.light.intensity = this.essence ? 2.5 : 1.8; 
-            this.modelParts.body.material.emissive.setHex(0x000000); 
+        if (Game.ultimateActive) {  
+            this.modelParts.body.material.emissive.setHex(0x00DDFF);  
+            this.modelParts.body.material.emissiveIntensity = 2.0;  
+            this.light.intensity = 4.0;
+            this.light.distance = isTouchDevice ? 900 : 1400;
+        } else if (this.overdrive) {  
+            this.light.intensity = 3.5; 
+            this.modelParts.body.material.emissive.setHex(colorHex);  
+            this.modelParts.body.material.emissiveIntensity = 1.0;  
+        } else {  
+            this.light.intensity = this.essence ? 2.5 : 1.8;  
+            this.modelParts.body.material.emissive.setHex(0x000000);  
         }
-        if (Game.ultimateActive) { 
-            this.modelParts.body.material.emissive.setHex(0x00DDFF); 
-            this.modelParts.body.material.emissiveIntensity = 2.0; 
-            this.light.color.setHex(0x00DDFF); 
-           this.light.intensity = 4.0; // Massima visibilità in modalità Ultimate
-            this.staffGemMat.emissive.setHex(0xffffff); 
-        }
-       if (Game.isCorrupted && Game.corruptedType === 'darkness') {
-            // FIX: Sovrascriviamo con una luce intensa e raggio ampio per non far inghiottire il modello dal buio
-            this.light.intensity = 2.5; 
+        if (Game.isCorrupted && Game.corruptedType === 'darkness') {
+            this.light.intensity = Game.ultimateActive ? 4.0 : 2.5; 
             this.light.distance = isTouchDevice ? 800 : 1200; 
         }
     }
@@ -6016,11 +6019,12 @@ class Player extends Entity {
             this.auraGlow.position.set(this.x, 0.4, this.y);
             this.auraGlow.updateMatrix();
             
-            // FIX COLORE: Tinta extra sul corpo SOLO se non sei in Ultimate o Overdrive attivo
+     
           let ringColor = aura === 'blue' ? 0x00aaff : (aura === 'green' ? 0x66ff33 : (aura === 'red' ? 0xff3333 : 0xcc33ff));
             this.auraRingMesh.material.color.setHex(ringColor);
             this.auraGlow.material.color.setHex(ringColor);
             
+            // Applica l'emissive dell'obelisco SOLO se il giocatore NON è in Ultimate o Overdrive
             if (!Game.ultimateActive && !this.overdrive) {
                 let emitColor = aura === 'blue' ? 0x002255 : (aura === 'green' ? 0x113311 : (aura === 'red' ? 0x440000 : 0x440055));
                 this.modelParts.body.material.emissive.setHex(emitColor);
@@ -6671,7 +6675,8 @@ Game.scene.add(this.telegraphMesh);
         }
 
         this.radius = size;
-        this.stats.maxHp = type === 'crystal' ? 1 : Math.floor(32 * hpMod * (1 + level * 0.3) * Game.difficultyMult); 
+        // Bilanciamento: HP di base dei nemici aumentati (moltiplicatore di base portato a 38 invece di 32)
+        this.stats.maxHp = type === 'crystal' ? 1 : Math.floor(38 * hpMod * (1 + level * 0.3) * Game.difficultyMult); 
         this.stats.hp = this.stats.maxHp;
         this.stats.minDmg = Math.floor(12 * dmgMod * (1 + level * 0.15) * Game.difficultyMult); 
         this.stats.maxDmg = Math.floor(22 * dmgMod * (1 + level * 0.15) * Game.difficultyMult);

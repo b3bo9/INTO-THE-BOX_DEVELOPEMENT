@@ -226,7 +226,7 @@ body.colorblind-mode #opt-colorblind-text {
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 133</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 134</p>
                 </div>
             </div>
         </div>
@@ -2240,7 +2240,8 @@ class DashLine {
         this.mesh.visible = true;
     }
     update(dt) {
-        if(!this.active) return;
+        if (!this.active) return;
+        if (dt === 0) return; // FIX BETA: Sospende i tick di danno delle pozze di fuoco/acido durante la pausa!
         this.life -= dt;
         if(this.life <= 0) { this.active = false; this.mesh.visible = false; return; }
         this.mesh.scale.y = 4 * (this.life/this.maxLife);
@@ -3753,10 +3754,13 @@ loop(timestamp) {
     },
     
 update(combatDt, visualDt) {
-     
-
         if (this.state !== 'PLAYING' && this.state !== 'PAUSED') return;
         let dt = combatDt; // Preserva compatibilità con calcoli interni esistenti
+        
+        // Crea o incrementa un tempo visivo che ignora la pausa per gli shader ambientali
+        if (this.visualTime === undefined) this.visualTime = 0;
+        this.visualTime += visualDt;
+
 // --- SCROLLING UV OBELISCO MAGICO ---
         if (this.map && this.map.obeliskMat && this.map.obeliskMat.emissiveMap) {
             this.map.obeliskMat.emissiveMap.offset.y -= visualDt * 0.3; 
@@ -3917,7 +3921,7 @@ update(combatDt, visualDt) {
             if (updateFlags.obelisks) this.map.auraMeshes.obelisks.instanceMatrix.needsUpdate = true;
         }
         // --- AGGIORNAMENTO SHADER ERBA INTERATTIVA ---
-        InteractiveGrassSystem.uniforms.uTime.value = this.playTime;
+        InteractiveGrassSystem.uniforms.uTime.value = this.visualTime; // Usa il tempo visivo costante
         
         let windSources = InteractiveGrassSystem.uniforms.uWindSources.value;
         let windCount = 0;
@@ -5825,7 +5829,9 @@ class Player extends Entity {
     }
 
     update(dt) {
-        if (this.dead) return; this.updateFlash(dt);
+        if (this.dead) return; 
+        this.updateFlash(dt);
+        if (dt === 0) return; // FIX BETA: Blocca input, attacchi e i-frames se il gioco è in pausa!
       // --- HOt: CURA NEL TEMPO CAOS ELEMENTALE ---
         if (this.chaosHoTTimer > 0) {
             this.chaosHoTTimer -= dt;
@@ -6874,8 +6880,10 @@ Game.scene.add(this.telegraphMesh);
             Game.getFloatingText().spawn(this.x, this.y + 20, txt, col, 35, true); 
         }
     }
-  update(dt) {
+ update(dt) {
         if (!this.active || this.dead) return; 
+        if (dt === 0) return; // FIX BETA: Immobilizza l'IA dei mostri e ferma i calcoli dei Profeti se in pausa!
+        
         
         // BUGFIX INVINCIBILITA' INSEGUITORE E SCIA DI LAVA
         if (this.isPursuer) {
@@ -8152,6 +8160,7 @@ class Projectile {
         this.windIntensity = 1.0;
     }
     update(dt) {
+        if (dt === 0) return; // FIX BETA: Impedisce ai proiettili di infliggere micro-danni infiniti ad ogni frame in pausa!
         // --- INIZIO FISICA DEL VENTO ---
         if (!this.active) {
             if (this.windIntensity > 0) {
@@ -8606,7 +8615,7 @@ function clearScene() {
                 if (child.dispose) child.dispose(); // Svuota i buffer instanced
             }
         });
-       if (Game.map.obeliskMat) Game.map.obeliskMat.dispose();
+      if (Game.map && Game.map.obeliskMat) Game.map.obeliskMat.dispose();
         Game.scene.remove(Game.map.mapGroup);
         Game.map.fogMesh = null;
         Game.map.treePositions = [];

@@ -2501,7 +2501,11 @@ class SpatialHashGrid {
         this.invDimX = 1 / dimensions[0]; 
         this.invDimY = 1 / dimensions[1];
         this.cells = new Map();
-        this._tempKeys = []; this._tempResults = []; this._seen = new Set();
+        this._tempKeys = []; 
+        // FIX BETA: Mini-pool per evitare sovrascritture durante le chiamate annidate (es. Fulmini a Catena)
+        this._tempResultsPool = [[], [], [], []]; 
+        this._poolIdx = 0;
+        this._seen = new Set();
     }
     
     insert(client) {
@@ -2511,7 +2515,7 @@ class SpatialHashGrid {
         for(let i=0; i<this._tempKeys.length; i++) {
             let k = this._tempKeys[i]; client.gridKeys.push(k);
             let cell = this.cells.get(k); 
-            if (!cell) { cell = []; this.cells.set(k, cell); } // FIX: Usa Array invece di Set
+            if (!cell) { cell = []; this.cells.set(k, cell); }
             if (cell.indexOf(client) === -1) cell.push(client);
         }
     }
@@ -2539,13 +2543,12 @@ class SpatialHashGrid {
         }
     }
     
-   remove(client) {
+    remove(client) {
         if (!client.gridKeys) return;
         for(let i=0; i<client.gridKeys.length; i++) {
             let k = client.gridKeys[i]; let cell = this.cells.get(k);
             if (cell) { 
                 let idx = cell.indexOf(client);
-                // VERO ZERO-COST: Swap-and-pop invece di splice (evita la riallocazione dell'array)
                 if (idx !== -1) {
                     cell[idx] = cell[cell.length - 1]; 
                     cell.pop(); 
@@ -2556,9 +2559,11 @@ class SpatialHashGrid {
     }
     
     findNearby(client, radius) {
-        this._tempResults.length = 0; 
-        // OTTIMIZZAZIONE ESTREMA: Via il Set! Usiamo un ID di ricerca incrementale.
-        // Zero allocazioni di memoria, operazione istantanea (O(1)).
+        // FIX BETA: Ruota l'array per permettere chiamate di ricerca dentro altre chiamate
+        this._poolIdx = (this._poolIdx + 1) % 4;
+        let currentResults = this._tempResultsPool[this._poolIdx];
+        currentResults.length = 0; 
+        
         this._searchId = (this._searchId || 0) + 1;
         
         if (!this._searchProxy) this._searchProxy = {x: 0, y: 0, radius: 0};
@@ -2574,12 +2579,12 @@ class SpatialHashGrid {
                     let other = cell[j];
                     if (client !== other && other._lastSearchId !== this._searchId) { 
                         other._lastSearchId = this._searchId; 
-                        this._tempResults.push(other); 
+                        currentResults.push(other); 
                     } 
                 } 
             }
         }
-        return this._tempResults;
+        return currentResults;
     }
 
     _clientKeys(client, outKeys) {
@@ -2604,7 +2609,7 @@ const TouchControls = {
         this.setupJoystick(document.getElementById('joy-left-zone'), document.getElementById('joy-left-stick'), 'left');
         this.setupJoystick(document.getElementById('joy-right-zone'), document.getElementById('joy-right-stick'), 'right');
         
-        // --- LOGICA DOPPIO TAP SCHERMO (VUOTO) ---
+      // --- LOGICA DOPPIO TAP SCHERMO (VUOTO) ---
         document.body.addEventListener('touchstart', (e) => {
             // Continuiamo a ignorare l'UI fissa e i joystick per non accavallare i comandi
             if (e.target.closest('#joy-left-zone') || 
@@ -2618,7 +2623,8 @@ const TouchControls = {
             const timeSinceLastTap = now - this.lastTapTime;
             
             if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
-                if(Game.state === 'PLAYING') Game.player.dash();
+                // FIX BETA: Blocca lo scatto se sei morto!
+                if(Game.state === 'PLAYING' && !Game.player.dead) Game.player.dash();
             }
             this.lastTapTime = now;
         }, {passive: true});

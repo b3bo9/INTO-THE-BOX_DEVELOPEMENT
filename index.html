@@ -3719,10 +3719,13 @@ update(combatDt, visualDt) {
 
                     // LOGICHE SPECIALI CORROTTE
                     if (a.type === 'corrupted') {
-                        shrinkSpeed = 0; // Il tempo normale non lo restringe
-                        // Drena gli HP del player
-                        Game.player.takeDamage(Game.player.stats.maxHp * 0.01 * combatDt, null);
-                        if (UI.els.bloodVignette) UI.els.bloodVignette.style.opacity = 0.5 + Math.sin(Game.playTime * 10) * 0.2;
+                        // FIX 1: Impostiamo una velocità di purificazione dimezzata (15) 
+                        // invece di 0, permettendo al giocatore di distruggere l'obelisco.
+                        shrinkSpeed = 15; 
+                        
+                        // FIX 2: Rimossa la chiamata a takeDamage e lo stile CSS della vignetta.
+                        // Il drenaggio della vita (senza invincibilità) e i feedback visivi 
+                        // sono già gestiti fluidamente e in sicurezza dentro Player.update(dt)!
                         
                         if (a.hazardTimer === undefined) a.hazardTimer = 0;
                         a.hazardTimer -= combatDt;

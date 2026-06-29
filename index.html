@@ -3977,18 +3977,6 @@ update(combatDt, visualDt) {
         InteractiveGrassSystem.uniforms.uWindCount.value = windCount;
         // ----------------------------------------------
 
-        // EFFETTI VISIVI: si muovono sempre a tempo reale (visualDt), liberi dall'Hit-Stop
-        let debrisMoved = false;
-        for (let i = 0, len = this.debris.length; i < len; i++) {
-            if(this.debris[i].active) {
-                this.debris[i].update(visualDt);
-                debrisMoved = true;
-            }
-        }
-        // Inviamo il pacchetto di dati alla GPU una volta sola!
-        if (debrisMoved && Game.dynamicDebrisMesh) Game.dynamicDebrisMesh.instanceMatrix.needsUpdate = true;
-        for (let i = 0, len = this.particles.length; i < len; i++) if(this.particles[i].active) this.particles[i].update(visualDt);
-        for (let i = 0, len = this.floatingTexts.length; i < len; i++) if(this.floatingTexts[i].active) this.floatingTexts[i].update(visualDt);
 
         this.frameCount++; 
         this.playTime += combatDt; // Il tempo di gioco reale si ferma durante l'Hit-Stop

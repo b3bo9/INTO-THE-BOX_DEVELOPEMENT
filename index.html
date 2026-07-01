@@ -83,13 +83,17 @@
         }
         .anim-reforge { animation: reforge-magic 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
 
-    #vignette { 
-    position: absolute; inset: 0; 
-    /* RIMOSSO mix-blend-mode: multiply; -> Ammazzava le performance su smartphone! */
-    background: radial-gradient(circle at center, transparent 40%, rgba(2, 2, 10, 0.7) 85%, rgba(0, 0, 5, 0.95) 100%); 
-    z-index: 5; pointer-events: none; 
-    transition: opacity 0.5s; 
-}
+   #vignette { 
+        position: absolute; inset: 0; 
+        background: radial-gradient(circle at center, transparent 40%, rgba(2, 2, 10, 0.7) 85%, rgba(0, 0, 5, 0.95) 100%); 
+        z-index: 5; pointer-events: none; 
+        transition: opacity 0.5s; 
+    }
+    
+    /* FIX SURRISCALDAMENTO: Spegne il DOM Compositing pesante sugli smartphone */
+    @media (hover: none) and (pointer: coarse) {
+        #vignette { display: none !important; }
+    }
 
 #blood-vignette {
     background: radial-gradient(circle at center, transparent 30%, rgba(220, 0, 0, 0.3) 80%, rgba(255, 0, 0, 0.6) 100%);
@@ -1991,27 +1995,32 @@ function createBlobShadowTexture() {
 // OTTIMIZZAZIONE 1: Cache Globale delle texture del pavimento per evitare VRAM Leaks
 const GLOBAL_WALL_TEX = createPatternTexture('wall'); 
 const GLOBAL_ALPHA_TEX = createOrganicAlphaMap();
-const SharedMat = {
-    hazardNovaRing: new THREE.MeshBasicMaterial({color: 0x99ff00, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending}),
-    blood: new THREE.MeshStandardMaterial({map: BLOOD_TEX, transparent: true, opacity: 0.85, depthWrite: false, roughness: 0.8}),
-    spriteLevel: new THREE.SpriteMaterial({color: 0xffffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
-    spriteRed: new THREE.SpriteMaterial({color: ESSENCE_COLORS.red, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
-    spriteBlue: new THREE.SpriteMaterial({color: ESSENCE_COLORS.blue, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
-    spriteGreen: new THREE.SpriteMaterial({color: ESSENCE_COLORS.green, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
-    spriteWhite: new THREE.SpriteMaterial({color: 0xffffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
-    spritePink: new THREE.SpriteMaterial({color: 0xff66bb, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
-   spriteBlood: new THREE.SpriteMaterial({color: 0xaa0000, map: GLOW_TEX, transparent: true, depthWrite: false}),
-    spriteDust: new THREE.SpriteMaterial({color: 0x2a1e16, map: GLOW_TEX, transparent: true, opacity: 0.6, depthWrite: false}),
-    
-    arrow: new THREE.MeshPhongMaterial({color: 0x888888, emissive: 0x444444}),
-    playerArrow: new THREE.MeshPhongMaterial({color: 0x000000, emissive: 0xffff00, emissiveIntensity: 2.0}),
-    spriteYellow: new THREE.SpriteMaterial({color: 0xffff00, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
-    homingArrow: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.green, emissiveIntensity: 2.0}),
-    explosiveArrow: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.red, emissiveIntensity: 2.0}),
-    chainLightning: new THREE.MeshPhongMaterial({color: 0x000000, emissive: ESSENCE_COLORS.blue, emissiveIntensity: 2.0}),
-    enemyFireball: new THREE.MeshPhongMaterial({color: 0x220000, emissive: 0xff3300, emissiveIntensity: 2.0}), 
-    enemyBolt: new THREE.MeshPhongMaterial({color: 0x220022, emissive: 0xaa00ff, emissiveIntensity: 2.0}), 
-    fireShape: new THREE.MeshPhongMaterial({color: 0x220000, emissive: 0xff3300, emissiveIntensity: 2.0}),
+// OTTIMIZZAZIONE GPU MOBILE: I materiali "luminosi" non calcolano la luce ambientale/direzionale su smartphone
+    const ProjMatClass = isTouchDevice ? THREE.MeshBasicMaterial : THREE.MeshPhongMaterial;
+    const enemyDmgColor = isTouchDevice ? { color: 0xff3300 } : { color: 0x220000, emissive: 0xff3300, emissiveIntensity: 2.0 };
+    const boltColor = isTouchDevice ? { color: 0xaa00ff } : { color: 0x220022, emissive: 0xaa00ff, emissiveIntensity: 2.0 };
+
+    const SharedMat = {
+        hazardNovaRing: new THREE.MeshBasicMaterial({color: 0x99ff00, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending}),
+        blood: new THREE.MeshStandardMaterial({map: BLOOD_TEX, transparent: true, opacity: 0.85, depthWrite: false, roughness: 0.8}),
+        spriteLevel: new THREE.SpriteMaterial({color: 0xffffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
+        spriteRed: new THREE.SpriteMaterial({color: ESSENCE_COLORS.red, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
+        spriteBlue: new THREE.SpriteMaterial({color: ESSENCE_COLORS.blue, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
+        spriteGreen: new THREE.SpriteMaterial({color: ESSENCE_COLORS.green, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
+        spriteWhite: new THREE.SpriteMaterial({color: 0xffffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
+        spritePink: new THREE.SpriteMaterial({color: 0xff66bb, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
+        spriteBlood: new THREE.SpriteMaterial({color: 0xaa0000, map: GLOW_TEX, transparent: true, depthWrite: false}),
+        spriteDust: new THREE.SpriteMaterial({color: 0x2a1e16, map: GLOW_TEX, transparent: true, opacity: 0.6, depthWrite: false}),
+        
+        arrow: new THREE.MeshPhongMaterial({color: 0x888888, emissive: 0x444444}),
+        playerArrow: new ProjMatClass(isTouchDevice ? { color: 0xffff00 } : { color: 0x000000, emissive: 0xffff00, emissiveIntensity: 2.0 }),
+        spriteYellow: new THREE.SpriteMaterial({color: 0xffff00, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
+        homingArrow: new ProjMatClass(isTouchDevice ? { color: ESSENCE_COLORS.green } : { color: 0x000000, emissive: ESSENCE_COLORS.green, emissiveIntensity: 2.0 }),
+        explosiveArrow: new ProjMatClass(isTouchDevice ? { color: ESSENCE_COLORS.red } : { color: 0x000000, emissive: ESSENCE_COLORS.red, emissiveIntensity: 2.0 }),
+        chainLightning: new ProjMatClass(isTouchDevice ? { color: ESSENCE_COLORS.blue } : { color: 0x000000, emissive: ESSENCE_COLORS.blue, emissiveIntensity: 2.0 }),
+        enemyFireball: new ProjMatClass(enemyDmgColor), 
+        enemyBolt: new ProjMatClass(boltColor), 
+        fireShape: new ProjMatClass(enemyDmgColor),
     blobShadow: new THREE.MeshBasicMaterial({map: BLOB_SHADOW_TEX, transparent: true, depthWrite: false}),
    telegraph: new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }),
     hazardFirePlane: new THREE.MeshBasicMaterial({color: 0x33ff00, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false}), // GIOCATORE: VERDE
@@ -4715,24 +4724,29 @@ const InteractiveGrassSystem = {
                     windWave * 2.5
                 );
 
-                vec2 interactDir = vec2(0.0);
+               vec2 interactDir = vec2(0.0);
                 
-                for(int i = 0; i < MAX_WIND; i++) {
-                    if (i >= uWindCount) break;
-                    
-                    vec3 windData = uWindSources[i];
-                    float intensity = windData.y; 
-                    
-                    vec2 dir = basePos.xz - vec2(windData.x, windData.z);
-                    float dist = length(dir);
-                    
-                    float radius = 180.0;
-                    if(dist < radius && dist > 0.001) {
-                        float falloff = 1.0 - smoothstep(0.0, radius, dist);
-                        float pushForce = falloff * falloff * falloff;
-                        float wobble = 1.0 + sin(dist * 0.08 - uTime * 12.0) * 0.65 * falloff;
+                // FIX VRAM & CPU: Calcola la complessità del vento SOLO se il ciuffo è visibile alla telecamera!
+                float distToCam = distance(basePos.xz, cameraPosition.xz);
+                
+                if (distToCam < 1400.0) { // Oltre le 1400 unità non vedi nulla
+                    for(int i = 0; i < MAX_WIND; i++) {
+                        if (i >= uWindCount) break;
                         
-                        interactDir += normalize(dir) * (pushForce * wobble) * 45.0 * intensity;
+                        vec3 windData = uWindSources[i];
+                        float intensity = windData.y; 
+                        
+                        vec2 dir = basePos.xz - vec2(windData.x, windData.z);
+                        float dist = length(dir);
+                        
+                        float radius = 180.0;
+                        if(dist < radius && dist > 0.001) {
+                            float falloff = 1.0 - smoothstep(0.0, radius, dist);
+                            float pushForce = falloff * falloff * falloff;
+                            float wobble = 1.0 + sin(dist * 0.08 - uTime * 12.0) * 0.65 * falloff;
+                            
+                            interactDir += normalize(dir) * (pushForce * wobble) * 45.0 * intensity;
+                        }
                     }
                 }
 

@@ -308,6 +308,9 @@ body.colorblind-mode #opt-colorblind-text {
                 <button id="btn-opt-gfx" onclick="AppSettings.toggleGraphics(); UIManager.updateOptionsUI();" class="w-full bg-gradient-to-r from-gray-800/40 to-black/40 border border-gray-700/50 text-green-400 rounded-xl py-3 text-[11px] sm:text-xs font-bold transition-all hover:border-gray-400/50 hover:from-gray-700/50 uppercase tracking-widest flex items-center justify-between px-4 shadow-[inset_0_0_15px_rgba(156,163,175,0.05)]">
                     <span>Grafica</span> <span id="opt-gfx-text"><i class="fa-solid fa-scale-balanced"></i> BILANCIATA</span>
                 </button>
+                <button id="btn-opt-fps" onclick="AppSettings.toggleFPS(); UIManager.updateOptionsUI(); AudioEngine.playClick();" class="w-full bg-gradient-to-r from-gray-800/40 to-black/40 border border-gray-700/50 text-white rounded-xl py-3 text-[11px] sm:text-xs font-bold transition-all hover:border-gray-400/50 hover:from-gray-700/50 uppercase tracking-widest flex items-center justify-between px-4 shadow-[inset_0_0_15px_rgba(156,163,175,0.05)]">
+                    <span>Frame Rate</span> <span id="opt-fps-text" class="text-green-400">60 FPS</span>
+                </button>
                 
                 <button id="btn-opt-music" onclick="AudioEngine.toggleMusic(); UIManager.updateOptionsUI();" class="w-full bg-gradient-to-r from-gray-800/40 to-black/40 border border-gray-700/50 text-white rounded-xl py-3 text-[11px] sm:text-xs font-bold transition-all hover:border-gray-400/50 hover:from-gray-700/50 uppercase tracking-widest flex items-center justify-between px-4 shadow-[inset_0_0_15px_rgba(156,163,175,0.05)]">
                     <span>Musica</span> <span id="opt-music-text" class="text-green-400">ON</span>
@@ -743,6 +746,7 @@ const ESSENCE_NAMES = { 'red': 'INFERNO', 'blue': 'TEMPESTA', 'green': 'PANDEMIA
 const ESSENCE_TYPES = ['red', 'blue', 'green'];
 const AppSettings = {
     mode: 1, 
+    fpsCap: 60, 
     colorblind: false,
     screenShake: true,
     damageNumbers: true,
@@ -772,17 +776,21 @@ const AppSettings = {
 
         if(Game.renderer) {
             Game.renderer.shadowMap.enabled = this.shadowsEnabled;
-            
-            // OTTIMIZZAZIONE PC: Scalabilità del Pixel Ratio (Sub-sampling)
-            if (!isTouchDevice) {
-                let pr = 1.0;
-                if (this.mode === 2) pr = Math.min(window.devicePixelRatio, 1.5); // Ultra: Super sampling
-                else if (this.mode === 1) pr = Math.min(window.devicePixelRatio, 1.0); // Bilanciata: Nativo 1:1
-                else pr = 0.75; // Performance: Render al 75% della risoluzione per salvare la GPU
-                
-                Game.renderer.setPixelRatio(pr);
-                if (Game.composer) Game.composer.setPixelRatio(pr);
+            // OTTIMIZZAZIONE SCALABILITÀ (Impedisce il rendering 4K sui telefoni)
+            let pr = 1.0;
+            if (isTouchDevice) {
+                // Mobile: Evita ratio > 1.5. Modalità prestazioni fissa la risoluzione bassissima per salvare batteria.
+                if (this.mode === 2) pr = Math.min(window.devicePixelRatio, 1.25);
+                else if (this.mode === 1) pr = Math.min(window.devicePixelRatio, 0.9);
+                else pr = 0.6; // Modalità Performance estrema su mobile
+            } else {
+                // PC: Più flessibilità
+                if (this.mode === 2) pr = Math.min(window.devicePixelRatio, 1.5);
+                else if (this.mode === 1) pr = Math.min(window.devicePixelRatio, 1.0); 
+                else pr = 0.75; 
             }
+            Game.renderer.setPixelRatio(pr);
+            if (Game.composer) Game.composer.setPixelRatio(pr);
             
             // Accendi/Spegni le ombre finte a terra in tempo reale
             let showFakeShadows = !this.shadowsEnabled;
@@ -834,8 +842,12 @@ const AppSettings = {
         
         if(Game.player) Game.player.updateAppearance();
     },
-    toggleScreenShake() { this.screenShake = !this.screenShake; },
-    toggleDamageNumbers() { this.damageNumbers = !this.damageNumbers; }
+   toggleScreenShake() { this.screenShake = !this.screenShake; },
+    toggleDamageNumbers() { this.damageNumbers = !this.damageNumbers; },
+    toggleFPS() { 
+        this.fpsCap = this.fpsCap === 60 ? 30 : 60; 
+        if (typeof Game !== 'undefined') Game.frameInterval = 1000 / this.fpsCap;
+    }
 };
 
 // Essendo modificate dinamicamente, queste variabili non possono essere costanti.
@@ -1514,6 +1526,12 @@ const UIManager = {
         if (dmgNumTxt) {
             if(AppSettings.damageNumbers) { dmgNumTxt.innerText = "ON"; dmgNumTxt.className = "text-green-400"; }
             else { dmgNumTxt.innerText = "OFF"; dmgNumTxt.className = "text-red-500"; }
+        }
+        // FPS Cap
+        const fpsTxt = document.getElementById('opt-fps-text');
+        if (fpsTxt) {
+            if(AppSettings.fpsCap === 60) { fpsTxt.innerText = "60 FPS"; fpsTxt.className = "text-green-400"; }
+            else { fpsTxt.innerText = "30 FPS"; fpsTxt.className = "text-yellow-400"; }
         }
     }
 };
@@ -3106,7 +3124,7 @@ _dummyScale: new THREE.Vector3(3, 3, 3),
     _camTarget: new THREE.Vector3(),
     _particleIdx: 0, _projectileIdx: 0, _hazardIdx: 0, _textIdx: 0, _essenceIdx: 0, _extraLifeIdx: 0, _decoyIdx: 0, _dashLineIdx: 0, _coinIdx: 0,
     lastTime: 0, accumulator: 0, state: 'MENU', floor: 1,lastRelicCount: 0, floorMaxKills: 0, floorKills: 0, totalKills: 0, coins: 0, frameCount: 0, fpsFrames: 0, fpsLastTime: performance.now(),isBossFloor: false,
-    lastDrawTime: 0, frameInterval: isTouchDevice ? 1000 / 60 : 0,
+    llastDrawTime: 0, frameInterval: 1000 / 60, // Leggerà poi da AppSettings
     hitStop: 0, trauma: 0, combo: 0, comboTimer: 0, comboMaxTime: 5.0, difficultyMult: 1.0, ultimateCharge: 0, ultimateActive: false, ultimateTimer: 0, lives: 3, playTime: 0, bossDefeatedTimer: 0, floorEndTimer: 0, floorEndTriggered: false,
     player: null, map: null, enemyGrid: null, enemies: [], projectiles: [], particles: [], essences: [], extraLivesDrops: [], coinDrops: [], floatingTexts: [], hazards: [], decoys: [], dashLines: [], bloodDecals: [], bloodDecalIndex: 0, _debrisIdx: 0,
     
@@ -3134,15 +3152,23 @@ getEnemy() {
    init() {
         UI.init(); TouchControls.init(); const container = document.getElementById('game-container');
         this.scene = new THREE.Scene(); this.scene.fog = new THREE.Fog(0x050508, 400, 1800); 
-       this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 100, 3000);
+        this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 100, 3000);
         
-        // OTTIMIZZAZIONE PC: Assegnazione corretta della risoluzione al lancio
+        // OTTIMIZZAZIONE SCALABILITÀ: Assegnazione corretta e SICURA della risoluzione al lancio!
         let pixelRatio = 1.0;
-        if (isTouchDevice) pixelRatio = 0.9;
-        else if (AppSettings.isUltra) pixelRatio = Math.min(window.devicePixelRatio, 1.5);
-        else if (AppSettings.isLow) pixelRatio = 0.75;
+        if (isTouchDevice) {
+            // Mobile: Evita ratio > 1.25 per non fondere la batteria
+            if (AppSettings.isUltra) pixelRatio = Math.min(window.devicePixelRatio, 1.25);
+            else if (AppSettings.mode === 1) pixelRatio = Math.min(window.devicePixelRatio, 0.9);
+            else pixelRatio = 0.6; // Modalità Performance estrema su mobile
+        } else {
+            // PC: Più flessibilità
+            if (AppSettings.isUltra) pixelRatio = Math.min(window.devicePixelRatio, 1.5);
+            else if (AppSettings.mode === 1) pixelRatio = Math.min(window.devicePixelRatio, 1.0); 
+            else pixelRatio = 0.75; 
+        }
         
-       this.renderer = new THREE.WebGLRenderer({ 
+        this.renderer = new THREE.WebGLRenderer({ 
             antialias: !isTouchDevice, 
             alpha: false, 
             powerPreference: "high-performance" 
@@ -3523,7 +3549,10 @@ Game.scene.add(this.dynamicDebrisMesh);
         if (this._vec3) { this.mouse.worldX = this._vec3.x; this.mouse.worldY = this._vec3.z; }
     },
 loop(timestamp) {
-        // --- INIZIO CAP FPS ---
+        // --- INIZIO CAP FPS (Basato ora sull'impostazione globale AppSettings) ---
+        // Leggiamo costantemente la variabile globale per permettere il cambio in tempo reale
+        this.frameInterval = AppSettings.fpsCap === 30 ? 1000 / 30 : (isTouchDevice ? 1000 / 60 : 0);
+        
         if (this.frameInterval > 0) {
             if (!this.lastDrawTime) this.lastDrawTime = timestamp;
             const elapsed = timestamp - this.lastDrawTime;
@@ -3535,7 +3564,7 @@ loop(timestamp) {
         }
         // --- FINE CAP FPS ---
         
-       // Calcolo delta time reale
+        // Calcolo delta time reale
         if (!this.lastTime) this.lastTime = timestamp; 
         let frameTime = (timestamp - this.lastTime) / 1000; 
         this.lastTime = timestamp;
@@ -8667,17 +8696,17 @@ class Debris {
         dummy.rotation.set(this.rotX, this.rotY, this.rotZ);
         dummy.scale.setScalar(finalScale);
         
-        // Se il detrito è "morto", nascondilo in un buco nero profondo
+       // Se il detrito muore IN QUESTO FRAME, lo mandiamo sotto terra e facciamo un ULTIMO update
         if (this.life <= 0) {
             this.active = false;
             dummy.position.set(0, -1000, 0);
+            dummy.updateMatrix();
+            Game.dynamicDebrisMesh.setMatrixAt(this.index, dummy.matrix);
+            // Dopodiché non verrà più calcolato dal loop in Game.update()
+        } else {
+            dummy.updateMatrix();
+            Game.dynamicDebrisMesh.setMatrixAt(this.index, dummy.matrix);
         }
-        
-        dummy.updateMatrix();
-        
-        // Inietta la matrice del dummy nell'InstancedMesh globale
-        Game.dynamicDebrisMesh.setMatrixAt(this.index, dummy.matrix);
-        // Flagga la GPU: "Ehi, ci sono novità!"
 
     }
 }

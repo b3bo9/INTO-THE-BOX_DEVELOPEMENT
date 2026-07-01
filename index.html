@@ -761,14 +761,24 @@ const AppSettings = {
     get shadowsEnabled() { return this.mode === 2; },
     
     init() {
-        if (this.isLow) document.body.classList.add('low-spec');
+        if (this.isLow) {
+            document.body.classList.add('low-spec');
+            document.getElementById('mist').style.display = 'none';
+        }
     },
     
     toggleGraphics() {
         this.mode = (this.mode + 1) % 3;
         const vignette = document.getElementById('vignette');
-        if (this.mode === 0) vignette.style.opacity = '0';
-        else vignette.style.opacity = '1';
+        const mist = document.getElementById('mist');
+        
+        if (this.mode === 0) {
+            vignette.style.opacity = '0';
+            mist.style.display = 'none'; // Spegne fisicamente il calcolo SVG
+        } else {
+            vignette.style.opacity = '1';
+            mist.style.display = 'block'; // Riaccende la nebbia 2D
+        }
 
         // OTTIMIZZAZIONE UI: Spegne il Glassmorphism e le ombre CSS pesanti su dispositivi lenti
         if (this.isLow) document.body.classList.add('low-spec');
@@ -3123,8 +3133,8 @@ _dummyScale: new THREE.Vector3(3, 3, 3),
     _vec2: new THREE.Vector2(), _vec3: new THREE.Vector3(), _plane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), _vec3Screen: new THREE.Vector3(),
     _camTarget: new THREE.Vector3(),
     _particleIdx: 0, _projectileIdx: 0, _hazardIdx: 0, _textIdx: 0, _essenceIdx: 0, _extraLifeIdx: 0, _decoyIdx: 0, _dashLineIdx: 0, _coinIdx: 0,
-    lastTime: 0, accumulator: 0, state: 'MENU', floor: 1,lastRelicCount: 0, floorMaxKills: 0, floorKills: 0, totalKills: 0, coins: 0, frameCount: 0, fpsFrames: 0, fpsLastTime: performance.now(),isBossFloor: false,
-    llastDrawTime: 0, frameInterval: 1000 / 60, // Leggerà poi da AppSettings
+   lastTime: 0, accumulator: 0, state: 'MENU', floor: 1,lastRelicCount: 0, floorMaxKills: 0, floorKills: 0, totalKills: 0, coins: 0, frameCount: 0, fpsFrames: 0, fpsLastTime: performance.now(),isBossFloor: false,
+    lastDrawTime: 0, frameInterval: 1000 / 60,
     hitStop: 0, trauma: 0, combo: 0, comboTimer: 0, comboMaxTime: 5.0, difficultyMult: 1.0, ultimateCharge: 0, ultimateActive: false, ultimateTimer: 0, lives: 3, playTime: 0, bossDefeatedTimer: 0, floorEndTimer: 0, floorEndTriggered: false,
     player: null, map: null, enemyGrid: null, enemies: [], projectiles: [], particles: [], essences: [], extraLivesDrops: [], coinDrops: [], floatingTexts: [], hazards: [], decoys: [], dashLines: [], bloodDecals: [], bloodDecalIndex: 0, _debrisIdx: 0,
     
@@ -3549,9 +3559,9 @@ Game.scene.add(this.dynamicDebrisMesh);
         if (this._vec3) { this.mouse.worldX = this._vec3.x; this.mouse.worldY = this._vec3.z; }
     },
 loop(timestamp) {
-        // --- INIZIO CAP FPS (Basato ora sull'impostazione globale AppSettings) ---
-        // Leggiamo costantemente la variabile globale per permettere il cambio in tempo reale
-        this.frameInterval = AppSettings.fpsCap === 30 ? 1000 / 30 : (isTouchDevice ? 1000 / 60 : 0);
+        // --- INIZIO CAP FPS ---
+        // FIX PRESTAZIONI: Cappa rigorosamente a 30 o 60 FPS ovunque (anche su PC a 144Hz) per risparmiare risorse
+        this.frameInterval = 1000 / AppSettings.fpsCap;
         
         if (this.frameInterval > 0) {
             if (!this.lastDrawTime) this.lastDrawTime = timestamp;
@@ -5461,15 +5471,20 @@ class GameMap {
             imCorruptedRing.instanceMatrix.needsUpdate = true; 
         }
         
-        // --- INIZIO SISTEMA NEBBIA BASSA 3D ---
+       // --- INIZIO SISTEMA NEBBIA BASSA 3D ---
         const texSmoke = Preloader.textures.smoke;
-        if (texSmoke) {
+        
+        // FIX PRESTAZIONI E VISIBILITÀ: La nebbia si adatta al menu Opzioni!
+        // 0 (Performance) = Niente nebbia. 1 (Bilanciata) = Media. 2 (Ultra) = Densa.
+        let fogCount = 0;
+        if (AppSettings.mode === 1) fogCount = isTouchDevice ? 20 : 30;
+        else if (AppSettings.mode === 2) fogCount = isTouchDevice ? 35 : 50;
+
+        if (texSmoke && fogCount > 0) {
             texSmoke.wrapS = THREE.RepeatWrapping;
             texSmoke.wrapT = THREE.RepeatWrapping;
             texSmoke.encoding = THREE.sRGBEncoding;
 
-            // Meno banchi su mobile per performance, ma grandi per riempire la mappa
-            const fogCount = isTouchDevice ? 15 : 40; 
             if (!window.GLOBAL_FOG_GEO) {
                 window.GLOBAL_FOG_GEO = new THREE.PlaneGeometry(350, 350); 
                 window.GLOBAL_FOG_GEO.rotateX(-Math.PI / 2);

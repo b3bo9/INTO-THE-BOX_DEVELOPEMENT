@@ -8582,18 +8582,33 @@ class Debris {
 class FloatingText {
     constructor() { this.active = false; }
     spawn(x, z, text, color, size, isCrit=false) {
-    this.active = true; this.x = x + MathUtils.randomRange(-15, 15); this.y = z; this.h = 40;
-    this.text = text.replace('!', ''); this.color = color; this.size = size; this.isCrit = isCrit;
-    this.life = isCrit ? 1.0 : 0.7; this.maxLife = this.life; this.vy = isCrit ? 60 : 30;
-    this.targetId = null;
-    this.scalePop = 1.6; // Moltiplicatore di rimbalzo iniziale
-}
-update(dt) { 
-    if(!this.active) return; 
-    this.h += this.vy * dt; this.vy -= 100*dt; this.life -= dt; 
-    if(this.scalePop > 1.0) this.scalePop -= dt * 4.5; else this.scalePop = 1.0; // Ritorno elastico
-    if(this.life <= 0) { this.active = false; this.targetId = null; } 
-}
+        this.active = true; 
+        this.y = z; 
+        this.h = 40;
+        this.text = text.replace('!', ''); 
+        this.color = color; 
+        this.size = size; 
+        this.isCrit = isCrit;
+        this.life = isCrit ? 1.0 : 0.7; 
+        this.maxLife = this.life; 
+        this.vy = isCrit ? 70 : 40;
+        
+        // QoL JUICE: Dispersione fisica sull'asse X per evitare che i numeri si accavallino!
+        this.vx = MathUtils.randomRange(-35, 35);
+        this.x = x + MathUtils.randomRange(-10, 10); 
+        
+        this.targetId = null;
+        this.scalePop = 1.6; // Moltiplicatore di rimbalzo iniziale
+    }
+    update(dt) { 
+        if(!this.active) return; 
+        this.h += this.vy * dt; 
+        this.x += this.vx * dt; // Muovi anche in orizzontale
+        this.vy -= 120 * dt; // Gravità leggermente aumentata per un effetto fontana
+        this.life -= dt; 
+        if(this.scalePop > 1.0) this.scalePop -= dt * 4.5; else this.scalePop = 1.0; 
+        if(this.life <= 0) { this.active = false; this.targetId = null; } 
+    }
 }
 function clearScene() {
     if (Game.deadObelisks) {

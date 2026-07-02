@@ -8841,9 +8841,12 @@ function clearScene() {
                     child.material !== window.GLOBAL_TREE_MAT && 
                     child.material !== window.GLOBAL_BLOOD_MAT && 
                     child.material !== window.GLOBAL_FOG_MAT && 
+                    child.material !== InteractiveGrassSystem.mat && // <--- FIX: Protegge il materiale dello shader dell'erba!
                     !(window.GLOBAL_THEME_MATS && window.GLOBAL_THEME_MATS.some(mats => Object.values(mats).includes(child.material))) &&
                     !SharedMatSet.has(child.material)) {
-                    if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                    if (Array.isArray(child.material)) {
+                        for(let m=0; m<child.material.length; m++) child.material[m].dispose();
+                    }
                     else child.material.dispose();
                 }
                 

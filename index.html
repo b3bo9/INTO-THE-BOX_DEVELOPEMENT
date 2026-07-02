@@ -231,7 +231,7 @@ body.colorblind-mode #opt-colorblind-text {
 
                 <!-- CREDITS -->
                 <div class="text-center mt-1">
-                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 134</p>
+                    <p class="text-white/40 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 135</p>
                 </div>
             </div>
         </div>
@@ -1120,13 +1120,12 @@ const AudioEngine = {
         let p = this.countdownSFX.play();
         if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
     },
-  playCoin() {
+playCoin() {
         if (this.sfxMuted || !this.ctx || this.ctx.state === 'suspended') return;
         
         let now = Date.now();
-        // Pitch incrementale ridotto e rallentato per non diventare stridulo
-        if (this.lastCoinTime && now - this.lastCoinTime < 500) {
-            this.coinPitch = Math.min(1.5, (this.coinPitch || 1.0) + 0.02); 
+        if (this.lastCoinTime && now - this.lastCoinTime < 300) {
+            this.coinPitch = Math.min(1.4, (this.coinPitch || 1.0) + 0.03); 
         } else {
             this.coinPitch = 1.0; 
         }
@@ -1136,24 +1135,21 @@ const AudioEngine = {
         let osc = this.ctx.createOscillator(); 
         let gain = this.ctx.createGain();
         
-        // Suono puro "stile Mario" (Frequenze esatte: B5 -> E6)
         osc.type = 'sine'; 
         osc.frequency.setValueAtTime(987.77 * this.coinPitch, t); 
-        // Salto netto di nota dopo 50ms per il classico "Coin" arcade
-        osc.frequency.setValueAtTime(1318.51 * this.coinPitch, t + 0.05);
+        osc.frequency.setValueAtTime(1318.51 * this.coinPitch, t + 0.03); // Salto nota più rapido
         
-        // Inviluppo del volume molto più morbido e meno penetrante
+        // FIX AUDIO: Inviluppo ultra-rapido e volume dimezzato (0.04) per evitare il clipping da sovrapposizione
         gain.gain.setValueAtTime(0, t);
-        gain.gain.linearRampToValueAtTime(0.08, t + 0.02); 
-        gain.gain.setValueAtTime(0.08, t + 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
+        gain.gain.linearRampToValueAtTime(0.04, t + 0.01); 
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15); // Decade molto prima (0.15s invece di 0.35s)
         
         osc.connect(gain); 
         gain.connect(this.masterCompressor ? this.masterCompressor : this.ctx.destination); 
         
         osc.start(t); 
-        osc.stop(t + 0.4);
-    },
+        osc.stop(t + 0.2); // Taglia l'onda residua in modo sicuro
+    }
 
    playObeliskCapture(dt) {
         if (this.sfxMuted || !this.ctx || this.ctx.state === 'suspended') return;
@@ -1994,8 +1990,9 @@ class Coin {
         this.groundGlow.rotation.x = -Math.PI / 2; this.groundGlow.visible = false; Game.scene.add(this.groundGlow);
         this.isHealingFromShield = false;
     }
-    spawn(x, y) { 
+   spawn(x, y) { 
         this.active = true; this.x = x; this.y = y; this.life = 15.0; 
+        this.isMagnetized = false; // <-- FIX: Reset stato calamita
         this.group.position.set(x, 15, y); this.group.updateMatrix(); this.group.visible = true; 
         if (isTouchDevice) { this.groundGlow.position.set(x, 0.2, y); this.groundGlow.visible = true; }
     }
@@ -4480,14 +4477,21 @@ update(combatDt, visualDt) {
                 if (!this.player.modifiers.miserPact && c.life < 3.0) c.group.visible = Math.floor(c.life * 8) % 2 === 0;
                 else c.group.visible = true;
 
-                // QoL: PITY MAGNET! Se la moneta è a terra da più di 4 secondi, vola lentamente dal giocatore
-                if (c.life < 11.0) {
-                    let dx = this.player.x - c.x; let dy = this.player.y - c.y;
-                    let dist = Math.sqrt(dx*dx + dy*dy);
-                    if (dist > 10 && dist < 500) { // Range del magnete
-                        c.x += (dx/dist) * 150 * dt;
-                        c.y += (dy/dist) * 150 * dt;
-                    }
+               // NUOVO SISTEMA MAGNETE: Si attiva solo passando vicini, si spezza se ti allontani
+                let dx = this.player.x - c.x; 
+                let dy = this.player.y - c.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+
+                // Se passi vicino (80 unità), la moneta si calamita a te
+                if (dist < 80) c.isMagnetized = true;
+                
+                // Se scatti via veloce o ti allontani (oltre 200 unità), il legame si spezza
+                if (dist > 200) c.isMagnetized = false;
+
+                if (c.isMagnetized && dist > 10) {
+                    // Vola verso il giocatore molto più velocemente (400) per un feeling "snappy"
+                    c.x += (dx/dist) * 400 * dt;
+                    c.y += (dy/dist) * 400 * dt;
                 }
 
                 c.group.rotation.y += combatDt * 3; 

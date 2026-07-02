@@ -82,7 +82,21 @@
             50% { transform: scale(1.3) rotate(180deg); filter: brightness(2) hue-rotate(90deg); box-shadow: 0 0 40px #a855f7; }
             100% { transform: scale(1) rotate(360deg); filter: brightness(1) hue-rotate(0deg); }
         }
-        .anim-reforge { animation: reforge-magic 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+       /* --- NUOVE ANIMAZIONI UI --- */
+        @keyframes text-glitch {
+            0%, 96% { text-shadow: 0 10px 20px rgba(220,38,38,0.8); transform: skewX(-3deg); }
+            97% { text-shadow: 3px 0 0 #00DDFF, -3px 0 0 #FF1133; transform: skewX(-3deg) translate(-2px, 1px); }
+            98% { text-shadow: -3px 0 0 #00DDFF, 3px 0 0 #FF1133; transform: skewX(-3deg) translate(2px, -1px); }
+            99% { text-shadow: 3px 0 0 #00DDFF, -3px 0 0 #FF1133; transform: skewX(-3deg) translate(0, 0); }
+            100% { text-shadow: 0 10px 20px rgba(220,38,38,0.8); transform: skewX(-3deg); }
+        }
+        .anim-glitch { animation: text-glitch 4s infinite; }
+
+        @keyframes slide-in-bottom {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .stagger-enter { animation: slide-in-bottom 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
 
    #vignette { 
         position: absolute; inset: 0; 
@@ -176,6 +190,7 @@ body.colorblind-mode #opt-colorblind-text {
     </style>
 </head>
 <body class="text-white selection:bg-red-900">
+    <div id="wipe-transition" class="absolute inset-0 bg-[#050508] z-[9999] pointer-events-none transition-all duration-700 ease-in-out" style="clip-path: circle(150% at 50% 50%);"></div>
 
    <div id="initScreen" class="absolute inset-0 bg-black z-[300] flex items-center justify-center cursor-pointer bg-cover bg-center bg-no-repeat" style="background-image: url('bg.png'); pointer-events: none;">
         <div class="absolute inset-0 bg-black/60"></div>
@@ -195,7 +210,7 @@ body.colorblind-mode #opt-colorblind-text {
         <div class="w-full h-full flex flex-col justify-between items-center z-10 px-4 py-8">
             <!-- TITOLO IN ALTO -->
             <div class="flex flex-col items-center pointer-events-none w-full text-center mt-4">
-                <h1 class="font-black italic text-transparent bg-clip-text bg-gradient-to-b from-white via-red-500 to-red-900 mb-0 drop-shadow-[0_10px_20px_rgba(220,38,38,0.8)] tracking-tighter transform -skew-x-3 leading-none text-[12vw] sm:text-8xl md:text-9xl whitespace-nowrap">INTO THE BOX</h1>
+                <h1 class="anim-glitch font-black italic text-transparent bg-clip-text bg-gradient-to-b from-white via-red-500 to-red-900 mb-0 tracking-tighter leading-none text-[12vw] sm:text-8xl md:text-9xl whitespace-nowrap">INTO THE BOX</h1>
                 <h2 class="text-[3vw] sm:text-sm text-red-500 uppercase tracking-[0.8em] font-bold drop-shadow-[0_0_10px_rgba(220,38,38,1)] mt-2">Definitive Edition</h2>
             </div>
 
@@ -411,10 +426,9 @@ body.colorblind-mode #opt-colorblind-text {
                 </div>
 
                 <!-- LISTA UPGRADE (Scrollabile su schermi piccoli) -->
-                <div class="flex flex-col gap-2 w-full max-w-[450px] px-1 overflow-y-auto custom-scrollbar shrink h-auto max-h-[45vh] sm:max-h-[50vh]">
+               <div class="flex flex-col gap-2 w-full max-w-[450px] px-1 overflow-y-auto custom-scrollbar shrink h-auto max-h-[45vh] sm:max-h-[50vh]">
                     
-                    <!-- HP ROW -->
-                    <button onclick="ShopSystem.buy('hp')" class="relative w-full bg-gradient-to-r from-black/80 to-green-950/40 border border-green-500/30 hover:border-green-400 rounded-xl p-2 sm:p-2.5 flex items-center justify-between transition-all active:scale-95 group overflow-hidden shadow-sm shrink-0">
+                    <button onclick="ShopSystem.buy('hp')" class="stagger-enter relative w-full bg-gradient-to-r from-black/80 to-green-950/40 border border-green-500/30 hover:border-green-400 rounded-xl p-2 sm:p-2.5 flex items-center justify-between transition-all active:scale-95 group overflow-hidden shadow-sm shrink-0" style="animation-delay: 0.1s;">
                         <div class="absolute inset-0 bg-green-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div class="flex items-center gap-3 w-[35%]">
                             <div class="w-8 h-8 rounded-lg bg-green-900/50 flex items-center justify-center border border-green-500/30 shrink-0 group-hover:scale-110 transition-transform"><i class="fa-solid fa-heart text-green-400 text-sm"></i></div>
@@ -432,8 +446,7 @@ body.colorblind-mode #opt-colorblind-text {
                         </div>
                     </button>
 
-                    <!-- DMG ROW -->
-                    <button onclick="ShopSystem.buy('dmg')" class="relative w-full bg-gradient-to-r from-black/80 to-red-950/40 border border-red-500/30 hover:border-red-400 rounded-xl p-2 sm:p-2.5 flex items-center justify-between transition-all active:scale-95 group overflow-hidden shadow-sm shrink-0">
+                    <button onclick="ShopSystem.buy('dmg')" class="stagger-enter relative w-full bg-gradient-to-r from-black/80 to-red-950/40 border border-red-500/30 hover:border-red-400 rounded-xl p-2 sm:p-2.5 flex items-center justify-between transition-all active:scale-95 group overflow-hidden shadow-sm shrink-0" style="animation-delay: 0.2s;">
                         <div class="absolute inset-0 bg-red-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div class="flex items-center gap-3 w-[35%]">
                             <div class="w-8 h-8 rounded-lg bg-red-900/50 flex items-center justify-center border border-red-500/30 shrink-0 group-hover:scale-110 transition-transform"><i class="fa-solid fa-fire text-red-500 text-sm"></i></div>
@@ -451,8 +464,7 @@ body.colorblind-mode #opt-colorblind-text {
                         </div>
                     </button>
 
-                    <!-- SPEED ROW -->
-                    <button onclick="ShopSystem.buy('speed')" class="relative w-full bg-gradient-to-r from-black/80 to-blue-950/40 border border-blue-500/30 hover:border-blue-400 rounded-xl p-2 sm:p-2.5 flex items-center justify-between transition-all active:scale-95 group overflow-hidden shadow-sm shrink-0">
+                    <button onclick="ShopSystem.buy('speed')" class="stagger-enter relative w-full bg-gradient-to-r from-black/80 to-blue-950/40 border border-blue-500/30 hover:border-blue-400 rounded-xl p-2 sm:p-2.5 flex items-center justify-between transition-all active:scale-95 group overflow-hidden shadow-sm shrink-0" style="animation-delay: 0.3s;">
                         <div class="absolute inset-0 bg-blue-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div class="flex items-center gap-3 w-[35%]">
                             <div class="w-8 h-8 rounded-lg bg-blue-900/50 flex items-center justify-center border border-blue-500/30 shrink-0 group-hover:scale-110 transition-transform"><i class="fa-solid fa-shoe-prints text-blue-400 text-sm"></i></div>
@@ -470,8 +482,7 @@ body.colorblind-mode #opt-colorblind-text {
                         </div>
                     </button>
 
-                    <!-- ATK SPEED ROW -->
-                    <button onclick="ShopSystem.buy('atkSpeed')" class="relative w-full bg-gradient-to-r from-black/80 to-amber-950/40 border border-amber-500/30 hover:border-amber-400 rounded-xl p-2 sm:p-2.5 flex items-center justify-between transition-all active:scale-95 group overflow-hidden shadow-sm shrink-0">
+                    <button onclick="ShopSystem.buy('atkSpeed')" class="stagger-enter relative w-full bg-gradient-to-r from-black/80 to-amber-950/40 border border-amber-500/30 hover:border-amber-400 rounded-xl p-2 sm:p-2.5 flex items-center justify-between transition-all active:scale-95 group overflow-hidden shadow-sm shrink-0" style="animation-delay: 0.4s;">
                         <div class="absolute inset-0 bg-amber-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div class="flex items-center gap-3 w-[35%]">
                             <div class="w-8 h-8 rounded-lg bg-amber-900/50 flex items-center justify-center border border-amber-500/30 shrink-0 group-hover:scale-110 transition-transform"><i class="fa-solid fa-bolt text-amber-500 text-sm"></i></div>
@@ -489,8 +500,7 @@ body.colorblind-mode #opt-colorblind-text {
                         </div>
                     </button>
 
-                    <!-- CRIT ROW -->
-                    <button onclick="ShopSystem.buy('crit')" class="relative w-full bg-gradient-to-r from-black/80 to-purple-950/40 border border-purple-500/30 hover:border-purple-400 rounded-xl p-2 sm:p-2.5 flex items-center justify-between transition-all active:scale-95 group overflow-hidden shadow-sm shrink-0">
+                    <button onclick="ShopSystem.buy('crit')" class="stagger-enter relative w-full bg-gradient-to-r from-black/80 to-purple-950/40 border border-purple-500/30 hover:border-purple-400 rounded-xl p-2 sm:p-2.5 flex items-center justify-between transition-all active:scale-95 group overflow-hidden shadow-sm shrink-0" style="animation-delay: 0.5s;">
                         <div class="absolute inset-0 bg-purple-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div class="flex items-center gap-3 w-[35%]">
                             <div class="w-8 h-8 rounded-lg bg-purple-900/50 flex items-center justify-center border border-purple-500/30 shrink-0 group-hover:scale-110 transition-transform"><i class="fa-solid fa-crosshairs text-purple-500 text-sm"></i></div>
@@ -1423,6 +1433,21 @@ const ScoreManager = {
     },
     formatTime(seconds) { let m = Math.floor(seconds / 60); let s = Math.floor(seconds % 60); return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`; }
 };
+    const TransitionSystem = {
+    el: null,
+    init() { this.el = document.getElementById('wipe-transition'); },
+    // Chiude lo schermo (nero)
+    wipeIn(callback) {
+        if (!this.el) this.init();
+        this.el.style.clipPath = 'circle(0% at 50% 50%)';
+        setTimeout(callback, 700); // Attende la fine del CSS transition
+    },
+    // Riapre lo schermo sul nuovo scenario
+    wipeOut() {
+        if (!this.el) this.init();
+        this.el.style.clipPath = 'circle(150% at 50% 50%)';
+    }
+};
 const UIManager = {
     showModal(id) {
         AudioEngine.playClick();
@@ -1724,16 +1749,45 @@ const RelicSystem = {
                 </div>
             `;
 
-            let card = document.createElement('div'); 
+          let card = document.createElement('div'); 
             card.id = `main-relic-card-${i}`;
-            // Modificato per riempire perfettamente lo spazio: w-[32%]
-            card.className = `relic-card flex flex-col items-center justify-start p-2 sm:p-3 rounded-2xl border-2 w-[32%] sm:flex-1 max-w-[190px] backdrop-blur-md ${colorClass} transition-all cursor-pointer opacity-75 hover:opacity-100 hover:scale-105 min-h-[170px] sm:min-h-[190px] shadow-lg`;
-            card.innerHTML = `
-                <div class="text-center w-full shrink-0"><span class="text-[7px] sm:text-[9px] font-black uppercase tracking-widest opacity-80 leading-none">${rarityLabel}</span><h3 class="text-[10px] sm:text-[13px] font-black mt-1 mb-0 tracking-wide leading-tight flex items-center justify-center h-6 sm:h-8">${relic.name}</h3></div>
-                ${visualElement}
-                <p class="text-[8px] sm:text-[10px] font-bold text-center leading-tight text-white/90 mt-1 w-full">${relic.desc}</p>
-            `;
+            // Aggiunta la classe stagger-enter
+            card.className = `relic-card stagger-enter flex flex-col items-center justify-start p-2 sm:p-3 rounded-2xl border-2 w-[32%] sm:flex-1 max-w-[190px] backdrop-blur-md ${colorClass} transition-all cursor-pointer opacity-75 min-h-[170px] sm:min-h-[190px] shadow-lg`;
             
+            // Ritardo dinamico per l'effetto cascata
+            card.style.animationDelay = `${i * 150}ms`;
+
+            card.innerHTML = `
+                <div class="text-center w-full shrink-0 pointer-events-none"><span class="text-[7px] sm:text-[9px] font-black uppercase tracking-widest opacity-80 leading-none">${rarityLabel}</span><h3 class="text-[10px] sm:text-[13px] font-black mt-1 mb-0 tracking-wide leading-tight flex items-center justify-center h-6 sm:h-8">${relic.name}</h3></div>
+                ${visualElement}
+                <p class="text-[8px] sm:text-[10px] font-bold text-center leading-tight text-white/90 mt-1 w-full pointer-events-none">${relic.desc}</p>
+            `;
+
+            // EFFETTO TILT OLOGRAFICO 3D (Solo PC)
+            if (!isTouchDevice) {
+                card.addEventListener('mousemove', (e) => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+                    // Inclinazione massima 12 gradi
+                    const tiltX = ((y - centerY) / centerY) * -12; 
+                    const tiltY = ((x - centerX) / centerX) * 12;
+                    // Selezionata è più grande, non selezionata è opaca
+                    let isSelected = (this.selectedMainRelic && this.selectedMainRelic.id === relic.id);
+                    let scale = isSelected ? 1.05 : 1.0;
+                    card.style.transform = `perspective(800px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale3d(${scale}, ${scale}, ${scale})`;
+                });
+
+                card.addEventListener('mouseleave', () => {
+                    let isSelected = (this.selectedMainRelic && this.selectedMainRelic.id === relic.id);
+                    card.style.transform = isSelected ? 'scale(1.05)' : 'scale(1)';
+                });
+            } else {
+                // Fallback hover CSS su mobile (rimesso qui perché tolto dalla className per non litigare col JS)
+                card.classList.add('hover:scale-105', 'hover:opacity-100');
+            }
             card.onclick = () => { 
                 AudioEngine.playHover(); 
                 this.selectedMainRelic = relic;
@@ -9009,10 +9063,13 @@ function goToMainMenu() {
 
 function startGameFromMenu() {
     AudioEngine.playClick();
-    // Legge il valore dall'oggetto DifficultySettings invece che dall'elemento HTML
     let diff = DifficultySettings.levels[DifficultySettings.index].val;
     AudioEngine.stopMenuMusic(); 
-    Game.startGame(diff);
+    // Chiude lo schermo, fa il setup pesante, riapre lo schermo
+    TransitionSystem.wipeIn(() => {
+        Game.startGame(diff);
+        setTimeout(() => TransitionSystem.wipeOut(), 100);
+    });
 }
 
 function restartGame() {
@@ -9112,9 +9169,26 @@ const Preloader = {
     }
 };
 
-   const ShopSystem = {
+  const ShopSystem = {
     bonus: { hp: 0, dmg: 0, speed: 0, atkSpeed: 0, crit: 0 },
     costs: { hp: 4, dmg: 6, speed: 5, atkSpeed: 6, crit: 7 },
+
+    // Funzione per animare fluidamente i numeri che salgono
+    animateValue(elementId, start, end, duration, formatStr = "", isFloat = false) {
+        let obj = document.getElementById(elementId);
+        if(!obj) return;
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            // Curva Ease Out per un arresto morbido
+            const ease = 1 - Math.pow(1 - progress, 3);
+            const current = start + (end - start) * ease;
+            obj.innerText = (isFloat ? current.toFixed(2) : Math.floor(current)) + formatStr;
+            if (progress < 1) window.requestAnimationFrame(step);
+        };
+        window.requestAnimationFrame(step);
+    },
 
     updateUI() {
         if(!document.getElementById('shop-coins')) return;
@@ -9122,7 +9196,7 @@ const Preloader = {
         // Aggiorna il testo dentro il negozio
         document.getElementById('shop-coins').innerText = Game.coins;
         
-        // ---> AGGIUNGI QUESTA RIGA: Sincronizza anche l'HUD in alto a sinistra! <---
+        // Sincronizza anche l'HUD in alto a sinistra!
         if (UI.els.coins) UI.els.coins.innerText = Game.coins;
 
         // Vitalità
@@ -9160,7 +9234,7 @@ const Preloader = {
         }
     },
 
-   buy(type) {
+    buy(type) {
         let cost = this.costs[type];
         if (Game.coins >= cost) {
             Game.coins -= cost;
@@ -9168,13 +9242,37 @@ const Preloader = {
 
             this.costs[type] += 2; // Rincaro lineare
 
-           if (type === 'hp') { Game.player.stats.maxHp += 15; Game.player.baseStats.maxHp += 15; Game.player.stats.hp += 15; this.bonus.hp += 15; }
-            if (type === 'dmg') { Game.player.modifiers.dmgMult += 0.10; this.bonus.dmg += 0.10; }
-            if (type === 'speed') { Game.player.modifiers.speedMult += 0.05; this.bonus.speed += 0.05; }
-            if (type === 'atkSpeed') { Game.player.modifiers.bonusAtkSpeed += 0.05; this.bonus.atkSpeed += 0.05; }
-            if (type === 'crit') { Game.player.modifiers.bonusCritChance += 0.05; this.bonus.crit += 0.05; }
+            // Salva i vecchi valori prima dell'aggiornamento per far partire l'animazione da qui
+            let oldDmg = Game.player.modifiers.dmgMult;
+            let oldSpd = Game.player.modifiers.speedMult;
+            let oldAtk = 1.0 + Game.player.modifiers.bonusAtkSpeed;
+            let oldCrit = Math.round((Game.player.modifiers.critChance + Game.player.modifiers.bonusCritChance) * 100);
+
+            if (type === 'hp') { 
+                let oldHp = Game.player.stats.maxHp;
+                Game.player.stats.maxHp += 15; Game.player.baseStats.maxHp += 15; Game.player.stats.hp += 15; this.bonus.hp += 15; 
+                this.animateValue('shop-hp-curr', oldHp, Game.player.stats.maxHp, 500);
+            }
+            if (type === 'dmg') { 
+                Game.player.modifiers.dmgMult += 0.10; this.bonus.dmg += 0.10; 
+                this.animateValue('shop-dmg-curr', oldDmg, Game.player.modifiers.dmgMult, 500, "x", true);
+            }
+            if (type === 'speed') { 
+                Game.player.modifiers.speedMult += 0.05; this.bonus.speed += 0.05; 
+                this.animateValue('shop-spd-curr', oldSpd, Game.player.modifiers.speedMult, 500, "x", true);
+            }
+            if (type === 'atkSpeed') { 
+                Game.player.modifiers.bonusAtkSpeed += 0.05; this.bonus.atkSpeed += 0.05; 
+                this.animateValue('shop-atk-curr', oldAtk, 1.0 + Game.player.modifiers.bonusAtkSpeed, 500, "x", true);
+            }
+            if (type === 'crit') { 
+                Game.player.modifiers.bonusCritChance += 0.05; this.bonus.crit += 0.05; 
+                this.animateValue('shop-crit-curr', oldCrit, oldCrit + 5, 500, "%");
+            }
             
-            this.updateUI();
+            // Ritarda l'aggiornamento UI per far terminare l'animazione visiva senza fastidiosi scatti
+            setTimeout(() => this.updateUI(), 550);
+            
         } else {
             AudioEngine.playClick();
             let btn = document.querySelector(`button[onclick="ShopSystem.buy('${type}')"]`);

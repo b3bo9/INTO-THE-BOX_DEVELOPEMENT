@@ -190,7 +190,7 @@ body.colorblind-mode #opt-colorblind-text {
     </style>
 </head>
 <body class="text-white selection:bg-red-900">
-    <div id="wipe-transition" class="absolute inset-0 bg-[#050508] z-[9999] pointer-events-none transition-all duration-700 ease-in-out" style="clip-path: circle(150% at 50% 50%);"></div>
+   <div id="wipe-transition" class="absolute inset-0 bg-[#050508] z-[9999] pointer-events-none transition-all duration-700 ease-in-out" style="clip-path: circle(0% at 50% 50%);"></div>
 
    <div id="initScreen" class="absolute inset-0 bg-black z-[300] flex items-center justify-center cursor-pointer bg-cover bg-center bg-no-repeat" style="background-image: url('bg.png'); pointer-events: none;">
         <div class="absolute inset-0 bg-black/60"></div>
@@ -1436,16 +1436,16 @@ const ScoreManager = {
     const TransitionSystem = {
     el: null,
     init() { this.el = document.getElementById('wipe-transition'); },
-    // Chiude lo schermo (nero)
+    // Chiude lo schermo (il nero copre la visuale)
     wipeIn(callback) {
         if (!this.el) this.init();
-        this.el.style.clipPath = 'circle(0% at 50% 50%)';
-        setTimeout(callback, 700); // Attende la fine del CSS transition
+        this.el.style.clipPath = 'circle(150% at 50% 50%)';
+        setTimeout(callback, 700); 
     },
-    // Riapre lo schermo sul nuovo scenario
+    // Riapre lo schermo sul nuovo scenario (il nero si ritira)
     wipeOut() {
         if (!this.el) this.init();
-        this.el.style.clipPath = 'circle(150% at 50% 50%)';
+        this.el.style.clipPath = 'circle(0% at 50% 50%)';
     }
 };
 const UIManager = {
@@ -3704,18 +3704,22 @@ loop(timestamp) {
             let progress = 1.0 - (this.warpTimer / 1.2); 
             
             if (this.player && this.player.mesh) {
-               // FIX INVISIBILITÀ: Forza il rendering senza usare forEach
-                let pChildren = this.player.mesh.children;
-                for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = true;
-                // Spegniamo solo gli scudi per pulizia visiva
-                if (this.player.shieldMesh) this.player.shieldMesh.visible = false;
-                if (this.player.glacialShieldMesh) this.player.glacialShieldMesh.visible = false;
-                if (this.player.shadowMesh) this.player.shadowMesh.visible = false;
+                // Eseguiamo il reset visivo SOLO nel primo frame del Warp per non pesare sulla CPU
+                if (this.warpTimer > 1.15) {
+                    let pChildren = this.player.mesh.children;
+                    for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = true;
+                    if (this.player.shieldMesh) this.player.shieldMesh.visible = false;
+                    if (this.player.glacialShieldMesh) this.player.glacialShieldMesh.visible = false;
+                    if (this.player.shadowMesh) this.player.shadowMesh.visible = false;
+                    this.player.isDashing = false; // Interrompe scatti in corso
+                }
 
                 this.player.mesh.rotation.y += frameTime * (15 + progress * 20); 
                 this.player.mesh.position.y -= frameTime * 60 * progress; 
                 this.player.mesh.scale.setScalar(Math.max(0.01, 1.0 - progress)); 
+                
                 this.player.mesh.updateMatrix();
+                this.player.mesh.updateMatrixWorld(true); // <-- IL FIX: Forza la GPU a scalare testa, corpo e armi!
             }
             
             this.camera.fov += frameTime * 40;

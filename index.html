@@ -672,7 +672,9 @@ body.colorblind-mode #opt-colorblind-text {
                     </div>
                     <!-- PROGRESS BAR -->
                     <div class="w-full h-2 bg-gray-900/90 rounded-full border border-gray-800 shadow-inner overflow-hidden relative">
-                        <div id="ui-floor-progress" class="h-full w-0 bg-gradient-to-r from-purple-800 via-fuchsia-500 to-cyan-400 transition-all duration-300 shadow-[0_0_8px_rgba(34,211,238,0.6)] rounded-full"></div>
+                       <div id="ui-floor-progress" class="h-full w-0 bg-gradient-to-r from-purple-800 via-fuchsia-500 to-cyan-400 transition-all duration-300 shadow-[0_0_8px_rgba(34,211,238,0.6)] rounded-full relative overflow-hidden">
+    <div id="ui-floor-progress-glow" class="absolute inset-0 bg-white opacity-0 transition-opacity duration-300 mix-blend-overlay"></div>
+</div>
                     </div>
                 </div>
 
@@ -1627,8 +1629,16 @@ const RelicSystem = {
     },
    getChoices() {
         let choices = []; 
-        // Filtra via le reliquie che il giocatore possiede già
-        let availablePool = this.allRelics.filter(r => !Game.player.relics.some(pr => pr.id === r.id));
+        // Filtra via le reliquie che il giocatore possiede già (Senza allocare funzioni in RAM)
+        let availablePool = [];
+        for (let i = 0; i < this.allRelics.length; i++) {
+            let r = this.allRelics[i];
+            let hasRelic = false;
+            for (let j = 0; j < Game.player.relics.length; j++) {
+                if (Game.player.relics[j].id === r.id) { hasRelic = true; break; }
+            }
+            if (!hasRelic) availablePool.push(r);
+        }
         
         // Sicurezza: se ha svuotato l'intero pool, ritorna vuoto
         if (availablePool.length === 0) return [];
@@ -2839,6 +2849,7 @@ const UI = {
         this.els.floor = document.getElementById('ui-floor'); 
         this.els.corruptionLabel = document.getElementById('ui-corruption-label');
         this.els.floorProgress = document.getElementById('ui-floor-progress');
+        this.els.floorProgressGlow = document.getElementById('ui-floor-progress-glow');
         this.els.essenceHud = document.getElementById('essence-hud'); this.els.essenceTimer = document.getElementById('essence-timer');
         this.els.overdriveText = document.getElementById('overdrive-text'); this.els.stacks = [document.getElementById('stack-1'), document.getElementById('stack-2'), document.getElementById('stack-3')];
         this.els.comboContainer = document.getElementById('combo-container'); this.els.comboText = document.getElementById('combo-text');
@@ -2925,9 +2936,9 @@ const UI = {
         let progressPct = Game.isBossFloor ? ((Game.floorMaxKills - eLeft) / Game.floorMaxKills) * 100 : Math.min(100, (Game.floorKills / Math.max(1, Game.floorMaxKills - 3)) * 100);
         
         if (this.cache.progressPct !== progressPct) { 
-           this.els.floorProgress.style.transform = `scaleX(${progressPct / 100})`;
-            // Aumenta la luminosità statica della barra da 1.0x (inizio) a 2.0x (fine)
-            this.els.floorProgress.style.filter = `brightness(${1 + (progressPct / 100)})`;
+            this.els.floorProgress.style.transform = `scaleX(${progressPct / 100})`;
+            // Usa l'opacità hardware invece del costosissimo CSS filter
+            if (this.els.floorProgressGlow) this.els.floorProgressGlow.style.opacity = (progressPct / 100).toString();
             this.cache.progressPct = progressPct; 
         }
         
@@ -3641,8 +3652,9 @@ loop(timestamp) {
             let progress = 1.0 - (this.warpTimer / 1.2); 
             
             if (this.player && this.player.mesh) {
-                // FIX INVISIBILITÀ: Forza il rendering dei pezzi del player se era in fase di "Blink" per aver subito danni
-                this.player.mesh.children.forEach(child => child.visible = true);
+               // FIX INVISIBILITÀ: Forza il rendering senza usare forEach
+                let pChildren = this.player.mesh.children;
+                for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = true;
                 // Spegniamo solo gli scudi per pulizia visiva
                 if (this.player.shieldMesh) this.player.shieldMesh.visible = false;
                 if (this.player.glacialShieldMesh) this.player.glacialShieldMesh.visible = false;
@@ -6812,7 +6824,8 @@ if (this.modifiers.flowMastery && !wasDead) {
                 for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
                 Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'nova');
 
-                this.mesh.children.forEach(child => child.visible = false);
+                let pChildren = this.mesh.children;
+                for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = false;
 
                 // Usa il riferimento in cache per il sangue
                 if (UI.els.bloodVignette) {
@@ -8543,11 +8556,11 @@ class Projectile {
     }
 }
 class Particle {
-    constructor() { 
-        this.active = false; 
-        this.mesh = new THREE.Sprite(SharedMat.spriteWhite); 
-        this.mesh.matrixAutoUpdate = true; // <-- Sicurezza contro i vecchi glitch di update
-        this.mesh.frustumCulled = false;
+   constructor() { 
+        this.active = false; 
+        this.mesh = new THREE.Sprite(SharedMat.spriteWhite); 
+        this.mesh.matrixAutoUpdate = false; // <-- Disattivato per performance massime
+        this.mesh.frustumCulled = false;
         this.mesh.visible = false; 
         Game.scene.add(this.mesh); 
     }
@@ -8652,12 +8665,13 @@ class Particle {
             if (this.mesh.position.y < 2) { this.mesh.position.y = 2; this.vx *= 0.5; this.vz *= 0.5; this.vy *= -0.3; } 
             
             let currentSize = this.baseSize * (this.type === 'flame' ? (this.life / this.maxLife) * 1.5 : (this.life / this.maxLife));
-            this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
-        }
+            this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
+        }
 
-        this.life -= dt; 
-        if(this.life <= 0) { this.active = false; this.mesh.visible = false; }
-    }
+        this.mesh.updateMatrix(); // <-- Aggiunto: Aggiorna la matrice solo per la singola particella attiva e in movimento
+        this.life -= dt; 
+        if(this.life <= 0) { this.active = false; this.mesh.visible = false; }
+    }
 }
 class Debris {
     constructor(index) {
@@ -8946,10 +8960,9 @@ function respawnPlayer() {
     Game.player.mesh.updateMatrix();
     if (Game.player.modifiers.shieldActive) Game.player.modifiers.autoShieldTimer = 0;
     
-    // --- BUGFIX LUCE: Riaccendiamo tutto esplicitamente ---
-    Game.player.mesh.children.forEach(child => { 
-        child.visible = true; 
-    }); 
+   // --- BUGFIX LUCE: Riaccendiamo tutto esplicitamente ---
+    let pChildren = Game.player.mesh.children;
+    for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = true;
     // Spegniamo manualmente solo gli scudi per non averli attivi al respawn
     Game.player.shieldMesh.visible = false;
     Game.player.glacialShieldMesh.visible = false;

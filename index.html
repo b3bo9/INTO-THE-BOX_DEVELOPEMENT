@@ -1149,7 +1149,7 @@ playCoin() {
         
         osc.start(t); 
         osc.stop(t + 0.2); // Taglia l'onda residua in modo sicuro
-    }
+    },
 
    playObeliskCapture(dt) {
         if (this.sfxMuted || !this.ctx || this.ctx.state === 'suspended') return;

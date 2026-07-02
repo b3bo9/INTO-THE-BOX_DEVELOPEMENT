@@ -3266,8 +3266,9 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         this.scene.add(this.dirLight);
         this.scene.add(this.dirLight.target);
 
-        const renderScene = new THREE.RenderPass(this.scene, this.camera);
-        let initialStrength = AppSettings.isUltraPC ? 0.9 : 0.7;
+       const renderScene = new THREE.RenderPass(this.scene, this.camera);
+        // Se non è touch (PC), iniziamo con 0.5, altrimenti 0.7
+        let initialStrength = !isTouchDevice ? 0.5 : 0.7;
         let initialRadius = 0.4;
         // FIX BLOOM GPU: Calcoliamo il bagliore a un quarto (1/4) della risoluzione!
         // Salva il 75% del calcolo sui frammenti senza perdere qualità visibile.
@@ -3770,27 +3771,25 @@ loop(timestamp) {
         let currentTheme = MAP_THEMES[this.currentThemeIndex];
         // Impostiamo nebbia, sfondo e luci in base al tema corrente!
         this.scene.background = new THREE.Color(currentTheme.fog); 
-    // --- ATMOSFERA E VISIBILITÀ DINAMICA ---
+   // --- ATMOSFERA E VISIBILITÀ DINAMICA ---
         if (this.currentThemeIndex === 2) {
-            // Ghiaccio: Visibilità cristallina, nebbia molto lontana
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist + 100, camDist + 1000);
             if (this.bloomPass) {
-                this.bloomPass.strength = AppSettings.isUltraPC ? 1.0 : 0.8;
-                this.bloomPass.threshold = 0.65; // FIX BLOOM: Aumentata la soglia di tolleranza
+                // Su PC (non touch) usiamo valori ridotti
+                this.bloomPass.strength = !isTouchDevice ? 0.55 : 0.8;
+                this.bloomPass.threshold = 0.65;
             }
         } else if (this.currentThemeIndex === 1) {
-            // Lava: Aria densa e soffocante, nebbia vicinissima, bagliore estremo
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 300, camDist + 250);
             if (this.bloomPass) {
-                this.bloomPass.strength = AppSettings.isUltraPC ? 1.1 : 0.9;
-                this.bloomPass.threshold = 0.35; // Reset standard
+                this.bloomPass.strength = !isTouchDevice ? 0.65 : 0.9;
+                this.bloomPass.threshold = 0.35;
             }
         } else {
-            // Foresta: Atmosfera equilibrata e misteriosa
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 150, camDist + 500);
             if (this.bloomPass) {
-                this.bloomPass.strength = AppSettings.isUltraPC ? 0.9 : 0.7;
-                this.bloomPass.threshold = 0.35; // Reset standard
+                this.bloomPass.strength = !isTouchDevice ? 0.5 : 0.7;
+                this.bloomPass.threshold = 0.35;
             }
         }
         Game.arenaEvolution = false; // DEVE ESSERE FALSE ALL'INIZIO!

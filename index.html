@@ -3501,42 +3501,41 @@ Game.scene.add(this.dynamicDebrisMesh);
     getDecoy() { let d = this.decoys[this._decoyIdx]; this._decoyIdx = (this._decoyIdx + 1) % this.decoys.length; return d; },
     getDashLine() { let d = this.dashLines[this._dashLineIdx]; this._dashLineIdx = (this._dashLineIdx + 1) % this.dashLines.length; return d; },
 
-    create3DTitle() {
+  create3DTitle() {
         if (this.titleMesh) return; 
 
-        // 1. Dipingiamo il testo su una tela 2D invisibile
         let canvas = document.createElement('canvas');
         canvas.width = 256; canvas.height = 64;
         let ctx = canvas.getContext('2d');
-        ctx.font = "italic 900 32px 'Impact', sans-serif";
+        ctx.font = "italic 900 34px 'Impact', sans-serif"; // Font leggermente ingrandito
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.fillStyle = "white";
         ctx.fillText("INTO THE BOX", 128, 32);
 
-        // 2. Estraiamo i pixel "pieni" per convertirli in coordinate 3D
         let imgData = ctx.getImageData(0,0,256,64).data;
         let points = [];
-        for(let y=0; y<64; y+=1) { 
-            for(let x=0; x<256; x+=1) {
+        // FIX MOBILE & LEGGIBILITÀ: Saltiamo un pixel (step 2) per avere meno cubi, ma molto più grossi e compatti
+        for(let y=0; y<64; y+=2) { 
+            for(let x=0; x<256; x+=2) {
                 if (imgData[(y*256 + x)*4 + 3] > 128) points.push({x: x - 128, y: -y + 32});
             }
         }
 
-        // 3. Creiamo l'InstancedMesh massivo a costo quasi zero per la CPU
-        let geo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
-        let mat = new THREE.MeshBasicMaterial({color: 0xffffff}); // Il bianco esploderà grazie al Bloom!
+        // Cubi grandi il doppio (3.2) per dare un senso di "blocco monolitico" leggibile
+        let geo = new THREE.BoxGeometry(3.2, 3.2, 3.2);
+        let mat = new THREE.MeshBasicMaterial({color: 0xffffff}); 
         this.titleMesh = new THREE.InstancedMesh(geo, mat, points.length);
         this.titleMesh.matrixAutoUpdate = false;
         
-        // Colori Elementali: Rosso, Verde, Blu
         let colors = [new THREE.Color(0xFF1133), new THREE.Color(0x33FF00), new THREE.Color(0x00AAFF)];
         this.titleData = []; this.titleOriginalData = []; 
         let dummy = new THREE.Object3D();
         
         for(let i=0; i<points.length; i++) {
-            let px = points[i].x * 1.6;
-            let py = points[i].y * 1.6 + 100; // Alzato ad altezza telecamera
-            let pz = MathUtils.randomRange(-3, 3); // Leggero spessore irregolare
+            // Moltiplicatore 1.5 per incollarli vicinissimi tra loro
+            let px = points[i].x * 1.5;
+            let py = points[i].y * 1.5 + 100; 
+            let pz = MathUtils.randomRange(-3, 3); // Spessore 3D irregolare
             
             dummy.position.set(px, py, pz);
             dummy.updateMatrix();
@@ -3759,7 +3758,7 @@ loop(timestamp) {
                         d.bx += d.vx * frameTime;
                         d.by += d.vy * frameTime;
                         d.bz += d.vz * frameTime;
-                        d.vx *= 0.92; d.vy *= 0.92; d.vz *= 0.92; // Attrito
+                       d.vx *= 0.96; d.vy *= 0.96; d.vz *= 0.96; // Meno attrito per un'uscita fluida
                         dummyMenu.position.set(d.bx, d.by, d.bz);
                         let s = Math.max(0.001, 1.0 - this.menuTime * 1.5);
                         dummyMenu.scale.setScalar(s);
@@ -3789,9 +3788,10 @@ loop(timestamp) {
             // Aggiorna le particelle in modo indipendente
             for (let i = 0; i < this.particles.length; i++) if(this.particles[i].active) this.particles[i].update(frameTime);
 
-            // La telecamera ruota dolcemente attorno al logo
-            this.camera.position.x = Math.sin(this.menuTime * 0.3) * 60;
-            this.camera.position.z = 250 + Math.cos(this.menuTime * 0.4) * 40;
+            // FIX MOBILE: Arretriamo la telecamera su Smartphone (da 250 a 380) per inquadrare tutta la scritta!
+            let baseCamZ = isTouchDevice ? 380 : 250;
+            this.camera.position.x = Math.sin(this.menuTime * 0.3) * (isTouchDevice ? 30 : 60);
+            this.camera.position.z = baseCamZ + Math.cos(this.menuTime * 0.4) * 40;
             this.camera.position.y = 100 + Math.sin(this.menuTime * 0.5) * 15;
             this.camera.lookAt(0, 100, 0);
 
@@ -9195,28 +9195,38 @@ function startGameFromMenu() {
     let diff = DifficultySettings.levels[DifficultySettings.index].val;
     AudioEngine.stopMenuMusic(); 
 
-    // INIZIO EFFETTO ESPLOSIONE 3D
+    // Nascondi dolcemente la UI HTML per far godere l'esplosione 3D
+    let menuUI = document.getElementById('mainMenu');
+    menuUI.style.transition = 'opacity 0.4s';
+    menuUI.style.opacity = '0';
+
+    // INIZIO EFFETTO ESPLOSIONE 3D (Più aggressiva e frontale)
     Game.titleExploding = true;
-    Game.menuTime = 0; // Reset per usare il tempo come scala di rimpicciolimento
     if (Game.titleData) {
         for(let i=0; i<Game.titleData.length; i++) {
             let d = Game.titleData[i];
             let a = Math.random() * Math.PI * 2;
-            let s = MathUtils.randomRange(300, 1000); // Forza dello scoppio
+            let s = MathUtils.randomRange(300, 800); 
+            // Sparano in tutte le direzioni ma SOPRATTUTTO verso la telecamera (Z positivo verso il giocatore)
             d.vx = Math.cos(a) * s;
-            d.vy = MathUtils.randomRange(-300, 600);
-            d.vz = Math.sin(a) * s;
+            d.vy = MathUtils.randomRange(-200, 500);
+            d.vz = MathUtils.randomRange(400, 1200); // Schizzano in faccia allo schermo!
         }
     }
     
-    // Attende che i frammenti schizzino via prima di lanciare la transizione
+    // Transizione sincronizzata: il cerchio nero si chiude esattamente mentre i cubi volano via
     setTimeout(() => {
         TransitionSystem.wipeIn(() => {
             Game.startGame(diff);
-            if(Game.titleMesh) Game.titleMesh.visible = false; // Nascondiamo le macerie
+            
+            // Ripristina la visibilità della UI HTML per quando tornerai al menu in futuro
+            menuUI.classList.add('hidden');
+            menuUI.style.opacity = '1';
+            
+            if(Game.titleMesh) Game.titleMesh.visible = false; // Nascondiamo i detriti 3D residui
             setTimeout(() => TransitionSystem.wipeOut(), 100);
         });
-    }, 500); 
+    }, 350); // Anticipato per matchare perfettamente la velocità dei cubi
 }
 
 function restartGame() {

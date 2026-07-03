@@ -1538,12 +1538,19 @@ const ScoreManager = {
             metalness: 0.3 
         });
 
-        // Box leggermente ingrandito
-        let boxMesh = new THREE.Mesh(new THREE.BoxGeometry(40, 40, 40), boxMat);
-        let wireMat = new THREE.MeshBasicMaterial({ color: 0x8899cc, wireframe: true, transparent: true, opacity: 0.5 });
-        let wireMesh = new THREE.Mesh(new THREE.BoxGeometry(42, 42, 42), wireMat);
+     // Box reso visivamente più massiccio e imponente (da 40 a 50)
+        let boxMesh = new THREE.Mesh(new THREE.BoxGeometry(50, 50, 50), boxMat);
+        let wireMat = new THREE.MeshBasicMaterial({ color: 0x8899cc, wireframe: true, transparent: true, opacity: 0.4 });
+        let wireMesh = new THREE.Mesh(new THREE.BoxGeometry(52, 52, 52), wireMat);
         this.boxGroup.add(boxMesh, wireMesh);
         this.scene.add(this.boxGroup);
+
+        // OTTIMIZZAZIONE RAM: Pre-allochiamo la luce dell'esplosione spenta
+        // per evitare di creare nuovi oggetti (Memory Leak) ogni volta che si preme Gioca
+        if (!this.explosionLight) {
+            this.explosionLight = new THREE.PointLight(0xffffff, 0.0, 1000);
+            this.scene.add(this.explosionLight);
+        }
         
         // 3 Sfere Elementali Orbitanti (Rossa, Blu, Verde)
         const orbColors = [0xFF1133, 0x00AAFF, 0x33FF00];
@@ -1608,45 +1615,46 @@ const ScoreManager = {
         }
     },
     
-   update(dt) {
+  update(dt) {
         if (!this.active || !this.initialized) return;
 
-        // --- NUOVA LOGICA ESPLOSIONE ---
+        // --- NUOVA LOGICA ESPLOSIONE OTTIMIZZATA ---
         if (this.isExploding) {
             this.explosionTime += dt;
             let expForce = this.explosionTime * 15;
 
-            // Il cubo ruota vorticosamente e si ingrandisce
             if (this.boxGroup) {
                 this.boxGroup.rotation.x += dt * (2 + expForce);
                 this.boxGroup.rotation.y += dt * (3 + expForce);
-                this.boxGroup.scale.addScalar(dt * 3.5);
+                this.boxGroup.scale.addScalar(dt * 4.5); // Esplosione di scala più violenta
             }
 
-            // Le particelle volano contro la telecamera (Z si avvicina a 180)
+            // Fade della luce dell'esplosione per renderla fluida
+            if (this.explosionLight && this.explosionLight.intensity > 0) {
+                this.explosionLight.intensity = Math.max(0, this.explosionLight.intensity - (dt * 40));
+            }
+
             for(let i=0; i<this.particles.length; i++) {
                 let p = this.particles[i];
-                p.radius += dt * 350; // Si espandono in larghezza
-                p.mesh.position.z += dt * 500; // Volano verso lo schermo
+                p.radius += dt * 450; 
+                p.mesh.position.z += dt * 600; 
                 p.mesh.position.x = Math.cos(p.angle) * p.radius;
                 p.mesh.position.y = p.y;
             }
 
-            // Le 3 sfere principali schizzano via
             for(let i=0; i<this.orbs.length; i++) {
                 let o = this.orbs[i];
-                o.radiusX += dt * 300;
-                o.radiusY += dt * 300;
+                o.radiusX += dt * 400;
+                o.radiusY += dt * 400;
                 let x = Math.cos(o.angle) * o.radiusX;
-                let z = Math.sin(o.angle) * o.radiusX + (this.explosionTime * 250);
+                let z = Math.sin(o.angle) * o.radiusX + (this.explosionTime * 300);
                 let y = Math.sin(o.angle * 2) * o.radiusY;
                 o.group.position.set(x, y, z);
             }
 
             this.renderer.render(this.scene, this.camera);
-            return; // Salta il movimento standard
+            return;
         }
-        // --- FINE LOGICA ESPLOSIONE ---
 
         this.time += dt;
         
@@ -1675,27 +1683,24 @@ const ScoreManager = {
         this.renderer.render(this.scene, this.camera);
     },
 
-    // Aggiungi questo nuovo metodo subito dopo update()
- triggerExplosion() {
+    triggerExplosion() {
         this.isExploding = true;
         this.explosionTime = 0;
-        let flash = new THREE.PointLight(0xffffff, 20.0, 800);
-        flash.name = "explosionFlash"; // Diamo un nome per trovarla e rimuoverla dopo
-        this.scene.add(flash);
+        // La luce esplode istantaneamente
+        if (this.explosionLight) this.explosionLight.intensity = 25.0; 
     },
     
-    // NUOVO METODO: Resetta posizione e scala quando torni al menu
+    // FIX BUG RIENTRO AL MENU: Ora gli oggetti tornano perfettamente alla posizione di origine
     reset() {
         this.isExploding = false;
         this.explosionTime = 0;
+        
+        if (this.explosionLight) this.explosionLight.intensity = 0.0;
         
         if (this.boxGroup) {
             this.boxGroup.scale.set(1, 1, 1);
             this.boxGroup.rotation.set(0, 0, 0);
         }
-        
-        let flash = this.scene.getObjectByName("explosionFlash");
-        if (flash) this.scene.remove(flash);
         
         for(let i=0; i<this.orbs.length; i++) {
             this.orbs[i].radiusX = 75 + i * 8;
@@ -1705,10 +1710,13 @@ const ScoreManager = {
         
         for(let i=0; i<this.particles.length; i++) {
             this.particles[i].radius = MathUtils.randomRange(20, 120);
-            this.particles[i].mesh.position.z = 0;
+            let a = this.particles[i].angle;
+            let r = this.particles[i].radius;
+            // Ricalcolo esatto della posizione circolare
+            this.particles[i].mesh.position.set(Math.cos(a) * r, this.particles[i].y, Math.sin(a) * r);
         }
     }
-}; // <-- Fine di TitleSystem
+};
 
 const UIManager = {
     showModal(id) {
@@ -9413,6 +9421,9 @@ function goToMainMenu() {
 }
 
 function startGameFromMenu() {
+    // OTTIMIZZAZIONE: Impedisce i bug causati dallo spamming forsennato del click sul tasto GIOCA
+    if (Game.state === 'WARPING_IN' || (typeof TitleSystem !== 'undefined' && TitleSystem.isExploding)) return;
+
     AudioEngine.playClick();
     let diff = DifficultySettings.levels[DifficultySettings.index].val;
     AudioEngine.stopMenuMusic(); 
@@ -9425,13 +9436,11 @@ function startGameFromMenu() {
     document.getElementById('mainMenu').querySelector('.pointer-events-auto').classList.add('opacity-0', 'transition-opacity', 'duration-300');
     document.querySelector('.title-3d-text').classList.add('opacity-0', 'transition-opacity', 'duration-300');
 
-    // Tempo di visualizzazione dell'esplosione ridotto da 450ms a soli 150ms
     setTimeout(() => {
         TransitionSystem.wipeIn(() => {
             Game.startGame(diff);
             document.getElementById('mainMenu').querySelector('.pointer-events-auto').classList.remove('opacity-0');
             document.querySelector('.title-3d-text').classList.remove('opacity-0');
-            // Apre quasi immediatamente la schermata appena carica il livello
             setTimeout(() => TransitionSystem.wipeOut(), 50); 
         });
     }, 150); 

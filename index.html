@@ -97,7 +97,36 @@
             to { opacity: 1; transform: translateY(0); }
         }
         .stagger-enter { animation: slide-in-bottom 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
-
+/* --- STILE TITOLO 3D ELEMENTALE --- */
+        @keyframes title-rgb-glow {
+            0%, 100% {
+                filter: drop-shadow(0px 4px 0px #1e293b) drop-shadow(0px 10px 25px rgba(255, 17, 51, 0.7));
+            }
+            33% {
+                filter: drop-shadow(0px 4px 0px #1e293b) drop-shadow(0px 10px 25px rgba(0, 170, 255, 0.7));
+            }
+            66% {
+                filter: drop-shadow(0px 4px 0px #1e293b) drop-shadow(0px 10px 25px rgba(51, 255, 0, 0.7));
+            }
+        }
+        @keyframes title-float {
+            0%, 100% { transform: perspective(800px) rotateX(8deg) translateY(0px); }
+            50% { transform: perspective(800px) rotateX(4deg) translateY(-8px); }
+        }
+       .title-3d-text {
+            background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 45%, #64748b 80%, #334155 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            /* Nuova ombra 3D a strati per dare spessore massiccio al testo */
+            text-shadow: 
+                0px 1px 0px #94a3b8,
+                0px 2px 0px #64748b,
+                0px 3px 0px #475569,
+                0px 4px 0px #334155,
+                0px 5px 0px #1e293b,
+                0px 8px 25px rgba(0,0,0,0.9);
+            animation: title-float 4s ease-in-out infinite, title-rgb-glow 6s linear infinite;
+        }
    #vignette { 
         position: absolute; inset: 0; 
         background: radial-gradient(circle at center, transparent 40%, rgba(2, 2, 10, 0.7) 85%, rgba(0, 0, 5, 0.95) 100%); 
@@ -202,17 +231,33 @@ body.colorblind-mode #opt-colorblind-text {
         <h1 id="startText" class="hidden text-[8vw] sm:text-4xl font-extrabold text-red-700 tracking-widest animate-pulse text-center px-4 drop-shadow-[0_0_15px_rgba(220,38,38,0.8)] z-10 whitespace-nowrap">Tocca per Entrare</h1>
     </div>
 
- <!-- MAIN MENU -->
-    <div id="mainMenu" class="absolute inset-0 z-[200] pointer-events-auto hidden flex-col justify-between overflow-y-auto overflow-x-hidden">
-        <!-- Rimosso bg.png per mostrare il mondo 3D, Gradienti alleggeriti al centro -->
-        <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_40%,_rgba(0,0,0,0.90)_100%)] pointer-events-none"></div>
-        <div class="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/95 pointer-events-none"></div>
+  <!-- MAIN MENU -->
+    <div id="mainMenu" class="absolute inset-0 z-[200] pointer-events-auto hidden flex-col justify-between overflow-y-auto overflow-x-hidden bg-cover bg-center bg-no-repeat" style="background-image: url('bg.png');">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_10%,_rgba(0,0,0,0.85)_100%)] pointer-events-none"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/95 pointer-events-none"></div>
 
-        <div class="w-full h-full flex flex-col justify-between items-center z-10 px-4 py-8">
-            <!-- TITOLO IN ALTO (Ora gestito dal Canvas 3D) -->
-            <div class="flex flex-col items-center pointer-events-none w-full text-center mt-4">
-                <!-- Spingiamo in basso il sottotitolo per fare spazio al colosso 3D -->
-                <h2 class="text-[3vw] sm:text-sm text-gray-400 uppercase tracking-[0.8em] font-bold drop-shadow-md mt-24">Definitive Edition</h2>
+        <div class="w-full h-full flex flex-col justify-between items-center z-10 px-4 py-8">
+        <!-- TITOLO 3D INTERATTIVO IN ALTO -->
+            <div class="relative w-full flex flex-col items-center justify-center mt-2 sm:mt-6 min-h-[220px] sm:min-h-[300px] pointer-events-none">
+                <!-- Canvas 3D per Effetti Particellari e Sfere Elementali RGB -->
+                <div id="title-3d-canvas-container" class="absolute inset-0 w-full h-[280px] sm:h-[360px] -top-8 flex items-center justify-center z-0"></div>
+                
+                <!-- Testo 3D Accattivante -->
+                <div class="relative z-10 flex flex-col items-center">
+                    <div class="relative">
+                        <!-- Bagliore Elementale Sotto il Titolo -->
+                        <div class="absolute -inset-4 bg-gradient-to-r from-red-600/30 via-blue-600/30 to-green-600/30 blur-2xl rounded-full animate-pulse"></div>
+                        <h1 class="title-3d-text font-black italic tracking-tighter leading-none text-[13vw] sm:text-8xl md:text-9xl whitespace-nowrap select-none m-0">INTO THE BOX</h1>
+                    </div>
+                    
+                    <!-- Sottotitolo con Badge Cyberpunk/Arcade RGB -->
+                    <div class="flex items-center gap-2 mt-2 sm:mt-4 px-4 py-1.5 rounded-full bg-black/60 border border-gray-700/80 backdrop-blur-md shadow-[0_0_15px_rgba(0,0,0,0.8)]">
+                        <span class="w-2 h-2 rounded-full bg-red-500 animate-ping shadow-[0_0_8px_#ff0000]"></span>
+                        <span class="w-2 h-2 rounded-full bg-blue-400 animate-ping shadow-[0_0_8px_#00aaff]" style="animation-delay: 0.3s;"></span>
+                        <span class="w-2 h-2 rounded-full bg-green-400 animate-ping shadow-[0_0_8px_#33ff00]" style="animation-delay: 0.6s;"></span>
+                        <h2 class="text-[3vw] sm:text-xs text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-blue-300 to-green-400 uppercase tracking-[0.6em] font-extrabold m-0 pl-1">Definitive Edition</h2>
+                    </div>
+                </div>
             </div>
 
            <!-- ZONA CENTRALE: VUOTA PER LASCIAR VEDERE LO SFONDO -->
@@ -1447,6 +1492,192 @@ const ScoreManager = {
     wipeOut() {
         if (!this.el) this.init();
         this.el.style.clipPath = 'circle(0% at 50% 50%)';
+    }
+};
+   const TitleSystem = {
+    scene: null, camera: null, renderer: null, container: null,
+    boxGroup: null, orbs: [], particles: [], time: 0, initialized: false, active: false,
+    isExploding: false, explosionTime: 0, // <-- NUOVE VARIABILI ESPLOSIONE
+    
+    init() {
+        this.container = document.getElementById('title-3d-canvas-container');
+        if (!this.container || this.initialized) return;
+        
+        let w = this.container.clientWidth || window.innerWidth;
+        let h = this.container.clientHeight || 300;
+        
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.PerspectiveCamera(50, w / h, 1, 1000);
+        this.camera.position.set(0, 0, 180);
+        
+        this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: !isTouchDevice });
+        this.renderer.setSize(w, h);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        this.container.appendChild(this.renderer.domElement);
+        
+       // Nucleo Cubico Centrale (The Box)
+        this.boxGroup = new THREE.Group();
+        
+        // RECUPERA LA TEXTURE DEL TERRENO DAL PRELOADER
+        let tex = null;
+        if (typeof Preloader !== 'undefined' && Preloader.textures['wall']) {
+            tex = Preloader.textures['wall'];
+        }
+
+        // Materiale migliorato per reagire alle luci
+        let boxMat = new THREE.MeshStandardMaterial({ 
+            color: 0x666677, // Schiarito per far prendere meglio la luce
+            map: tex,
+            bumpMap: tex,
+            bumpScale: 0.1,
+            roughness: 0.6, 
+            metalness: 0.3 
+        });
+
+        // Box leggermente ingrandito
+        let boxMesh = new THREE.Mesh(new THREE.BoxGeometry(40, 40, 40), boxMat);
+        let wireMat = new THREE.MeshBasicMaterial({ color: 0x8899cc, wireframe: true, transparent: true, opacity: 0.5 });
+        let wireMesh = new THREE.Mesh(new THREE.BoxGeometry(42, 42, 42), wireMat);
+        this.boxGroup.add(boxMesh, wireMesh);
+        this.scene.add(this.boxGroup);
+        
+        // 3 Sfere Elementali Orbitanti (Rossa, Blu, Verde)
+        const orbColors = [0xFF1133, 0x00AAFF, 0x33FF00];
+        const orbMats = [SharedMat.spriteRed, SharedMat.spriteBlue, SharedMat.spriteGreen];
+        
+        for(let i=0; i<3; i++) {
+            let orbGroup = new THREE.Group();
+            let core = new THREE.Mesh(SharedGeo.icosahedron, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            core.scale.setScalar(4.5);
+            let halo = new THREE.Sprite(orbMats[i]);
+            halo.scale.set(35, 35, 1);
+            
+            // INTENSITÀ DELLA LUCE RADDOPPIATA PER ILLUMINARE BENE IL CUBO
+            let light = new THREE.PointLight(orbColors[i], 8.0, 300);
+            orbGroup.add(core, halo, light);
+            this.scene.add(orbGroup);
+            
+            this.orbs.push({
+                group: orbGroup,
+                angle: (Math.PI * 2 / 3) * i,
+                speed: 1.2 + i * 0.2,
+                radiusX: 75 + i * 8,
+                radiusY: 25 + i * 5
+            });
+        }
+        
+        // Vortice di Particelle Elementali RGB
+        let pCount = isTouchDevice ? 30 : 75;
+        for(let i=0; i<pCount; i++) {
+            let pMat = orbMats[i % 3];
+            let p = new THREE.Sprite(pMat);
+            let size = MathUtils.randomRange(6, 14);
+            p.scale.set(size, size, 1);
+            
+            let angle = Math.random() * Math.PI * 2;
+            let radius = MathUtils.randomRange(20, 120);
+            let y = MathUtils.randomRange(-80, 80);
+            p.position.set(Math.cos(angle)*radius, y, Math.sin(angle)*radius);
+            this.scene.add(p);
+            
+            this.particles.push({
+                mesh: p, angle: angle, radius: radius,
+                speed: MathUtils.randomRange(0.5, 1.5),
+                vy: MathUtils.randomRange(10, 25), y: y
+            });
+        }
+        
+        this.scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        window.addEventListener('resize', () => this.resize());
+        this.initialized = true;
+        this.active = true;
+    },
+    
+    resize() {
+        if (!this.container || !this.renderer) return;
+        let w = this.container.clientWidth;
+        let h = this.container.clientHeight;
+        if (w && h) {
+            this.camera.aspect = w / h;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(w, h);
+        }
+    },
+    
+   update(dt) {
+        if (!this.active || !this.initialized) return;
+
+        // --- NUOVA LOGICA ESPLOSIONE ---
+        if (this.isExploding) {
+            this.explosionTime += dt;
+            let expForce = this.explosionTime * 15;
+
+            // Il cubo ruota vorticosamente e si ingrandisce
+            if (this.boxGroup) {
+                this.boxGroup.rotation.x += dt * (2 + expForce);
+                this.boxGroup.rotation.y += dt * (3 + expForce);
+                this.boxGroup.scale.addScalar(dt * 3.5);
+            }
+
+            // Le particelle volano contro la telecamera (Z si avvicina a 180)
+            for(let i=0; i<this.particles.length; i++) {
+                let p = this.particles[i];
+                p.radius += dt * 350; // Si espandono in larghezza
+                p.mesh.position.z += dt * 500; // Volano verso lo schermo
+                p.mesh.position.x = Math.cos(p.angle) * p.radius;
+                p.mesh.position.y = p.y;
+            }
+
+            // Le 3 sfere principali schizzano via
+            for(let i=0; i<this.orbs.length; i++) {
+                let o = this.orbs[i];
+                o.radiusX += dt * 300;
+                o.radiusY += dt * 300;
+                let x = Math.cos(o.angle) * o.radiusX;
+                let z = Math.sin(o.angle) * o.radiusX + (this.explosionTime * 250);
+                let y = Math.sin(o.angle * 2) * o.radiusY;
+                o.group.position.set(x, y, z);
+            }
+
+            this.renderer.render(this.scene, this.camera);
+            return; // Salta il movimento standard
+        }
+        // --- FINE LOGICA ESPLOSIONE ---
+
+        this.time += dt;
+        
+        if (this.boxGroup) {
+            this.boxGroup.rotation.x += dt * 0.4;
+            this.boxGroup.rotation.y += dt * 0.6;
+        }
+        
+        for(let i=0; i<this.orbs.length; i++) {
+            let o = this.orbs[i];
+            o.angle += o.speed * dt;
+            let x = Math.cos(o.angle) * o.radiusX;
+            let z = Math.sin(o.angle) * o.radiusX;
+            let y = Math.sin(o.angle * 2) * o.radiusY;
+            o.group.position.set(x, y, z);
+        }
+        
+        for(let i=0; i<this.particles.length; i++) {
+            let p = this.particles[i];
+            p.angle += p.speed * dt;
+            p.y += p.vy * dt;
+            if (p.y > 90) p.y = -90;
+            p.mesh.position.set(Math.cos(p.angle) * p.radius, p.y, Math.sin(p.angle) * p.radius);
+        }
+        
+        this.renderer.render(this.scene, this.camera);
+    },
+
+    // Aggiungi questo nuovo metodo subito dopo update()
+    triggerExplosion() {
+        this.isExploding = true;
+        this.explosionTime = 0;
+        // Aggiunge un flash di luce centrale potentissimo
+        let flash = new THREE.PointLight(0xffffff, 20.0, 800);
+        this.scene.add(flash);
     }
 };
 const UIManager = {
@@ -3348,9 +3579,7 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         document.body.appendChild(this.stats.dom);
         // ----------------------------------------
 
-       this.prewarmShaders(); this.setupInputs(); this.initPools(); 
-        this.create3DTitle(); // <-- GENERAZIONE TITOLO 3D
-        this._boundLoop = this.loop.bind(this); requestAnimationFrame(this._boundLoop);
+        this.prewarmShaders(); this.setupInputs(); this.initPools(); this._boundLoop = this.loop.bind(this); requestAnimationFrame(this._boundLoop);
     },
 prewarmShaders() {
         // Crea una scena invisibile usa-e-getta per forzare la GPU a compilare i materiali
@@ -3501,70 +3730,7 @@ Game.scene.add(this.dynamicDebrisMesh);
     getDecoy() { let d = this.decoys[this._decoyIdx]; this._decoyIdx = (this._decoyIdx + 1) % this.decoys.length; return d; },
     getDashLine() { let d = this.dashLines[this._dashLineIdx]; this._dashLineIdx = (this._dashLineIdx + 1) % this.dashLines.length; return d; },
 
-  create3DTitle() {
-        if (this.titleMesh) return; 
-
-        let canvas = document.createElement('canvas');
-        canvas.width = 256; canvas.height = 64;
-        let ctx = canvas.getContext('2d');
-        ctx.font = "italic 900 34px 'Impact', sans-serif"; // Font leggermente ingrandito
-        ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillStyle = "white";
-        ctx.fillText("INTO THE BOX", 128, 32);
-
-        let imgData = ctx.getImageData(0,0,256,64).data;
-        let points = [];
-        // FIX MOBILE & LEGGIBILITÀ: Saltiamo un pixel (step 2) per avere meno cubi, ma molto più grossi e compatti
-        for(let y=0; y<64; y+=2) { 
-            for(let x=0; x<256; x+=2) {
-                if (imgData[(y*256 + x)*4 + 3] > 128) points.push({x: x - 128, y: -y + 32});
-            }
-        }
-
-        // Cubi grandi il doppio (3.2) per dare un senso di "blocco monolitico" leggibile
-        let geo = new THREE.BoxGeometry(3.2, 3.2, 3.2);
-        let mat = new THREE.MeshBasicMaterial({color: 0xffffff}); 
-        this.titleMesh = new THREE.InstancedMesh(geo, mat, points.length);
-        this.titleMesh.matrixAutoUpdate = false;
-        
-        let colors = [new THREE.Color(0xFF1133), new THREE.Color(0x33FF00), new THREE.Color(0x00AAFF)];
-        this.titleData = []; this.titleOriginalData = []; 
-        let dummy = new THREE.Object3D();
-        
-        for(let i=0; i<points.length; i++) {
-            // Moltiplicatore 1.5 per incollarli vicinissimi tra loro
-            let px = points[i].x * 1.5;
-            let py = points[i].y * 1.5 + 100; 
-            let pz = MathUtils.randomRange(-3, 3); // Spessore 3D irregolare
-            
-            dummy.position.set(px, py, pz);
-            dummy.updateMatrix();
-            this.titleMesh.setMatrixAt(i, dummy.matrix);
-            
-            let col = colors[Math.floor(Math.random() * colors.length)];
-            this.titleMesh.setColorAt(i, col);
-            
-            this.titleData.push({ bx: px, by: py, bz: pz, offset: Math.random() * Math.PI * 2, speed: MathUtils.randomRange(1, 3), vx: 0, vy: 0, vz: 0 });
-            this.titleOriginalData.push({x: px, y: py, z: pz});
-        }
-        this.titleMesh.instanceColor.needsUpdate = true;
-        this.scene.add(this.titleMesh);
-    },
-
-    reset3DTitle() {
-        this.titleExploding = false;
-        if (this.titleMesh) this.titleMesh.visible = true;
-        if (this.titleData && this.titleOriginalData) {
-            for(let i=0; i<this.titleData.length; i++) {
-                this.titleData[i].bx = this.titleOriginalData[i].x;
-                this.titleData[i].by = this.titleOriginalData[i].y;
-                this.titleData[i].bz = this.titleOriginalData[i].z;
-                this.titleData[i].vx = 0; this.titleData[i].vy = 0; this.titleData[i].vz = 0;
-            }
-        }
-    },
-
-    addCombo(amount = 1) {
+    addCombo(amount = 1) { 
         this.combo += amount * (this.player ? this.player.modifiers.comboStep : 1); 
         let maxCombo = (this.isCorrupted && this.corruptedType === 'combo') ? 300 : 100;
         this.combo = Math.min(this.combo, maxCombo); 
@@ -3739,69 +3905,18 @@ loop(timestamp) {
         }
         // --- FINE CAP FPS ---
         
-       // Calcolo delta time reale
+        // Calcolo delta time reale
         if (!this.lastTime) this.lastTime = timestamp; 
         let frameTime = (timestamp - this.lastTime) / 1000; 
         this.lastTime = timestamp;
-        
-        // --- LOOP DEDICATO AL MAIN MENU (3D TITLE) ---
+
+    // Aggiorna la scena 3D del titolo solo se sei nel Menu
         if (this.state === 'MENU') {
-            if (!this.menuTime) this.menuTime = 0;
-            this.menuTime += frameTime;
-
-            if (this.titleMesh && this.titleData) {
-                let dummyMenu = this._dummyFog; 
-                for(let i=0; i<this.titleData.length; i++) {
-                    let d = this.titleData[i];
-                    if (this.titleExploding) {
-                        // EFFETTO ESPLOSIONE: I cubetti schizzano via per lo schermo!
-                        d.bx += d.vx * frameTime;
-                        d.by += d.vy * frameTime;
-                        d.bz += d.vz * frameTime;
-                       d.vx *= 0.96; d.vy *= 0.96; d.vz *= 0.96; // Meno attrito per un'uscita fluida
-                        dummyMenu.position.set(d.bx, d.by, d.bz);
-                        let s = Math.max(0.001, 1.0 - this.menuTime * 1.5);
-                        dummyMenu.scale.setScalar(s);
-                    } else {
-                        // EFFETTO "IDLE": I cubetti galleggiano e si contorcono
-                        let waveX = Math.sin(this.menuTime * d.speed + d.offset) * 2.0;
-                        let waveY = Math.cos(this.menuTime * d.speed * 0.8 + d.offset) * 2.0;
-                        let waveZ = Math.sin(this.menuTime * 1.2 + d.offset) * 3.0;
-                        dummyMenu.position.set(d.bx + waveX, d.by + waveY, d.bz + waveZ);
-                        dummyMenu.rotation.set(waveX * 0.2, waveY * 0.2, waveZ * 0.2);
-                        dummyMenu.scale.setScalar(1);
-                    }
-                    dummyMenu.updateMatrix();
-                    this.titleMesh.setMatrixAt(i, dummyMenu.matrix);
-                }
-                this.titleMesh.instanceMatrix.needsUpdate = true;
-
-                // Emettitori di particelle occasionali dai bordi delle lettere!
-                if (!this.titleExploding && this.frameCount % (isTouchDevice ? 4 : 2) === 0) {
-                    let rIdx = Math.floor(Math.random() * this.titleData.length);
-                    let d = this.titleData[rIdx];
-                    let mats = [SharedMat.spriteRed, SharedMat.spriteGreen, SharedMat.spriteBlue];
-                    this.getParticle().spawn(d.bx, d.by, d.bz, mats[Math.floor(Math.random()*3)], 'spark');
-                }
-            }
-            
-            // Aggiorna le particelle in modo indipendente
-            for (let i = 0; i < this.particles.length; i++) if(this.particles[i].active) this.particles[i].update(frameTime);
-
-            // FIX MOBILE: Arretriamo la telecamera su Smartphone (da 250 a 380) per inquadrare tutta la scritta!
-            let baseCamZ = isTouchDevice ? 380 : 250;
-            this.camera.position.x = Math.sin(this.menuTime * 0.3) * (isTouchDevice ? 30 : 60);
-            this.camera.position.z = baseCamZ + Math.cos(this.menuTime * 0.4) * 40;
-            this.camera.position.y = 100 + Math.sin(this.menuTime * 0.5) * 15;
-            this.camera.lookAt(0, 100, 0);
-
-            this.frameCount++;
-            this.draw();
-            requestAnimationFrame(this._boundLoop);
-            return; // Interrompe il resto della logica!
+            TitleSystem.active = true;
+            TitleSystem.update(frameTime);
+        } else {
+            TitleSystem.active = false;
         }
-        // --- FINE LOOP DEDICATO ---
-
         // FIX WARP: Se stiamo animando la fine del livello, impedisce che un "lag spike" salti l'intera animazione
         let currentMaxTimeStep = (this.state === 'WARPING_OUT') ? 0.03 : MAX_TIME_STEP;
         if (frameTime > currentMaxTimeStep) frameTime = currentMaxTimeStep;
@@ -9187,46 +9302,37 @@ function goToMainMenu() {
     document.getElementById('mobile-controls').classList.add('hidden');
     document.getElementById('mainMenu').classList.remove('hidden');
     clearScene(); Game.state = 'MENU'; AudioEngine.stopAllMusic(); AudioEngine.playMenuMusic();
-    Game.reset3DTitle(); // <-- Ripristina la scritta per la prossima volta
+    if (typeof TitleSystem !== 'undefined') TitleSystem.resize();
 }
 
 function startGameFromMenu() {
     AudioEngine.playClick();
     let diff = DifficultySettings.levels[DifficultySettings.index].val;
     AudioEngine.stopMenuMusic(); 
-
-    // Nascondi dolcemente la UI HTML per far godere l'esplosione 3D
-    let menuUI = document.getElementById('mainMenu');
-    menuUI.style.transition = 'opacity 0.4s';
-    menuUI.style.opacity = '0';
-
-    // INIZIO EFFETTO ESPLOSIONE 3D (Più aggressiva e frontale)
-    Game.titleExploding = true;
-    if (Game.titleData) {
-        for(let i=0; i<Game.titleData.length; i++) {
-            let d = Game.titleData[i];
-            let a = Math.random() * Math.PI * 2;
-            let s = MathUtils.randomRange(300, 800); 
-            // Sparano in tutte le direzioni ma SOPRATTUTTO verso la telecamera (Z positivo verso il giocatore)
-            d.vx = Math.cos(a) * s;
-            d.vy = MathUtils.randomRange(-200, 500);
-            d.vz = MathUtils.randomRange(400, 1200); // Schizzano in faccia allo schermo!
-        }
-    }
     
-    // Transizione sincronizzata: il cerchio nero si chiude esattamente mentre i cubi volano via
+    // 1. Innesca l'esplosione delle particelle nel menu
+    if (typeof TitleSystem !== 'undefined') {
+        TitleSystem.triggerExplosion();
+        // Usiamo il suono della freccia esplosiva per fare un "woosh" magico
+        AudioEngine.playShoot('explosive_arrow');
+    }
+
+    // Nasconde istantaneamente l'interfaccia 2D in modo da lasciare solo il 3D
+    document.getElementById('mainMenu').querySelector('.pointer-events-auto').classList.add('opacity-0', 'transition-opacity', 'duration-300');
+    document.querySelector('.title-3d-text').classList.add('opacity-0', 'transition-opacity', 'duration-300');
+
+    // 2. Ritarda di mezzo secondo la chiusura dello schermo nero per far vedere l'esplosione
     setTimeout(() => {
         TransitionSystem.wipeIn(() => {
             Game.startGame(diff);
             
-            // Ripristina la visibilità della UI HTML per quando tornerai al menu in futuro
-            menuUI.classList.add('hidden');
-            menuUI.style.opacity = '1';
+            // Ripristina l'opacità del menu nel caso l'utente torni indietro in futuro
+            document.getElementById('mainMenu').querySelector('.pointer-events-auto').classList.remove('opacity-0');
+            document.querySelector('.title-3d-text').classList.remove('opacity-0');
             
-            if(Game.titleMesh) Game.titleMesh.visible = false; // Nascondiamo i detriti 3D residui
             setTimeout(() => TransitionSystem.wipeOut(), 100);
         });
-    }, 350); // Anticipato per matchare perfettamente la velocità dei cubi
+    }, 450); // Attesa di 450ms prima che si chiuda il cerchio nero
 }
 
 function restartGame() {
@@ -9543,7 +9649,7 @@ function cycleDifficulty() {
     window.onload = () => {
     AppSettings.init();
     Preloader.init(); // Avvia il LoadingManager globale
-    ScoreManager.init(); Game.init();
+    ScoreManager.init(); Game.init(); TitleSystem.init();
     const initScreen = document.getElementById('initScreen'); const mainMenu = document.getElementById('mainMenu');
     
     let mobileControls = document.getElementById('mobile-controls-desc');

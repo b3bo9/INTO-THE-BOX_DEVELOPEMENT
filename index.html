@@ -3917,8 +3917,8 @@ loop(timestamp) {
         } else {
             TitleSystem.active = false;
         }
-        // FIX WARP: Se stiamo animando la fine del livello, impedisce che un "lag spike" salti l'intera animazione
-        let currentMaxTimeStep = (this.state === 'WARPING_OUT') ? 0.03 : MAX_TIME_STEP;
+      // FIX WARP: Se stiamo animando le transizioni, impedisce che un "lag spike" salti l'intera animazione
+        let currentMaxTimeStep = (this.state === 'WARPING_OUT' || this.state === 'WARPING_IN') ? 0.03 : MAX_TIME_STEP;
         if (frameTime > currentMaxTimeStep) frameTime = currentMaxTimeStep;
 
     // --- CALCOLO FPS ---
@@ -3937,7 +3937,66 @@ loop(timestamp) {
         }
 
         // --- NUOVO POSIZIONAMENTO FRAME-RATE INDEPENDENT PER IL WARP ---
-   
+   // --- ANIMAZIONE ENTRATA IN GIOCO (WARP IN) ---
+        if (this.state === 'WARPING_IN') {
+            this.warpTimer -= frameTime;
+            let progress = 1.0 - (this.warpTimer / 1.0); // Va da 0.0 a 1.0
+
+            if (this.player && this.player.mesh) {
+                // Rotazione a trivella velocissima
+                this.player.mesh.rotation.y += frameTime * (25 - progress * 10); 
+                
+                // Caduta accelerata (ease-in): parte da 800 di altezza e si schianta a 0
+                let dropCurve = Math.pow(progress, 3); 
+                this.player.mesh.position.y = 800 - (800 * dropCurve); 
+                
+                // Il personaggio appare piccolo e si ingrandisce mentre cade
+                let s = Math.max(0.01, progress);
+                this.player.mesh.scale.setScalar(s); 
+                
+                this.player.mesh.updateMatrix();
+                this.player.mesh.updateMatrixWorld(true);
+            }
+            
+            // Zoom in dinamico della telecamera per seguire la caduta
+            if (this.camera.fov > 50) {
+                this.camera.fov -= frameTime * 40;
+                if (this.camera.fov < 50) this.camera.fov = 50;
+                this.camera.updateProjectionMatrix();
+            }
+            
+            // Scia azzurra di energia durante la caduta
+            if (this.frameCount % 2 === 0) Game.getParticle().spawn(this.player.x, this.player.mesh.position.y, this.player.y, SharedMat.spriteBlue, 'trail');
+            for (let i = 0; i < this.particles.length; i++) if(this.particles[i].active) this.particles[i].update(frameTime);
+            
+            this.frameCount++;
+            this.updateCamera(frameTime);
+            UI.update();
+
+            // IMPATTO A TERRA
+            if (this.warpTimer <= 0) {
+                this.state = 'PLAYING';
+                this.player.mesh.position.y = 0;
+                this.player.mesh.rotation.y = 0;
+                this.player.mesh.scale.setScalar(1.0);
+                this.camera.fov = 50;
+                this.camera.updateProjectionMatrix();
+                
+                // Schianto esplosivo sul terreno
+                Game.addTrauma(2.5);
+                AudioEngine.playShoot('explosive_arrow'); // Suono dell'impatto
+                Game.spawnLightFlash(this.player.x, this.player.y, 0x00DDFF, 6.0, 600);
+                Game.spawnDecal(this.player.x, this.player.y, 'scorch');
+                
+                let pCount = AppSettings.isLow ? 10 : 30;
+                for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.player.x, 5, this.player.y, SharedMat.spriteDust, 'dust');
+                Game.getParticle().spawn(this.player.x, 15, this.player.y, SharedMat.spriteWhite, 'nova');
+            }
+            
+            this.draw();
+            requestAnimationFrame(this._boundLoop);
+            return; 
+        }
         if (this.state === 'WARPING_OUT') {
             this.warpTimer -= frameTime; // Scalamento in tempo reale fluido!
             let progress = 1.0 - (this.warpTimer / 1.2); 
@@ -4197,14 +4256,13 @@ loop(timestamp) {
         this.resetCombo(); this.snapCamera();
     },
 
-  startGame(diffMult) {
+startGame(diffMult) {
         document.getElementById('mainMenu').classList.add('hidden'); document.getElementById('hud').classList.remove('hidden');
         if (isTouchDevice) document.getElementById('mobile-controls').classList.remove('hidden');
-      // Default assoluto forzato su NORMALE (0.6) dato che il tasto è stato rimosso
         this.baseDifficultyMult = 0.6;
         this.difficultyMult = this.baseDifficultyMult;
         this.floor = 1; this.totalKills = 0; this.lives = 3; this.playTime = 0; this.coins = 0; this.lastRelicCount = 0;
-        this.currentThemeIndex = undefined; // <-- AGGIUNTA QUESTA RIGA PER RESETTARE IL TEMA
+        this.currentThemeIndex = undefined; 
         if(UI.els.coins) UI.els.coins.innerText = "0";
         this.ultimateCharge = 0; this.ultimateActive = false;
         this.floorEndTimer = 0; this.floorEndTriggered = false;
@@ -4212,12 +4270,20 @@ loop(timestamp) {
         ShopSystem.reset();
         if (this.player) { Game.scene.remove(this.player.mesh); this.player = null; }
         
-        clearScene(); // <--- ORA PULISCE PRIMA DI AZZERARE GLI ARRAY
+        clearScene(); 
         this.enemies = []; 
-        this.setupFloor(); this.state = 'PLAYING';
+        this.setupFloor(); 
         
-        // FIX DANNO ISTANTANEO: Invincibilità iniziale anche al primo piano
-        if (this.player) this.player.invincibilityTimer = 1.5;
+        // --- MODIFICA WARP IN ---
+        this.state = 'WARPING_IN'; 
+        this.warpTimer = 1.0; // Durata della caduta
+        this.camera.fov = 90; // Allarga la visuale per l'ingresso
+        this.camera.updateProjectionMatrix();
+        if(this.player) {
+            this.player.mesh.position.y = 800; // Posiziona il player altissimo nel cielo
+            this.player.mesh.scale.setScalar(0.01);
+            this.player.invincibilityTimer = 1.5;
+        }
     },
     
 update(combatDt, visualDt) {
@@ -9263,33 +9329,35 @@ function respawnPlayer() {
     Game.player.mesh.updateMatrix();
     if (Game.player.modifiers.shieldActive) Game.player.modifiers.autoShieldTimer = 0;
     
-   // --- BUGFIX LUCE: Riaccendiamo tutto esplicitamente ---
     let pChildren = Game.player.mesh.children;
     for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = true;
-    // Spegniamo manualmente solo gli scudi per non averli attivi al respawn
     Game.player.shieldMesh.visible = false;
     Game.player.glacialShieldMesh.visible = false;
-    
-    // Forza il ricalcolo dei colori e dell'opacità in base alle essenze attuali
     Game.player.updateAppearance();
-    // ------------------------------------------------------
 
-    Game.snapCamera(); Game.state = 'PLAYING';
+    Game.snapCamera(); 
+    
+    // --- MODIFICA WARP IN NEL RESPAWN ---
+    Game.state = 'WARPING_IN';
+    Game.warpTimer = 1.0;
+    Game.camera.fov = 90;
+    Game.camera.updateProjectionMatrix();
+    Game.player.mesh.position.y = 800;
+    Game.player.mesh.scale.setScalar(0.01);
+    // -----------------------------------
+
     if (Game.isBossFloor) AudioEngine.playBossMusic(); else AudioEngine.playGameMusic();
     Game.getFloatingText().spawn(Game.player.x, Game.player.y, "RESPAWN!", '#ff66bb', 40, true);
     
-    // --- NUOVO: MOSTRA LE MONETE PERSE AL RESPAWN ---
     if (Game.lastCoinsLost && Game.lastCoinsLost > 0) {
         setTimeout(() => {
             if (Game.player && !Game.player.dead) {
                 Game.getFloatingText().spawn(Game.player.x, Game.player.y + 25, `-${Game.lastCoinsLost} MONETE`, '#ff3300', 35, true);
-                Game.lastCoinsLost = 0; // Resetta la variabile
+                Game.lastCoinsLost = 0; 
             }
-        }, 600); // Leggero ritardo per non accavallarsi visivamente alla scritta "RESPAWN!"
+        }, 800); 
     }
-    // ------------------------------------------------
     
-    // Reset completo e pulito dello scudo
     Game.player.activeShieldTimer = 0;
     Game.player.activeShieldCooldown = 0;
     Game.player.shieldAbsorbed = 0;
@@ -9610,10 +9678,8 @@ window.prepareFloorScreen = function() {
 };
 window.nextFloor = function(corrupted = false) {
     AudioEngine.playDescendSound(); document.getElementById('floorScreen').classList.add('hidden');
-    clearScene(); Game.state = 'PLAYING'; Game.floor++; Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + 20); 
+    clearScene(); Game.floor++; Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + 20); 
     
-    // FIX DANNO ISTANTANEO: Diamo al giocatore 1.5 secondi di invincibilità all'ingresso di ogni piano.
-    // Evita danni ingiusti da nemici spawnati troppo vicini o da trappole istantanee.
     Game.player.invincibilityTimer = 1.5;
     
     Game.isCorrupted = corrupted;
@@ -9625,9 +9691,22 @@ window.nextFloor = function(corrupted = false) {
     }
 
     Game.setupFloor(); 
+    
+    // --- MODIFICA WARP IN NEI PIANI SUCCESSIVI ---
+    Game.state = 'WARPING_IN';
+    Game.warpTimer = 1.0;
+    Game.camera.fov = 90;
+    Game.camera.updateProjectionMatrix();
+    Game.player.mesh.position.y = 800;
+    Game.player.mesh.scale.setScalar(0.01);
+    // ---------------------------------------------
+
     if (!Game.isBossFloor) { 
         let txt = corrupted ? "PIANO CORROTTO" : `DISCESA AL PIANO ${Game.floor}`;
-        Game.getFloatingText().spawn(Game.player.x, Game.player.y, txt, corrupted ? '#aa00ff' : '#FF0000', 40, true); 
+        // Mostra il testo dopo un po' di ritardo, per farlo apparire appena il player sbatte a terra
+        setTimeout(() => {
+             Game.getFloatingText().spawn(Game.player.x, Game.player.y, txt, corrupted ? '#aa00ff' : '#FF0000', 40, true); 
+        }, 900);
     }
     ShopSystem.updateUI();
 };

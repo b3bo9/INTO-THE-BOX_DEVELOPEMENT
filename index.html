@@ -117,15 +117,19 @@
             background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 45%, #64748b 80%, #334155 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            /* Nuova ombra 3D a strati per dare spessore massiccio al testo */
+            /* Effetto Blocco 3D massiccio */
             text-shadow: 
                 0px 1px 0px #94a3b8,
                 0px 2px 0px #64748b,
                 0px 3px 0px #475569,
                 0px 4px 0px #334155,
                 0px 5px 0px #1e293b,
-                0px 8px 25px rgba(0,0,0,0.9);
-            animation: title-float 4s ease-in-out infinite, title-rgb-glow 6s linear infinite;
+                0px 6px 0px #0f172a,
+                0px 7px 0px #020617,
+                0px 8px 0px #000000,
+                0px 15px 30px rgba(0,0,0,0.9),
+                0px 20px 60px rgba(220, 38, 38, 0.6);
+            animation: title-float 4s ease-in-out infinite;
         }
    #vignette { 
         position: absolute; inset: 0; 
@@ -1479,18 +1483,18 @@ const ScoreManager = {
     },
     formatTime(seconds) { let m = Math.floor(seconds / 60); let s = Math.floor(seconds % 60); return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`; }
 };
-    const TransitionSystem = {
+  const TransitionSystem = {
     el: null,
     init() { this.el = document.getElementById('wipe-transition'); },
-    // Chiude lo schermo (il nero copre la visuale)
     wipeIn(callback) {
         if (!this.el) this.init();
+        this.el.style.transitionDuration = '300ms'; // Forziamo via JS una velocità altissima
         this.el.style.clipPath = 'circle(150% at 50% 50%)';
-        setTimeout(callback, 700); 
+        setTimeout(callback, 300); // Abbassato da 700ms
     },
-    // Riapre lo schermo sul nuovo scenario (il nero si ritira)
     wipeOut() {
         if (!this.el) this.init();
+        this.el.style.transitionDuration = '400ms';
         this.el.style.clipPath = 'circle(0% at 50% 50%)';
     }
 };
@@ -1672,13 +1676,39 @@ const ScoreManager = {
     },
 
     // Aggiungi questo nuovo metodo subito dopo update()
-    triggerExplosion() {
+ triggerExplosion() {
         this.isExploding = true;
         this.explosionTime = 0;
-        // Aggiunge un flash di luce centrale potentissimo
         let flash = new THREE.PointLight(0xffffff, 20.0, 800);
+        flash.name = "explosionFlash"; // Diamo un nome per trovarla e rimuoverla dopo
         this.scene.add(flash);
+    },
+    
+    // NUOVO METODO: Resetta posizione e scala quando torni al menu
+    reset() {
+        this.isExploding = false;
+        this.explosionTime = 0;
+        
+        if (this.boxGroup) {
+            this.boxGroup.scale.set(1, 1, 1);
+            this.boxGroup.rotation.set(0, 0, 0);
+        }
+        
+        let flash = this.scene.getObjectByName("explosionFlash");
+        if (flash) this.scene.remove(flash);
+        
+        for(let i=0; i<this.orbs.length; i++) {
+            this.orbs[i].radiusX = 75 + i * 8;
+            this.orbs[i].radiusY = 25 + i * 5;
+            this.orbs[i].group.position.z = 0;
+        }
+        
+        for(let i=0; i<this.particles.length; i++) {
+            this.particles[i].radius = MathUtils.randomRange(20, 120);
+            this.particles[i].mesh.position.z = 0;
+        }
     }
+}; // <-- Fine di TitleSystem
 };
 const UIManager = {
     showModal(id) {
@@ -9368,9 +9398,18 @@ function goToMainMenu() {
     UI.els.bloodVignette.classList.remove('death-fade-active');
     document.getElementById('hud').classList.add('hidden');
     document.getElementById('mobile-controls').classList.add('hidden');
+    
+    // Ripristina l'opacità del menu nel caso fosse rimasta trasparente dopo il tasto Gioca
+    document.getElementById('mainMenu').querySelector('.pointer-events-auto').classList.remove('opacity-0');
+    document.querySelector('.title-3d-text').classList.remove('opacity-0');
+    
     document.getElementById('mainMenu').classList.remove('hidden');
     clearScene(); Game.state = 'MENU'; AudioEngine.stopAllMusic(); AudioEngine.playMenuMusic();
-    if (typeof TitleSystem !== 'undefined') TitleSystem.resize();
+    
+    if (typeof TitleSystem !== 'undefined') {
+        TitleSystem.reset(); // FIX BUG SCATOLA
+        TitleSystem.resize();
+    }
 }
 
 function startGameFromMenu() {
@@ -9378,29 +9417,24 @@ function startGameFromMenu() {
     let diff = DifficultySettings.levels[DifficultySettings.index].val;
     AudioEngine.stopMenuMusic(); 
     
-    // 1. Innesca l'esplosione delle particelle nel menu
     if (typeof TitleSystem !== 'undefined') {
         TitleSystem.triggerExplosion();
-        // Usiamo il suono della freccia esplosiva per fare un "woosh" magico
         AudioEngine.playShoot('explosive_arrow');
     }
 
-    // Nasconde istantaneamente l'interfaccia 2D in modo da lasciare solo il 3D
     document.getElementById('mainMenu').querySelector('.pointer-events-auto').classList.add('opacity-0', 'transition-opacity', 'duration-300');
     document.querySelector('.title-3d-text').classList.add('opacity-0', 'transition-opacity', 'duration-300');
 
-    // 2. Ritarda di mezzo secondo la chiusura dello schermo nero per far vedere l'esplosione
+    // Tempo di visualizzazione dell'esplosione ridotto da 450ms a soli 150ms
     setTimeout(() => {
         TransitionSystem.wipeIn(() => {
             Game.startGame(diff);
-            
-            // Ripristina l'opacità del menu nel caso l'utente torni indietro in futuro
             document.getElementById('mainMenu').querySelector('.pointer-events-auto').classList.remove('opacity-0');
             document.querySelector('.title-3d-text').classList.remove('opacity-0');
-            
-            setTimeout(() => TransitionSystem.wipeOut(), 100);
+            // Apre quasi immediatamente la schermata appena carica il livello
+            setTimeout(() => TransitionSystem.wipeOut(), 50); 
         });
-    }, 450); // Attesa di 450ms prima che si chiuda il cerchio nero
+    }, 150); 
 }
 
 function restartGame() {

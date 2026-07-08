@@ -128,9 +128,10 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #444; border-radius: 0; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #00DDFF; }
         
-        /* Correzioni in-game per rimuovere bordi tondi */
+       /* Correzioni in-game */
         .health-bar-container { background: #111; border: 1px solid #444; border-radius: 0; overflow: hidden; position: relative; }
-        .stack-dot { width: 22px; height: 22px; border-radius: 0; background: #1a1a1a; border: 2px solid #555; transition: all 0.3s; }
+        /* RIPRISTINATE ESSENZE ROTONDE */
+        .stack-dot { width: 22px; height: 22px; border-radius: 50% !important; background: #1a1a1a; border: 2px solid #555; transition: all 0.3s; transform: none !important; }
         @media (min-width: 640px) { .stack-dot { width: 30px; height: 30px; border-width: 3px; } }
         /* ------------------------------------- */
 
@@ -829,14 +830,13 @@ body.colorblind-mode #opt-colorblind-text {
                 <i class="fa-solid fa-pause"></i>
             </button>
         </div>
-        
         <!-- TACTICAL HUD (Top-Left) -->
         <div class="absolute top-4 left-3 sm:top-6 sm:left-6 flex flex-col gap-3 pointer-events-none w-full max-w-[280px] sm:max-w-[340px] z-50">
             
            <!-- MAIN VITALS PANEL -->
             <div class="hud-panel p-3 flex items-center gap-3.5">
                 
-                <!-- LEVEL RING -->
+                <!-- LEVEL RING (Ripristinato) -->
                 <div class="relative w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center bg-black/80 rounded-full border-2 border-gray-700/80 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] shrink-0">
                     <svg class="absolute inset-0 w-full h-full transform -rotate-90 drop-shadow-[0_0_3px_rgba(34,211,238,0.5)]" viewBox="0 0 36 36">
                         <path class="text-gray-800" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="2.5"/>
@@ -861,7 +861,7 @@ body.colorblind-mode #opt-colorblind-text {
                 </div>
             </div>
 
- <!-- SECONDARY INFO PANEL (Floor Context & Economy) -->
+            <!-- SECONDARY INFO PANEL (Floor Context & Economy) -->
             <div class="flex gap-3 w-full">
                <!-- FLOOR PROGRESS -->
                 <div class="flex-1 hud-panel p-2.5 flex flex-col justify-center">
@@ -891,7 +891,8 @@ body.colorblind-mode #opt-colorblind-text {
         <div class="absolute top-[20%] right-0 sm:top-[22%] sm:right-0 flex flex-col items-end gap-1.5 pointer-events-none z-50">
             
             <div id="combo-container" class="transition-all duration-300 opacity-0 translate-x-12 pr-2 sm:pr-4">
-                <div id="combo-panel" class="relative hud-panel border-r-0 border-y border-l border-gray-600/40 p-3 flex flex-col items-end min-w-[110px] sm:min-w-[140px] transition-colors duration-200 overflow-hidden">
+                <!-- FIX ALLINEAMENTO: Usiamo w-[130px] e sm:w-[160px] FISSO per allinearli a sinistra perfettamente -->
+                <div id="combo-panel" class="relative hud-panel border-r-0 border-y border-l border-gray-600/40 p-3 flex flex-col items-end w-[130px] sm:w-[160px] transition-colors duration-200 overflow-hidden">
                     <div class="absolute top-0 right-0 w-1.5 sm:w-2 h-full bg-gray-900/80">
                         <div id="combo-bar" class="absolute bottom-0 w-full h-full bg-yellow-400 transition-all duration-100 ease-linear"></div>
                     </div>
@@ -904,7 +905,8 @@ body.colorblind-mode #opt-colorblind-text {
             </div>
 
             <div id="essence-hud" class="transition-all duration-300 opacity-0 pr-2 sm:pr-4">
-                <div class="relative hud-panel border-r-0 border-y border-l border-gray-600/40 p-3 flex flex-col items-end min-w-[110px] sm:min-w-[140px] overflow-hidden">
+                <!-- FIX ALLINEAMENTO: Stessa larghezza fissa del combo-panel -->
+                <div class="relative hud-panel border-r-0 border-y border-l border-gray-600/40 p-3 flex flex-col items-end w-[130px] sm:w-[160px] overflow-hidden">
                     <div class="absolute top-0 right-0 w-1.5 sm:w-2 h-full bg-gray-900/80 z-0">
                         <div id="essence-timer" class="absolute bottom-0 w-full h-0 bg-white transition-all duration-100 ease-linear shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
                     </div>
@@ -917,21 +919,22 @@ body.colorblind-mode #opt-colorblind-text {
                 </div>
             </div>
         </div>
-<!-- Tasto Scatto (Dash) -->
+        
+        <!-- Tasto Scatto (Dash) (Ripristinato Rotondo) -->
         <button id="btn-dash" onclick="if(Game.state === 'PLAYING') Game.player.dash();" class="absolute bottom-32 right-[8.5rem] landscape:bottom-6 landscape:right-48 lg:!bottom-8 lg:!right-[11rem] w-14 h-14 bg-black/80 backdrop-blur-md rounded-full border-2 border-gray-600 shadow-[0_0_15px_rgba(0,0,0,0.8)] text-gray-300 hover:text-white font-black text-xs pointer-events-auto transition-colors flex items-center justify-center touch-none overflow-hidden group">
             <div id="btn-dash-fill" class="absolute bottom-0 left-0 w-full bg-yellow-500/50 h-0 transition-all duration-100 pointer-events-none"></div>
             <i class="fa-solid fa-bolt text-2xl relative z-10"></i>
             <span class="absolute -top-6 text-[10px] text-gray-400 font-bold hidden lg:block tracking-widest whitespace-nowrap">SPAZIO</span>
         </button>
 
-        <!-- Tasto Scudo (Shield) -->
+        <!-- Tasto Scudo (Shield) (Ripristinato Rotondo) -->
         <button id="btn-shield" onclick="if(Game.state === 'PLAYING') Game.player.activateShield();" class="absolute bottom-[12.5rem] right-[8.5rem] landscape:bottom-[6.5rem] landscape:right-48 lg:!bottom-8 lg:!right-[6.5rem] w-14 h-14 bg-black/80 backdrop-blur-md rounded-full border-2 border-gray-600 shadow-[0_0_15px_rgba(0,0,0,0.8)] text-gray-300 hover:text-white font-black text-xs pointer-events-auto transition-colors flex items-center justify-center touch-none overflow-hidden group">
             <div id="btn-shield-fill" class="absolute bottom-0 left-0 w-full bg-cyan-500/50 h-0 transition-all duration-200 pointer-events-none"></div>
             <i class="fa-solid fa-shield text-2xl relative z-10"></i>
             <span class="absolute -top-6 text-[10px] text-gray-400 font-bold hidden lg:block tracking-widest whitespace-nowrap">SHIFT</span>
         </button>
 
-        <!-- Tasto Ultimate (Ult) -->
+        <!-- Tasto Ultimate (Ult) (Ripristinato Rotondo) -->
         <button id="btn-ult" onclick="if(Game.state === 'PLAYING') Game.activateUltimate();" class="absolute bottom-[14rem] right-12 landscape:bottom-[8.5rem] landscape:right-40 lg:!bottom-8 lg:!right-8 w-14 h-14 bg-black/80 backdrop-blur-md rounded-full border-2 border-gray-600 shadow-[0_0_15px_rgba(0,0,0,0.8)] text-gray-300 hover:text-white font-black text-xs pointer-events-auto transition-colors flex items-center justify-center touch-none overflow-hidden group">
             <div id="btn-ult-fill" class="absolute bottom-0 left-0 w-full bg-cyan-500/50 h-0 transition-all duration-200 pointer-events-none"></div>
             <i class="fa-solid fa-angles-up text-2xl relative z-10"></i>
@@ -4161,12 +4164,12 @@ loop(timestamp) {
             requestAnimationFrame(this._boundLoop);
             return; 
         }
-      if (this.state === 'WARPING_OUT') {
+   if (this.state === 'WARPING_OUT') {
             this.warpTimer -= frameTime; // Scalamento in tempo reale fluido!
             let progress = 1.0 - (this.warpTimer / 1.2); 
             
             if (this.player && this.player.mesh) {
-                // Eseguiamo il reset visivo UNA SOLA VOLTA in modo sicuro, indipendente dai drop di framerate
+                // FIX WARP: Eseguiamo il reset visivo UNA SOLA VOLTA in modo sicuro, indipendente dai drop di framerate!
                 if (!this.warpOutInitialized) {
                     this.warpOutInitialized = true;
                     let pChildren = this.player.mesh.children;
@@ -4661,8 +4664,8 @@ update(combatDt, visualDt) {
    for(let i=0; i<this.projectiles.length; i++) {
             let p = this.projectiles[i];
             if ((p.active || p.windIntensity > 0) && windCount < MAX_WIND) { 
-                // Aumentiamo drasticamente l'impatto visivo moltiplicando l'intensità x3.5
-                windSources[windCount].set(p.windX, p.windIntensity * 3.5, p.windZ);
+                // Aumentiamo drasticamente l'impatto visivo moltiplicando l'intensità x2.0
+                windSources[windCount].set(p.windX, p.windIntensity * 2.0, p.windZ);
                 windCount++;
             }
         }

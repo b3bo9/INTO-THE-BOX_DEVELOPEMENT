@@ -65,6 +65,29 @@
         .btn-cyber { transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
         .btn-cyber:active { transform: scale(0.95); }
         /* --------------------- */
+        /* --- DESIGN SYSTEM: BOTTONI E NEON --- */
+        .btn-cyber {
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .btn-cyber:hover { filter: brightness(1.2); }
+        .btn-cyber:active { transform: scale(0.95) !important; }
+
+        /* Effetti Bloom (Post-Processing UI) */
+        .box-glow-red:hover { box-shadow: 0 0 25px rgba(255, 17, 51, 0.6), inset 0 0 10px rgba(255, 17, 51, 0.3) !important; border-color: #FF1133 !important; color: #FF1133 !important; }
+        .box-glow-blue:hover { box-shadow: 0 0 25px rgba(0, 221, 255, 0.6), inset 0 0 10px rgba(0, 221, 255, 0.3) !important; border-color: #00DDFF !important; color: #00DDFF !important; }
+        .box-glow-purple:hover { box-shadow: 0 0 25px rgba(168, 85, 247, 0.6), inset 0 0 10px rgba(168, 85, 247, 0.3) !important; border-color: #a855f7 !important; color: #a855f7 !important; }
+        .box-glow-amber:hover { box-shadow: 0 0 25px rgba(251, 191, 36, 0.6), inset 0 0 10px rgba(251, 191, 36, 0.3) !important; border-color: #fbbf24 !important; color: #fbbf24 !important; }
+        .box-glow-gray:hover { box-shadow: 0 0 20px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1) !important; border-color: #ffffff !important; color: #ffffff !important; }
+        
+        .neon-text-red { color: #FF1133; text-shadow: 0 0 15px rgba(255, 17, 51, 0.8), 0 0 5px rgba(255, 17, 51, 0.5); }
+        /* ------------------------------------- */
 
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
     @media (hover: hover) and (pointer: fine) {
@@ -471,15 +494,15 @@ body.colorblind-mode #opt-colorblind-text {
         <div class="glass-panel modal-enter border-gray-600/50 p-6 w-full max-w-[350px] flex flex-col items-center shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden">
             <h2 class="text-3xl font-black text-white mb-6 uppercase tracking-[0.3em] drop-shadow-lg">PAUSA</h2>
             
-            <div class="w-full flex flex-col gap-3">
-                <button onclick="UIManager.togglePause()" class="w-full bg-white text-black hover:bg-gray-200 font-black py-4 rounded-xl transition-all active:scale-95 uppercase tracking-widest text-sm shadow-[0_0_15px_rgba(255,255,255,0.4)]">
-                    <i class="fa-solid fa-play mr-2"></i> Riprendi
+          <div class="w-full flex flex-col gap-3">
+                <button onclick="UIManager.togglePause()" class="btn-cyber glass-panel box-glow-gray w-full py-4 text-sm font-bold text-gray-300">
+                    <i class="fa-solid fa-play"></i> Riprendi
                 </button>
-                <button onclick="UIManager.showModal('optionsModal')" class="w-full bg-gray-800 text-white hover:bg-gray-700 font-bold py-3.5 rounded-xl border border-gray-600 transition-all active:scale-95 uppercase tracking-widest text-xs">
-                    <i class="fa-solid fa-gear mr-2"></i> Opzioni
+                <button onclick="UIManager.showModal('optionsModal')" class="btn-cyber glass-panel box-glow-gray w-full py-3.5 text-xs font-bold text-gray-400">
+                    <i class="fa-solid fa-gear"></i> Opzioni
                 </button>
-                <button onclick="UIManager.quitFromPause()" class="w-full bg-red-900/50 text-red-300 hover:bg-red-800/80 hover:text-white font-bold py-3.5 rounded-xl border border-red-700/50 transition-all active:scale-95 uppercase tracking-widest text-xs mt-4">
-                    <i class="fa-solid fa-right-from-bracket mr-2"></i> Abbandona
+                <button onclick="UIManager.quitFromPause()" class="btn-cyber glass-panel box-glow-red w-full py-3.5 text-xs font-bold text-red-400 mt-4 border-red-900/30">
+                    <i class="fa-solid fa-right-from-bracket"></i> Abbandona
                 </button>
             </div>
         </div>
@@ -505,13 +528,21 @@ body.colorblind-mode #opt-colorblind-text {
                     <button id="btn-save-score" onclick="submitScore()" class="w-full bg-red-900 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl text-sm border border-red-700 transition-colors uppercase tracking-widest shadow-[0_0_20px_rgba(220,38,38,0.4)]">Salva Punteggio</button>
                 </div>
                 
-                <button id="btn-restart" onclick="restartGame()" class="bg-gradient-to-r from-red-900 via-red-600 to-red-900 hover:from-red-800 hover:via-red-500 hover:to-red-800 text-white font-black py-4 sm:py-5 w-full rounded-2xl text-xl sm:text-2xl shadow-[0_0_40px_rgba(220,38,38,0.5)] hover:shadow-[0_0_60px_rgba(220,38,38,0.8)] border border-red-500/50 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest group">
-                    <i class="fa-solid fa-rotate-right mr-2 group-hover:animate-spin"></i> RIPROVA
+               <button id="btn-restart" onclick="restartGame()" class="btn-cyber glass-panel box-glow-red w-full py-4 sm:py-5 text-xl sm:text-2xl font-display text-red-400 border-red-500/30 group">
+                    <i class="fa-solid fa-rotate-right group-hover:animate-spin"></i> RIPROVA
                 </button>
                 
-                <button id="btn-respawn" onclick="respawnPlayer()" class="hidden bg-gradient-to-r from-pink-900 via-pink-600 to-pink-900 hover:from-pink-800 hover:via-pink-500 hover:to-pink-800 text-white font-black py-4 sm:py-5 w-full rounded-2xl text-xl sm:text-2xl shadow-[0_0_30px_rgba(255,105,180,0.5)] border border-pink-500/50 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest">RITORNA IN BATTAGLIA</button>
-                <button onclick="UIManager.showCollectedRelics()" class="bg-purple-900/40 backdrop-blur-md hover:bg-purple-800/60 text-purple-200 font-bold py-3 w-full rounded-xl text-xs sm:text-sm border border-purple-500/30 transition-all active:scale-95 uppercase tracking-[0.1em] mt-1 shadow-[0_0_15px_rgba(168,85,247,0.2)]"><i class="fa-solid fa-gem mr-1"></i> LE TUE RELIQUIE</button>
-                <button onclick="goToMainMenu()" class="bg-black/50 backdrop-blur-md hover:bg-white/10 text-gray-400 hover:text-white font-bold py-3.5 w-full rounded-xl text-xs sm:text-sm border border-gray-700 transition-all active:scale-95 uppercase tracking-[0.2em] mt-1 shadow-lg">TORNA AL MENU</button>
+                <button id="btn-respawn" onclick="respawnPlayer()" class="hidden btn-cyber glass-panel box-glow-purple w-full py-4 sm:py-5 text-xl sm:text-2xl font-display text-purple-400 border-purple-500/30">
+                    <i class="fa-solid fa-bolt"></i> RITORNA IN BATTAGLIA
+                </button>
+                
+                <button onclick="UIManager.showCollectedRelics()" class="btn-cyber glass-panel box-glow-purple w-full py-3 text-xs sm:text-sm font-bold text-purple-300 mt-1">
+                    <i class="fa-solid fa-gem"></i> LE TUE RELIQUIE
+                </button>
+                
+                <button onclick="goToMainMenu()" class="btn-cyber glass-panel box-glow-gray w-full py-3.5 text-xs sm:text-sm font-bold text-gray-400 mt-1">
+                    TORNA AL MENU
+                </button>
             </div>
         </div>
     </div>
@@ -5234,11 +5265,15 @@ update(combatDt, visualDt) {
                if (currentFont !== fontStr) { this.uiCtx.font = fontStr; currentFont = fontStr; }
                 if (currentColor !== ft.color) { this.uiCtx.fillStyle = ft.color; currentColor = ft.color; }
                 
-                this.uiCtx.save();
-                // FORZA NUMERI INTERI: Toglie un peso massiccio dalla CPU su mobile
+               this.uiCtx.save();
                 this.uiCtx.translate(Math.round(pos.x), Math.round(pos.y));
                 this.uiCtx.scale(finalScale, finalScale);
-               this.uiCtx.strokeText(ft.text, 0, 0); 
+                
+                // EFFETTO BLOOM SUI TESTI CANVAS:
+                this.uiCtx.shadowColor = ft.color;
+                this.uiCtx.shadowBlur = 12; // Sfocatura neon
+                
+                this.uiCtx.strokeText(ft.text, 0, 0); 
                 this.uiCtx.fillText(ft.text, 0, 0); 
                 this.uiCtx.restore();
             }
@@ -9426,73 +9461,81 @@ function clearScene() {
 }
 
 function respawnPlayer() {
-    document.getElementById('deathScreen').classList.add('hidden');
-    UI.els.bloodVignette.classList.remove('death-fade-active');
-    let pos = Game.map.getRandomFloorTile(); let attempts = 0;
-    while(attempts < 100) {
-        let isSafe = true;
-        for(let i=0, len=Game.enemies.length; i<len; i++) {
-            let e = Game.enemies[i];
-            if(!e.dead && MathUtils.distanceSq({x: pos.x*TILE_SIZE, y: pos.y*TILE_SIZE}, e) < (TILE_SIZE*10)**2) { isSafe = false; break; }
-        }
-        if(isSafe) break; pos = Game.map.getRandomFloorTile(); attempts++;
-    }
-    Game.player.x = pos.x * TILE_SIZE + TILE_SIZE/2; Game.player.y = pos.y * TILE_SIZE + TILE_SIZE/2;
-    Game.player.mesh.position.set(Game.player.x, 0, Game.player.y); Game.player.stats.hp = Game.player.stats.maxHp; Game.player.dead = false; Game.player.invincibilityTimer = 3.0; 
-    Game.player.mesh.updateMatrix();
-    if (Game.player.modifiers.shieldActive) Game.player.modifiers.autoShieldTimer = 0;
-    
-    let pChildren = Game.player.mesh.children;
-    for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = true;
-    Game.player.shieldMesh.visible = false;
-    Game.player.glacialShieldMesh.visible = false;
-    Game.player.updateAppearance();
-
-    Game.snapCamera(); 
-    
-    // --- MODIFICA WARP IN NEL RESPAWN ---
-    Game.state = 'WARPING_IN';
-    Game.warpTimer = 1.0;
-    Game.camera.fov = 90;
-    Game.camera.updateProjectionMatrix();
-    Game.player.mesh.position.y = 800;
-    Game.player.mesh.scale.setScalar(0.01);
-    // -----------------------------------
-
-    if (Game.isBossFloor) AudioEngine.playBossMusic(); else AudioEngine.playGameMusic();
-    Game.getFloatingText().spawn(Game.player.x, Game.player.y, "RESPAWN!", '#ff66bb', 40, true);
-    
-    if (Game.lastCoinsLost && Game.lastCoinsLost > 0) {
-        setTimeout(() => {
-            if (Game.player && !Game.player.dead) {
-                Game.getFloatingText().spawn(Game.player.x, Game.player.y + 25, `-${Game.lastCoinsLost} MONETE`, '#ff3300', 35, true);
-                Game.lastCoinsLost = 0; 
+    AudioEngine.playClick();
+    TransitionSystem.wipeIn(() => {
+        document.getElementById('deathScreen').classList.add('hidden');
+        UI.els.bloodVignette.classList.remove('death-fade-active');
+        
+        let pos = Game.map.getRandomFloorTile(); let attempts = 0;
+        while(attempts < 100) {
+            let isSafe = true;
+            for(let i=0, len=Game.enemies.length; i<len; i++) {
+                let e = Game.enemies[i];
+                if(!e.dead && MathUtils.distanceSq({x: pos.x*TILE_SIZE, y: pos.y*TILE_SIZE}, e) < (TILE_SIZE*10)**2) { isSafe = false; break; }
             }
-        }, 800); 
-    }
-    
-    Game.player.activeShieldTimer = 0;
-    Game.player.activeShieldCooldown = 0;
-    Game.player.shieldAbsorbed = 0;
+            if(isSafe) break; pos = Game.map.getRandomFloorTile(); attempts++;
+        }
+        Game.player.x = pos.x * TILE_SIZE + TILE_SIZE/2; Game.player.y = pos.y * TILE_SIZE + TILE_SIZE/2;
+        Game.player.mesh.position.set(Game.player.x, 0, Game.player.y); Game.player.stats.hp = Game.player.stats.maxHp; Game.player.dead = false; Game.player.invincibilityTimer = 3.0; 
+        Game.player.mesh.updateMatrix();
+        if (Game.player.modifiers.shieldActive) Game.player.modifiers.autoShieldTimer = 0;
+        
+        let pChildren = Game.player.mesh.children;
+        for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = true;
+        Game.player.shieldMesh.visible = false;
+        Game.player.glacialShieldMesh.visible = false;
+        Game.player.updateAppearance();
+
+        Game.snapCamera(); 
+        
+        Game.state = 'WARPING_IN';
+        Game.warpTimer = 1.0;
+        Game.camera.fov = 90;
+        Game.camera.updateProjectionMatrix();
+        Game.player.mesh.position.y = 800;
+        Game.player.mesh.scale.setScalar(0.01);
+
+        if (Game.isBossFloor) AudioEngine.playBossMusic(); else AudioEngine.playGameMusic();
+        Game.getFloatingText().spawn(Game.player.x, Game.player.y, "RESPAWN!", '#ff66bb', 40, true);
+        
+        if (Game.lastCoinsLost && Game.lastCoinsLost > 0) {
+            setTimeout(() => {
+                if (Game.player && !Game.player.dead) {
+                    Game.getFloatingText().spawn(Game.player.x, Game.player.y + 25, `-${Game.lastCoinsLost} MONETE`, '#ff3300', 35, true);
+                    Game.lastCoinsLost = 0; 
+                }
+            }, 800); 
+        }
+        
+        Game.player.activeShieldTimer = 0;
+        Game.player.activeShieldCooldown = 0;
+        Game.player.shieldAbsorbed = 0;
+        
+        setTimeout(() => TransitionSystem.wipeOut(), 50);
+    });
 }
 
 function goToMainMenu() {
-    document.getElementById('deathScreen').classList.add('hidden');
-    UI.els.bloodVignette.classList.remove('death-fade-active');
-    document.getElementById('hud').classList.add('hidden');
-    document.getElementById('mobile-controls').classList.add('hidden');
-    
-    // Ripristina l'opacità del menu nel caso fosse rimasta trasparente dopo il tasto Gioca
-    document.getElementById('mainMenu').querySelector('.pointer-events-auto').classList.remove('opacity-0');
-    document.querySelector('.title-3d-text').classList.remove('opacity-0');
-    
-    document.getElementById('mainMenu').classList.remove('hidden');
-    clearScene(); Game.state = 'MENU'; AudioEngine.stopAllMusic(); AudioEngine.playMenuMusic();
-    
-    if (typeof TitleSystem !== 'undefined') {
-        TitleSystem.reset(); // FIX BUG SCATOLA
-        TitleSystem.resize();
-    }
+    AudioEngine.playClick();
+    TransitionSystem.wipeIn(() => {
+        document.getElementById('deathScreen').classList.add('hidden');
+        document.getElementById('pauseModal').classList.add('hidden'); // Chiude anche la pausa!
+        UI.els.bloodVignette.classList.remove('death-fade-active');
+        document.getElementById('hud').classList.add('hidden');
+        document.getElementById('mobile-controls').classList.add('hidden');
+        
+        document.getElementById('mainMenu').querySelector('.pointer-events-auto').classList.remove('opacity-0');
+        document.querySelector('.title-3d-text').classList.remove('opacity-0');
+        document.getElementById('mainMenu').classList.remove('hidden');
+        
+        clearScene(); Game.state = 'MENU'; AudioEngine.stopAllMusic(); AudioEngine.playMenuMusic();
+        
+        if (typeof TitleSystem !== 'undefined') {
+            TitleSystem.reset(); 
+            TitleSystem.resize();
+        }
+        setTimeout(() => TransitionSystem.wipeOut(), 50);
+    });
 }
 
 function startGameFromMenu() {
@@ -9522,12 +9565,27 @@ function startGameFromMenu() {
 }
 
 function restartGame() {
-    document.getElementById('deathScreen').classList.add('hidden');
-    document.getElementById('blood-vignette').classList.remove('death-fade-active');
-    clearScene(); Game.state = 'PLAYING'; Game.floor = 1; Game.totalKills = 0; Game.lives = 3; Game.playTime = 0;
-    Game.enemies = []; Game.ultimateCharge = 0; Game.ultimateActive = false;
-    if(Game.player) { Game.scene.remove(Game.player.mesh); Game.player = null; }
-    Game.setupFloor();
+    AudioEngine.playClick();
+    TransitionSystem.wipeIn(() => {
+        document.getElementById('deathScreen').classList.add('hidden');
+        document.getElementById('blood-vignette').classList.remove('death-fade-active');
+        clearScene(); Game.state = 'PLAYING'; Game.floor = 1; Game.totalKills = 0; Game.lives = 3; Game.playTime = 0;
+        Game.enemies = []; Game.ultimateCharge = 0; Game.ultimateActive = false;
+        if(Game.player) { Game.scene.remove(Game.player.mesh); Game.player = null; }
+        Game.setupFloor();
+        
+        // Animazione Warp-in dall'alto
+        Game.state = 'WARPING_IN';
+        Game.warpTimer = 1.0;
+        Game.camera.fov = 90;
+        Game.camera.updateProjectionMatrix();
+        if(Game.player) {
+            Game.player.mesh.position.y = 800;
+            Game.player.mesh.scale.setScalar(0.01);
+            Game.player.invincibilityTimer = 1.5;
+        }
+        setTimeout(() => TransitionSystem.wipeOut(), 50);
+    });
 }
 
 function submitScore() {

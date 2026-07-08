@@ -4951,7 +4951,7 @@ update(combatDt, visualDt) {
             }
         }
 
-        if (this.isBossFloor && this.bossDefeatedTimer > 0) {
+      if (this.isBossFloor && this.bossDefeatedTimer > 0 && !this.player.dead) {
             this.bossDefeatedTimer -= combatDt;
             if (this.bossDefeatedTimer <= 0 && this.state === 'PLAYING') { 
                 // ORDINE REWORK: Attiva prima l'animazione di discesa, non la UI!
@@ -4965,16 +4965,29 @@ update(combatDt, visualDt) {
                 AudioEngine.stopBossMusic();
                 AudioEngine.playLevelCompleteMusic(); // La musica parte in sincrono con il warp!
             }
-} else if (!this.isBossFloor && this.state === 'PLAYING') {
+        } else if (!this.isBossFloor && this.state === 'PLAYING' && !this.player.dead) {
             let enemiesLeft = this.floorMaxKills - this.floorKills;
-            
-            // Inizia sempre il conto alla rovescia di 5 secondi se mancano 3 o meno nemici
-            if (enemiesLeft <= 3 && !this.floorEndTriggered) {
+
+            // BUGFIX 1: Annulla il countdown se il numero di nemici sale sopra 3 (es. Slime che si divide)
+            if (this.floorEndTriggered && enemiesLeft > 3) {
+                this.floorEndTriggered = false;
+                Game.getFloatingText().spawn(this.player.x, this.player.y, "PORTALE INSTABILE!", '#ff3300', 40, true);
+            }
+
+            // Inizia il conto alla rovescia se mancano 3 o meno nemici
+            if (enemiesLeft <= 3 && enemiesLeft > 0 && !this.floorEndTriggered) {
                 this.floorEndTriggered = true;
-                this.floorEndTimer = 5.0; // Sempre 5 secondi completi, nessuna scorciatoia
+                this.floorEndTimer = 5.0; // Sempre 5 secondi completi base
                 Game.getFloatingText().spawn(this.player.x, this.player.y, "IL PORTALE SI APRE!", '#00DDFF', 40, true);
-            } 
-            
+            }
+
+            // BUGFIX 2: Scorciatoia immediata: Se non ci sono più nemici, salta l'attesa di 5 secondi!
+            if (enemiesLeft <= 0 && this.state === 'PLAYING') {
+                this.floorEndTimer = 0;
+                this.floorEndTriggered = true; 
+            }
+
+            // BUGFIX 3: Procede col timer solo se il giocatore è ancora vivo
             if (this.floorEndTriggered) {
                 let oldSec = Math.ceil(this.floorEndTimer);
                 this.floorEndTimer -= combatDt;

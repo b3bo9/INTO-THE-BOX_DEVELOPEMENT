@@ -384,7 +384,7 @@ body.colorblind-mode #opt-colorblind-text {
 
                 <!-- CREDITS (Stile Cabinato Arcade) -->
                <div class="text-center mt-2 relative z-10">
-                    <p class="text-white/50 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 136</p>
+                    <p class="text-white/50 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 137</p>
                 </div>
             </div>
         </div>
@@ -437,7 +437,7 @@ body.colorblind-mode #opt-colorblind-text {
                     <div class="text-cyan-400 text-xl sm:text-2xl mt-0.5 drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"><i class="fa-solid fa-shield-halved"></i></div>
                     <div>
                         <h3 class="text-cyan-300 font-black uppercase text-xs tracking-wide">Scudo Cinetico</h3>
-                       <p class="text-gray-400 mt-0.5">Attiva la barriera (<span id="info-shield-btn" class="text-white bg-white/10 px-1 py-0.5 rounded border border-white/20 font-bold text-[9px] uppercase shadow-inner"></span>) per <span class="text-white font-bold">3s</span>. Distrugge i proiettili curandoti del <span class="text-cyan-400 font-bold">5% HP</span> a colpo bloccato.</p>
+                       <p class="text-gray-400 mt-0.5">Attiva la barriera (<span id="info-shield-btn" class="text-white bg-white/10 px-1 py-0.5 rounded border border-white/20 font-bold text-[9px] uppercase shadow-inner"></span>) per <span class="text-white font-bold">3s</span>. Riduce i danni subiti e distrugge i proiettili nemici curandoti del <span class="text-cyan-400 font-bold">5% HP</span> a colpo bloccato.</p>
                     </div>
                 </div>
             </div>
@@ -9927,7 +9927,7 @@ function cycleDifficulty() {
         if (mobileControls) { mobileControls.classList.remove('hidden'); mobileControls.classList.add('flex'); }
         // Se è smartphone, scrivi "Tasto Scatto" nel manuale
         let dodgeBtn = document.getElementById('info-dodge-btn');
-        if(dodgeBtn) dodgeBtn.innerText = "Tasto Scatto";
+        if(dodgeBtn) dodgeBtn.innerText = "Doppio Tap";
         let shieldBtn = document.getElementById('info-shield-btn');
         if(shieldBtn) shieldBtn.innerText = "Tasto Scudo";
     } else { 

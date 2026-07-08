@@ -41,59 +41,98 @@
       * { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
         input { -webkit-user-select: auto; user-select: auto; }
         
-        /* --- DESIGN SYSTEM --- */
+       /* --- DESIGN SYSTEM: ARCADE BRUTALISM --- */
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #050508; font-family: 'JetBrains Mono', monospace; }
-        h1, h2, h3, .font-display { font-family: 'Impact', sans-serif; letter-spacing: 1px; }
+        h1, h2, h3, .font-display { font-family: 'Impact', sans-serif; letter-spacing: 2px; }
         
+        /* Sovrimpressione globale stile Terminale/CRT per sporcare la UI */
+        body::after {
+            content: ""; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            background-size: 100% 4px; z-index: 150; pointer-events: none; opacity: 0.3;
+        }
+
+        /* I Pannelli Menu: Squadrati, ma leggermente più trasparenti di prima */
         .glass-panel {
-            background: rgba(10, 15, 25, 0.75) !important;
-            backdrop-filter: blur(12px) !important;
-            -webkit-backdrop-filter: blur(12px) !important;
-            border: 1px solid rgba(255, 255, 255, 0.15) !important;
-            border-radius: 1rem !important; /* Forza i bordi arrotondati uniformi ovunque */
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(255, 255, 255, 0.02) !important;
+            background: rgba(10, 10, 14, 0.85) !important; 
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+            border: 2px solid #333 !important;
+            border-radius: 0 !important; 
+            box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.6) !important;
+            position: relative;
         }
         
-        @keyframes modal-pop {
-            0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+        /* I Pannelli HUD In-Game: Traslucidi, bordo sottile, non ostruiscono l'azione */
+        .hud-panel {
+            background: rgba(5, 5, 8, 0.55) !important;
+            backdrop-filter: blur(2px) !important;
+            -webkit-backdrop-filter: blur(2px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            border-radius: 0 !important;
+            box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.4) !important;
+        }
+
+        /* Dettaglio Cyber-Hardware (Rinforzi agli angoli) solo per i menu */
+        .glass-panel::before, .glass-panel::after {
+            content: ''; position: absolute; width: 8px; height: 8px; pointer-events: none; z-index: 10;
+        }
+        .glass-panel::before { top: -2px; left: -2px; border-top: 2px solid #fff; border-left: 2px solid #fff; }
+        .glass-panel::after { bottom: -2px; right: -2px; border-bottom: 2px solid #fff; border-right: 2px solid #fff; }
+        
+        @keyframes modal-slam {
+            0% { opacity: 0; transform: scale(1.05) translateY(-10px); }
             100% { opacity: 1; transform: scale(1) translateY(0); }
         }
-        .modal-enter {
-            animation: modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        }
+        .modal-enter { animation: modal-slam 0.2s cubic-bezier(0, 0.7, 0.2, 1) forwards; }
         
-        .btn-cyber { transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
-        .btn-cyber:active { transform: scale(0.95); }
-        /* --------------------- */
-        /* --- DESIGN SYSTEM: BOTTONI E NEON --- */
+        /* Bottoni Generici */
         .btn-cyber {
-            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
+            transition: all 0.05s ease-out !important; 
+            cursor: pointer; text-transform: uppercase; font-weight: 800;
+            border-radius: 0 !important; border: 2px solid #444; background: rgba(10, 10, 12, 0.9);
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.8);
+            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+            transform: translate(0px, 0px);
         }
-        .btn-cyber:hover { filter: brightness(1.2); }
-        .btn-cyber:active { transform: scale(0.95) !important; }
+        .btn-cyber:hover { transform: translate(-2px, -2px) !important; filter: brightness(1.2); }
+        .btn-cyber:active { transform: translate(4px, 4px) !important; box-shadow: 0px 0px 0px transparent !important; }
 
-        /* Effetti Bloom (Post-Processing UI) */
-        .box-glow-red:hover { box-shadow: 0 0 25px rgba(255, 17, 51, 0.6), inset 0 0 10px rgba(255, 17, 51, 0.3) !important; border-color: #FF1133 !important; color: #FF1133 !important; }
-        .box-glow-blue:hover { box-shadow: 0 0 25px rgba(0, 221, 255, 0.6), inset 0 0 10px rgba(0, 221, 255, 0.3) !important; border-color: #00DDFF !important; color: #00DDFF !important; }
-        .box-glow-purple:hover { box-shadow: 0 0 25px rgba(168, 85, 247, 0.6), inset 0 0 10px rgba(168, 85, 247, 0.3) !important; border-color: #a855f7 !important; color: #a855f7 !important; }
-        .box-glow-amber:hover { box-shadow: 0 0 25px rgba(251, 191, 36, 0.6), inset 0 0 10px rgba(251, 191, 36, 0.3) !important; border-color: #fbbf24 !important; color: #fbbf24 !important; }
-        .box-glow-gray:hover { box-shadow: 0 0 20px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1) !important; border-color: #ffffff !important; color: #ffffff !important; }
+        /* Pulsanti Negozio (Meno aggressivi dei bottoni normali) */
+        .shop-btn {
+            border-radius: 0 !important; border: 2px solid #333; background: rgba(10, 10, 12, 0.7) !important;
+            transition: all 0.05s ease-out; box-shadow: 3px 3px 0px rgba(0,0,0,0.5); cursor: pointer;
+        }
+        .shop-btn:hover { transform: translate(-2px, -2px); filter: brightness(1.1); }
+        .shop-btn:active { transform: translate(3px, 3px); box-shadow: none !important; }
         
-        .neon-text-red { color: #FF1133; text-shadow: 0 0 15px rgba(255, 17, 51, 0.8), 0 0 5px rgba(255, 17, 51, 0.5); }
+        .shop-btn.hp:hover { border-color: #22c55e; box-shadow: 3px 3px 0px #14532d; }
+        .shop-btn.dmg:hover { border-color: #ef4444; box-shadow: 3px 3px 0px #7f1d1d; }
+        .shop-btn.spd:hover { border-color: #3b82f6; box-shadow: 3px 3px 0px #1e3a8a; }
+        .shop-btn.atk:hover { border-color: #f59e0b; box-shadow: 3px 3px 0px #78350f; }
+        .shop-btn.crit:hover { border-color: #a855f7; box-shadow: 3px 3px 0px #581c87; }
+
+        /* Palette Neon Brutalista */
+        .box-glow-red:hover { border-color: #FF1133 !important; box-shadow: 4px 4px 0px #FF1133 !important; color: #FF1133 !important; }
+        .box-glow-blue:hover { border-color: #00DDFF !important; box-shadow: 4px 4px 0px #00DDFF !important; color: #00DDFF !important; }
+        .box-glow-purple:hover { border-color: #a855f7 !important; box-shadow: 4px 4px 0px #a855f7 !important; color: #a855f7 !important; }
+        .box-glow-amber:hover { border-color: #fbbf24 !important; box-shadow: 4px 4px 0px #fbbf24 !important; color: #fbbf24 !important; }
+        .box-glow-gray:hover { border-color: #ffffff !important; box-shadow: 4px 4px 0px #ffffff !important; color: #ffffff !important; }
+        
+        /* Testi puramente Neon */
+        .neon-text-red { color: #FF1133; text-shadow: 2px 2px 0px #4a0000, 0 0 10px rgba(255, 17, 51, 0.8); }
+
+        /* Barra di scorrimento */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #050508; border-left: 1px solid #333; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #444; border-radius: 0; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #00DDFF; }
+        
+        /* Correzioni in-game per rimuovere bordi tondi */
+        .health-bar-container { background: #111; border: 1px solid #444; border-radius: 0; overflow: hidden; position: relative; }
+        .stack-dot { width: 22px; height: 22px; border-radius: 0; background: #1a1a1a; border: 2px solid #555; transition: all 0.3s; }
+        @media (min-width: 640px) { .stack-dot { width: 30px; height: 30px; border-width: 3px; } }
         /* ------------------------------------- */
-        /* --- CUSTOM SCROLLBAR --- */
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0, 221, 255, 0.6); }
-        /* ------------------------ */
 
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
     @media (hover: hover) and (pointer: fine) {
@@ -104,10 +143,10 @@
         }
         #uiCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
         
-        .health-bar-container { background: #111; border: 1px solid #444; border-radius: 4px; overflow: hidden; position: relative; box-shadow: 0 0 10px rgba(0,0,0,0.8); }
+        .health-bar-container { background: #111; border: 1px solid #444; overflow: hidden; position: relative; box-shadow: 0 0 10px rgba(0,0,0,0.8); }
         #ui-floor-progress { transform-origin: left; width: 100%; }
         #combo-bar { transform-origin: bottom; width: 100%; height: 100%; }
-        .stack-dot { width: 22px; height: 22px; border-radius: 50%; background: #1a1a1a; border: 2px solid #555; transition: all 0.3s; box-shadow: inset 0 0 8px #000; }
+        .stack-dot { width: 22px; height: 22px; border-radius: 0; transform: rotate(45deg); background: #1a1a1a; border: 2px solid #555; transition: all 0.3s; box-shadow: inset 0 0 8px #000; }
         @media (min-width: 640px) { .stack-dot { width: 30px; height: 30px; border-width: 3px; } }
         
         .stack-dot.active.red { background: #FF1133; border-color: #ffffff; box-shadow: 0 0 25px #FF1133, inset 0 0 8px rgba(255,255,255,0.8); }
@@ -244,9 +283,27 @@
             from { transform: scale(1.8) translate(0, 0) rotate(10deg); } 
             to { transform: scale(1.8) translate(10%, -15%) rotate(10deg); } 
         }
-        .relic-card { transition: all 0.2s; cursor: pointer; } .relic-card:hover { transform: scale(1.05) translateY(-5px); } .relic-card:active { transform: scale(0.95); }
-        .rarity-common { border-color: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); } .rarity-rare { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
-        .rarity-epic { border-color: #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.6); } .rarity-legendary { border-color: #fbbf24; box-shadow: 0 0 30px rgba(251, 191, 36, 0.8); }
+       /* Stili Brutalisti per le Carte Reliquia */
+        .relic-card { 
+            transition: all 0.05s ease-out; cursor: pointer; 
+            background: #050505 !important; border-radius: 0 !important; border-width: 2px !important; 
+        }
+        .relic-card:hover { transform: translate(-4px, -4px); filter: brightness(1.2); }
+        .relic-card:active { transform: translate(2px, 2px); box-shadow: none !important; }
+        
+        /* Colori e ombre nette per la Rarità */
+        .rarity-common { border-color: #22c55e !important; box-shadow: 6px 6px 0px #14532d !important; } 
+        .rarity-rare { border-color: #3b82f6 !important; box-shadow: 6px 6px 0px #1e3a8a !important; }
+        .rarity-epic { border-color: #a855f7 !important; box-shadow: 6px 6px 0px #581c87 !important; } 
+        .rarity-legendary { border-color: #fbbf24 !important; box-shadow: 6px 6px 0px #78350f !important; }
+
+        /* Modifica animazione reforge per stare in tema (niente blur) */
+        @keyframes reforge-magic {
+            0% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+            50% { transform: scale(1.1) rotate(90deg); filter: brightness(2); box-shadow: 10px 10px 0px #a855f7; border-color: #fff; }
+            100% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+        }
+        .anim-reforge { animation: reforge-magic 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards !important; }
         /* --- OTTIMIZZAZIONE PRESTAZIONI (Modalità Low) --- */
         body.low-spec .backdrop-blur-xl,
         body.low-spec .backdrop-blur-md,
@@ -567,108 +624,104 @@ body.colorblind-mode #opt-colorblind-text {
                     <span class="text-yellow-400 font-black text-xl sm:text-2xl drop-shadow-[0_0_8px_rgba(250,204,21,0.8)] flex items-center gap-2"><i class="fa-solid fa-coins"></i> <span id="shop-coins">0</span></span>
                 </div>
 
-                <!-- LISTA UPGRADE (Scrollabile su schermi piccoli) -->
+<!-- LISTA UPGRADE -->
                <div class="flex flex-col gap-2 w-full max-w-[450px] px-1 overflow-y-auto custom-scrollbar shrink h-auto max-h-[45vh] sm:max-h-[50vh]">
                     
-                    <button onclick="ShopSystem.buy('hp')" class="stagger-enter relative w-full bg-gradient-to-r from-black/80 to-green-950/40 border border-green-500/30 hover:border-green-400 rounded-xl p-2 sm:p-2.5 flex items-center justify-between transition-all active:scale-95 group overflow-hidden shadow-sm shrink-0" style="animation-delay: 0.1s;">
-                        <div class="absolute inset-0 bg-green-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <button onclick="ShopSystem.buy('hp')" class="stagger-enter shop-btn hp relative w-full p-2 sm:p-2.5 flex items-center justify-between overflow-hidden shrink-0" style="animation-delay: 0.1s;">
                         <div class="flex items-center gap-3 w-[35%]">
-                            <div class="w-8 h-8 rounded-lg bg-green-900/50 flex items-center justify-center border border-green-500/30 shrink-0 group-hover:scale-110 transition-transform"><i class="fa-solid fa-heart text-green-400 text-sm"></i></div>
+                            <div class="w-8 h-8 bg-green-900/50 flex items-center justify-center border border-green-500/30 shrink-0"><i class="fa-solid fa-heart text-green-400 text-sm"></i></div>
                             <span class="text-white font-bold text-[10px] sm:text-[11px] uppercase tracking-widest text-left leading-tight">Vitalità</span>
                         </div>
-                        <div class="flex items-center justify-center gap-1.5 w-[35%] bg-black/40 py-1.5 rounded-md border border-green-500/20">
+                        <div class="flex items-center justify-center gap-1.5 w-[35%] bg-black/40 py-1.5 border border-gray-800">
                             <span id="shop-hp-curr" class="text-gray-400 font-bold text-[9px] sm:text-[11px]">100</span>
                             <i class="fa-solid fa-chevron-right text-green-400 text-[8px]"></i>
                             <span id="shop-hp-next" class="text-green-300 font-black text-[10px] sm:text-xs">115</span>
                         </div>
                         <div class="flex justify-end w-[25%] pr-1">
-                            <div class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/40 px-2 py-1 rounded-md text-[10px] sm:text-xs font-black flex items-center justify-center gap-1.5 drop-shadow-md min-w-[50px]">
+                            <div class="bg-black/50 text-yellow-400 border border-yellow-500/40 px-2 py-1 text-[10px] sm:text-xs font-black flex items-center justify-center gap-1.5 min-w-[50px]">
                                 <i class="fa-solid fa-coins"></i> <span id="shop-cost-hp">4</span>
                             </div>
                         </div>
                     </button>
 
-                    <button onclick="ShopSystem.buy('dmg')" class="stagger-enter relative w-full bg-gradient-to-r from-black/80 to-red-950/40 border border-red-500/30 hover:border-red-400 rounded-xl p-2 sm:p-2.5 flex items-center justify-between transition-all active:scale-95 group overflow-hidden shadow-sm shrink-0" style="animation-delay: 0.2s;">
-                        <div class="absolute inset-0 bg-red-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <button onclick="ShopSystem.buy('dmg')" class="stagger-enter shop-btn dmg relative w-full p-2 sm:p-2.5 flex items-center justify-between overflow-hidden shrink-0" style="animation-delay: 0.2s;">
                         <div class="flex items-center gap-3 w-[35%]">
-                            <div class="w-8 h-8 rounded-lg bg-red-900/50 flex items-center justify-center border border-red-500/30 shrink-0 group-hover:scale-110 transition-transform"><i class="fa-solid fa-fire text-red-500 text-sm"></i></div>
+                            <div class="w-8 h-8 bg-red-900/50 flex items-center justify-center border border-red-500/30 shrink-0"><i class="fa-solid fa-fire text-red-500 text-sm"></i></div>
                             <span class="text-white font-bold text-[10px] sm:text-[11px] uppercase tracking-widest text-left leading-tight">Danno</span>
                         </div>
-                        <div class="flex items-center justify-center gap-1.5 w-[35%] bg-black/40 py-1.5 rounded-md border border-red-500/20">
+                        <div class="flex items-center justify-center gap-1.5 w-[35%] bg-black/40 py-1.5 border border-gray-800">
                             <span id="shop-dmg-curr" class="text-gray-400 font-bold text-[9px] sm:text-[11px]">1.0x</span>
                             <i class="fa-solid fa-chevron-right text-red-500 text-[8px]"></i>
                             <span id="shop-dmg-next" class="text-red-300 font-black text-[10px] sm:text-xs">1.1x</span>
                         </div>
                         <div class="flex justify-end w-[25%] pr-1">
-                            <div class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/40 px-2 py-1 rounded-md text-[10px] sm:text-xs font-black flex items-center justify-center gap-1.5 drop-shadow-md min-w-[50px]">
+                            <div class="bg-black/50 text-yellow-400 border border-yellow-500/40 px-2 py-1 text-[10px] sm:text-xs font-black flex items-center justify-center gap-1.5 min-w-[50px]">
                                 <i class="fa-solid fa-coins"></i> <span id="shop-cost-dmg">6</span>
                             </div>
                         </div>
                     </button>
 
-                    <button onclick="ShopSystem.buy('speed')" class="stagger-enter relative w-full bg-gradient-to-r from-black/80 to-blue-950/40 border border-blue-500/30 hover:border-blue-400 rounded-xl p-2 sm:p-2.5 flex items-center justify-between transition-all active:scale-95 group overflow-hidden shadow-sm shrink-0" style="animation-delay: 0.3s;">
-                        <div class="absolute inset-0 bg-blue-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <button onclick="ShopSystem.buy('speed')" class="stagger-enter shop-btn spd relative w-full p-2 sm:p-2.5 flex items-center justify-between overflow-hidden shrink-0" style="animation-delay: 0.3s;">
                         <div class="flex items-center gap-3 w-[35%]">
-                            <div class="w-8 h-8 rounded-lg bg-blue-900/50 flex items-center justify-center border border-blue-500/30 shrink-0 group-hover:scale-110 transition-transform"><i class="fa-solid fa-shoe-prints text-blue-400 text-sm"></i></div>
+                            <div class="w-8 h-8 bg-blue-900/50 flex items-center justify-center border border-blue-500/30 shrink-0"><i class="fa-solid fa-shoe-prints text-blue-400 text-sm"></i></div>
                             <span class="text-white font-bold text-[10px] sm:text-[11px] uppercase tracking-widest text-left leading-tight">Movimento</span>
                         </div>
-                        <div class="flex items-center justify-center gap-1.5 w-[35%] bg-black/40 py-1.5 rounded-md border border-blue-500/20">
+                        <div class="flex items-center justify-center gap-1.5 w-[35%] bg-black/40 py-1.5 border border-gray-800">
                             <span id="shop-spd-curr" class="text-gray-400 font-bold text-[9px] sm:text-[11px]">1.0x</span>
                             <i class="fa-solid fa-chevron-right text-blue-400 text-[8px]"></i>
                             <span id="shop-spd-next" class="text-blue-300 font-black text-[10px] sm:text-xs">1.05x</span>
                         </div>
                         <div class="flex justify-end w-[25%] pr-1">
-                            <div class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/40 px-2 py-1 rounded-md text-[10px] sm:text-xs font-black flex items-center justify-center gap-1.5 drop-shadow-md min-w-[50px]">
+                            <div class="bg-black/50 text-yellow-400 border border-yellow-500/40 px-2 py-1 text-[10px] sm:text-xs font-black flex items-center justify-center gap-1.5 min-w-[50px]">
                                 <i class="fa-solid fa-coins"></i> <span id="shop-cost-spd">5</span>
                             </div>
                         </div>
                     </button>
 
-                    <button onclick="ShopSystem.buy('atkSpeed')" class="stagger-enter relative w-full bg-gradient-to-r from-black/80 to-amber-950/40 border border-amber-500/30 hover:border-amber-400 rounded-xl p-2 sm:p-2.5 flex items-center justify-between transition-all active:scale-95 group overflow-hidden shadow-sm shrink-0" style="animation-delay: 0.4s;">
-                        <div class="absolute inset-0 bg-amber-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <button onclick="ShopSystem.buy('atkSpeed')" class="stagger-enter shop-btn atk relative w-full p-2 sm:p-2.5 flex items-center justify-between overflow-hidden shrink-0" style="animation-delay: 0.4s;">
                         <div class="flex items-center gap-3 w-[35%]">
-                            <div class="w-8 h-8 rounded-lg bg-amber-900/50 flex items-center justify-center border border-amber-500/30 shrink-0 group-hover:scale-110 transition-transform"><i class="fa-solid fa-bolt text-amber-500 text-sm"></i></div>
+                            <div class="w-8 h-8 bg-amber-900/50 flex items-center justify-center border border-amber-500/30 shrink-0"><i class="fa-solid fa-bolt text-amber-500 text-sm"></i></div>
                             <span class="text-white font-bold text-[10px] sm:text-[11px] uppercase tracking-widest text-left leading-tight">Ritmo</span>
                         </div>
-                        <div class="flex items-center justify-center gap-1.5 w-[35%] bg-black/40 py-1.5 rounded-md border border-amber-500/20">
+                        <div class="flex items-center justify-center gap-1.5 w-[35%] bg-black/40 py-1.5 border border-gray-800">
                             <span id="shop-atk-curr" class="text-gray-400 font-bold text-[9px] sm:text-[11px]">1.0x</span>
                             <i class="fa-solid fa-chevron-right text-amber-500 text-[8px]"></i>
                             <span id="shop-atk-next" class="text-amber-300 font-black text-[10px] sm:text-xs">1.05x</span>
                         </div>
                         <div class="flex justify-end w-[25%] pr-1">
-                            <div class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/40 px-2 py-1 rounded-md text-[10px] sm:text-xs font-black flex items-center justify-center gap-1.5 drop-shadow-md min-w-[50px]">
+                            <div class="bg-black/50 text-yellow-400 border border-yellow-500/40 px-2 py-1 text-[10px] sm:text-xs font-black flex items-center justify-center gap-1.5 min-w-[50px]">
                                 <i class="fa-solid fa-coins"></i> <span id="shop-cost-atk">6</span>
                             </div>
                         </div>
                     </button>
 
-                    <button onclick="ShopSystem.buy('crit')" class="stagger-enter relative w-full bg-gradient-to-r from-black/80 to-purple-950/40 border border-purple-500/30 hover:border-purple-400 rounded-xl p-2 sm:p-2.5 flex items-center justify-between transition-all active:scale-95 group overflow-hidden shadow-sm shrink-0" style="animation-delay: 0.5s;">
-                        <div class="absolute inset-0 bg-purple-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <button onclick="ShopSystem.buy('crit')" class="stagger-enter shop-btn crit relative w-full p-2 sm:p-2.5 flex items-center justify-between overflow-hidden shrink-0" style="animation-delay: 0.5s;">
                         <div class="flex items-center gap-3 w-[35%]">
-                            <div class="w-8 h-8 rounded-lg bg-purple-900/50 flex items-center justify-center border border-purple-500/30 shrink-0 group-hover:scale-110 transition-transform"><i class="fa-solid fa-crosshairs text-purple-500 text-sm"></i></div>
+                            <div class="w-8 h-8 bg-purple-900/50 flex items-center justify-center border border-purple-500/30 shrink-0"><i class="fa-solid fa-crosshairs text-purple-500 text-sm"></i></div>
                             <span class="text-white font-bold text-[10px] sm:text-[11px] uppercase tracking-widest text-left leading-tight">Precisione</span>
                         </div>
-                        <div class="flex items-center justify-center gap-1.5 w-[35%] bg-black/40 py-1.5 rounded-md border border-purple-500/20">
+                        <div class="flex items-center justify-center gap-1.5 w-[35%] bg-black/40 py-1.5 border border-gray-800">
                             <span id="shop-crit-curr" class="text-gray-400 font-bold text-[9px] sm:text-[11px]">10%</span>
                             <i class="fa-solid fa-chevron-right text-purple-500 text-[8px]"></i>
                             <span id="shop-crit-next" class="text-purple-300 font-black text-[10px] sm:text-xs">15%</span>
                         </div>
                         <div class="flex justify-end w-[25%] pr-1">
-                            <div class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/40 px-2 py-1 rounded-md text-[10px] sm:text-xs font-black flex items-center justify-center gap-1.5 drop-shadow-md min-w-[50px]">
+                            <div class="bg-black/50 text-yellow-400 border border-yellow-500/40 px-2 py-1 text-[10px] sm:text-xs font-black flex items-center justify-center gap-1.5 min-w-[50px]">
                                 <i class="fa-solid fa-coins"></i> <span id="shop-cost-crit">7</span>
                             </div>
                         </div>
                     </button>
-                    
                 </div>
             </div>
 
-            <!-- BOTTONI BASSI -->
+            <!-- BOTTONI BASSI (SHOP) -->
             <div class="w-full max-w-[450px] flex flex-col gap-2 shrink-0">
-                <button onclick="UIManager.showCollectedRelics()" class="bg-purple-900/50 backdrop-blur-md hover:bg-purple-800/80 text-purple-200 font-bold py-2.5 rounded-xl text-xs sm:text-sm border border-purple-500/50 transition-all active:scale-95 uppercase tracking-[0.2em] shadow-[0_0_15px_rgba(168,85,247,0.3)]"><i class="fa-solid fa-gem mr-2"></i> LE TUE RELIQUIE</button>
+                <button onclick="UIManager.showCollectedRelics()" class="btn-cyber glass-panel box-glow-purple w-full py-3 text-xs sm:text-sm font-bold text-purple-300">
+                    <i class="fa-solid fa-gem mr-2"></i> LE TUE RELIQUIE
+                </button>
                 <div class="w-full mt-1">
                     <button id="btn-next-floor" onclick="nextFloor(window.nextIsCorrupted)" class="w-full transition-all active:scale-95">
-                        </button>
+                    </button>
                 </div>
             </div>
         </div>
@@ -693,29 +746,27 @@ body.colorblind-mode #opt-colorblind-text {
             
             <div id="relicCardsContainer" class="flex flex-row gap-2 sm:gap-4 w-full justify-center items-stretch shrink-0 z-10 h-auto max-h-[35vh]"></div>
             
-            <div id="reforgeSection" class="w-full max-w-[500px] flex flex-col items-center bg-gray-900/60 p-3 sm:p-4 rounded-2xl border border-purple-700/50 mt-4 sm:mt-5 shadow-[0_0_20px_rgba(168,85,247,0.15)] shrink-0 z-10 backdrop-blur-md relative h-auto">
+           <div id="reforgeSection" class="glass-panel w-full max-w-[500px] flex flex-col items-center p-3 sm:p-4 mt-4 sm:mt-5 shrink-0 z-10 relative h-auto">
                 <h3 class="text-[10px] sm:text-xs font-black text-purple-400 uppercase tracking-widest mb-1"><i class="fa-solid fa-rotate-right"></i> Forgia Cosmica (1 Uso)</h3>
                 <p class="text-[9px] sm:text-[10px] text-gray-400 font-bold text-center mb-2 leading-tight">Sacrifica una reliquia per forgiarne una nuova.</p>
                 
                 <div class="flex items-center gap-3 sm:gap-5 w-full justify-center mt-1">
-                    <!-- Il box ha ora la stessa identica dimensione (4.5rem) delle carte in alto -->
-                    <button id="btn-select-reforge" onclick="RelicSystem.openReforgeModal()" class="w-[4.5rem] h-[4.5rem] sm:w-[5rem] sm:h-[5rem] rounded-2xl border-2 border-dashed border-gray-600 hover:border-purple-400 flex items-center justify-center bg-black/50 transition-all active:scale-95 group relative overflow-hidden shrink-0 shadow-inner">
+                    <button id="btn-select-reforge" onclick="RelicSystem.openReforgeModal()" class="w-[4.5rem] h-[4.5rem] sm:w-[5rem] sm:h-[5rem] border-2 border-dashed border-gray-600 hover:border-purple-400 flex items-center justify-center bg-black transition-all active:scale-95 group relative overflow-hidden shrink-0">
                         <i id="reforge-icon-default" class="fa-solid fa-gem text-gray-500 group-hover:text-purple-400 text-2xl transition-colors"></i>
                         <img id="reforge-icon-img" src="" class="absolute inset-0 w-full h-full object-cover hidden">
-                        <div id="reforge-overlay" class="absolute inset-0 bg-black/60 hidden items-center justify-center text-white font-black text-[8px] sm:text-[9px] uppercase text-center leading-none">Riforgia!</div>
+                        <div id="reforge-overlay" class="absolute inset-0 bg-black/80 hidden items-center justify-center text-white font-black text-[8px] sm:text-[9px] uppercase text-center leading-none">Riforgia!</div>
                     </button>
                     
                     <i class="fa-solid fa-angles-right text-purple-500/50 text-xl animate-pulse"></i>
                     
-                    <button id="btn-do-reforge" onclick="RelicSystem.executeReforge()" class="bg-gradient-to-r from-purple-900 to-purple-700 hover:from-purple-800 hover:to-purple-600 text-white font-black py-2 px-4 rounded-xl border border-purple-500/50 uppercase tracking-widest shadow-[0_0_15px_rgba(168,85,247,0.4)] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:grayscale flex-1 max-w-[140px] text-xs sm:text-sm relative overflow-hidden h-12" disabled>
+                    <button id="btn-do-reforge" onclick="RelicSystem.executeReforge()" class="btn-cyber box-glow-purple disabled:opacity-50 disabled:cursor-not-allowed disabled:grayscale flex-1 max-w-[140px] text-xs sm:text-sm h-12" disabled>
                         Riforgia
                     </button>
                 </div>
                 
-                <!-- NUOVO BOX DESCRITTIVO ELEGANTE -->
-                <div class="w-full mt-3 bg-black/60 border border-gray-700/50 rounded-xl p-2.5 min-h-[55px] flex flex-col items-center justify-center text-center shadow-inner">
+                <div class="w-full mt-3 bg-black border-2 border-gray-800 p-2.5 min-h-[55px] flex flex-col items-center justify-center text-center">
                     <p id="reforge-desc-title" class="text-[9px] sm:text-[10px] text-gray-500 font-bold uppercase tracking-wider leading-none m-0">Nessuna Reliquia Selezionata</p>
-                    <p id="reforge-desc-text" class="text-[8px] sm:text-[10px] text-gray-400 mt-1.5 leading-tight font-semibold hidden"></p>
+                    <p id="reforge-desc-text" class="text-[8px] sm:text-[10px] text-gray-400 mt-1.5 leading-tight font-bold hidden"></p>
                 </div>
             </div>
 
@@ -770,97 +821,93 @@ body.colorblind-mode #opt-colorblind-text {
 
 <!-- HUD IN-GAME -->
     <div id="hud" class="absolute inset-0 pointer-events-none hidden z-10">
-        <div class="absolute top-2 right-2 sm:top-4 sm:right-4 flex gap-2 z-50 pointer-events-auto">
-            <div id="fps-counter" class="bg-black/60 backdrop-blur-md border border-gray-600 font-bold px-3 py-1.5 rounded-lg text-[10px] sm:text-xs shadow-lg flex items-center pointer-events-none">
+<div class="absolute top-2 right-2 sm:top-4 sm:right-4 flex gap-2 z-50 pointer-events-auto">
+            <div id="fps-counter" class="hud-panel font-bold px-3 py-1.5 text-[10px] sm:text-xs flex items-center pointer-events-none text-gray-400">
                 FPS: <span id="fps-value" class="text-green-400 ml-1">0</span>
             </div>
-            <button onclick="UIManager.togglePause()" class="w-8 h-8 sm:w-10 sm:h-10 bg-black/60 backdrop-blur-md border border-gray-600 text-white rounded-lg flex items-center justify-center shadow-lg transition-all active:scale-90 hover:border-white">
+            <button onclick="UIManager.togglePause()" class="w-8 h-8 sm:w-10 sm:h-10 hud-panel text-gray-400 hover:text-white flex items-center justify-center hover:border-white transition-colors">
                 <i class="fa-solid fa-pause"></i>
             </button>
         </div>
         
-        <!-- TACTICAL HUD (Top-Left) Aumentata la leggibilità -->
+        <!-- TACTICAL HUD (Top-Left) -->
         <div class="absolute top-4 left-3 sm:top-6 sm:left-6 flex flex-col gap-3 pointer-events-none w-full max-w-[280px] sm:max-w-[340px] z-50">
             
            <!-- MAIN VITALS PANEL -->
-            <div class="glass-panel p-3 flex items-center gap-3.5">
+            <div class="hud-panel p-3 flex items-center gap-3.5">
                 
-                <!-- LEVEL RING (Ingrandito) -->
-                <div class="relative w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center bg-black/80 rounded-full border-2 border-gray-700/80 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] shrink-0">
+                <!-- LEVEL SQUARE -->
+                <div class="relative w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center bg-black border-2 border-gray-700 shrink-0">
                     <svg class="absolute inset-0 w-full h-full transform -rotate-90 drop-shadow-[0_0_3px_rgba(34,211,238,0.5)]" viewBox="0 0 36 36">
                         <path class="text-gray-800" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="2.5"/>
-                        <path id="ui-xp-circle" class="text-cyan-400 transition-all duration-300" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                        <path id="ui-xp-circle" class="text-cyan-400 transition-all duration-300" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"/>
                     </svg>
                     <div class="absolute flex flex-col items-center mt-0.5">
                         <span class="text-[8px] sm:text-[10px] text-cyan-200 font-black tracking-[0.2em] leading-none mb-0.5">LVL</span>
-                        <span id="ui-level" class="text-lg sm:text-2xl font-black text-white leading-none">1</span>
+                        <span id="ui-level" class="text-lg sm:text-2xl font-black text-white leading-none font-display">1</span>
                     </div>
                 </div>
 
                 <!-- HP & LIVES CONTAINER -->
                 <div class="flex flex-col flex-1 gap-1.5 pr-1">
                     <div class="flex justify-between items-end">
-                        <span id="ui-hp-text" class="text-sm sm:text-base font-black text-white tracking-wider drop-shadow-[0_0_5px_rgba(220,38,38,0.8)]">100 / 100</span>
+                        <span id="ui-hp-text" class="text-sm sm:text-base font-black text-white tracking-wider font-display">100 / 100</span>
                         <div id="ui-lives" class="flex gap-1 items-center text-xs sm:text-sm"></div>
                     </div>
-                    <!-- HEALTH BAR -->
-                    <div class="w-full h-3.5 sm:h-4 bg-black/90 rounded-full border border-gray-900 shadow-[inset_0_0_8px_rgba(0,0,0,0.9)] overflow-hidden relative">
-                        <div id="ui-hp-fill" class="h-full bg-gradient-to-r from-red-800 via-red-600 to-red-400 shadow-[0_0_15px_rgba(220,38,38,1)] rounded-full transition-all duration-150"></div>
-                        <!-- Glossy overlay -->
-                        <div class="absolute top-0 left-0 w-full h-[40%] bg-white/20 rounded-full"></div>
+                    <!-- HEALTH BAR (Brutalista) -->
+                    <div class="w-full h-3.5 sm:h-4 bg-gray-900 border border-gray-700 overflow-hidden relative">
+                        <div id="ui-hp-fill" class="h-full bg-red-600 transition-all duration-150"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- SECONDARY INFO PANEL (Floor Context & Economy) -->
+ <!-- SECONDARY INFO PANEL (Floor Context & Economy) -->
             <div class="flex gap-3 w-full">
                <!-- FLOOR PROGRESS -->
-                <div class="flex-1 glass-panel p-2.5 flex flex-col justify-center">
+                <div class="flex-1 hud-panel p-2.5 flex flex-col justify-center">
                     <div class="flex items-center justify-between mb-1.5">
                         <span id="ui-floor-text" class="text-[10px] sm:text-xs font-black uppercase tracking-widest text-gray-400 flex items-center">
                             <i id="ui-floor-icon" class="fa-solid fa-skull text-gray-500 mr-1.5 transition-all duration-300"></i> Piano <span id="ui-floor" class="text-white ml-1">1</span>
                         </span>
-                       <span id="ui-corruption-label" class="text-[9px] sm:text-[10px] font-black tracking-widest text-purple-300 drop-shadow-[0_0_5px_rgba(168,85,247,0.8)] hidden bg-purple-900/40 px-1.5 py-0.5 rounded border border-purple-500/40 uppercase whitespace-nowrap"></span>
+                       <span id="ui-corruption-label" class="text-[9px] sm:text-[10px] font-black tracking-widest text-purple-300 drop-shadow-[0_0_5px_rgba(168,85,247,0.8)] hidden bg-purple-900/40 px-1.5 py-0.5 border border-purple-500/40 uppercase whitespace-nowrap"></span>
                     </div>
                     <!-- PROGRESS BAR -->
-                    <div class="w-full h-2 bg-gray-900/90 rounded-full border border-gray-800 shadow-inner overflow-hidden relative">
-                       <div id="ui-floor-progress" class="h-full w-0 bg-gradient-to-r from-purple-800 via-fuchsia-500 to-cyan-400 transition-all duration-300 shadow-[0_0_8px_rgba(34,211,238,0.6)] rounded-full relative overflow-hidden">
-    <div id="ui-floor-progress-glow" class="absolute inset-0 bg-white opacity-0 transition-opacity duration-300 mix-blend-overlay"></div>
-</div>
+                    <div class="w-full h-2 bg-gray-900 border border-gray-800 overflow-hidden relative">
+                       <div id="ui-floor-progress" class="h-full w-0 bg-purple-500 transition-all duration-300 relative overflow-hidden">
+                           <div id="ui-floor-progress-glow" class="absolute inset-0 bg-white opacity-0 transition-opacity duration-300 mix-blend-overlay"></div>
+                       </div>
                     </div>
                 </div>
 
                <!-- COINS POUCH -->
-                <div class="shrink-0 glass-panel border-yellow-500/30 px-4 flex items-center justify-center gap-2.5 min-w-[70px]" style="box-shadow: 0 0 15px rgba(234,179,8,0.15) !important;">
+                <div class="shrink-0 hud-panel px-4 flex items-center justify-center gap-2.5 min-w-[70px]">
                     <i class="fa-solid fa-coins text-yellow-500 text-xs sm:text-sm drop-shadow-[0_0_5px_rgba(234,179,8,0.8)]"></i> 
                     <span id="ui-coins" class="text-yellow-400 text-sm sm:text-base font-black tracking-wider">0</span>
                 </div>
             </div>
         </div>
-<div class="absolute top-[20%] right-0 sm:top-[22%] sm:right-0 flex flex-col items-end gap-1.5 pointer-events-none z-50">
+        
+        <!-- LATO DESTRO: COMBO E ESSENZE -->
+        <div class="absolute top-[20%] right-0 sm:top-[22%] sm:right-0 flex flex-col items-end gap-1.5 pointer-events-none z-50">
             
             <div id="combo-container" class="transition-all duration-300 opacity-0 translate-x-12 pr-2 sm:pr-4">
-                <div id="combo-panel" class="relative bg-black/50 backdrop-blur-xl border-y border-l border-gray-600/40 rounded-l-2xl rounded-r-sm p-3 shadow-[-8px_8px_24px_rgba(0,0,0,0.5)] flex flex-col items-end min-w-[110px] sm:min-w-[140px] transition-colors duration-200 overflow-hidden">
-                    
+                <div id="combo-panel" class="relative hud-panel border-r-0 border-y border-l border-gray-600/40 p-3 flex flex-col items-end min-w-[110px] sm:min-w-[140px] transition-colors duration-200 overflow-hidden">
                     <div class="absolute top-0 right-0 w-1.5 sm:w-2 h-full bg-gray-900/80">
                         <div id="combo-bar" class="absolute bottom-0 w-full h-full bg-yellow-400 transition-all duration-100 ease-linear"></div>
                     </div>
-
                     <div class="flex items-baseline gap-1 pr-3 sm:pr-4">
-                        <span id="combo-x" class="text-white/80 font-black italic text-base sm:text-xl drop-shadow-md">x</span>
-                        <h2 id="combo-text" class="font-black m-0 leading-none text-4xl sm:text-5xl italic tracking-tighter text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.8)]">2</h2>
+                        <span id="combo-x" class="text-gray-400 font-black italic text-base sm:text-xl font-display">x</span>
+                        <h2 id="combo-text" class="font-black m-0 leading-none text-4xl sm:text-5xl italic tracking-tighter text-yellow-400 font-display">2</h2>
                     </div>
-                    <span id="combo-label" class="text-[9px] sm:text-[10px] text-gray-300 font-black tracking-[0.3em] uppercase mt-0.5 opacity-90 transition-colors pr-3 sm:pr-4">HITS</span>
+                    <span id="combo-label" class="text-[9px] sm:text-[10px] text-gray-400 font-black tracking-[0.3em] uppercase mt-0.5 opacity-90 transition-colors pr-3 sm:pr-4">HITS</span>
                 </div>
             </div>
 
             <div id="essence-hud" class="transition-all duration-300 opacity-0 pr-2 sm:pr-4">
-                <div class="relative bg-black/50 backdrop-blur-xl border-y border-l border-gray-600/40 border-r-2 border-r-cyan-500/50 rounded-l-2xl rounded-r-sm p-3 shadow-[-8px_8px_24px_rgba(0,0,0,0.5)] flex flex-col items-end min-w-[110px] sm:min-w-[140px] overflow-hidden">
-                    
+                <div class="relative hud-panel border-r-0 border-y border-l border-gray-600/40 p-3 flex flex-col items-end min-w-[110px] sm:min-w-[140px] overflow-hidden">
                     <div class="absolute top-0 right-0 w-1.5 sm:w-2 h-full bg-gray-900/80 z-0">
                         <div id="essence-timer" class="absolute bottom-0 w-full h-0 bg-white transition-all duration-100 ease-linear shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
                     </div>
-
                     <div class="flex justify-end gap-1.5 sm:gap-2 mb-1 w-full pr-3 sm:pr-4 relative z-10">
                         <div class="stack-dot w-[20px] h-[20px] sm:w-[26px] sm:h-[26px]" id="stack-1"></div>
                         <div class="stack-dot w-[20px] h-[20px] sm:w-[26px] sm:h-[26px]" id="stack-2"></div>
@@ -869,29 +916,27 @@ body.colorblind-mode #opt-colorblind-text {
                     <div id="overdrive-text" class="font-black text-[10px] sm:text-xs text-white hidden tracking-widest uppercase drop-shadow-[0_0_10px_rgba(255,255,255,1)] leading-none mt-1.5 pr-3 sm:pr-4 relative z-10">INFERNO!</div>
                 </div>
             </div>
-            
         </div>
-        <!-- Tasto Scatto (Dash) -->
-        <button id="btn-dash" onclick="if(Game.state === 'PLAYING') Game.player.dash();" class="absolute bottom-32 right-[8.5rem] landscape:bottom-6 landscape:right-48 lg:!bottom-8 lg:!right-[11rem] w-14 h-14 bg-black/60 backdrop-blur-md rounded-full border-2 border-gray-600 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(0,0,0,0.8)] opacity-75 transition-all flex items-center justify-center touch-none overflow-hidden group">
+<!-- Tasto Scatto (Dash) -->
+        <button id="btn-dash" onclick="if(Game.state === 'PLAYING') Game.player.dash();" class="absolute bottom-32 right-[8.5rem] landscape:bottom-6 landscape:right-48 lg:!bottom-8 lg:!right-[11rem] w-14 h-14 hud-panel border-2 border-gray-600 text-gray-300 hover:text-white font-black text-xs pointer-events-auto transition-colors flex items-center justify-center touch-none overflow-hidden group">
             <div id="btn-dash-fill" class="absolute bottom-0 left-0 w-full bg-yellow-500/50 h-0 transition-all duration-100 pointer-events-none"></div>
-            <i class="fa-solid fa-bolt text-2xl relative z-10 drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"></i>
+            <i class="fa-solid fa-bolt text-2xl relative z-10"></i>
             <span class="absolute -top-6 text-[10px] text-gray-400 font-bold hidden lg:block tracking-widest whitespace-nowrap">SPAZIO</span>
         </button>
 
         <!-- Tasto Scudo (Shield) -->
-        <button id="btn-shield" onclick="if(Game.state === 'PLAYING') Game.player.activateShield();" class="absolute bottom-[12.5rem] right-[8.5rem] landscape:bottom-[6.5rem] landscape:right-48 lg:!bottom-8 lg:!right-[6.5rem] w-14 h-14 bg-black/60 backdrop-blur-md rounded-full border-2 border-gray-600 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(0,0,0,0.8)] opacity-75 transition-all flex items-center justify-center touch-none overflow-hidden group">
+        <button id="btn-shield" onclick="if(Game.state === 'PLAYING') Game.player.activateShield();" class="absolute bottom-[12.5rem] right-[8.5rem] landscape:bottom-[6.5rem] landscape:right-48 lg:!bottom-8 lg:!right-[6.5rem] w-14 h-14 hud-panel border-2 border-gray-600 text-gray-300 hover:text-white font-black text-xs pointer-events-auto transition-colors flex items-center justify-center touch-none overflow-hidden group">
             <div id="btn-shield-fill" class="absolute bottom-0 left-0 w-full bg-cyan-500/50 h-0 transition-all duration-200 pointer-events-none"></div>
-            <i class="fa-solid fa-shield text-2xl relative z-10 drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"></i>
+            <i class="fa-solid fa-shield text-2xl relative z-10"></i>
             <span class="absolute -top-6 text-[10px] text-gray-400 font-bold hidden lg:block tracking-widest whitespace-nowrap">SHIFT</span>
         </button>
 
         <!-- Tasto Ultimate (Ult) -->
-        <button id="btn-ult" onclick="if(Game.state === 'PLAYING') Game.activateUltimate();" class="absolute bottom-[14rem] right-12 landscape:bottom-[8.5rem] landscape:right-40 lg:!bottom-8 lg:!right-8 w-14 h-14 bg-black/60 backdrop-blur-md rounded-full border-2 border-gray-600 text-white font-black text-xs pointer-events-auto shadow-[0_0_15px_rgba(0,0,0,0.8)] opacity-75 transition-all flex items-center justify-center touch-none overflow-hidden group">
+        <button id="btn-ult" onclick="if(Game.state === 'PLAYING') Game.activateUltimate();" class="absolute bottom-[14rem] right-12 landscape:bottom-[8.5rem] landscape:right-40 lg:!bottom-8 lg:!right-8 w-14 h-14 hud-panel border-2 border-gray-600 text-gray-300 hover:text-white font-black text-xs pointer-events-auto transition-colors flex items-center justify-center touch-none overflow-hidden group">
             <div id="btn-ult-fill" class="absolute bottom-0 left-0 w-full bg-cyan-500/50 h-0 transition-all duration-200 pointer-events-none"></div>
-            <i class="fa-solid fa-angles-up text-2xl relative z-10 drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"></i>
+            <i class="fa-solid fa-angles-up text-2xl relative z-10"></i>
             <span class="absolute -top-6 text-[10px] text-gray-400 font-bold hidden lg:block tracking-widest whitespace-nowrap">TASTO DX</span>
         </button>
-
     </div> 
 <script>
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -1868,10 +1913,10 @@ const UIManager = {
             detailDesc.innerText = "Tocca o passa il cursore sopra un'icona per leggerne il potere.";
             
             Game.player.relics.forEach(relic => {
-                let colorClass = relic.rarity === 'legendary' ? 'border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]' : 
-                                 relic.rarity === 'epic' ? 'border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.5)]' : 
-                                 relic.rarity === 'rare' ? 'border-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 
-                                 'border-green-400 shadow-[0_0_10px_rgba(34,197,94,0.5)]';
+                let colorClass = relic.rarity === 'legendary' ? 'border-amber-400 shadow-[4px_4px_0px_rgba(251,191,36,1)]' : 
+                                 relic.rarity === 'epic' ? 'border-purple-400 shadow-[4px_4px_0px_rgba(168,85,247,1)]' : 
+                                 relic.rarity === 'rare' ? 'border-blue-400 shadow-[4px_4px_0px_rgba(59,130,246,1)]' : 
+                                 'border-green-400 shadow-[4px_4px_0px_rgba(34,197,94,1)]';
                 
                 let textColor = relic.rarity === 'legendary' ? 'text-amber-400' : 
                                 relic.rarity === 'epic' ? 'text-purple-400' : 
@@ -1879,7 +1924,7 @@ const UIManager = {
                                 'text-green-400';
                                  
                 let imgBox = document.createElement('div');
-                imgBox.className = `w-14 h-14 sm:w-16 sm:h-16 rounded-xl border-2 ${colorClass} overflow-hidden cursor-pointer transition-transform hover:scale-110 flex items-center justify-center bg-black/50`;
+                imgBox.className = `w-14 h-14 sm:w-16 sm:h-16 border-2 bg-black ${colorClass} overflow-hidden cursor-pointer transition-transform hover:-translate-x-1 hover:-translate-y-1 flex items-center justify-center`;
                 imgBox.innerHTML = `<img src="${relic.image}" alt="${relic.name}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><i class="fa-solid ${relic.icon || 'fa-gem'} text-2xl ${textColor}" style="display:none;"></i>`;
                 
                 const updateDetails = () => {
@@ -2104,17 +2149,17 @@ const RelicSystem = {
             
             let iconClass = relic.icon || fallbackIcon;
             
-            let visualElement = `
-                <div class="relative flex justify-center items-center my-1.5 w-[4.5rem] h-[4.5rem] sm:w-[5rem] sm:h-[5rem] shrink-0">
-                    <img src="${relic.image}" alt="${relic.name}" onload="this.nextElementSibling.style.display='none';" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" class="w-full h-full object-cover rounded-xl border-2 border-white/20 transition-transform shadow-[0_0_15px_currentColor] bg-black/50">
+           let visualElement = `
+                <div class="relative flex justify-center items-center my-1.5 w-[4.5rem] h-[4.5rem] sm:w-[5rem] sm:h-[5rem] shrink-0 bg-black border-2 border-gray-800">
+                    <img src="${relic.image}" alt="${relic.name}" onload="this.nextElementSibling.style.display='none';" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" class="w-full h-full object-cover">
                     <i class="fa-solid ${iconClass} text-4xl sm:text-5xl opacity-90 drop-shadow-md" style="display:none;"></i>
                 </div>
             `;
 
-          let card = document.createElement('div'); 
+            let card = document.createElement('div'); 
             card.id = `main-relic-card-${i}`;
-            // Aggiunta la classe stagger-enter
-            card.className = `relic-card stagger-enter flex flex-col items-center justify-start p-2 sm:p-3 rounded-2xl border-2 w-[32%] sm:flex-1 max-w-[190px] backdrop-blur-md ${colorClass} transition-all cursor-pointer opacity-75 min-h-[170px] sm:min-h-[190px] shadow-lg`;
+            // Rimossi border-radius, background sfocati e scale
+            card.className = `relic-card stagger-enter flex flex-col items-center justify-start p-2 sm:p-3 w-[32%] sm:flex-1 max-w-[190px] ${colorClass} opacity-75 min-h-[170px] sm:min-h-[190px]`;
             
             // Ritardo dinamico per l'effetto cascata
             card.style.animationDelay = `${i * 150}ms`;
@@ -2126,52 +2171,30 @@ const RelicSystem = {
             `;
 
             // EFFETTO TILT OLOGRAFICO 3D (Solo PC)
-            if (!isTouchDevice) {
-                card.addEventListener('mousemove', (e) => {
-                    const rect = card.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    const centerX = rect.width / 2;
-                    const centerY = rect.height / 2;
-                    // Inclinazione massima 12 gradi
-                    const tiltX = ((y - centerY) / centerY) * -12; 
-                    const tiltY = ((x - centerX) / centerX) * 12;
-                    // Selezionata è più grande, non selezionata è opaca
-                    let isSelected = (this.selectedMainRelic && this.selectedMainRelic.id === relic.id);
-                    let scale = isSelected ? 1.05 : 1.0;
-                    card.style.transform = `perspective(800px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale3d(${scale}, ${scale}, ${scale})`;
-                });
-
-                card.addEventListener('mouseleave', () => {
-                    let isSelected = (this.selectedMainRelic && this.selectedMainRelic.id === relic.id);
-                    card.style.transform = isSelected ? 'scale(1.05)' : 'scale(1)';
-                });
-            } else {
-                // Fallback hover CSS su mobile (rimesso qui perché tolto dalla className per non litigare col JS)
-                card.classList.add('hover:scale-105', 'hover:opacity-100');
-            }
-            card.onclick = () => { 
+          card.onclick = () => { 
                 AudioEngine.playHover(); 
                 this.selectedMainRelic = relic;
 
                 for(let j=0; j<this.currentChoices.length; j++) {
                     let c = document.getElementById(`main-relic-card-${j}`);
-                    c.classList.remove('border-yellow-400', 'scale-105', 'shadow-[0_0_30px_rgba(251,191,36,0.8)]', 'opacity-100');
                     c.classList.add('opacity-75');
-                    if (this.currentChoices[j].rarity === 'legendary') c.style.borderColor = '#fbbf24';
-                    else if (this.currentChoices[j].rarity === 'epic') c.style.borderColor = '#a855f7';
-                    else if (this.currentChoices[j].rarity === 'rare') c.style.borderColor = '#3b82f6';
-                    else c.style.borderColor = '#22c55e';
+                    c.style.transform = ''; // Resetta traslazioni
+                    
+                    if (this.currentChoices[j].rarity === 'legendary') { c.style.borderColor = '#fbbf24'; c.style.boxShadow = '6px 6px 0px #78350f'; }
+                    else if (this.currentChoices[j].rarity === 'epic') { c.style.borderColor = '#a855f7'; c.style.boxShadow = '6px 6px 0px #581c87'; }
+                    else if (this.currentChoices[j].rarity === 'rare') { c.style.borderColor = '#3b82f6'; c.style.boxShadow = '6px 6px 0px #1e3a8a'; }
+                    else { c.style.borderColor = '#22c55e'; c.style.boxShadow = '6px 6px 0px #14532d'; }
                 }
 
                 card.classList.remove('opacity-75');
-                card.classList.add('scale-105', 'opacity-100');
+                // Effetto "incastrato" di selezione
+                card.style.transform = 'translate(2px, 2px)';
                 card.style.borderColor = '#fbbf24'; 
-                card.style.boxShadow = '0 0 25px rgba(251,191,36,0.8)';
+                card.style.boxShadow = '0px 0px 0px transparent';
 
                 btnProceed.disabled = false;
                 btnProceed.innerText = "PROCEDI AL PROSSIMO PIANO";
-               btnProceed.className = "mt-4 sm:mt-6 btn-cyber glass-panel box-glow-blue w-full max-w-[400px] py-3 sm:py-4 px-6 text-[10px] sm:text-xs text-blue-300 border-blue-500/50 shrink-0";
+                btnProceed.className = "mt-4 sm:mt-6 btn-cyber glass-panel box-glow-blue w-full max-w-[400px] py-3 sm:py-4 px-6 text-[10px] sm:text-xs text-blue-300 border-blue-500/50 shrink-0";
             };
             container.appendChild(card);
         }
@@ -2195,12 +2218,12 @@ const RelicSystem = {
         grid.innerHTML = '';
         
         Game.player.relics.forEach((relic, index) => {
-            let colorClass = relic.rarity === 'legendary' ? 'border-amber-400' : 
-                             relic.rarity === 'epic' ? 'border-purple-400' : 
-                             relic.rarity === 'rare' ? 'border-blue-400' : 'border-green-400';
+           let colorClass = relic.rarity === 'legendary' ? 'border-amber-400 shadow-[4px_4px_0px_rgba(251,191,36,1)]' : 
+                             relic.rarity === 'epic' ? 'border-purple-400 shadow-[4px_4px_0px_rgba(168,85,247,1)]' : 
+                             relic.rarity === 'rare' ? 'border-blue-400 shadow-[4px_4px_0px_rgba(59,130,246,1)]' : 'border-green-400 shadow-[4px_4px_0px_rgba(34,197,94,1)]';
                              
             let imgBox = document.createElement('div');
-            imgBox.className = `w-14 h-14 sm:w-16 sm:h-16 rounded-xl border-2 ${colorClass} overflow-hidden cursor-pointer hover:scale-110 transition-transform relative group bg-black/50 flex shrink-0`;
+            imgBox.className = `w-14 h-14 sm:w-16 sm:h-16 border-2 bg-black ${colorClass} overflow-hidden cursor-pointer hover:-translate-x-1 hover:-translate-y-1 transition-transform relative group flex shrink-0`;
             imgBox.innerHTML = `
                 <img src="${relic.image}" class="w-full h-full object-cover">
                 <div class="absolute inset-0 bg-red-900/80 hidden group-hover:flex items-center justify-center text-white"><i class="fa-solid fa-fire text-xl"></i></div>
@@ -2218,7 +2241,8 @@ const RelicSystem = {
                 
                 let btnSel = document.getElementById('btn-select-reforge');
                 btnSel.classList.remove('border-dashed', 'border-gray-600');
-                btnSel.classList.add('border-solid', 'border-purple-400', 'shadow-[0_0_15px_rgba(168,85,247,0.5)]');
+                btnSel.classList.add('border-solid', 'border-purple-400');
+                btnSel.style.boxShadow = '6px 6px 0px #a855f7';
                 document.getElementById('reforge-overlay').classList.remove('hidden');
                 
                 document.getElementById('btn-do-reforge').disabled = false;
@@ -2285,20 +2309,16 @@ const RelicSystem = {
             setTimeout(() => {
                 imgEl.src = newRelic.image;
                 
-                let colorGlow = newRelic.rarity === 'legendary' ? 'rgba(251,191,36,0.8)' : 
-                                newRelic.rarity === 'epic' ? 'rgba(168,85,247,0.8)' : 
-                                newRelic.rarity === 'rare' ? 'rgba(59,130,246,0.8)' : 'rgba(34,197,94,0.8)';
+                let colorGlow = newRelic.rarity === 'legendary' ? '#fbbf24' : 
+                                newRelic.rarity === 'epic' ? '#a855f7' : 
+                                newRelic.rarity === 'rare' ? '#3b82f6' : '#22c55e';
                                  
                 let borderColor = newRelic.rarity === 'legendary' ? 'border-amber-400' : 
                                   newRelic.rarity === 'epic' ? 'border-purple-400' : 
                                   newRelic.rarity === 'rare' ? 'border-blue-400' : 'border-green-400';
                                   
-                let textColor = newRelic.rarity === 'legendary' ? 'text-amber-400' : 
-                                newRelic.rarity === 'epic' ? 'text-purple-400' : 
-                                newRelic.rarity === 'rare' ? 'text-blue-400' : 'text-green-400';
-                                  
-                btnSel.className = `w-[4.5rem] h-[4.5rem] sm:w-[5rem] sm:h-[5rem] rounded-2xl border-2 border-solid ${borderColor} flex items-center justify-center bg-black/50 shrink-0 relative overflow-hidden anim-reforge`;
-                btnSel.style.boxShadow = `0 0 25px ${colorGlow}`;
+                btnSel.className = `w-[4.5rem] h-[4.5rem] sm:w-[5rem] sm:h-[5rem] border-2 border-solid ${borderColor} flex items-center justify-center bg-black shrink-0 relative overflow-hidden anim-reforge`;
+                btnSel.style.boxShadow = `6px 6px 0px ${colorGlow}`;
                 
                 // POPOLA LA DESCRIZIONE DELLA RELIQUIA RIFORGIATA
                 let descTitle = document.getElementById('reforge-desc-title');

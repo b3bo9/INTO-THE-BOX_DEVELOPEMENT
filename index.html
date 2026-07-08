@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Into the Box - Definitive</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
@@ -35,9 +38,34 @@
 }
        
        
-        * { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+      * { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
         input { -webkit-user-select: auto; user-select: auto; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #050508; font-family: 'Impact', 'Georgia', serif; }
+        
+        /* --- DESIGN SYSTEM --- */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #050508; font-family: 'JetBrains Mono', monospace; }
+        h1, h2, h3, .font-display { font-family: 'Impact', sans-serif; letter-spacing: 1px; }
+        
+        .glass-panel {
+            background: rgba(10, 15, 25, 0.75) !important;
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            border-radius: 1rem !important; /* Forza i bordi arrotondati uniformi ovunque */
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(255, 255, 255, 0.02) !important;
+        }
+        
+        @keyframes modal-pop {
+            0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .modal-enter {
+            animation: modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        .btn-cyber { transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        .btn-cyber:active { transform: scale(0.95); }
+        /* --------------------- */
+
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
     @media (hover: hover) and (pointer: fine) {
             #game-container canvas {
@@ -338,7 +366,7 @@ body.colorblind-mode #opt-colorblind-text {
 
   <!-- MODALE INFO -->
     <div id="infoModal" class="absolute inset-0 bg-black/90 z-[250] flex items-center justify-center backdrop-blur-md pointer-events-auto hidden p-3">
-        <div class="bg-gray-900 border border-blue-500/50 p-4 sm:p-5 rounded-2xl w-full max-w-[420px] flex flex-col shadow-[0_0_40px_rgba(59,130,246,0.3)] relative overflow-hidden">
+       <div class="glass-panel modal-enter border-blue-500/50 p-4 sm:p-5 w-full max-w-[420px] flex flex-col shadow-[0_0_40px_rgba(59,130,246,0.3)] relative overflow-hidden">
             
             <!-- Decorazione sfondo -->
             <div class="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-blue-900/20 to-transparent pointer-events-none"></div>
@@ -395,7 +423,7 @@ body.colorblind-mode #opt-colorblind-text {
         </div>
     </div>
 <div id="optionsModal" class="absolute inset-0 bg-black/90 z-[280] flex items-center justify-center backdrop-blur-md pointer-events-auto hidden p-3">
-        <div class="bg-gray-900 border border-gray-500/50 p-4 sm:p-5 rounded-2xl w-full max-w-[420px] flex flex-col shadow-[0_0_40px_rgba(156,163,175,0.2)] relative overflow-hidden">
+        <div class="glass-panel modal-enter border-gray-500/50 p-4 sm:p-5 w-full max-w-[420px] flex flex-col shadow-[0_0_40px_rgba(156,163,175,0.2)] relative overflow-hidden">
             
             <div class="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-gray-700/20 to-transparent pointer-events-none"></div>
 
@@ -440,7 +468,7 @@ body.colorblind-mode #opt-colorblind-text {
         </div>
     </div>
     <div id="pauseModal" class="absolute inset-0 bg-black/80 z-[270] flex items-center justify-center backdrop-blur-md pointer-events-auto hidden p-3">
-        <div class="bg-gray-900 border border-gray-600/50 p-6 rounded-2xl w-full max-w-[350px] flex flex-col items-center shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden">
+        <div class="glass-panel modal-enter border-gray-600/50 p-6 w-full max-w-[350px] flex flex-col items-center shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden">
             <h2 class="text-3xl font-black text-white mb-6 uppercase tracking-[0.3em] drop-shadow-lg">PAUSA</h2>
             
             <div class="w-full flex flex-col gap-3">
@@ -668,7 +696,7 @@ body.colorblind-mode #opt-colorblind-text {
     </div>
     <!-- MODALE SELEZIONE SACRIFICIO -->
     <div id="reforgeSelectModal" class="absolute inset-0 bg-black/95 z-[260] flex flex-col items-center justify-center backdrop-blur-md pointer-events-auto hidden p-4">
-        <div class="bg-gray-900 border border-purple-500/50 p-5 rounded-2xl w-full max-w-[450px] shadow-[0_0_40px_rgba(168,85,247,0.3)] flex flex-col max-h-[85vh]">
+       <div class="glass-panel modal-enter border-purple-500/50 p-5 w-full max-w-[450px] shadow-[0_0_40px_rgba(168,85,247,0.3)] flex flex-col max-h-[85vh]">
             <h2 class="text-xl sm:text-2xl font-black text-purple-400 mb-4 border-b border-gray-700 pb-2 uppercase tracking-widest text-center"><i class="fa-solid fa-fire"></i> Seleziona Sacrificio</h2>
             <div id="reforgeSelectGrid" class="flex flex-wrap gap-3 overflow-y-auto custom-scrollbar p-2 justify-center content-start flex-1 min-h-[120px]">
             </div>
@@ -677,7 +705,7 @@ body.colorblind-mode #opt-colorblind-text {
     </div>
 <!-- MODALE RELIQUIE COLLEZIONATE -->
     <div id="collectedRelicsModal" class="absolute inset-0 bg-black/95 z-[260] flex flex-col items-center justify-center backdrop-blur-md pointer-events-auto hidden p-4">
-        <div class="bg-gray-900 border border-purple-500/50 p-5 rounded-2xl w-full max-w-[450px] shadow-[0_0_40px_rgba(168,85,247,0.3)] flex flex-col max-h-[85vh]">
+      <div class="glass-panel modal-enter border-purple-500/50 p-5 w-full max-w-[450px] shadow-[0_0_40px_rgba(168,85,247,0.3)] flex flex-col max-h-[85vh]">
             <h2 class="text-xl sm:text-2xl font-black text-purple-400 mb-4 border-b border-gray-700 pb-2 uppercase tracking-widest flex items-center gap-2 shrink-0"><i class="fa-solid fa-gem"></i> Inventario Reliquie</h2>
             
             <div id="collectedRelicsGrid" class="flex flex-wrap gap-3 overflow-y-auto custom-scrollbar p-2 justify-center content-start flex-1 min-h-[120px]">
@@ -724,8 +752,8 @@ body.colorblind-mode #opt-colorblind-text {
         <!-- TACTICAL HUD (Top-Left) Aumentata la leggibilità -->
         <div class="absolute top-4 left-3 sm:top-6 sm:left-6 flex flex-col gap-3 pointer-events-none w-full max-w-[280px] sm:max-w-[340px] z-50">
             
-            <!-- MAIN VITALS PANEL -->
-            <div class="bg-black/50 backdrop-blur-xl border border-gray-600/40 rounded-2xl p-3 shadow-[0_8px_32px_rgba(0,0,0,0.6)] flex items-center gap-3.5">
+           <!-- MAIN VITALS PANEL -->
+            <div class="glass-panel p-3 flex items-center gap-3.5">
                 
                 <!-- LEVEL RING (Ingrandito) -->
                 <div class="relative w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center bg-black/80 rounded-full border-2 border-gray-700/80 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] shrink-0">
@@ -756,8 +784,8 @@ body.colorblind-mode #opt-colorblind-text {
 
             <!-- SECONDARY INFO PANEL (Floor Context & Economy) -->
             <div class="flex gap-3 w-full">
-                <!-- FLOOR PROGRESS -->
-                <div class="flex-1 bg-black/50 backdrop-blur-xl border border-gray-600/30 rounded-xl p-2.5 shadow-[0_4px_15px_rgba(0,0,0,0.4)] flex flex-col justify-center">
+               <!-- FLOOR PROGRESS -->
+                <div class="flex-1 glass-panel p-2.5 flex flex-col justify-center">
                     <div class="flex items-center justify-between mb-1.5">
                         <span id="ui-floor-text" class="text-[10px] sm:text-xs font-black uppercase tracking-widest text-gray-400 flex items-center">
                             <i class="fa-solid fa-layer-group text-gray-500 mr-1.5"></i> Piano <span id="ui-floor" class="text-white ml-1">1</span>
@@ -772,8 +800,8 @@ body.colorblind-mode #opt-colorblind-text {
                     </div>
                 </div>
 
-                <!-- COINS POUCH -->
-                <div class="shrink-0 bg-black/50 backdrop-blur-xl border border-yellow-600/30 rounded-xl px-4 shadow-[0_4px_15px_rgba(0,0,0,0.4)] flex items-center justify-center gap-2.5 min-w-[70px]">
+               <!-- COINS POUCH -->
+                <div class="shrink-0 glass-panel border-yellow-500/30 px-4 flex items-center justify-center gap-2.5 min-w-[70px]" style="box-shadow: 0 0 15px rgba(234,179,8,0.15) !important;">
                     <i class="fa-solid fa-coins text-yellow-500 text-xs sm:text-sm drop-shadow-[0_0_5px_rgba(234,179,8,0.8)]"></i> 
                     <span id="ui-coins" class="text-yellow-400 text-sm sm:text-base font-black tracking-wider">0</span>
                 </div>

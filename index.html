@@ -41,59 +41,71 @@
       * { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
         input { -webkit-user-select: auto; user-select: auto; }
         
-        /* --- DESIGN SYSTEM --- */
+       /* --- DESIGN SYSTEM: ARCADE BRUTALISM --- */
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #050508; font-family: 'JetBrains Mono', monospace; }
-        h1, h2, h3, .font-display { font-family: 'Impact', sans-serif; letter-spacing: 1px; }
+        h1, h2, h3, .font-display { font-family: 'Impact', sans-serif; letter-spacing: 2px; }
         
+        /* Sovrimpressione globale stile Terminale/CRT per sporcare la UI */
+        body::after {
+            content: ""; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%);
+            background-size: 100% 3px; z-index: 150; pointer-events: none; opacity: 0.6;
+        }
+
+        /* I Pannelli: Monoliti di Ossidiana, niente vetro morbido */
         .glass-panel {
-            background: rgba(10, 15, 25, 0.75) !important;
-            backdrop-filter: blur(12px) !important;
-            -webkit-backdrop-filter: blur(12px) !important;
-            border: 1px solid rgba(255, 255, 255, 0.15) !important;
-            border-radius: 1rem !important; /* Forza i bordi arrotondati uniformi ovunque */
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(255, 255, 255, 0.02) !important;
+            background: #0a0a0c !important; /* Quasi nero solido */
+            backdrop-filter: none !important; /* Via il blur costoso e "finto" */
+            border: 2px solid #333 !important;
+            border-radius: 0 !important; /* Forme a Scatola (Into the Box!) */
+            box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.9) !important; /* Ombra netta, pesante */
+            position: relative;
         }
         
-        @keyframes modal-pop {
-            0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+        /* Dettaglio Cyber-Hardware (Rinforzi agli angoli) */
+        .glass-panel::before, .glass-panel::after {
+            content: ''; position: absolute; width: 10px; height: 10px; pointer-events: none; z-index: 10;
+        }
+        .glass-panel::before { top: -2px; left: -2px; border-top: 2px solid #fff; border-left: 2px solid #fff; }
+        .glass-panel::after { bottom: -2px; right: -2px; border-bottom: 2px solid #fff; border-right: 2px solid #fff; }
+        
+        @keyframes modal-slam {
+            0% { opacity: 0; transform: scale(1.05) translateY(-10px); }
             100% { opacity: 1; transform: scale(1) translateY(0); }
         }
-        .modal-enter {
-            animation: modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        }
+        .modal-enter { animation: modal-slam 0.2s cubic-bezier(0, 0.7, 0.2, 1) forwards; }
         
-        .btn-cyber { transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
-        .btn-cyber:active { transform: scale(0.95); }
-        /* --------------------- */
-        /* --- DESIGN SYSTEM: BOTTONI E NEON --- */
+        /* Bottoni: Fisici, pesanti, scattanti */
         .btn-cyber {
-            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
+            transition: all 0.05s ease-out !important; /* Scatto istantaneo */
+            cursor: pointer; text-transform: uppercase; font-weight: 800;
+            border-radius: 0 !important; border: 2px solid #444 !important; background: #000 !important;
+            box-shadow: 4px 4px 0px rgba(0,0,0,1) !important;
+            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+            transform: translate(0px, 0px);
         }
-        .btn-cyber:hover { filter: brightness(1.2); }
-        .btn-cyber:active { transform: scale(0.95) !important; }
-
-        /* Effetti Bloom (Post-Processing UI) */
-        .box-glow-red:hover { box-shadow: 0 0 25px rgba(255, 17, 51, 0.6), inset 0 0 10px rgba(255, 17, 51, 0.3) !important; border-color: #FF1133 !important; color: #FF1133 !important; }
-        .box-glow-blue:hover { box-shadow: 0 0 25px rgba(0, 221, 255, 0.6), inset 0 0 10px rgba(0, 221, 255, 0.3) !important; border-color: #00DDFF !important; color: #00DDFF !important; }
-        .box-glow-purple:hover { box-shadow: 0 0 25px rgba(168, 85, 247, 0.6), inset 0 0 10px rgba(168, 85, 247, 0.3) !important; border-color: #a855f7 !important; color: #a855f7 !important; }
-        .box-glow-amber:hover { box-shadow: 0 0 25px rgba(251, 191, 36, 0.6), inset 0 0 10px rgba(251, 191, 36, 0.3) !important; border-color: #fbbf24 !important; color: #fbbf24 !important; }
-        .box-glow-gray:hover { box-shadow: 0 0 20px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1) !important; border-color: #ffffff !important; color: #ffffff !important; }
         
-        .neon-text-red { color: #FF1133; text-shadow: 0 0 15px rgba(255, 17, 51, 0.8), 0 0 5px rgba(255, 17, 51, 0.5); }
+        /* In hover il bottone si solleva e proietta l'ombra colorata del suo elemento */
+        .btn-cyber:hover { transform: translate(-2px, -2px) !important; background: #111 !important; }
+        /* In click il bottone viene schiacciato fisicamente contro lo sfondo */
+        .btn-cyber:active { transform: translate(4px, 4px) !important; box-shadow: 0px 0px 0px transparent !important; }
+
+        /* Palette Neon Brutalista (Hard Shadows) */
+        .box-glow-red:hover { border-color: #FF1133 !important; box-shadow: 6px 6px 0px #FF1133 !important; color: #FF1133 !important; }
+        .box-glow-blue:hover { border-color: #00DDFF !important; box-shadow: 6px 6px 0px #00DDFF !important; color: #00DDFF !important; }
+        .box-glow-purple:hover { border-color: #a855f7 !important; box-shadow: 6px 6px 0px #a855f7 !important; color: #a855f7 !important; }
+        .box-glow-amber:hover { border-color: #fbbf24 !important; box-shadow: 6px 6px 0px #fbbf24 !important; color: #fbbf24 !important; }
+        .box-glow-gray:hover { border-color: #ffffff !important; box-shadow: 6px 6px 0px #ffffff !important; color: #ffffff !important; }
+        
+        /* Testi puramente Neon */
+        .neon-text-red { color: #FF1133; text-shadow: 2px 2px 0px #4a0000, 0 0 15px rgba(255, 17, 51, 0.8); }
+
+        /* Barra di scorrimento coerente col tema */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #050508; border-left: 1px solid #333; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #444; border-radius: 0; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #00DDFF; }
         /* ------------------------------------- */
-        /* --- CUSTOM SCROLLBAR --- */
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0, 221, 255, 0.6); }
-        /* ------------------------ */
 
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
     @media (hover: hover) and (pointer: fine) {
@@ -104,10 +116,10 @@
         }
         #uiCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
         
-        .health-bar-container { background: #111; border: 1px solid #444; border-radius: 4px; overflow: hidden; position: relative; box-shadow: 0 0 10px rgba(0,0,0,0.8); }
+        .health-bar-container { background: #111; border: 1px solid #444; overflow: hidden; position: relative; box-shadow: 0 0 10px rgba(0,0,0,0.8); }
         #ui-floor-progress { transform-origin: left; width: 100%; }
         #combo-bar { transform-origin: bottom; width: 100%; height: 100%; }
-        .stack-dot { width: 22px; height: 22px; border-radius: 50%; background: #1a1a1a; border: 2px solid #555; transition: all 0.3s; box-shadow: inset 0 0 8px #000; }
+        .stack-dot { width: 22px; height: 22px; border-radius: 0; transform: rotate(45deg); background: #1a1a1a; border: 2px solid #555; transition: all 0.3s; box-shadow: inset 0 0 8px #000; }
         @media (min-width: 640px) { .stack-dot { width: 30px; height: 30px; border-width: 3px; } }
         
         .stack-dot.active.red { background: #FF1133; border-color: #ffffff; box-shadow: 0 0 25px #FF1133, inset 0 0 8px rgba(255,255,255,0.8); }

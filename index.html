@@ -87,6 +87,12 @@
         .box-glow-gray:hover { box-shadow: 0 0 20px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1) !important; border-color: #ffffff !important; color: #ffffff !important; }
         
         .neon-text-red { color: #FF1133; text-shadow: 0 0 15px rgba(255, 17, 51, 0.8), 0 0 5px rgba(255, 17, 51, 0.5); }
+      
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0, 221, 255, 0.6); }
+     
         /* ------------------------------------- */
 
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
@@ -356,27 +362,23 @@ body.colorblind-mode #opt-colorblind-text {
                 <!-- Decorazione Ambientale dietro i pulsanti -->
                 <div class="absolute -inset-10 bg-gradient-to-t from-red-900/10 via-transparent to-transparent blur-3xl pointer-events-none animate-pulse"></div>
 
-                <!-- BOTTONI: OPZIONI, INFO -->
                 <div class="grid grid-cols-2 gap-3 w-full relative z-10">
-                    <button onclick="UIManager.showModal('optionsModal')" onmouseenter="AudioEngine.playHover()" class="anim-bg-sweep w-full h-12 sm:h-14 bg-gradient-to-r from-gray-800/60 via-gray-700/40 to-gray-800/60 backdrop-blur-xl border border-gray-600/50 text-white rounded-xl text-[10px] sm:text-xs font-bold transition-all hover:border-gray-300 hover:text-white text-gray-300 uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-[inset_0_0_15px_rgba(255,255,255,0.05)] hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] group">
-                        <i class="fa-solid fa-gear text-gray-400 group-hover:text-white group-hover:rotate-90 transition-all duration-300"></i> OPZIONI
+                    <button onclick="UIManager.showModal('optionsModal')" onmouseenter="AudioEngine.playHover()" class="btn-cyber glass-panel box-glow-gray w-full h-12 sm:h-14 text-[10px] sm:text-xs font-bold text-gray-300">
+                        <i class="fa-solid fa-gear"></i> OPZIONI
                     </button>
 
-                    <button onclick="UIManager.showModal('infoModal')" onmouseenter="AudioEngine.playHover()" class="anim-bg-sweep w-full h-12 sm:h-14 bg-gradient-to-r from-blue-900/40 via-blue-800/30 to-blue-900/40 backdrop-blur-xl border border-blue-700/50 text-white rounded-xl text-[10px] sm:text-xs font-bold transition-all hover:border-blue-400 hover:text-white text-blue-200 uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-[inset_0_0_15px_rgba(59,130,246,0.1)] hover:shadow-[0_0_20px_rgba(59,130,246,0.4)] group">
-                        <i class="fa-solid fa-book text-blue-400 group-hover:text-white transition-colors"></i> INFO
+                    <button onclick="UIManager.showModal('infoModal')" onmouseenter="AudioEngine.playHover()" class="btn-cyber glass-panel box-glow-blue w-full h-12 sm:h-14 text-[10px] sm:text-xs font-bold text-blue-300 border-blue-900/30">
+                        <i class="fa-solid fa-book"></i> INFO
                     </button>
                 </div>
 
-                <!-- TASTO GIOCA (ORA CON PULSAZIONE 3D) -->
-                <!-- Nota: rimossi i transform e shadow statici di Tailwind per far lavorare l'animazione CSS fluida -->
-                <button onmouseenter="AudioEngine.playHover()" onclick="AudioEngine.playClick(); startGameFromMenu()" class="anim-play-pulse relative w-full bg-gradient-to-r from-red-900 via-red-600 to-red-900 hover:from-red-800 hover:via-red-500 hover:to-red-800 text-white font-black py-4 sm:py-5 rounded-xl text-2xl sm:text-3xl border transition-colors uppercase tracking-[0.3em] overflow-hidden group mt-1 z-10">
+                <button onmouseenter="AudioEngine.playHover()" onclick="AudioEngine.playClick(); startGameFromMenu()" class="anim-play-pulse btn-cyber box-glow-red bg-gradient-to-r from-red-900 via-red-600 to-red-900 text-white font-black py-4 sm:py-5 rounded-xl text-2xl sm:text-3xl border border-red-500 overflow-hidden group mt-1 z-10 relative">
                     <div class="absolute inset-0 w-[200%] h-full bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:animate-shimmer pointer-events-none"></div>
-                    <span class="relative z-10 flex justify-center items-center gap-3 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"><i class="fa-solid fa-play"></i> GIOCA</span>
+                    <span class="relative z-10 flex justify-center items-center gap-3 drop-shadow-md"><i class="fa-solid fa-play"></i> GIOCA</span>
                 </button>
                 
-                <!-- PUNTEGGI -->
-                <button onmouseenter="AudioEngine.playHover()" onclick="AudioEngine.playClick(); showHighScores()" class="anim-bg-sweep w-full bg-gradient-to-r from-black/60 via-amber-900/20 to-black/60 backdrop-blur-xl hover:bg-amber-900/40 text-gray-300 hover:text-amber-200 font-bold py-3.5 rounded-xl text-xs sm:text-sm border border-gray-700 hover:border-amber-500/60 transition-all active:scale-95 uppercase tracking-[0.2em] flex justify-center items-center gap-2 shadow-lg relative z-10 group">
-                    <i class="fa-solid fa-trophy text-amber-500 group-hover:scale-110 transition-transform"></i> CLASSIFICA
+                <button onmouseenter="AudioEngine.playHover()" onclick="AudioEngine.playClick(); showHighScores()" class="btn-cyber glass-panel box-glow-amber w-full py-3.5 text-xs sm:text-sm font-bold text-amber-300 border-amber-900/30 relative z-10">
+                    <i class="fa-solid fa-trophy"></i> CLASSIFICA
                 </button>
 
                 <!-- CREDITS (Stile Cabinato Arcade) -->
@@ -454,38 +456,34 @@ body.colorblind-mode #opt-colorblind-text {
                 <i class="fa-solid fa-gear text-gray-400"></i> Opzioni
             </h2>
             
-            <div class="space-y-2.5 relative z-10">
-                <button id="btn-opt-gfx" onclick="AppSettings.toggleGraphics(); UIManager.updateOptionsUI();" class="w-full bg-gradient-to-r from-gray-800/40 to-black/40 border border-gray-700/50 text-green-400 rounded-xl py-3 text-[11px] sm:text-xs font-bold transition-all hover:border-gray-400/50 hover:from-gray-700/50 uppercase tracking-widest flex items-center justify-between px-4 shadow-[inset_0_0_15px_rgba(156,163,175,0.05)]">
+           <div class="space-y-2.5 relative z-10">
+                <button id="btn-opt-gfx" onclick="AppSettings.toggleGraphics(); UIManager.updateOptionsUI();" class="btn-cyber glass-panel box-glow-gray w-full py-3 text-[11px] sm:text-xs text-white justify-between px-4">
                     <span>Grafica</span> <span id="opt-gfx-text"><i class="fa-solid fa-scale-balanced"></i> BILANCIATA</span>
                 </button>
-                <button id="btn-opt-fps" onclick="AppSettings.toggleFPS(); UIManager.updateOptionsUI(); AudioEngine.playClick();" class="w-full bg-gradient-to-r from-gray-800/40 to-black/40 border border-gray-700/50 text-white rounded-xl py-3 text-[11px] sm:text-xs font-bold transition-all hover:border-gray-400/50 hover:from-gray-700/50 uppercase tracking-widest flex items-center justify-between px-4 shadow-[inset_0_0_15px_rgba(156,163,175,0.05)]">
+                <button id="btn-opt-fps" onclick="AppSettings.toggleFPS(); UIManager.updateOptionsUI(); AudioEngine.playClick();" class="btn-cyber glass-panel box-glow-gray w-full py-3 text-[11px] sm:text-xs text-white justify-between px-4">
                     <span>Frame Rate</span> <span id="opt-fps-text" class="text-green-400">60 FPS</span>
                 </button>
-                
-                <button id="btn-opt-music" onclick="AudioEngine.toggleMusic(); UIManager.updateOptionsUI();" class="w-full bg-gradient-to-r from-gray-800/40 to-black/40 border border-gray-700/50 text-white rounded-xl py-3 text-[11px] sm:text-xs font-bold transition-all hover:border-gray-400/50 hover:from-gray-700/50 uppercase tracking-widest flex items-center justify-between px-4 shadow-[inset_0_0_15px_rgba(156,163,175,0.05)]">
+                <button id="btn-opt-music" onclick="AudioEngine.toggleMusic(); UIManager.updateOptionsUI();" class="btn-cyber glass-panel box-glow-gray w-full py-3 text-[11px] sm:text-xs text-white justify-between px-4">
                     <span>Musica</span> <span id="opt-music-text" class="text-green-400">ON</span>
                 </button>
-
-                <button id="btn-opt-sfx" onclick="AudioEngine.toggleSFX(); UIManager.updateOptionsUI();" class="w-full bg-gradient-to-r from-gray-800/40 to-black/40 border border-gray-700/50 text-white rounded-xl py-3 text-[11px] sm:text-xs font-bold transition-all hover:border-gray-400/50 hover:from-gray-700/50 uppercase tracking-widest flex items-center justify-between px-4 shadow-[inset_0_0_15px_rgba(156,163,175,0.05)]">
+                <button id="btn-opt-sfx" onclick="AudioEngine.toggleSFX(); UIManager.updateOptionsUI();" class="btn-cyber glass-panel box-glow-gray w-full py-3 text-[11px] sm:text-xs text-white justify-between px-4">
                     <span>Effetti (SFX)</span> <span id="opt-sfx-text" class="text-green-400">ON</span>
                 </button>
-                
-                <button id="btn-opt-vibration" onclick="Haptics.toggle(); UIManager.updateOptionsUI();" class="hidden w-full bg-gradient-to-r from-gray-800/40 to-black/40 border border-gray-700/50 text-white rounded-xl py-3 text-[11px] sm:text-xs font-bold transition-all hover:border-gray-400/50 hover:from-gray-700/50 uppercase tracking-widest items-center justify-between px-4 shadow-[inset_0_0_15px_rgba(156,163,175,0.05)]">
+                <button id="btn-opt-vibration" onclick="Haptics.toggle(); UIManager.updateOptionsUI();" class="hidden btn-cyber glass-panel box-glow-gray w-full py-3 text-[11px] sm:text-xs text-white justify-between px-4">
                     <span>Vibrazione</span> <span id="opt-vibration-text" class="text-green-400">ON</span>
                 </button>
-
-                <button id="btn-opt-colorblind" onclick="AppSettings.toggleColorblind(); UIManager.updateOptionsUI();" class="w-full bg-gradient-to-r from-gray-800/40 to-black/40 border border-gray-700/50 text-white rounded-xl py-3 text-[11px] sm:text-xs font-bold transition-all hover:border-gray-400/50 hover:from-gray-700/50 uppercase tracking-widest flex items-center justify-between px-4 shadow-[inset_0_0_15px_rgba(156,163,175,0.05)]">
+                <button id="btn-opt-colorblind" onclick="AppSettings.toggleColorblind(); UIManager.updateOptionsUI();" class="btn-cyber glass-panel box-glow-gray w-full py-3 text-[11px] sm:text-xs text-white justify-between px-4">
                     <span>Daltonismo</span> <span id="opt-colorblind-text" class="text-gray-500">OFF</span>
                 </button>
-                <button id="btn-opt-shake" onclick="AppSettings.toggleScreenShake(); UIManager.updateOptionsUI(); AudioEngine.playClick();" class="w-full bg-gradient-to-r from-gray-800/40 to-black/40 border border-gray-700/50 text-white rounded-xl py-3 text-[11px] sm:text-xs font-bold transition-all hover:border-gray-400/50 hover:from-gray-700/50 uppercase tracking-widest flex items-center justify-between px-4 shadow-[inset_0_0_15px_rgba(156,163,175,0.05)]">
+                <button id="btn-opt-shake" onclick="AppSettings.toggleScreenShake(); UIManager.updateOptionsUI(); AudioEngine.playClick();" class="btn-cyber glass-panel box-glow-gray w-full py-3 text-[11px] sm:text-xs text-white justify-between px-4">
                     <span>Tremolio Schermo</span> <span id="opt-shake-text" class="text-green-400">ON</span>
                 </button>
-                <button id="btn-opt-dmgnum" onclick="AppSettings.toggleDamageNumbers(); UIManager.updateOptionsUI(); AudioEngine.playClick();" class="w-full bg-gradient-to-r from-gray-800/40 to-black/40 border border-gray-700/50 text-white rounded-xl py-3 text-[11px] sm:text-xs font-bold transition-all hover:border-gray-400/50 hover:from-gray-700/50 uppercase tracking-widest flex items-center justify-between px-4 shadow-[inset_0_0_15px_rgba(156,163,175,0.05)]">
+                <button id="btn-opt-dmgnum" onclick="AppSettings.toggleDamageNumbers(); UIManager.updateOptionsUI(); AudioEngine.playClick();" class="btn-cyber glass-panel box-glow-gray w-full py-3 text-[11px] sm:text-xs text-white justify-between px-4">
                     <span>Numeri Danno</span> <span id="opt-dmgnum-text" class="text-green-400">ON</span>
                 </button>
             </div>
             
-            <button onclick="UIManager.hideModal('optionsModal')" class="mt-4 w-full bg-gradient-to-t from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500 text-white font-bold py-3 rounded-xl border border-gray-400/50 transition-all active:scale-95 uppercase tracking-[0.2em] text-xs shadow-[0_0_15px_rgba(156,163,175,0.2)] shrink-0 z-10">
+            <button onclick="UIManager.hideModal('optionsModal')" class="mt-4 btn-cyber glass-panel box-glow-gray w-full py-3 text-xs text-gray-300 shrink-0 z-10">
                 Torna al menu
             </button>
         </div>
@@ -720,7 +718,7 @@ body.colorblind-mode #opt-colorblind-text {
                 </div>
             </div>
 
-            <button id="btn-proceed-relic" onclick="RelicSystem.proceedToNextFloor()" class="mt-4 sm:mt-6 bg-gray-800 text-gray-500 font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-xl border border-gray-700 uppercase tracking-[0.1em] sm:tracking-[0.2em] text-[10px] sm:text-xs shrink-0 transition-all cursor-not-allowed" disabled>
+            <button id="btn-proceed-relic" onclick="RelicSystem.proceedToNextFloor()" class="mt-4 sm:mt-6 btn-cyber glass-panel box-glow-gray w-full max-w-[400px] py-3 sm:py-4 px-6 text-[10px] sm:text-xs text-gray-500 shrink-0 cursor-not-allowed" disabled>
                 Seleziona una Reliquia
             </button>
         </div>
@@ -2087,12 +2085,11 @@ const RelicSystem = {
             } else {
                 btnProceed.disabled = false;
                 btnProceed.innerText = "Procedi al prossimo piano";
-                btnProceed.className = "mt-4 sm:mt-6 bg-gradient-to-t from-blue-900 to-cyan-800 hover:from-blue-800 hover:to-cyan-700 text-white font-black py-3 sm:py-4 px-6 sm:px-8 rounded-xl border border-cyan-500/50 transition-all active:scale-95 uppercase tracking-[0.1em] sm:tracking-[0.2em] text-[10px] sm:text-xs shrink-0 shadow-[0_0_15px_rgba(34,211,238,0.2)]";
-            }
+               btnProceed.className = "mt-4 sm:mt-6 btn-cyber glass-panel box-glow-blue w-full max-w-[400px] py-3 sm:py-4 px-6 text-[10px] sm:text-xs text-blue-300 border-blue-500/50 shrink-0";
         } else {
             btnProceed.disabled = true;
             btnProceed.innerText = "Seleziona una reliquia";
-            btnProceed.className = "mt-4 sm:mt-6 bg-gray-800 text-gray-500 font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-xl border border-gray-700 uppercase tracking-[0.1em] sm:tracking-[0.2em] text-[10px] sm:text-xs shrink-0 transition-all cursor-not-allowed";
+           btnProceed.className = "mt-4 sm:mt-6 btn-cyber glass-panel box-glow-gray w-full max-w-[400px] py-3 sm:py-4 px-6 text-[10px] sm:text-xs text-gray-500 shrink-0 cursor-not-allowed";
         }
         
         // CREAZIONE CARTE SCELTA ADATTIVE
@@ -2172,8 +2169,7 @@ const RelicSystem = {
 
                 btnProceed.disabled = false;
                 btnProceed.innerText = "PROCEDI AL PROSSIMO PIANO";
-                btnProceed.className = "mt-4 sm:mt-6 bg-gradient-to-t from-blue-900 to-cyan-800 hover:from-blue-800 hover:to-cyan-700 text-white font-black py-3 sm:py-4 px-6 sm:px-8 rounded-xl border border-cyan-500/50 transition-all active:scale-95 uppercase tracking-[0.1em] sm:tracking-[0.2em] text-[10px] sm:text-xs shrink-0 shadow-[0_0_15px_rgba(34,211,238,0.2)]";
-            };
+               btnProceed.className = "mt-4 sm:mt-6 btn-cyber glass-panel box-glow-blue w-full max-w-[400px] py-3 sm:py-4 px-6 text-[10px] sm:text-xs text-blue-300 border-blue-500/50 shrink-0";
             container.appendChild(card);
         }
         

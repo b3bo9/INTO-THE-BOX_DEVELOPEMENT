@@ -818,7 +818,7 @@ body.colorblind-mode #opt-colorblind-text {
                 <div class="flex-1 glass-panel p-2.5 flex flex-col justify-center">
                     <div class="flex items-center justify-between mb-1.5">
                         <span id="ui-floor-text" class="text-[10px] sm:text-xs font-black uppercase tracking-widest text-gray-400 flex items-center">
-                            <i class="fa-solid fa-layer-group text-gray-500 mr-1.5"></i> Piano <span id="ui-floor" class="text-white ml-1">1</span>
+                            <i id="ui-floor-icon" class="fa-solid fa-skull text-gray-500 mr-1.5 transition-all duration-300"></i> Piano <span id="ui-floor" class="text-white ml-1">1</span>
                         </span>
                        <span id="ui-corruption-label" class="text-[9px] sm:text-[10px] font-black tracking-widest text-purple-300 drop-shadow-[0_0_5px_rgba(168,85,247,0.8)] hidden bg-purple-900/40 px-1.5 py-0.5 rounded border border-purple-500/40 uppercase whitespace-nowrap"></span>
                     </div>
@@ -3260,6 +3260,7 @@ const UI = {
         this.els.lives = document.getElementById('ui-lives'); this.els.level = document.getElementById('ui-level'); 
        this.els.xpCircle = document.getElementById('ui-xp-circle');
         this.els.floor = document.getElementById('ui-floor'); 
+        this.els.floorIcon = document.getElementById('ui-floor-icon'); // <-- NUOVA RIGA
         this.els.corruptionLabel = document.getElementById('ui-corruption-label');
         this.els.floorProgress = document.getElementById('ui-floor-progress');
         this.els.floorProgressGlow = document.getElementById('ui-floor-progress-glow');
@@ -3319,21 +3320,21 @@ const UI = {
         let xpPct = (Game.player.xp / Game.player.xpNeeded) * 100; 
         if (this.cache.xpPct !== xpPct) { this.els.xpCircle.setAttribute('stroke-dasharray', `${xpPct}, 100`); this.cache.xpPct = xpPct; }
         
-      // Aggiorna Piano e Testo Corruzione
-        if (this.cache.floor !== Game.floor || this.cache.corrupted !== Game.isCorrupted) { 
+      // Aggiorna Piano, Testo Corruzione e Icona Demone
+        if (this.cache.floor !== Game.floor || this.cache.corrupted !== Game.isCorrupted || this.cache.isBossFloor !== Game.isBossFloor) { 
             this.els.floor.innerText = Game.floor; 
             
             if (Game.isCorrupted) {
                 let typeText = "";
                 if (Game.corruptedType === 'darkness') typeText = "OSCURITÀ";
                 if (Game.corruptedType === 'unstable') typeText = "INSTABILE";
-               if (Game.corruptedType === 'volatile') typeText = "IMPLOSIONE";
+                if (Game.corruptedType === 'volatile') typeText = "IMPLOSIONE";
                 if (Game.corruptedType === 'combo') typeText = "COMBO";
                 if (Game.corruptedType === 'pursuer') typeText = "NEMESI";
                 if (Game.corruptedType === 'acid_pools') typeText = "CORROSIONE";
                 if (Game.corruptedType === 'retaliation') typeText = "RAPPRESAGLIA";
                 
-                this.els.corruptionLabel.innerText =typeText;
+                this.els.corruptionLabel.innerText = typeText;
                 this.els.corruptionLabel.classList.remove('hidden');
                 this.els.corruptionLabel.classList.add('animate-pulse');
             } else {
@@ -3341,8 +3342,21 @@ const UI = {
                 this.els.corruptionLabel.classList.remove('animate-pulse');
             }
 
+            // GESTIONE COLORE ICONA DEL PIANO (Demone)
+            if (this.els.floorIcon) {
+                this.els.floorIcon.className = "fa-solid fa-skull mr-1.5 transition-all duration-300 ";
+                if (Game.isBossFloor) {
+                    this.els.floorIcon.className += "text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.9)] scale-110";
+                } else if (Game.isCorrupted) {
+                    this.els.floorIcon.className += "text-purple-500 drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]";
+                } else {
+                    this.els.floorIcon.className += "text-gray-500";
+                }
+            }
+
             this.cache.floor = Game.floor; 
             this.cache.corrupted = Game.isCorrupted;
+            this.cache.isBossFloor = Game.isBossFloor;
         }
         
         let eLeft = Math.max(0, Game.floorMaxKills - Game.floorKills); 

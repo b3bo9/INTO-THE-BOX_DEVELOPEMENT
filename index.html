@@ -836,11 +836,11 @@ body.colorblind-mode #opt-colorblind-text {
            <!-- MAIN VITALS PANEL -->
             <div class="hud-panel p-3 flex items-center gap-3.5">
                 
-                <!-- LEVEL SQUARE -->
-                <div class="relative w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center bg-black border-2 border-gray-700 shrink-0">
+                <!-- LEVEL RING -->
+                <div class="relative w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center bg-black/80 rounded-full border-2 border-gray-700/80 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] shrink-0">
                     <svg class="absolute inset-0 w-full h-full transform -rotate-90 drop-shadow-[0_0_3px_rgba(34,211,238,0.5)]" viewBox="0 0 36 36">
                         <path class="text-gray-800" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="2.5"/>
-                        <path id="ui-xp-circle" class="text-cyan-400 transition-all duration-300" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"/>
+                        <path id="ui-xp-circle" class="text-cyan-400 transition-all duration-300" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
                     </svg>
                     <div class="absolute flex flex-col items-center mt-0.5">
                         <span class="text-[8px] sm:text-[10px] text-cyan-200 font-black tracking-[0.2em] leading-none mb-0.5">LVL</span>
@@ -918,21 +918,21 @@ body.colorblind-mode #opt-colorblind-text {
             </div>
         </div>
 <!-- Tasto Scatto (Dash) -->
-        <button id="btn-dash" onclick="if(Game.state === 'PLAYING') Game.player.dash();" class="absolute bottom-32 right-[8.5rem] landscape:bottom-6 landscape:right-48 lg:!bottom-8 lg:!right-[11rem] w-14 h-14 hud-panel border-2 border-gray-600 text-gray-300 hover:text-white font-black text-xs pointer-events-auto transition-colors flex items-center justify-center touch-none overflow-hidden group">
+        <button id="btn-dash" onclick="if(Game.state === 'PLAYING') Game.player.dash();" class="absolute bottom-32 right-[8.5rem] landscape:bottom-6 landscape:right-48 lg:!bottom-8 lg:!right-[11rem] w-14 h-14 bg-black/80 backdrop-blur-md rounded-full border-2 border-gray-600 shadow-[0_0_15px_rgba(0,0,0,0.8)] text-gray-300 hover:text-white font-black text-xs pointer-events-auto transition-colors flex items-center justify-center touch-none overflow-hidden group">
             <div id="btn-dash-fill" class="absolute bottom-0 left-0 w-full bg-yellow-500/50 h-0 transition-all duration-100 pointer-events-none"></div>
             <i class="fa-solid fa-bolt text-2xl relative z-10"></i>
             <span class="absolute -top-6 text-[10px] text-gray-400 font-bold hidden lg:block tracking-widest whitespace-nowrap">SPAZIO</span>
         </button>
 
         <!-- Tasto Scudo (Shield) -->
-        <button id="btn-shield" onclick="if(Game.state === 'PLAYING') Game.player.activateShield();" class="absolute bottom-[12.5rem] right-[8.5rem] landscape:bottom-[6.5rem] landscape:right-48 lg:!bottom-8 lg:!right-[6.5rem] w-14 h-14 hud-panel border-2 border-gray-600 text-gray-300 hover:text-white font-black text-xs pointer-events-auto transition-colors flex items-center justify-center touch-none overflow-hidden group">
+        <button id="btn-shield" onclick="if(Game.state === 'PLAYING') Game.player.activateShield();" class="absolute bottom-[12.5rem] right-[8.5rem] landscape:bottom-[6.5rem] landscape:right-48 lg:!bottom-8 lg:!right-[6.5rem] w-14 h-14 bg-black/80 backdrop-blur-md rounded-full border-2 border-gray-600 shadow-[0_0_15px_rgba(0,0,0,0.8)] text-gray-300 hover:text-white font-black text-xs pointer-events-auto transition-colors flex items-center justify-center touch-none overflow-hidden group">
             <div id="btn-shield-fill" class="absolute bottom-0 left-0 w-full bg-cyan-500/50 h-0 transition-all duration-200 pointer-events-none"></div>
             <i class="fa-solid fa-shield text-2xl relative z-10"></i>
             <span class="absolute -top-6 text-[10px] text-gray-400 font-bold hidden lg:block tracking-widest whitespace-nowrap">SHIFT</span>
         </button>
 
         <!-- Tasto Ultimate (Ult) -->
-        <button id="btn-ult" onclick="if(Game.state === 'PLAYING') Game.activateUltimate();" class="absolute bottom-[14rem] right-12 landscape:bottom-[8.5rem] landscape:right-40 lg:!bottom-8 lg:!right-8 w-14 h-14 hud-panel border-2 border-gray-600 text-gray-300 hover:text-white font-black text-xs pointer-events-auto transition-colors flex items-center justify-center touch-none overflow-hidden group">
+        <button id="btn-ult" onclick="if(Game.state === 'PLAYING') Game.activateUltimate();" class="absolute bottom-[14rem] right-12 landscape:bottom-[8.5rem] landscape:right-40 lg:!bottom-8 lg:!right-8 w-14 h-14 bg-black/80 backdrop-blur-md rounded-full border-2 border-gray-600 shadow-[0_0_15px_rgba(0,0,0,0.8)] text-gray-300 hover:text-white font-black text-xs pointer-events-auto transition-colors flex items-center justify-center touch-none overflow-hidden group">
             <div id="btn-ult-fill" class="absolute bottom-0 left-0 w-full bg-cyan-500/50 h-0 transition-all duration-200 pointer-events-none"></div>
             <i class="fa-solid fa-angles-up text-2xl relative z-10"></i>
             <span class="absolute -top-6 text-[10px] text-gray-400 font-bold hidden lg:block tracking-widest whitespace-nowrap">TASTO DX</span>
@@ -4161,13 +4161,14 @@ loop(timestamp) {
             requestAnimationFrame(this._boundLoop);
             return; 
         }
-        if (this.state === 'WARPING_OUT') {
+      if (this.state === 'WARPING_OUT') {
             this.warpTimer -= frameTime; // Scalamento in tempo reale fluido!
             let progress = 1.0 - (this.warpTimer / 1.2); 
             
             if (this.player && this.player.mesh) {
-                // Eseguiamo il reset visivo SOLO nel primo frame del Warp per non pesare sulla CPU
-                if (this.warpTimer > 1.15) {
+                // Eseguiamo il reset visivo UNA SOLA VOLTA in modo sicuro, indipendente dai drop di framerate
+                if (!this.warpOutInitialized) {
+                    this.warpOutInitialized = true;
                     let pChildren = this.player.mesh.children;
                     for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = true;
                     if (this.player.shieldMesh) this.player.shieldMesh.visible = false;
@@ -4657,10 +4658,11 @@ update(combatDt, visualDt) {
             windSources[windCount].set(this.player.x, windForce, this.player.y);
             windCount++;
         }
-        for(let i=0; i<this.projectiles.length; i++) {
+   for(let i=0; i<this.projectiles.length; i++) {
             let p = this.projectiles[i];
             if ((p.active || p.windIntensity > 0) && windCount < MAX_WIND) { 
-                windSources[windCount].set(p.windX, p.windIntensity, p.windZ);
+                // Aumentiamo drasticamente l'impatto visivo moltiplicando l'intensità x3.5
+                windSources[windCount].set(p.windX, p.windIntensity * 3.5, p.windZ);
                 windCount++;
             }
         }
@@ -5049,6 +5051,7 @@ update(combatDt, visualDt) {
                 // ORDINE REWORK: Attiva prima l'animazione di discesa, non la UI!
                 this.state = 'WARPING_OUT';
                 this.warpTimer = 1.2; 
+                this.warpOutInitialized = false;
                 
                 if (this.player.shadowMesh) this.player.shadowMesh.visible = false;
                 if (this.player.auraRingMesh) { this.player.auraRingMesh.visible = false; this.player.auraGlow.visible = false; }
@@ -5095,6 +5098,7 @@ update(combatDt, visualDt) {
                     this.floorEndTriggered = false; 
                     this.state = 'WARPING_OUT';
                     this.warpTimer = 1.2; 
+                    this.warpOutInitialized = false;
                     
                     // Pulisce i nemici rimanenti senza impattare sul frame rate
                     for (let i = this.enemies.length - 1; i >= 0; i--) {

@@ -5389,21 +5389,17 @@ const InteractiveGrassSystem = {
                 // Genera un valore pseudo-casuale (da 0.0 a 1.0) basato sulle coordinate nel mondo
                 vColorRandom = fract(sin(dot(basePos.xz, vec2(12.9898, 78.233))) * 43758.5453);
 
-                // Onde di vento globali più complesse (raffiche che viaggiano)
-                float windWave = sin(uTime * 2.5 + basePos.x * 0.02 + basePos.z * 0.02) * 
-                                 cos(uTime * 1.2 + basePos.x * 0.01 - basePos.z * 0.01);
-                
-                vec2 windDir = vec2(
-                    windWave * 2.5,
-                    windWave * 2.5
-                );
-
-               vec2 interactDir = vec2(0.0);
-                
-                // FIX VRAM & CPU: Calcola la complessità del vento SOLO se il ciuffo è visibile alla telecamera!
+               // OTTIMIZZAZIONE EXTREME MOBILE: Calcola il vento SOLO se il ciuffo è inquadrato
                 float distToCam = distance(basePos.xz, cameraPosition.xz);
-                
-                if (distToCam < 1400.0) { // Oltre le 1400 unità non vedi nulla
+                vec2 totalForce = vec2(0.0);
+
+                if (distToCam < 1250.0) { // Range stretto basato sul frustum della telecamera
+                    // Vento ambientale globale rinforzato per renderlo chiaramente visibile
+                    float windWave = sin(uTime * 3.0 + basePos.x * 0.015 + basePos.z * 0.015) * cos(uTime * 1.5 + basePos.x * 0.01 - basePos.z * 0.01);
+                    
+                    vec2 windDir = vec2(windWave * 6.0, windWave * 4.0);
+                    vec2 interactDir = vec2(0.0);
+
                     for(int i = 0; i < MAX_WIND; i++) {
                         if (i >= uWindCount) break;
                         
@@ -5422,33 +5418,34 @@ const InteractiveGrassSystem = {
                             interactDir += normalize(dir) * (pushForce * wobble) * 45.0 * intensity;
                         }
                     }
+                    totalForce = windDir + interactDir;
                 }
 
-                vec2 totalForce = windDir + interactDir;
                 float forceMag = length(totalForce);
-                
-                vec3 axis = vec3(totalForce.y, 0.0, -totalForce.x);
-                if (forceMag > 0.001) {
-                    axis = normalize(axis);
+                vec4 finalWorldPos;
+
+                // FAST BRANCHING: Bypassa la trigonometria pesante se l'erba è lontana o immobile
+                if (forceMag > 0.05) {
+                    vec3 axis = normalize(vec3(totalForce.y, 0.0, -totalForce.x));
+                    float maxAngle = min(forceMag * 0.05, 1.5); 
+                    float currentAngle = maxAngle * heightFactor; 
+                    
+                    float c = cos(currentAngle);
+                    float s = sin(currentAngle);
+                    vec3 v = worldPos.xyz - basePos; 
+                    
+                    vec3 cross_axis_v = cross(axis, v);
+                    float dot_axis_v = dot(axis, v);
+                    vec3 bentVector = v * c + cross_axis_v * s + axis * dot_axis_v * (1.0 - c);
+                    
+                    finalWorldPos = vec4(basePos + bentVector, 1.0);
                 } else {
-                    axis = vec3(1.0, 0.0, 0.0);
+                    finalWorldPos = vec4(worldPos.xyz, 1.0); // Assegnazione diretta a costo zero
                 }
                 
-                float maxAngle = min(forceMag * 0.04, 1.5); 
-                float currentAngle = maxAngle * heightFactor; 
-                
-                float c = cos(currentAngle);
-                float s = sin(currentAngle);
-                vec3 v = worldPos.xyz - basePos; 
-                
-                vec3 cross_axis_v = cross(axis, v);
-                float dot_axis_v = dot(axis, v);
-                vec3 bentVector = v * c + cross_axis_v * s + axis * dot_axis_v * (1.0 - c);
-                
-                vec4 finalWorldPos = vec4(basePos + bentVector, 1.0);
                 vec4 mvPosition = viewMatrix * finalWorldPos;
                 gl_Position = projectionMatrix * mvPosition;
-                `
+                
             );
 
             // --- 2. FRAGMENT SHADER (Pittura Radice-Punta e Variazione) ---

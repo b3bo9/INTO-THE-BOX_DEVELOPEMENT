@@ -5389,7 +5389,7 @@ const InteractiveGrassSystem = {
                 // Genera un valore pseudo-casuale (da 0.0 a 1.0) basato sulle coordinate nel mondo
                 vColorRandom = fract(sin(dot(basePos.xz, vec2(12.9898, 78.233))) * 43758.5453);
 
-               // OTTIMIZZAZIONE EXTREME MOBILE: Calcola il vento SOLO se il ciuffo è inquadrato
+             // OTTIMIZZAZIONE EXTREME MOBILE: Calcola il vento SOLO se il ciuffo è inquadrato
                 float distToCam = distance(basePos.xz, cameraPosition.xz);
                 vec2 totalForce = vec2(0.0);
 
@@ -5445,7 +5445,7 @@ const InteractiveGrassSystem = {
                 
                 vec4 mvPosition = viewMatrix * finalWorldPos;
                 gl_Position = projectionMatrix * mvPosition;
-                
+                `
             );
 
             // --- 2. FRAGMENT SHADER (Pittura Radice-Punta e Variazione) ---

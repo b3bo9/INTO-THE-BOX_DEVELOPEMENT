@@ -716,13 +716,13 @@ body.colorblind-mode #opt-colorblind-text {
             </div>
 
             <!-- BOTTONI BASSI (SHOP) -->
-            <div class="w-full max-w-[450px] flex flex-col gap-2 shrink-0">
+          <div class="w-full max-w-[450px] flex flex-col gap-2 shrink-0 z-20">
                 <button onclick="UIManager.showCollectedRelics()" class="btn-cyber glass-panel box-glow-purple w-full py-3 text-xs sm:text-sm font-bold text-purple-300">
                     <i class="fa-solid fa-gem mr-2"></i> LE TUE RELIQUIE
                 </button>
-                <div class="w-full mt-1">
-                    <button id="btn-next-floor" onclick="nextFloor(window.nextIsCorrupted)" class="w-full transition-all active:scale-95">
-                    </button>
+                <div class="w-full mt-1 flex flex-col gap-2">
+                    <button id="btn-next-floor" onclick="nextFloor(window.nextIsCorrupted)" class="w-full transition-all active:scale-95"></button>
+                    <button onclick="goToMainMenu()" class="btn-cyber glass-panel box-glow-gray w-full py-3.5 text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-widest shrink-0">Torna al menu</button>
                 </div>
             </div>
         </div>
@@ -771,7 +771,7 @@ body.colorblind-mode #opt-colorblind-text {
                 </div>
             </div>
 
-           <button id="btn-proceed-relic" onclick="RelicSystem.proceedToNextFloor()" class="mt-4 sm:mt-6 btn-cyber glass-panel box-glow-gray w-full max-w-[400px] py-3 sm:py-4 px-6 text-[10px] sm:text-xs text-gray-500 shrink-0 cursor-not-allowed" disabled>
+           <button id="btn-proceed-relic" onclick="RelicSystem.proceedToNextFloor()" class="mt-4 sm:mt-6 btn-cyber glass-panel box-glow-gray w-full max-w-[500px] mx-auto py-3 sm:py-4 px-6 text-[10px] sm:text-xs text-gray-500 shrink-0 cursor-not-allowed" disabled>
                 Seleziona una Reliquia
             </button>
         </div>
@@ -2134,12 +2134,12 @@ const RelicSystem = {
             } else {
                 btnProceed.disabled = false;
                 btnProceed.innerText = "Procedi al prossimo piano";
-                btnProceed.className = "mt-4 sm:mt-6 btn-cyber glass-panel box-glow-blue w-full max-w-[400px] py-3 sm:py-4 px-6 text-[10px] sm:text-xs text-blue-300 border-blue-500/50 shrink-0";
+                btnProceed.className = "mt-4 sm:mt-6 btn-cyber glass-panel box-glow-blue w-full max-w-[500px] mx-auto py-3 sm:py-4 px-6 text-[10px] sm:text-xs text-blue-300 border-blue-500/50 shrink-0";
             }
         } else {
             btnProceed.disabled = true;
             btnProceed.innerText = "Seleziona una reliquia";
-           btnProceed.className = "mt-4 sm:mt-6 btn-cyber glass-panel box-glow-gray w-full max-w-[400px] py-3 sm:py-4 px-6 text-[10px] sm:text-xs text-gray-500 shrink-0 cursor-not-allowed";
+           btnProceed.className = "mt-4 sm:mt-6 btn-cyber glass-panel box-glow-gray w-full max-w-[500px] mx-auto py-3 sm:py-4 px-6 text-[10px] sm:text-xs text-gray-500 shrink-0 cursor-not-allowed";
         }
         
         // CREAZIONE CARTE SCELTA ADATTIVE
@@ -2197,7 +2197,7 @@ const RelicSystem = {
 
                 btnProceed.disabled = false;
                 btnProceed.innerText = "PROCEDI AL PROSSIMO PIANO";
-                btnProceed.className = "mt-4 sm:mt-6 btn-cyber glass-panel box-glow-blue w-full max-w-[400px] py-3 sm:py-4 px-6 text-[10px] sm:text-xs text-blue-300 border-blue-500/50 shrink-0";
+                btnProceed.className = "mt-4 sm:mt-6 btn-cyber glass-panel box-glow-blue w-full max-w-[500px] mx-auto py-3 sm:py-4 px-6 text-[10px] sm:text-xs text-blue-300 border-blue-500/50 shrink-0";
             };
             container.appendChild(card);
         }
@@ -5404,21 +5404,19 @@ const InteractiveGrassSystem = {
                 // Genera un valore pseudo-casuale (da 0.0 a 1.0) basato sulle coordinate nel mondo
                 vColorRandom = fract(sin(dot(basePos.xz, vec2(12.9898, 78.233))) * 43758.5453);
 
-           // Il centro dello schermo reale non è la telecamera (che è angolata e sfalsata in basso).
-                // Compensiamo la Z di 500 unità per centrare il calcolo esattamente sull'inquadratura visibile.
-                vec2 screenCenter = vec2(cameraPosition.x, cameraPosition.z - 500.0);
-                float distToCenter = distance(basePos.xz, screenCenter);
+         // CULLING ESTREMO MA SICURO: Ampliamo il raggio basandoci direttamente sulla telecamera.
+                // 2500.0 unità coprono abbondantemente l'intera mappa visibile (Nord e Sud), prevenendo glitch.
+                float distToCam = distance(basePos.xz, cameraPosition.xz);
                 
                 vec2 windDir = vec2(0.0);
                 vec2 interactDir = vec2(0.0);
 
-                // Culling ampio: 2000 copre comodamente l'intero schermo, anche sui tablet larghi
-                if (distToCenter < 2000.0) { 
-                    // 1. Vento ambientale morbido e visibile calcolato a zero cost
+                if (distToCam < 2500.0) { 
+                    // 1. Vento ambientale morbido
                     float windWave = sin(uTime * 3.0 + basePos.x * 0.015 + basePos.z * 0.015) * cos(uTime * 1.5 + basePos.x * 0.01 - basePos.z * 0.01);
                     windDir = vec2(windWave * 6.0, windWave * 4.0);
 
-                    // 2. Interazioni fisiche calcolate solo se a schermo
+                    // 2. Interazioni fisiche calcolate
                     for(int i = 0; i < MAX_WIND; i++) {
                         if (i >= uWindCount) break;
                         
@@ -5442,7 +5440,6 @@ const InteractiveGrassSystem = {
                 vec2 totalForce = windDir + interactDir;
                 float forceMag = length(totalForce);
                 
-                // Rimosso l'IF a scatto (fast-branching): la transizione dell'erba ora è sempre fluida.
                 vec3 axis = vec3(1.0, 0.0, 0.0); 
                 if (forceMag > 0.001) {
                     axis = normalize(vec3(totalForce.y, 0.0, -totalForce.x));

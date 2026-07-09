@@ -45,11 +45,15 @@
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #050508; font-family: 'JetBrains Mono', monospace; }
         h1, h2, h3, .font-display { font-family: 'Impact', sans-serif; letter-spacing: 2px; }
         
-        /* Sovrimpressione globale stile Terminale/CRT per sporcare la UI */
+       /* Sovrimpressione globale stile Terminale/CRT per sporcare la UI */
         body::after {
             content: ""; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
-            background-size: 100% 4px; z-index: 150; pointer-events: none; opacity: 0.3;
+            background-size: 100% 4px; z-index: 150; pointer-events: none; 
+            opacity: 0; transition: opacity 0.4s ease-in-out;
+        }
+        body.crt-active::after {
+            opacity: 0.4;
         }
 
         /* I Pannelli Menu: Squadrati, ma leggermente più trasparenti di prima */
@@ -782,7 +786,7 @@ body.colorblind-mode #opt-colorblind-text {
             <h2 class="text-xl sm:text-2xl font-black text-purple-400 mb-4 border-b border-gray-700 pb-2 uppercase tracking-widest text-center"><i class="fa-solid fa-fire"></i> Seleziona Sacrificio</h2>
             <div id="reforgeSelectGrid" class="flex flex-wrap gap-3 overflow-y-auto custom-scrollbar p-2 justify-center content-start flex-1 min-h-[120px]">
             </div>
-            <button onclick="UIManager.hideModal('reforgeSelectModal')" class="mt-5 w-full bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded-xl border border-gray-600 transition-colors uppercase tracking-widest shrink-0">Annulla</button>
+            <button onclick="UIManager.hideModal('reforgeSelectModal')" class="mt-5 btn-cyber glass-panel box-glow-gray w-full py-3.5 text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-widest shrink-0 z-10">Annulla</button>
         </div>
     </div>
 <!-- MODALE RELIQUIE COLLEZIONATE -->
@@ -799,7 +803,7 @@ body.colorblind-mode #opt-colorblind-text {
                 <p id="relic-detail-desc" class="text-xs text-gray-400 font-bold">Tocca o passa il cursore sopra un'icona per i dettagli.</p>
             </div>
 
-            <button onclick="UIManager.hideModal('collectedRelicsModal')" class="mt-5 w-full bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded-xl border border-gray-600 transition-colors uppercase tracking-widest shrink-0">Chiudi</button>
+           <button onclick="UIManager.hideModal('collectedRelicsModal')" class="mt-5 btn-cyber glass-panel box-glow-gray w-full py-3.5 text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-widest shrink-0 z-10">Chiudi</button>
         </div>
     </div>
     <!-- CONTAINER 3D -->
@@ -1966,10 +1970,10 @@ const UIManager = {
         if(AudioEngine.sfxMuted) { sfxTxt.innerText = "OFF"; sfxTxt.className = "text-red-500"; }
         else { sfxTxt.innerText = "ON"; sfxTxt.className = "text-green-400"; }
 
-        // Colorblind
-        const cbTxt = document.getElementById('opt-colorblind-text');
-        if(AppSettings.colorblind) { cbTxt.innerText = "ON"; cbTxt.className = "text-amber-400"; }
-        else { cbTxt.innerText = "OFF"; cbTxt.className = "text-gray-500"; }
+      // Colorblind
+        const cbTxt = document.getElementById('opt-colorblind-text');
+        if(AppSettings.colorblind) { cbTxt.innerText = "ON"; cbTxt.className = "text-amber-400"; }
+        else { cbTxt.innerText = "OFF"; cbTxt.className = "text-red-500"; }
         // --- NUOVO: VIBRAZIONE (Visibile solo se supportata dal dispositivo) ---
         const btnVib = document.getElementById('btn-opt-vibration');
         const vibTxt = document.getElementById('opt-vibration-text');
@@ -3533,12 +3537,25 @@ const UI = {
                 }
             }
         }
-     // FLASH DANNO HARDWARE ACCELERATED (VERO Zero Reflow tramite Opacity)
+  // FLASH DANNO HARDWARE ACCELERATED (VERO Zero Reflow tramite Opacity)
         // Ora si attiva SOLO se il giocatore è stato fisicamente colpito (flashTimer), non per il semplice screen shake.
         if (Game.player && Game.player.flashTimer > 0 && !Game.player.dead) {
             this.els.damageFlash.style.opacity = '0.6';
         } else {
             this.els.damageFlash.style.opacity = '0';
+        }
+        
+        // ATTIVAZIONE SCHERMO CRT & VIGNETTA SANGUE (Sotto il 30% HP)
+        let isLowHp = (Game.player.stats.hp / Game.player.stats.maxHp) < 0.30 && !Game.player.dead;
+        if (isLowHp !== AudioEngine.isLowHp) {
+            AudioEngine.setLowHpState(isLowHp);
+            if (isLowHp) {
+                this.els.bloodVignette.classList.add('vignette-low-hp-active');
+                document.body.classList.add('crt-active');
+            } else {
+                this.els.bloodVignette.classList.remove('vignette-low-hp-active');
+                document.body.classList.remove('crt-active');
+            }
         }
     },
      

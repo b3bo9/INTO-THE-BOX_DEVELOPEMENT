@@ -4199,41 +4199,89 @@ loop(timestamp) {
             requestAnimationFrame(this._boundLoop);
             return; 
         }
-   if (this.state === 'WARPING_OUT') {
-            this.warpTimer -= frameTime; // Scalamento in tempo reale fluido!
-            let progress = 1.0 - (this.warpTimer / 1.2); 
+  if (this.state === 'WARPING_OUT') {
+            let fixedDelta = 0.016; 
+            this.warpTimer -= fixedDelta; 
+            let progress = Math.max(0, Math.min(1, 1.0 - (this.warpTimer / 1.2))); 
             
             if (this.player && this.player.mesh) {
-                // FIX WARP: Eseguiamo il reset visivo UNA SOLA VOLTA in modo sicuro, indipendente dai drop di framerate!
                 if (!this.warpOutInitialized) {
                     this.warpOutInitialized = true;
+                    this.player.mesh.visible = true; 
                     let pChildren = this.player.mesh.children;
                     for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = true;
                     if (this.player.shieldMesh) this.player.shieldMesh.visible = false;
                     if (this.player.glacialShieldMesh) this.player.glacialShieldMesh.visible = false;
                     if (this.player.shadowMesh) this.player.shadowMesh.visible = false;
-                    this.player.isDashing = false; // Interrompe scatti in corso
+                    this.player.isDashing = false; 
+
+                    // --- PRE-CALCOLO TEMA SUCCESSIVO E SETUP PORTALE ---
+                    if (this.nextThemeIndex === undefined) {
+                        let offset = Math.floor(Math.random() * (MAP_THEMES.length - 1)) + 1;
+                        this.nextThemeIndex = (this.currentThemeIndex + offset) % MAP_THEMES.length;
+                    }
+                    
+                    let portalColor = this.nextThemeIndex === 2 ? 0x00DDFF : (this.nextThemeIndex === 1 ? 0xff3300 : 0x33ff00);
+                    this.portalMat = this.nextThemeIndex === 2 ? SharedMat.spriteBlue : (this.nextThemeIndex === 1 ? SharedMat.spriteRed : SharedMat.spriteGreen);
+                    
+                    if (!this.portalMesh) {
+                        this.portalMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
+                        this.portalMesh.rotation.x = -Math.PI / 2;
+                        this.scene.add(this.portalMesh);
+                    }
+                    this.portalMesh.material.color.setHex(portalColor);
+                    this.portalMesh.position.set(this.player.x, 0.5, this.player.y);
+                    this.portalMesh.scale.set(0.01, 0.01, 1);
+                    this.portalMesh.visible = true;
+                    
+                    AudioEngine.playShoot('explosive_arrow');
                 }
 
-                this.player.mesh.rotation.y += frameTime * (15 + progress * 20); 
-                this.player.mesh.position.y -= frameTime * 60 * progress; 
-                this.player.mesh.scale.setScalar(Math.max(0.01, 1.0 - progress)); 
+                // --- ANIMAZIONE A 2 FASI (SALTO -> RISUCCHIO) ---
+                if (progress < 0.35) {
+                    // 1. Salto in alto per staccarsi da terra
+                    let jumpProg = progress / 0.35;
+                    this.player.mesh.position.y = Math.sin(jumpProg * (Math.PI / 2)) * 60;
+                    this.player.mesh.rotation.y += fixedDelta * 5;
+                    
+                    // Il portale si allarga sotto di lui
+                    let pScale = Math.min(1.0, jumpProg * 1.5) * 75;
+                    this.portalMesh.scale.set(pScale, pScale, 1);
+                    this.portalMesh.rotation.z += fixedDelta * 2;
+                    this.portalMesh.material.opacity = jumpProg;
+                } else {
+                    // 2. Discesa vorticosa nel portale
+                    let descProg = (progress - 0.35) / 0.65;
+                    this.player.mesh.position.y = 60 - Math.pow(descProg, 2) * 150; // Scende abbondantemente sotto il pavimento
+                    this.player.mesh.rotation.y += fixedDelta * (25 + descProg * 35); // Rotazione violentissima
+                    this.player.mesh.scale.setScalar(Math.max(0.01, 1.0 - descProg)); // Rimpicciolimento
+                    
+                    // Il portale vortica e poi collassa alla fine
+                    this.portalMesh.rotation.z += fixedDelta * (8 + descProg * 15);
+                    if (descProg > 0.8) {
+                        let shrink = (1.0 - descProg) / 0.2;
+                        this.portalMesh.scale.set(shrink * 75, shrink * 75, 1);
+                    }
+                }
                 
+                this.portalMesh.updateMatrix();
                 this.player.mesh.updateMatrix();
-                this.player.mesh.updateMatrixWorld(true); // <-- IL FIX: Forza la GPU a scalare testa, corpo e armi!
+                this.player.mesh.updateMatrixWorld(true); 
             }
             
             this.camera.fov += frameTime * 40;
             this.camera.updateProjectionMatrix();
             
             if (UI.els.bloodVignette) {
-                UI.els.bloodVignette.style.transition = 'none'; // FIX: Evita che il CSS rallenti il fade
+                UI.els.bloodVignette.style.transition = 'none';
                 UI.els.bloodVignette.style.background = `rgba(5, 5, 10, 1)`;
                 UI.els.bloodVignette.style.opacity = progress; 
                 UI.els.bloodVignette.style.zIndex = '90';
             }
             
-            if (this.frameCount % 2 === 0) Game.getParticle().spawn(this.player.x, this.player.mesh.position.y + 15, this.player.y, SharedMat.spriteBlue, 'spark');
+            // Particelle del colore del portale estratte durante la caduta
+            if (this.frameCount % 2 === 0) Game.getParticle().spawn(this.player.x, Math.max(5, this.player.mesh.position.y), this.player.y, this.portalMat || SharedMat.spriteWhite, 'spark');
+            
             for (let i = 0; i < this.particles.length; i++) if(this.particles[i].active) this.particles[i].update(frameTime);
             for (let i = 0; i < this.floatingTexts.length; i++) if(this.floatingTexts[i].active) this.floatingTexts[i].update(frameTime);
             
@@ -4242,6 +4290,7 @@ loop(timestamp) {
             UI.update();
 
             if (this.warpTimer <= 0) {
+                if (this.portalMesh) this.portalMesh.visible = false; // Nascondi portale
                 // Ripristino camera e dissolvenza
                 this.camera.fov = 50; 
                 this.camera.updateProjectionMatrix();
@@ -4310,13 +4359,16 @@ loop(timestamp) {
         this.floorProphets = 0; // CAP PROFETI: Inizializza il contatore
         this.enemyGrid = new SpatialHashGrid([[-1000, -1000], [CHUNK_SIZE*TILE_SIZE+1000, CHUNK_SIZE*TILE_SIZE+1000]], [200, 200]);
         
-       // ---> FIX: ESTRAIAMO IL TEMA QUI, PRIMA DI GENERARE LA MAPPA <---
+      // ---> FIX: ESTRAIAMO IL TEMA QUI, PRIMA DI GENERARE LA MAPPA <---
         if (this.currentThemeIndex === undefined) {
             // Se è il primo livello in assoluto, sceglie a caso tra tutti i temi
             this.currentThemeIndex = Math.floor(Math.random() * MAP_THEMES.length);
+        } else if (this.nextThemeIndex !== undefined) {
+            // Usa il tema già pre-calcolato dal Portale durante l'animazione di Warp-Out!
+            this.currentThemeIndex = this.nextThemeIndex;
+            this.nextThemeIndex = undefined; // Consumato e svuotato per i prossimi calcoli
         } else {
-            // Dal secondo livello in poi, aggiunge 1 o 2 all'indice attuale, 
-            // garantendo matematicamente che il prossimo tema sia SEMPRE diverso dal precedente.
+            // Fallback di sicurezza
             let offset = Math.floor(Math.random() * (MAP_THEMES.length - 1)) + 1;
             this.currentThemeIndex = (this.currentThemeIndex + offset) % MAP_THEMES.length;
         }

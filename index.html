@@ -4650,35 +4650,51 @@ update(combatDt, visualDt) {
             if (updateFlags.corrupted) { this.map.auraMeshes.corrupted.dome.instanceMatrix.needsUpdate = true; this.map.auraMeshes.corrupted.ring.instanceMatrix.needsUpdate = true; }
             if (updateFlags.obelisks) this.map.auraMeshes.obelisks.instanceMatrix.needsUpdate = true;
         }
-        // --- AGGIORNAMENTO SHADER ERBA INTERATTIVA ---
+       // --- AGGIORNAMENTO SHADER ERBA INTERATTIVA ---
         InteractiveGrassSystem.uniforms.uTime.value = this.visualTime; // Usa il tempo visivo costante
         
         let windSources = InteractiveGrassSystem.uniforms.uWindSources.value;
         let windCount = 0;
+
+        // OTTIMIZZAZIONE CPU: Culling delle sorgenti di vento.
+        // Previene che l'array (limitato a 6 su mobile) si riempia di proiettili fuori schermo!
+        let camX = this.camera.position.x;
+        let camZ = this.camera.position.z;
+        let maxWindDistSq = 1400 * 1400; // Limite visivo della telecamera
 
         if (this.player && !this.player.dead) {
             let windForce = this.player.isDashing ? 4.5 : (Game.ultimateActive ? 2.5 : 1.0);
             windSources[windCount].set(this.player.x, windForce, this.player.y);
             windCount++;
         }
-   for(let i=0; i<this.projectiles.length; i++) {
+        
+        for(let i=0; i<this.projectiles.length; i++) {
             let p = this.projectiles[i];
-            if ((p.active || p.windIntensity > 0) && windCount < MAX_WIND) { 
-                // Aumentiamo drasticamente l'impatto visivo moltiplicando l'intensità x2.0
-                windSources[windCount].set(p.windX, p.windIntensity * 2.0, p.windZ);
-                windCount++;
+            if ((p.active || p.windIntensity > 0) && windCount < MAX_WIND) {
+                // Filtro distanza: invia allo Shader SOLO i proiettili che puoi effettivamente vedere
+                let dx = p.windX - camX;
+                let dz = p.windZ - camZ;
+                if ((dx * dx + dz * dz) < maxWindDistSq) {
+                    windSources[windCount].set(p.windX, p.windIntensity * 2.0, p.windZ);
+                    windCount++;
+                }
             }
         }
+        
         // --- VENTO PER LA NOVA CORROTTA IN ESPANSIONE ---
         for(let i=0; i<this.hazards.length; i++) {
             let h = this.hazards[i];
             if (h.active && h.type === 'nova_ring' && windCount < MAX_WIND - 4) {
-                let points = isTouchDevice ? 4 : 8; 
-                for(let j=0; j<points; j++) {
-                    if(windCount >= MAX_WIND) break;
-                    let a = (Math.PI * 2 / points) * j + (Game.playTime * 5); 
-                    windSources[windCount].set(h.x + Math.cos(a)*h.radius, 1.5, h.y + Math.sin(a)*h.radius);
-                    windCount++;
+                let dx = h.x - camX;
+                let dz = h.y - camZ;
+                if ((dx * dx + dz * dz) < maxWindDistSq) {
+                    let points = isTouchDevice ? 4 : 8; 
+                    for(let j=0; j<points; j++) {
+                        if(windCount >= MAX_WIND) break;
+                        let a = (Math.PI * 2 / points) * j + (Game.playTime * 5); 
+                        windSources[windCount].set(h.x + Math.cos(a)*h.radius, 1.5, h.y + Math.sin(a)*h.radius);
+                        windCount++;
+                    }
                 }
             }
         }

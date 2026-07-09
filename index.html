@@ -4650,17 +4650,16 @@ update(combatDt, visualDt) {
             if (updateFlags.corrupted) { this.map.auraMeshes.corrupted.dome.instanceMatrix.needsUpdate = true; this.map.auraMeshes.corrupted.ring.instanceMatrix.needsUpdate = true; }
             if (updateFlags.obelisks) this.map.auraMeshes.obelisks.instanceMatrix.needsUpdate = true;
         }
-       // --- AGGIORNAMENTO SHADER ERBA INTERATTIVA ---
-        InteractiveGrassSystem.uniforms.uTime.value = this.visualTime; // Usa il tempo visivo costante
+      // --- AGGIORNAMENTO SHADER ERBA INTERATTIVA ---
+        InteractiveGrassSystem.uniforms.uTime.value = this.visualTime;
         
         let windSources = InteractiveGrassSystem.uniforms.uWindSources.value;
         let windCount = 0;
 
-        // OTTIMIZZAZIONE CPU: Culling delle sorgenti di vento.
-        // Previene che l'array (limitato a 6 su mobile) si riempia di proiettili fuori schermo!
-        let camX = this.camera.position.x;
-        let camZ = this.camera.position.z;
-        let maxWindDistSq = 1400 * 1400; // Limite visivo della telecamera
+        // OTTIMIZZAZIONE CPU: Culling centrato sul GIOCATORE, non sulla telecamera sfalsata!
+        let focalX = this.player ? this.player.x : this.camera.position.x;
+        let focalZ = this.player ? this.player.y : this.camera.position.z;
+        let maxWindDistSq = 1500 * 1500; // Ampio margine visivo attorno al giocatore
 
         if (this.player && !this.player.dead) {
             let windForce = this.player.isDashing ? 4.5 : (Game.ultimateActive ? 2.5 : 1.0);
@@ -4671,9 +4670,9 @@ update(combatDt, visualDt) {
         for(let i=0; i<this.projectiles.length; i++) {
             let p = this.projectiles[i];
             if ((p.active || p.windIntensity > 0) && windCount < MAX_WIND) {
-                // Filtro distanza: invia allo Shader SOLO i proiettili che puoi effettivamente vedere
-                let dx = p.windX - camX;
-                let dz = p.windZ - camZ;
+                // Filtro distanza: calcolato dal centro dello schermo (focalX/Z)
+                let dx = p.windX - focalX;
+                let dz = p.windZ - focalZ;
                 if ((dx * dx + dz * dz) < maxWindDistSq) {
                     windSources[windCount].set(p.windX, p.windIntensity * 2.0, p.windZ);
                     windCount++;
@@ -4685,8 +4684,8 @@ update(combatDt, visualDt) {
         for(let i=0; i<this.hazards.length; i++) {
             let h = this.hazards[i];
             if (h.active && h.type === 'nova_ring' && windCount < MAX_WIND - 4) {
-                let dx = h.x - camX;
-                let dz = h.y - camZ;
+                let dx = h.x - focalX;
+                let dz = h.y - focalZ;
                 if ((dx * dx + dz * dz) < maxWindDistSq) {
                     let points = isTouchDevice ? 4 : 8; 
                     for(let j=0; j<points; j++) {
@@ -5405,17 +5404,21 @@ const InteractiveGrassSystem = {
                 // Genera un valore pseudo-casuale (da 0.0 a 1.0) basato sulle coordinate nel mondo
                 vColorRandom = fract(sin(dot(basePos.xz, vec2(12.9898, 78.233))) * 43758.5453);
 
-             // OTTIMIZZAZIONE EXTREME MOBILE: Calcola il vento SOLO se il ciuffo è inquadrato
-                float distToCam = distance(basePos.xz, cameraPosition.xz);
-                vec2 totalForce = vec2(0.0);
+           // Il centro dello schermo reale non è la telecamera (che è angolata e sfalsata in basso).
+                // Compensiamo la Z di 500 unità per centrare il calcolo esattamente sull'inquadratura visibile.
+                vec2 screenCenter = vec2(cameraPosition.x, cameraPosition.z - 500.0);
+                float distToCenter = distance(basePos.xz, screenCenter);
+                
+                vec2 windDir = vec2(0.0);
+                vec2 interactDir = vec2(0.0);
 
-                if (distToCam < 1250.0) { // Range stretto basato sul frustum della telecamera
-                    // Vento ambientale globale rinforzato per renderlo chiaramente visibile
+                // Culling ampio: 2000 copre comodamente l'intero schermo, anche sui tablet larghi
+                if (distToCenter < 2000.0) { 
+                    // 1. Vento ambientale morbido e visibile calcolato a zero cost
                     float windWave = sin(uTime * 3.0 + basePos.x * 0.015 + basePos.z * 0.015) * cos(uTime * 1.5 + basePos.x * 0.01 - basePos.z * 0.01);
-                    
-                    vec2 windDir = vec2(windWave * 6.0, windWave * 4.0);
-                    vec2 interactDir = vec2(0.0);
+                    windDir = vec2(windWave * 6.0, windWave * 4.0);
 
+                    // 2. Interazioni fisiche calcolate solo se a schermo
                     for(int i = 0; i < MAX_WIND; i++) {
                         if (i >= uWindCount) break;
                         
@@ -5434,31 +5437,29 @@ const InteractiveGrassSystem = {
                             interactDir += normalize(dir) * (pushForce * wobble) * 45.0 * intensity;
                         }
                     }
-                    totalForce = windDir + interactDir;
                 }
 
+                vec2 totalForce = windDir + interactDir;
                 float forceMag = length(totalForce);
-                vec4 finalWorldPos;
-
-                // FAST BRANCHING: Bypassa la trigonometria pesante se l'erba è lontana o immobile
-                if (forceMag > 0.05) {
-                    vec3 axis = normalize(vec3(totalForce.y, 0.0, -totalForce.x));
-                    float maxAngle = min(forceMag * 0.05, 1.5); 
-                    float currentAngle = maxAngle * heightFactor; 
-                    
-                    float c = cos(currentAngle);
-                    float s = sin(currentAngle);
-                    vec3 v = worldPos.xyz - basePos; 
-                    
-                    vec3 cross_axis_v = cross(axis, v);
-                    float dot_axis_v = dot(axis, v);
-                    vec3 bentVector = v * c + cross_axis_v * s + axis * dot_axis_v * (1.0 - c);
-                    
-                    finalWorldPos = vec4(basePos + bentVector, 1.0);
-                } else {
-                    finalWorldPos = vec4(worldPos.xyz, 1.0); // Assegnazione diretta a costo zero
+                
+                // Rimosso l'IF a scatto (fast-branching): la transizione dell'erba ora è sempre fluida.
+                vec3 axis = vec3(1.0, 0.0, 0.0); 
+                if (forceMag > 0.001) {
+                    axis = normalize(vec3(totalForce.y, 0.0, -totalForce.x));
                 }
                 
+                float maxAngle = min(forceMag * 0.04, 1.5); 
+                float currentAngle = maxAngle * heightFactor; 
+                
+                float c = cos(currentAngle);
+                float s = sin(currentAngle);
+                vec3 v = worldPos.xyz - basePos; 
+                
+                vec3 cross_axis_v = cross(axis, v);
+                float dot_axis_v = dot(axis, v);
+                vec3 bentVector = v * c + cross_axis_v * s + axis * dot_axis_v * (1.0 - c);
+                
+                vec4 finalWorldPos = vec4(basePos + bentVector, 1.0);
                 vec4 mvPosition = viewMatrix * finalWorldPos;
                 gl_Position = projectionMatrix * mvPosition;
                 `

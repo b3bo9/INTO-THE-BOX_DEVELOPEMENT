@@ -377,13 +377,9 @@ body.colorblind-mode #opt-colorblind-text {
    <div id="wipe-transition" class="absolute inset-0 bg-[#050508] z-[9999] pointer-events-none transition-all duration-700 ease-in-out" style="clip-path: circle(0% at 50% 50%);"></div>
 
    <div id="initScreen" class="absolute inset-0 bg-black z-[300] flex items-center justify-center cursor-pointer bg-cover bg-center bg-no-repeat" style="background-image: url('bg.png'); pointer-events: none;">
-        <div class="absolute inset-0 bg-black/60"></div>
-        
-        <!-- Testo di caricamento (Visibile all'inizio) -->
-       <h1 id="loadingText" class="text-[5vw] sm:text-3xl font-bold text-gray-400 z-10 whitespace-nowrap tracking-widest">CARICAMENTO... <span id="loadingProgress" class="text-white">0</span>%</h1>
-        
-        <!-- Pulsante di avvio (Nascosto all'inizio) -->
-        <h1 id="startText" class="hidden text-[8vw] sm:text-4xl font-extrabold text-red-700 tracking-widest animate-pulse text-center px-4 drop-shadow-[0_0_15px_rgba(220,38,38,0.8)] z-10 whitespace-nowrap">Tocca per Entrare</h1>
+        <div class="absolute inset-0 bg-black/60"></div>      
+        <h1 id="loadingText" class="text-[5vw] sm:text-2xl font-display font-bold text-gray-400 z-10 tracking-widest">CARICAMENTO... <span id="loadingProgress" class="text-white">0</span>%</h1>
+        <h1 id="startText" class="hidden text-[6vw] sm:text-4xl font-display font-black text-red-600 tracking-widest animate-pulse text-center px-4 drop-shadow-[0_0_15px_rgba(220,38,38,0.8)] z-10 uppercase">Tocca per Entrare</h1>
     </div>
 
   <!-- MAIN MENU -->
@@ -551,9 +547,9 @@ body.colorblind-mode #opt-colorblind-text {
             </button>
         </div>
     </div>
-    <div id="pauseModal" class="absolute inset-0 bg-black/80 z-[270] flex items-center justify-center backdrop-blur-md pointer-events-auto hidden p-3">
+   <div id="pauseModal" class="absolute inset-0 bg-black/80 z-[270] flex items-center justify-center backdrop-blur-md pointer-events-auto hidden p-3">
         <div class="glass-panel modal-enter border-gray-600/50 p-6 w-full max-w-[350px] flex flex-col items-center shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden">
-            <h2 class="text-3xl font-black text-white mb-6 uppercase tracking-[0.3em] drop-shadow-lg">PAUSA</h2>
+            <h2 class="text-3xl font-display font-black text-white mb-6 uppercase tracking-[0.3em] drop-shadow-lg">PAUSA</h2>
             
           <div class="w-full flex flex-col gap-3">
                 <button onclick="UIManager.togglePause()" class="btn-cyber glass-panel box-glow-gray w-full py-4 text-sm font-bold text-gray-300">
@@ -573,10 +569,10 @@ body.colorblind-mode #opt-colorblind-text {
         <div class="absolute inset-0 bg-gradient-to-b from-black/90 via-black/20 to-black/95 pointer-events-none"></div>
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_20%,_rgba(0,0,0,0.85)_100%)] pointer-events-none"></div>
 
-        <div class="w-full h-full flex flex-col justify-between items-center z-10 px-4 sm:px-8 py-8 sm:py-12 relative overflow-y-auto">
+       <div class="w-full h-full flex flex-col justify-between items-center z-10 px-4 sm:px-8 py-8 sm:py-12 relative overflow-y-auto">
             <div class="flex flex-col items-center text-center w-full max-w-[800px] shrink-0 mt-2 sm:mt-8">
-                <h1 id="deathTitle" class="text-[15vw] sm:text-8xl md:text-9xl font-black text-red-600 mb-2 drop-shadow-[0_0_40px_rgba(220,38,38,1)] tracking-tighter uppercase whitespace-nowrap">R I P</h1>
-               <p id="deathSubtitle" class="text-xs sm:text-lg md:text-xl text-red-100 font-bold px-6 py-2 bg-black/60 backdrop-blur-md rounded-full border border-red-900/50 drop-shadow-[0_0_15px_rgba(220,38,38,0.5)] tracking-wider mt-2"></p>
+                <h1 id="deathTitle" class="text-[13vw] sm:text-8xl md:text-9xl font-display font-black text-red-600 mb-2 drop-shadow-[0_0_40px_rgba(220,38,38,1)] tracking-tighter uppercase whitespace-nowrap">R I P</h1>
+                <p id="deathSubtitle" class="text-[10px] sm:text-sm md:text-base font-display font-bold text-red-200 px-6 py-2 bg-black/60 backdrop-blur-md rounded-full border border-red-900/50 drop-shadow-[0_0_15px_rgba(220,38,38,0.5)] tracking-widest mt-2"></p>
                 <p id="deathQuote" class="text-xs sm:text-base text-gray-400 italic mt-6 max-w-md hidden px-4 sm:px-0 drop-shadow-lg font-semibold"></p>
                 <div id="deathMatchStats" class="flex flex-col gap-1.5 mt-5 text-[10px] sm:text-xs text-gray-400 font-bold tracking-widest hidden bg-black/80 p-4 rounded-xl border border-red-900/30 w-[80%] max-w-[300px]"></div>
             </div>
@@ -814,12 +810,12 @@ body.colorblind-mode #opt-colorblind-text {
     <div id="vignette"></div>
 <div id="blood-vignette" class="absolute inset-0 pointer-events-none opacity-0 z-[6]"></div>
     <!-- CONTROLLI MOBILE -->
-    <div id="mobile-controls" class="absolute inset-0 pointer-events-none z-50 hidden">
-        <div id="joy-left-zone" class="absolute bottom-8 left-8 sm:bottom-12 sm:left-12 landscape:bottom-6 landscape:left-12 w-32 h-32 bg-white/10 rounded-full border border-white/20 pointer-events-auto touch-none">
-            <div id="joy-left-stick" class="absolute top-1/2 left-1/2 w-14 h-14 bg-white/40 rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-[0_0_15px_rgba(255,255,255,0.3)] backdrop-blur-sm pointer-events-none transition-transform duration-75"></div>
+   <div id="mobile-controls" class="absolute inset-0 pointer-events-none z-50 hidden">
+        <div id="joy-left-zone" class="absolute bottom-8 left-6 sm:bottom-12 sm:left-12 landscape:bottom-6 landscape:left-12 w-28 h-28 sm:w-32 sm:h-32 bg-white/5 rounded-full border border-white/10 pointer-events-auto touch-none">
+            <div id="joy-left-stick" class="absolute top-1/2 left-1/2 w-12 h-12 sm:w-14 sm:h-14 bg-white/30 rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-[0_0_10px_rgba(255,255,255,0.2)] backdrop-blur-sm pointer-events-none transition-transform duration-75"></div>
         </div>
-        <div id="joy-right-zone" class="absolute bottom-8 right-8 sm:bottom-12 sm:right-12 landscape:bottom-6 landscape:right-12 w-32 h-32 bg-red-500/10 rounded-full border border-red-500/20 pointer-events-auto touch-none">
-            <div id="joy-right-stick" class="absolute top-1/2 left-1/2 w-14 h-14 bg-red-500/50 rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-[0_0_15px_rgba(255,0,0,0.5)] backdrop-blur-sm pointer-events-none transition-transform duration-75"></div>
+        <div id="joy-right-zone" class="absolute bottom-8 right-6 sm:bottom-12 sm:right-12 landscape:bottom-6 landscape:right-12 w-28 h-28 sm:w-32 sm:h-32 bg-red-500/5 rounded-full border border-red-500/10 pointer-events-auto touch-none">
+            <div id="joy-right-stick" class="absolute top-1/2 left-1/2 w-12 h-12 sm:w-14 sm:h-14 bg-red-500/40 rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-[0_0_10px_rgba(255,0,0,0.3)] backdrop-blur-sm pointer-events-none transition-transform duration-75"></div>
         </div>
       
        

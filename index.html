@@ -501,7 +501,7 @@ body.colorblind-mode #opt-colorblind-text {
             </div>
             
             <!-- TASTO CHIUSURA -->
-            <button onclick="UIManager.hideModal('infoModal')" class="mt-4 w-full bg-gradient-to-t from-blue-900 to-blue-800 hover:from-blue-800 hover:to-blue-700 text-white font-bold py-3 rounded-xl border border-blue-500/50 transition-all active:scale-95 uppercase tracking-[0.2em] text-xs shadow-[0_0_15px_rgba(59,130,246,0.3)] shrink-0 z-10">
+            <button onclick="UIManager.hideModal('infoModal')" class="mt-4 btn-cyber glass-panel box-glow-gray w-full py-3.5 text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-widest shrink-0 z-10">
                 Torna al menu
             </button>
         </div>
@@ -542,7 +542,7 @@ body.colorblind-mode #opt-colorblind-text {
                 </button>
             </div>
             
-            <button onclick="UIManager.hideModal('optionsModal')" class="mt-4 btn-cyber glass-panel box-glow-gray w-full py-3 text-xs text-gray-300 shrink-0 z-10">
+           <button onclick="UIManager.hideModal('optionsModal')" class="mt-4 btn-cyber glass-panel box-glow-gray w-full py-3.5 text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-widest shrink-0 z-10">
                 Torna al menu
             </button>
         </div>
@@ -585,7 +585,7 @@ body.colorblind-mode #opt-colorblind-text {
                     <button id="btn-save-score" onclick="submitScore()" class="w-full bg-red-900 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl text-sm border border-red-700 transition-colors uppercase tracking-widest shadow-[0_0_20px_rgba(220,38,38,0.4)]">Salva Punteggio</button>
                 </div>
                 
-               <button id="btn-restart" onclick="restartGame()" class="btn-cyber glass-panel box-glow-red w-full py-4 sm:py-5 text-xl sm:text-2xl font-display text-red-400 border-red-500/30 group">
+               <button id="btn-restart" onclick="restartGame()" class="btn-cyber glass-panel box-glow-purple w-full py-4 sm:py-5 text-xl sm:text-2xl font-display text-purple-400 border-purple-500/30 group">
                     <i class="fa-solid fa-rotate-right group-hover:animate-spin"></i> RIPROVA
                 </button>
                 
@@ -733,7 +733,7 @@ body.colorblind-mode #opt-colorblind-text {
         <div class="bg-red-950/20 border border-red-900/50 p-6 sm:p-8 w-[90%] max-w-[500px] landscape:max-w-[700px] flex flex-col gap-4 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.2)]">
             <h2 class="text-3xl sm:text-4xl font-black text-center text-transparent bg-clip-text bg-gradient-to-br from-amber-200 via-amber-500 to-red-600 drop-shadow-[0_0_10px_rgba(255,170,0,0.5)] mb-2">ONORE AI CADUTI</h2>
             <div id="highScoresList" class="flex flex-col gap-3 min-h-[200px] max-h-[50vh] landscape:max-h-[55vh] overflow-y-auto pr-2"></div>
-            <button onclick="hideHighScores()" class="mt-4 bg-black hover:bg-gray-900 text-gray-400 font-bold py-3 px-6 rounded-xl border border-gray-700 transition-all hover:scale-105 active:scale-95 w-full uppercase tracking-widest">Torna al Menu</button>
+           <button onclick="hideHighScores()" class="mt-4 btn-cyber glass-panel box-glow-gray w-full py-3.5 text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-widest shrink-0 z-10">Torna al menu</button>
         </div>
     </div>
 
@@ -9781,7 +9781,7 @@ const Preloader = {
         }
     },
 
-    buy(type) {
+  buy(type) {
         let cost = this.costs[type];
         if (Game.coins >= cost) {
             Game.coins -= cost;
@@ -9789,36 +9789,24 @@ const Preloader = {
 
             this.costs[type] += 2; // Rincaro lineare
 
-            // Salva i vecchi valori prima dell'aggiornamento per far partire l'animazione da qui
-            let oldDmg = Game.player.modifiers.dmgMult;
-            let oldSpd = Game.player.modifiers.speedMult;
-            let oldAtk = 1.0 + Game.player.modifiers.bonusAtkSpeed;
-            let oldCrit = Math.round((Game.player.modifiers.critChance + Game.player.modifiers.bonusCritChance) * 100);
-
             if (type === 'hp') { 
-                let oldHp = Game.player.stats.maxHp;
                 Game.player.stats.maxHp += 15; Game.player.baseStats.maxHp += 15; Game.player.stats.hp += 15; this.bonus.hp += 15; 
-                this.animateValue('shop-hp-curr', oldHp, Game.player.stats.maxHp, 500);
             }
             if (type === 'dmg') { 
                 Game.player.modifiers.dmgMult += 0.10; this.bonus.dmg += 0.10; 
-                this.animateValue('shop-dmg-curr', oldDmg, Game.player.modifiers.dmgMult, 500, "x", true);
             }
             if (type === 'speed') { 
                 Game.player.modifiers.speedMult += 0.05; this.bonus.speed += 0.05; 
-                this.animateValue('shop-spd-curr', oldSpd, Game.player.modifiers.speedMult, 500, "x", true);
             }
             if (type === 'atkSpeed') { 
                 Game.player.modifiers.bonusAtkSpeed += 0.05; this.bonus.atkSpeed += 0.05; 
-                this.animateValue('shop-atk-curr', oldAtk, 1.0 + Game.player.modifiers.bonusAtkSpeed, 500, "x", true);
             }
             if (type === 'crit') { 
                 Game.player.modifiers.bonusCritChance += 0.05; this.bonus.crit += 0.05; 
-                this.animateValue('shop-crit-curr', oldCrit, oldCrit + 5, 500, "%");
             }
             
-            // Ritarda l'aggiornamento UI per far terminare l'animazione visiva senza fastidiosi scatti
-            setTimeout(() => this.updateUI(), 550);
+            // Aggiornamento immediato senza delay o animazioni lente
+            this.updateUI();
             
         } else {
             AudioEngine.playClick();
@@ -9831,7 +9819,7 @@ const Preloader = {
                     setTimeout(() => {
                         span.classList.remove('text-red-500');
                         span.classList.add('text-white');
-                    }, 300);
+                    }, 150); // Feedback rosso velocizzato a 150ms per farlo sembrare più snello
                 });
             }
         }
@@ -9849,22 +9837,24 @@ window.prepareFloorScreen = function() {
 
     window.nextIsCorrupted = !nextIsBoss && Math.random() < 0.20;
 
+   let baseBtnClass = "btn-cyber glass-panel box-glow-purple w-full py-4 sm:py-5 text-xl sm:text-2xl font-display text-purple-400 border-purple-500/30 flex-col leading-none";
+
     if (nextIsBoss) {
-        btnNext.className = "w-full bg-gradient-to-t from-amber-900 to-red-900 hover:from-red-800 hover:to-amber-800 text-white font-black py-4 sm:py-5 rounded-xl border border-red-500/50 transition-all active:scale-95 uppercase tracking-widest shadow-[0_0_20px_rgba(220,38,38,0.5)]";
-        btnNext.innerHTML = `<span class="text-xl sm:text-2xl drop-shadow-md">SCENDI PIÙ A FONDO</span>`;
+        btnNext.className = baseBtnClass;
+        btnNext.innerHTML = `<span>SCENDI PIÙ A FONDO</span>`;
     } else if (window.nextIsCorrupted) {
-        btnNext.className = "w-full bg-gradient-to-t from-purple-900 to-red-900 hover:from-red-800 hover:to-purple-800 text-white font-black py-3 sm:py-4 rounded-xl border border-red-500/80 transition-all active:scale-95 uppercase tracking-wider shadow-[0_0_30px_rgba(255,0,0,1)] animate-pulse leading-tight";
+        btnNext.className = baseBtnClass + " animate-pulse";
         
-       let curses = ['darkness', 'unstable', 'retaliation', 'volatile', 'pursuer', 'acid_pools'];
+        let curses = ['darkness', 'unstable', 'retaliation', 'volatile', 'pursuer', 'acid_pools'];
         window.nextCorruptedType = curses[Math.floor(Math.random() * curses.length)];
         window.nextCorruptedReward = Math.random() < 0.5 ? 'coins' : 'relic';
 
         let rewardText = window.nextCorruptedReward === 'coins' ? "+ DOPPIE MONETE" : "+ RELIQUIA GARANTITA";
         
-        btnNext.innerHTML = `<span class="text-xl sm:text-2xl drop-shadow-[0_0_10px_rgba(255,0,0,0.8)]">SCENDI PIÙ A FONDO</span><br><span class="text-xs text-yellow-400 tracking-widest block mt-1">${rewardText}</span>`;
+        btnNext.innerHTML = `<span>SCENDI PIÙ A FONDO</span><span class="text-[10px] sm:text-xs text-purple-300 tracking-widest block mt-2 font-bold font-sans">${rewardText}</span>`;
     } else {
-        btnNext.className = "w-full bg-gradient-to-t from-blue-900 to-cyan-800 hover:from-blue-800 hover:to-cyan-700 text-white font-black py-4 sm:py-5 rounded-xl border border-cyan-500/50 transition-all active:scale-95 uppercase tracking-widest shadow-[0_0_15px_rgba(34,211,238,0.2)]";
-        btnNext.innerHTML = `<span class="text-xl sm:text-2xl drop-shadow-md">SCENDI PIÙ A FONDO</span>`;
+        btnNext.className = baseBtnClass;
+        btnNext.innerHTML = `<span>SCENDI PIÙ A FONDO</span>`;
     }
     
  // --- NOTIFICA RELIQUIE (Mostra il numero esatto) ---

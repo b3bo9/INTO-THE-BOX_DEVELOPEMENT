@@ -576,8 +576,9 @@ body.colorblind-mode #opt-colorblind-text {
         <div class="w-full h-full flex flex-col justify-between items-center z-10 px-4 sm:px-8 py-8 sm:py-12 relative overflow-y-auto">
             <div class="flex flex-col items-center text-center w-full max-w-[800px] shrink-0 mt-2 sm:mt-8">
                 <h1 id="deathTitle" class="text-[15vw] sm:text-8xl md:text-9xl font-black text-red-600 mb-2 drop-shadow-[0_0_40px_rgba(220,38,38,1)] tracking-tighter uppercase whitespace-nowrap">R I P</h1>
-                <p id="deathSubtitle" class="text-xs sm:text-lg md:text-xl text-red-100 font-bold px-6 py-2 bg-black/60 backdrop-blur-md rounded-full border border-red-900/50 drop-shadow-[0_0_15px_rgba(220,38,38,0.5)] tracking-wider mt-2"></p>
+               <p id="deathSubtitle" class="text-xs sm:text-lg md:text-xl text-red-100 font-bold px-6 py-2 bg-black/60 backdrop-blur-md rounded-full border border-red-900/50 drop-shadow-[0_0_15px_rgba(220,38,38,0.5)] tracking-wider mt-2"></p>
                 <p id="deathQuote" class="text-xs sm:text-base text-gray-400 italic mt-6 max-w-md hidden px-4 sm:px-0 drop-shadow-lg font-semibold"></p>
+                <div id="deathMatchStats" class="flex flex-col gap-1.5 mt-5 text-[10px] sm:text-xs text-gray-400 font-bold tracking-widest hidden bg-black/80 p-4 rounded-xl border border-red-900/30 w-[80%] max-w-[300px]"></div>
             </div>
 
             <div class="flex-1 w-full min-h-[80px] lg:min-h-[250px]"></div>
@@ -3545,8 +3546,10 @@ const UI = {
             this.els.damageFlash.style.opacity = '0';
         }
         
+   let hpRatio = Game.player.stats.hp / Game.player.stats.maxHp;
+
         // ATTIVAZIONE SCHERMO CRT & VIGNETTA SANGUE (Sotto il 30% HP)
-        let isLowHp = (Game.player.stats.hp / Game.player.stats.maxHp) < 0.30 && !Game.player.dead;
+        let isLowHp = hpRatio < 0.30 && !Game.player.dead;
         if (isLowHp !== AudioEngine.isLowHp) {
             AudioEngine.setLowHpState(isLowHp);
             if (isLowHp) {
@@ -3556,6 +3559,17 @@ const UI = {
                 this.els.bloodVignette.classList.remove('vignette-low-hp-active');
                 document.body.classList.remove('crt-active');
             }
+        }
+        
+        // DESATURAZIONE DINAMICA (Sotto il 30% HP scende gradualmente)
+        let container = document.getElementById('game-container');
+        if (hpRatio <= 0.30 && hpRatio > 0 && !Game.player.dead) {
+            let grayVal = 1.0 - (hpRatio / 0.30);
+            container.style.filter = `grayscale(${grayVal})`;
+        } else if (Game.player.dead) {
+            container.style.filter = `grayscale(1)`; // Alla morte resta totalmente grigio
+        } else {
+            container.style.filter = 'none';
         }
     },
      
@@ -4447,6 +4461,7 @@ startGame(diffMult) {
         this.baseDifficultyMult = 0.6;
         this.difficultyMult = this.baseDifficultyMult;
         this.floor = 1; this.totalKills = 0; this.lives = 3; this.playTime = 0; this.coins = 0; this.lastRelicCount = 0;
+        this.matchStats = { dmgDealt: 0, dmgTaken: 0, essencesUsed: { red: 0, blue: 0, green: 0 } };
         this.currentThemeIndex = undefined; 
         if(UI.els.coins) UI.els.coins.innerText = "0";
         this.ultimateCharge = 0; this.ultimateActive = false;
@@ -6541,6 +6556,7 @@ class Player extends Entity {
     triggerOverdrive() {
         this.overdrive = true; Game.hitStop = 0.2; Game.addTrauma(1.0); 
         this.essenceTimer = 5.0 * this.modifiers.essenceDurationMult;
+        if (Game.matchStats) Game.matchStats.essencesUsed[this.essence]++;
         Game.getFloatingText().spawn(this.x, this.y, ESSENCE_NAMES[this.essence] + "!", '#' + ESSENCE_COLORS[this.essence].toString(16).padStart(6, '0'), 40, true);
         let mat = this.essence === 'red' ? SharedMat.spriteRed : (this.essence === 'blue' ? SharedMat.spriteBlue : SharedMat.spriteGreen);
         let pCount = AppSettings.isLow ? 4 : (isTouchDevice ? 10 : (AppSettings.isUltraPC ? 60 : 30)); for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, mat, 'trail');
@@ -7378,6 +7394,7 @@ if (this.modifiers.flowMastery && !wasDead) {
     }
 }
 
+        if (Game.matchStats) Game.matchStats.dmgTaken += amount;
 
         super.takeDamage(amount, source);
         this.invincibilityTimer = 0.2; // <-- 0.2 secondi di invincibilità ad ogni hit
@@ -7428,10 +7445,26 @@ if (this.modifiers.flowMastery && !wasDead) {
                     // I suoni sono stati rimossi da qui, gestiamo solo la Grafica/UI
                     if (Game.lives > 0) {
                         ds.style.backgroundImage = "url('bg_morte.png')";
-                        document.getElementById('deathTitle').innerText = "SEI CADUTO"; document.getElementById('deathSubtitle').innerText = `Vite rimaste: ${Game.lives}`; document.getElementById('deathQuote').classList.add('hidden'); document.getElementById('btn-respawn').classList.remove('hidden'); document.getElementById('btn-restart').classList.add('hidden');
+                        document.getElementById('deathTitle').innerText = "SEI CADUTO"; document.getElementById('deathSubtitle').innerText = `Vite rimaste: ${Game.lives}`; document.getElementById('deathQuote').classList.add('hidden'); document.getElementById('deathMatchStats').classList.add('hidden'); document.getElementById('btn-respawn').classList.remove('hidden'); document.getElementById('btn-restart').classList.add('hidden');
                     } else {
                         ds.style.backgroundImage = "url('bg_box.png')";
-                        document.getElementById('deathTitle').innerText = "R I P"; document.getElementById('deathSubtitle').innerText = `Piano: ${Game.floor} | Demoni: ${Game.totalKills} | Tempo: ${ScoreManager.formatTime(Game.playTime)}`; document.getElementById('deathQuote').innerText = `"${DEATH_QUOTES[Math.floor(Math.random() * DEATH_QUOTES.length)]}"`; document.getElementById('deathQuote').classList.remove('hidden'); document.getElementById('btn-respawn').classList.add('hidden'); document.getElementById('btn-restart').classList.remove('hidden'); document.getElementById('score-save-container').classList.remove('hidden'); document.getElementById('playerName').value = '';
+                        document.getElementById('deathTitle').innerText = "R I P"; document.getElementById('deathSubtitle').innerText = `Piano: ${Game.floor} | Demoni: ${Game.totalKills} | Tempo: ${ScoreManager.formatTime(Game.playTime)}`; document.getElementById('deathQuote').innerText = `"${DEATH_QUOTES[Math.floor(Math.random() * DEATH_QUOTES.length)]}"`; document.getElementById('deathQuote').classList.remove('hidden'); 
+                        
+                        // CALCOLO E RENDER STATISTICHE PARTITA
+                        let mostUsed = 'NESSUNA'; let maxUse = 0; let eColors = { red: '#FF1133', blue: '#00AAFF', green: '#33FF00' }; let eCol = '#ffffff';
+                        if (Game.matchStats) {
+                            for (let e in Game.matchStats.essencesUsed) {
+                                if (Game.matchStats.essencesUsed[e] > maxUse) { maxUse = Game.matchStats.essencesUsed[e]; mostUsed = ESSENCE_NAMES[e]; eCol = eColors[e]; }
+                            }
+                            document.getElementById('deathMatchStats').innerHTML = `
+                                <div class="w-full flex justify-between border-b border-gray-700/50 pb-1.5"><span class="text-gray-500">DANNO INFLITTO:</span> <span class="text-white">${Math.floor(Game.matchStats.dmgDealt)}</span></div>
+                                <div class="w-full flex justify-between border-b border-gray-700/50 pb-1.5"><span class="text-gray-500">DANNO SUBITO:</span> <span class="text-red-400">${Math.floor(Game.matchStats.dmgTaken)}</span></div>
+                                <div class="w-full flex justify-between"><span class="text-gray-500">ESSENZA PREFERITA:</span> <span style="color: ${eCol}">${mostUsed}</span></div>
+                            `;
+                            document.getElementById('deathMatchStats').classList.remove('hidden');
+                        }
+
+                        document.getElementById('btn-respawn').classList.add('hidden'); document.getElementById('btn-restart').classList.remove('hidden'); document.getElementById('score-save-container').classList.remove('hidden'); document.getElementById('playerName').value = '';
                         let btnSave = document.getElementById('btn-save-score'); btnSave.innerText = 'SALVA PUNTEGGIO'; btnSave.disabled = false; btnSave.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-700'); btnSave.classList.add('bg-red-900', 'hover:bg-red-700');
                     }
                 }, 1500);
@@ -8230,7 +8263,11 @@ Game.scene.add(this.telegraphMesh);
         }
         // --------------------------
 
-       super.takeDamage(amount, source, isCrit); 
+        if (source === Game.player && Game.matchStats) {
+            Game.matchStats.dmgDealt += amount;
+        }
+
+       super.takeDamage(amount, source, isCrit);
         
         // Applica Infezione solo se la fonte è il Player e l'Overdrive verde è attivo
         if (source === Game.player && Game.player.overdrive && Game.player.essence === 'green' && canInfect) {
@@ -9586,6 +9623,7 @@ function goToMainMenu() {
     AudioEngine.playClick();
     TransitionSystem.wipeIn(() => {
         document.getElementById('deathScreen').classList.add('hidden');
+        document.getElementById('deathMatchStats').classList.add('hidden');
         document.getElementById('pauseModal').classList.add('hidden'); // Chiude anche la pausa!
         UI.els.bloodVignette.classList.remove('death-fade-active');
         document.getElementById('hud').classList.add('hidden');
@@ -9635,6 +9673,7 @@ function restartGame() {
     AudioEngine.playClick();
     TransitionSystem.wipeIn(() => {
         document.getElementById('deathScreen').classList.add('hidden');
+        document.getElementById('deathMatchStats').classList.add('hidden');
         document.getElementById('blood-vignette').classList.remove('death-fade-active');
         clearScene(); Game.state = 'PLAYING'; Game.floor = 1; Game.totalKills = 0; Game.lives = 3; Game.playTime = 0;
         Game.enemies = []; Game.ultimateCharge = 0; Game.ultimateActive = false;

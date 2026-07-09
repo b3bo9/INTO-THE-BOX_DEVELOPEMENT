@@ -7573,8 +7573,7 @@ Game.scene.add(this.telegraphMesh);
         }
 
         this.radius = size;
-        // Bilanciamento: HP di base dei nemici aumentati (moltiplicatore di base portato a 38 invece di 32)
-        this.stats.maxHp = type === 'crystal' ? 1 : Math.floor(38 * hpMod * (1 + level * 0.3) * Game.difficultyMult); 
+        this.stats.maxHp = type === 'crystal' ? 1 : Math.floor(32 * hpMod * (1 + level * 0.3) * Game.difficultyMult); 
         this.stats.hp = this.stats.maxHp;
         this.stats.minDmg = Math.floor(12 * dmgMod * (1 + level * 0.15) * Game.difficultyMult); 
         this.stats.maxDmg = Math.floor(22 * dmgMod * (1 + level * 0.15) * Game.difficultyMult);

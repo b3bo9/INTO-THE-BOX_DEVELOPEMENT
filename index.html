@@ -380,7 +380,7 @@ body.colorblind-mode #opt-colorblind-text {
         <div class="absolute inset-0 bg-black/60"></div>
         
         <!-- Testo di caricamento (Visibile all'inizio) -->
-        <h1 id="loadingText" class="text-[6vw] sm:text-3xl font-bold text-gray-400 z-10 whitespace-nowrap tracking-widest">CARICAMENTO... <span id="loadingProgress" class="text-white">0</span>%</h1>
+       <h1 id="loadingText" class="text-[5vw] sm:text-3xl font-bold text-gray-400 z-10 whitespace-nowrap tracking-widest">CARICAMENTO... <span id="loadingProgress" class="text-white">0</span>%</h1>
         
         <!-- Pulsante di avvio (Nascosto all'inizio) -->
         <h1 id="startText" class="hidden text-[8vw] sm:text-4xl font-extrabold text-red-700 tracking-widest animate-pulse text-center px-4 drop-shadow-[0_0_15px_rgba(220,38,38,0.8)] z-10 whitespace-nowrap">Tocca per Entrare</h1>
@@ -401,8 +401,8 @@ body.colorblind-mode #opt-colorblind-text {
                 <div class="relative z-10 flex flex-col items-center">
                     <div class="relative">
                         <!-- Bagliore Elementale Sotto il Titolo -->
-                        <div class="absolute -inset-4 bg-gradient-to-r from-red-600/30 via-blue-600/30 to-green-600/30 blur-2xl rounded-full animate-pulse"></div>
-                        <h1 class="title-3d-text font-black italic tracking-tighter leading-none text-[13vw] sm:text-8xl md:text-9xl whitespace-nowrap select-none m-0">INTO THE BOX</h1>
+                       <div class="absolute -inset-4 bg-gradient-to-r from-red-600/30 via-blue-600/30 to-green-600/30 blur-2xl rounded-full animate-pulse"></div>
+                        <h1 class="title-3d-text font-black italic tracking-tighter leading-none text-[11vw] sm:text-7xl md:text-8xl whitespace-nowrap select-none m-0">INTO THE BOX</h1>
                     </div>
                     
                     <!-- Sottotitolo con Badge Cyberpunk/Arcade RGB -->
@@ -5335,8 +5335,8 @@ update(combatDt, visualDt) {
                continue; 
            }
 
-           // OTTIMIZZAZIONE: Scrivere sul Canvas 2D è lentissimo. Cappa i testi a schermo.
-           if (textsDrawn > (isTouchDevice ? 12 : 30)) break;
+          // OTTIMIZZAZIONE: Scrivere sul Canvas 2D è lentissimo. Cappa i testi a schermo.
+           if (textsDrawn > (isTouchDevice ? 8 : 25)) break;
             
             let pos = this.toScreenPosition(ft.x, ft.h, ft.y);
             let progress = ft.life / ft.maxLife; 
@@ -6706,10 +6706,10 @@ class Player extends Entity {
         }
         this.modelParts.halo.rotation.z += dt; this.modelParts.staffGem.rotation.y += dt;
         if (this.activeShieldCooldown > 0) this.activeShieldCooldown -= dt;
-        if (this.shadowMesh.visible) {
-            this.shadowMesh.position.set(this.x, 0.2, this.y);
-            this.shadowMesh.updateMatrix();
-        }
+       if (this.shadowMesh.visible && this.mesh.visible) {
+                this.shadowMesh.position.set(this.x, 0.2, this.y);
+                this.shadowMesh.updateMatrix();
+            }
 
        // Gestione Scudo Cinetico (Shift)
     
@@ -9190,8 +9190,8 @@ class Particle {
     }
     
     spawn(x, y, z, mat, type='spark', dirAngle=null) {
-        if (Game.particlesThisFrame > (isTouchDevice ? 25 : 80)) return;
-        Game.particlesThisFrame = (Game.particlesThisFrame || 0) + 1;
+        if (Game.particlesThisFrame > (isTouchDevice ? 12 : 50)) return;
+        Game.particlesThisFrame = (Game.particlesThisFrame || 0) + 1;
 
         this.active = true; 
         this.type = type;
@@ -9304,10 +9304,9 @@ class Debris {
         // RAM purissima: zero mesh create qui dentro!
     }
     
-    spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, enemyRadius, isElite = false) {
-        if (Game.debrisThisFrame > (isTouchDevice ? 8 : 20)) return;
+   spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, enemyRadius, isElite = false) {
+        if (Game.debrisThisFrame > (isTouchDevice ? 4 : 15)) return;
         Game.debrisThisFrame = (Game.debrisThisFrame || 0) + 1;
-
         this.active = true;
         
         /* COMPROMESSO: Un InstancedMesh usa una sola geometria. Il parametro "geometry" 

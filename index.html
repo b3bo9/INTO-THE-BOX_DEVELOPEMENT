@@ -4233,30 +4233,30 @@ loop(timestamp) {
                     AudioEngine.playShoot('explosive_arrow');
                 }
 
-                // --- ANIMAZIONE A 2 FASI (SALTO -> RISUCCHIO) ---
+              // --- ANIMAZIONE A 2 FASI (SALTO -> RISUCCHIO) ---
                 if (progress < 0.35) {
                     // 1. Salto in alto per staccarsi da terra
                     let jumpProg = progress / 0.35;
                     this.player.mesh.position.y = Math.sin(jumpProg * (Math.PI / 2)) * 60;
                     this.player.mesh.rotation.y += fixedDelta * 5;
                     
-                    // Il portale si allarga sotto di lui
-                    let pScale = Math.min(1.0, jumpProg * 1.5) * 75;
+                    // Il portale si allarga ENORMEMENTE sotto di lui
+                    let pScale = Math.min(1.0, jumpProg * 1.5) * 220; 
                     this.portalMesh.scale.set(pScale, pScale, 1);
                     this.portalMesh.rotation.z += fixedDelta * 2;
                     this.portalMesh.material.opacity = jumpProg;
                 } else {
                     // 2. Discesa vorticosa nel portale
                     let descProg = (progress - 0.35) / 0.65;
-                    this.player.mesh.position.y = 60 - Math.pow(descProg, 2) * 150; // Scende abbondantemente sotto il pavimento
-                    this.player.mesh.rotation.y += fixedDelta * (25 + descProg * 35); // Rotazione violentissima
-                    this.player.mesh.scale.setScalar(Math.max(0.01, 1.0 - descProg)); // Rimpicciolimento
+                    this.player.mesh.position.y = 60 - Math.pow(descProg, 2) * 150; 
+                    this.player.mesh.rotation.y += fixedDelta * (25 + descProg * 35); 
+                    this.player.mesh.scale.setScalar(Math.max(0.01, 1.0 - descProg)); 
                     
                     // Il portale vortica e poi collassa alla fine
                     this.portalMesh.rotation.z += fixedDelta * (8 + descProg * 15);
                     if (descProg > 0.8) {
                         let shrink = (1.0 - descProg) / 0.2;
-                        this.portalMesh.scale.set(shrink * 75, shrink * 75, 1);
+                        this.portalMesh.scale.set(shrink * 220, shrink * 220, 1);
                     }
                 }
                 
@@ -4268,6 +4268,7 @@ loop(timestamp) {
             this.camera.fov += frameTime * 40;
             this.camera.updateProjectionMatrix();
             
+            // OSCURAMENTO SCHERMO - Lo rende 100% nero a fine caduta
             if (UI.els.bloodVignette) {
                 UI.els.bloodVignette.style.transition = 'none';
                 UI.els.bloodVignette.style.background = `rgba(5, 5, 10, 1)`;
@@ -4275,8 +4276,15 @@ loop(timestamp) {
                 UI.els.bloodVignette.style.zIndex = '90';
             }
             
-            // Particelle del colore del portale estratte durante la caduta
-            if (this.frameCount % 2 === 0) Game.getParticle().spawn(this.player.x, Math.max(5, this.player.mesh.position.y), this.player.y, this.portalMat || SharedMat.spriteWhite, 'spark');
+            // GEISER DI PARTICELLE DAL PORTALE VERSO L'ALTO
+            if (this.frameCount % 2 === 0 && this.portalMesh) {
+                let p = Game.getParticle();
+                let a = Math.random() * Math.PI * 2;
+                let d = Math.random() * (this.portalMesh.scale.x * 0.45);
+                p.spawn(this.player.x + Math.cos(a)*d, 2, this.player.y + Math.sin(a)*d, this.portalMat || SharedMat.spriteWhite, 'trail');
+                p.vy = MathUtils.randomRange(150, 350); // Schizzano con forza verso l'alto
+                p.baseSize = MathUtils.randomRange(20, 40); // Particelle grosse e corpose
+            }
             
             for (let i = 0; i < this.particles.length; i++) if(this.particles[i].active) this.particles[i].update(frameTime);
             for (let i = 0; i < this.floatingTexts.length; i++) if(this.floatingTexts[i].active) this.floatingTexts[i].update(frameTime);
@@ -4286,16 +4294,17 @@ loop(timestamp) {
             UI.update();
 
             if (this.warpTimer <= 0) {
-                if (this.portalMesh) this.portalMesh.visible = false; // Nascondi portale
-                // Ripristino camera e dissolvenza
+                if (this.portalMesh) this.portalMesh.visible = false;
+                
+                // Nascondiamo fisicamente il giocatore, così non "poppa" a schermo se la UI ha un ritardo
+                this.player.mesh.visible = false;
+
+                // Ripristino della telecamera
                 this.camera.fov = 50; 
                 this.camera.updateProjectionMatrix();
-                if (UI.els.bloodVignette) {
-                    UI.els.bloodVignette.style.transition = ''; // FIX: Ripristina la transizione originale
-                    UI.els.bloodVignette.style.background = ''; 
-                    UI.els.bloodVignette.style.opacity = '0';
-                    UI.els.bloodVignette.style.zIndex = '';
-                }
+                
+                // NOTA FONDAMENTALE: NON resettiamo l'opacity della bloodVignette qui!
+                // Resterà a "1" coprendo l'intero mondo di gioco per evitare artefatti finché siamo nello Shop.
 
                 // CONTROLLO FLUSSO: Se siamo al piano del Boss, ora passiamo a RELIC_SELECTION!
                 if (this.isBossFloor) {
@@ -9679,7 +9688,15 @@ function goToMainMenu() {
         document.getElementById('deathScreen').classList.add('hidden');
         document.getElementById('deathMatchStats').classList.add('hidden');
         document.getElementById('pauseModal').classList.add('hidden'); // Chiude anche la pausa!
-        UI.els.bloodVignette.classList.remove('death-fade-active');
+        
+        let bgv = document.getElementById('blood-vignette');
+        if (bgv) {
+            bgv.classList.remove('death-fade-active');
+            bgv.style.opacity = '0';
+            bgv.style.background = '';
+            bgv.style.zIndex = '';
+        }
+        
         document.body.classList.remove('crt-active'); // Failsafe
         document.getElementById('hud').classList.add('hidden');
         document.getElementById('mobile-controls').classList.add('hidden');
@@ -9729,7 +9746,15 @@ function restartGame() {
     TransitionSystem.wipeIn(() => {
         document.getElementById('deathScreen').classList.add('hidden');
         document.getElementById('deathMatchStats').classList.add('hidden');
-        document.getElementById('blood-vignette').classList.remove('death-fade-active');
+        
+        let bgv = document.getElementById('blood-vignette');
+        if (bgv) {
+            bgv.classList.remove('death-fade-active');
+            bgv.style.opacity = '0';
+            bgv.style.background = '';
+            bgv.style.zIndex = '';
+        }
+        
         document.body.classList.remove('crt-active'); // Failsafe
         clearScene(); Game.state = 'PLAYING'; Game.floor = 1; Game.totalKills = 0; Game.lives = 3; Game.playTime = 0;
         Game.enemies = []; Game.ultimateCharge = 0; Game.ultimateActive = false;
@@ -10006,7 +10031,19 @@ window.prepareFloorScreen = function() {
 };
 window.nextFloor = function(corrupted = false) {
     AudioEngine.playDescendSound(); document.getElementById('floorScreen').classList.add('hidden');
-    clearScene(); Game.floor++; Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + 20); 
+    
+    // --- RIPRISTINA LA VISIONE (Toglie la coperta nera messa dall'animazione Warp Out) ---
+    let bgv = document.getElementById('blood-vignette');
+    if (bgv) {
+        bgv.style.transition = 'opacity 0.5s ease-out';
+        bgv.style.opacity = '0';
+        setTimeout(() => {
+            bgv.style.background = '';
+            bgv.style.zIndex = '';
+        }, 500);
+    }
+    
+    clearScene(); Game.floor++; Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + 20);
     
     Game.player.invincibilityTimer = 1.5;
     

@@ -3550,18 +3550,22 @@ const UI = {
 
         // ATTIVAZIONE SCHERMO CRT & VIGNETTA SANGUE (Sotto il 30% HP)
         let isLowHp = hpRatio < 0.30 && !Game.player.dead;
+        
+        // FIX: Forziamo l'aggiornamento grafico ad ogni frame per evitare desync
+        if (isLowHp) {
+            this.els.bloodVignette.classList.add('vignette-low-hp-active');
+            document.body.classList.add('crt-active');
+        } else {
+            this.els.bloodVignette.classList.remove('vignette-low-hp-active');
+            document.body.classList.remove('crt-active');
+        }
+
+        // Lo stato dell'audio si aggiorna solo se ci sono cambiamenti
         if (isLowHp !== AudioEngine.isLowHp) {
             AudioEngine.setLowHpState(isLowHp);
-            if (isLowHp) {
-                this.els.bloodVignette.classList.add('vignette-low-hp-active');
-                document.body.classList.add('crt-active');
-            } else {
-                this.els.bloodVignette.classList.remove('vignette-low-hp-active');
-                document.body.classList.remove('crt-active');
-            }
         }
         
-        // DESATURAZIONE DINAMICA (Sotto il 30% HP scende gradualmente)
+        // DESATURAZIONE DINAMICA (Sotto il 20% HP scende gradualmente)
         let container = document.getElementById('game-container');
         if (hpRatio <= 0.30 && hpRatio > 0 && !Game.player.dead) {
             let grayVal = 1.0 - (hpRatio / 0.30);
@@ -7423,7 +7427,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                 for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
                 Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'nova');
 
-                let pChildren = this.mesh.children;
+               let pChildren = this.mesh.children;
                 for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = false;
 
                 // Usa il riferimento in cache per il sangue
@@ -7431,6 +7435,8 @@ if (this.modifiers.flowMastery && !wasDead) {
                     UI.els.bloodVignette.classList.remove('vignette-low-hp-active');
                     UI.els.bloodVignette.classList.add('death-fade-active');
                 }
+                // FIX: Spegne brutalmente e istantaneamente l'effetto CRT appena si muore
+                document.body.classList.remove('crt-active');
 
                 // 4. Ritardo di 1.5 secondi prima della schermata reale
                 setTimeout(() => {
@@ -9569,6 +9575,7 @@ function respawnPlayer() {
     TransitionSystem.wipeIn(() => {
         document.getElementById('deathScreen').classList.add('hidden');
         UI.els.bloodVignette.classList.remove('death-fade-active');
+        document.body.classList.remove('crt-active'); // Failsafe
         
         let pos = Game.map.getRandomFloorTile(); let attempts = 0;
         while(attempts < 100) {
@@ -9626,6 +9633,7 @@ function goToMainMenu() {
         document.getElementById('deathMatchStats').classList.add('hidden');
         document.getElementById('pauseModal').classList.add('hidden'); // Chiude anche la pausa!
         UI.els.bloodVignette.classList.remove('death-fade-active');
+        document.body.classList.remove('crt-active'); // Failsafe
         document.getElementById('hud').classList.add('hidden');
         document.getElementById('mobile-controls').classList.add('hidden');
         
@@ -9675,6 +9683,7 @@ function restartGame() {
         document.getElementById('deathScreen').classList.add('hidden');
         document.getElementById('deathMatchStats').classList.add('hidden');
         document.getElementById('blood-vignette').classList.remove('death-fade-active');
+        document.body.classList.remove('crt-active'); // Failsafe
         clearScene(); Game.state = 'PLAYING'; Game.floor = 1; Game.totalKills = 0; Game.lives = 3; Game.playTime = 0;
         Game.enemies = []; Game.ultimateCharge = 0; Game.ultimateActive = false;
         if(Game.player) { Game.scene.remove(Game.player.mesh); Game.player = null; }

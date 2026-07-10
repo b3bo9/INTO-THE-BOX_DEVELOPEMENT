@@ -4551,6 +4551,8 @@ loop(timestamp) {
 startGame(diffMult) {
         document.getElementById('mainMenu').classList.add('hidden'); document.getElementById('hud').classList.remove('hidden');
         if (isTouchDevice) document.getElementById('mobile-controls').classList.remove('hidden');
+        
+        // Difficoltà fissa e unica per tutto il gioco
         this.baseDifficultyMult = 0.6;
         this.difficultyMult = this.baseDifficultyMult;
         this.floor = 1; this.totalKills = 0; this.lives = 3; this.playTime = 0; this.coins = 0; this.lastRelicCount = 0;
@@ -6475,9 +6477,11 @@ class Entity {
 
 class Player extends Entity {
     constructor(x, y) {
-        super(x, y, 16, 200); this.baseSpeed = 200; this.level = 1; this.xp = 0; this.xpNeeded = 100; this.tempHp = 0;
-        this.attackTimer = 0; this.baseAttackSpeed = 3.5; this.isAttacking = false; this.attackSwing = 0;
-        this.dashTimer = 0; this.isDashing = false; this.dashCooldown = 0; 
+        // BILANCIAMENTO: Movimento base leggermente più agile (220), ma Attack Speed abbassato (2.2).
+        // Ora i potenziamenti dello Shop e le Reliquie si faranno sentire davvero!
+        super(x, y, 16, 220); this.baseSpeed = 220; this.level = 1; this.xp = 0; this.xpNeeded = 100; this.tempHp = 0;
+        this.attackTimer = 0; this.baseAttackSpeed = 2.2; this.isAttacking = false; this.attackSwing = 0;
+        this.dashTimer = 0; this.isDashing = false; this.dashCooldown = 0;
        this.stats = { hp: 100, maxHp: 100, minDmg: 8, maxDmg: 15 };
         this.baseStats = { maxHp: 100, minDmg: 8, maxDmg: 15 };
         
@@ -7106,7 +7110,7 @@ class Player extends Entity {
        let auraSpdMult = (aura === 'blue') ? 0.6 : (aura === 'corrupted' ? 1.2 : 1.0); 
 
         // Debuff: Sanguinamento Corrotto 1% HP/sec
-        if (aura === 'corrupted') {
+      if (aura === 'corrupted') {
             this.stats.hp = Math.max(1, this.stats.hp - (this.stats.maxHp * 0.01 * dt));
             if (Game.frameCount % 20 === 0 && !isTouchDevice) {
                 Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'dust');
@@ -7386,8 +7390,8 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         let projType = 'player_arrow'; if (this.essence === 'red') projType = 'explosive_arrow'; if (this.essence === 'blue') projType = 'chain_lightning'; if (this.essence === 'green') projType = 'homing_arrow';
         let piercing = (this.overdrive && this.essence === 'blue'); AudioEngine.playShoot(projType, isCrit);
         
-        // Calcola la velocità: 500 per il rosso, 1000 per tutti gli altri
-       let projSpeed = (projType === 'explosive_arrow') ? 500 : 1000;
+        // Calcola la velocità: 400 per il rosso, 800 per tutti gli altri
+       let projSpeed = (projType === 'explosive_arrow') ? 400 : 800;
         
         // NUOVO: Gemelli Cinetici
         if (this.activeShieldTimer > 0 && this.modifiers.twinKinetic) {
@@ -7840,8 +7844,8 @@ Game.scene.add(this.telegraphMesh);
         this.stats.minDmg = Math.floor(12 * dmgMod * (1 + level * 0.15) * Game.difficultyMult); 
         this.stats.maxDmg = Math.floor(22 * dmgMod * (1 + level * 0.15) * Game.difficultyMult);
         
-       let diffSpeedMod = Game.difficultyMult < 1.0 ? 0.8 : (Game.difficultyMult > 1.0 ? 1.15 : 1.0); 
-        this.baseSpeed = 100 * spdMod * Math.min(3.2, 1 + (level * 0.05)) * diffSpeedMod; 
+      let diffSpeedMod = 0.8; // Modificatore base per la velocità dei nemici
+        this.baseSpeed = 100 * spdMod * Math.min(3.2, 1 + (level * 0.05)) * diffSpeedMod;
         
         // POTENZIAMENTO OSCURITÀ: +20% Velocità di movimento
         if (Game.isCorrupted && Game.corruptedType === 'darkness') {
@@ -8377,16 +8381,16 @@ Game.scene.add(this.telegraphMesh);
         }
        this.mesh.updateMatrix();
     }
-    attack() {
+   attack() {
         let isMelee = (this.type === 'goblin' || this.type === 'orc' || this.type === 'golem'); // <-- AGGIUNTO GOLEM
         if (isMelee) {
             this.executeAttack(); // I melee colpiscono subito
         } else {
-            this.telegraphTimer = 0.4; // I ranged si fermano e mirano per 400ms
+            // BILANCIAMENTO: I Ranged avvisano sempre per 600ms
+            this.telegraphTimer = 0.6; 
             this.attackCooldown = 99;  // Mette in pausa l'IA finché non ha sparato
         }
     }
-
  executeAttack() {
         let cdMult = Math.max(0.4, 1.0 / Game.difficultyMult); 
         let spdMult = 0.75 + (Game.difficultyMult * 0.25);     
@@ -8673,9 +8677,8 @@ Game.scene.add(this.telegraphMesh);
             Game.getHazard().spawn(this.x, this.y, 40, 3.0, Game.player.stats.maxDmg * Game.player.modifiers.dmgMult, ESSENCE_COLORS.green, 'poison');
         }
         
+       // Base fissa per l'unica difficoltà del gioco
         let baseLifeChance = 0.008; 
-        if (Game.difficultyMult >= 1.6) baseLifeChance = 0.002; 
-        else if (Game.difficultyMult >= 1.0) baseLifeChance = 0.005; 
         
         let floorDecay = Math.max(0.50, 1.0 - (Game.floor * 0.025));
         let lifeChance = baseLifeChance * floorDecay * Game.player.modifiers.healDropMult;
@@ -9868,7 +9871,6 @@ function startGameFromMenu() {
     if (Game.state === 'WARPING_IN' || (typeof TitleSystem !== 'undefined' && TitleSystem.isExploding)) return;
 
     AudioEngine.playClick();
-    let diff = DifficultySettings.levels[DifficultySettings.index].val;
     AudioEngine.stopMenuMusic(); 
     
     if (typeof TitleSystem !== 'undefined') {
@@ -9881,7 +9883,7 @@ function startGameFromMenu() {
 
     setTimeout(() => {
         TransitionSystem.wipeIn(() => {
-            Game.startGame(diff);
+            Game.startGame(0.6); // Passa forzatamente il valore base della difficoltà unica
             document.getElementById('mainMenu').querySelector('.pointer-events-auto').classList.remove('opacity-0');
             document.querySelector('.title-3d-text').classList.remove('opacity-0');
             setTimeout(() => TransitionSystem.wipeOut(), 50); 
@@ -9934,10 +9936,8 @@ function showHighScores() {
     if (ScoreManager.scores.length === 0) {
         container.innerHTML = `<p class="text-center text-gray-500 italic mt-10">Nessun eroe ha ancora lasciato il segno.</p>`;
     } else {
-        ScoreManager.scores.forEach((score, index) => {
+       ScoreManager.scores.forEach((score, index) => {
             let rankColor = index === 0 ? 'text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.8)]' : (index === 1 ? 'text-gray-300' : (index === 2 ? 'text-amber-600' : 'text-gray-500'));
-            let diffVal = score.diff || 0.6; let diffStr = "NORMALE"; let diffCol = "text-green-400";
-            if (diffVal >= 1.6) { diffStr = "INFERNO"; diffCol = "text-red-500"; } else if (diffVal >= 1.0) { diffStr = "DIFFICILE"; diffCol = "text-yellow-400"; }
             container.innerHTML += `
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-black/50 border border-gray-800 p-3 rounded-lg">
                     <div class="flex items-center gap-3">
@@ -9945,7 +9945,6 @@ function showHighScores() {
                         <span class="font-black text-white text-lg tracking-wider">${score.name}</span>
                     </div>
                     <div class="flex flex-wrap gap-x-3 gap-y-1 mt-2 sm:mt-0 text-[10px] sm:text-xs font-bold text-gray-400 w-full sm:w-auto justify-between sm:justify-end">
-                        <span>DIFF <span class="${diffCol}">${diffStr}</span></span>
                         <span>PIANO <span class="text-red-400">${score.floor}</span></span>
                         <span>KILL <span class="text-red-400">${score.kills}</span></span>
                         <span><i class="fa-regular fa-clock text-gray-500"></i> ${ScoreManager.formatTime(score.time)}</span>
@@ -10225,19 +10224,7 @@ window.nextFloor = function(corrupted = false) {
     ShopSystem.updateUI();
 };
 
-    const DifficultySettings = {
-    levels: [
-        { val: 0.6, label: "🟢 NORMALE" },
-        { val: 1.0, label: "🟡 DIFFICILE" },
-        { val: 1.6, label: "🔴 INFERNO" }
-    ],
-    index: 0
-};
-
-function cycleDifficulty() {
-    AudioEngine.playClick();
-    DifficultySettings.index = (DifficultySettings.index + 1) % DifficultySettings.levels.length;
-    document.getElementById('difficultyText').innerText = DifficultySettings.levels[DifficultySettings.index].label;
+   // (Logica delle difficoltà multiple rimossa: il gioco ha un'unica difficoltà bilanciata)ment.getElementById('difficultyText').innerText = DifficultySettings.levels[DifficultySettings.index].label;
 }
     window.onload = () => {
     AppSettings.init();

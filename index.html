@@ -2063,21 +2063,22 @@ const RelicSystem = {
     selectedMainRelic: null, // Memorizza la reliquia scelta
     
     showChoices() {
-        // Reset Stato Riforgiatura e Scelta
-        this.hasReforged = false;
-        this.selectedForReforge = null;
+        // Reset Stato Riforgiatura e Scelta
+        this.hasReforged = false;
+        this.selectedForReforge = null;
         this.selectedMainRelic = null;
-        this.currentChoices = this.getChoices();
-        
-        const container = document.getElementById('relicCardsContainer'); 
-        container.innerHTML = ''; 
-        
-        const reforgeSection = document.getElementById('reforgeSection');
+        this.currentChoices = this.getChoices();
+        
+        const container = document.getElementById('relicCardsContainer'); 
+        container.innerHTML = ''; 
+        
+        const reforgeSection = document.getElementById('reforgeSection');
         const btnProceed = document.getElementById('btn-proceed-relic');
-        
-     // SETUP FORGIA COSMICA
+        
+        // --- SETUP FORGIA COSMICA (REFORGE) ---
         if (Game.player.relics.length > 0) {
             reforgeSection.classList.remove('hidden');
+            reforgeSection.style.display = 'flex'; // Failsafe: Forza il flexbox che Tailwind a volte perde
             document.getElementById('reforge-icon-default').classList.remove('hidden');
             document.getElementById('reforge-icon-img').classList.add('hidden');
             document.getElementById('reforge-overlay').classList.add('hidden');
@@ -2090,18 +2091,16 @@ const RelicSystem = {
             document.getElementById('reforge-desc-text').classList.add('hidden');
             
             let btnSel = document.getElementById('btn-select-reforge');
-            // Allineata la dimensione alle carte superiori (w-[4.5rem] / sm:w-[5rem]) e ripristinato il colore
             btnSel.className = "w-[4.5rem] h-[4.5rem] sm:w-[5rem] sm:h-[5rem] rounded-2xl border-2 border-dashed border-gray-600 hover:border-purple-400 flex items-center justify-center bg-black/50 transition-all active:scale-95 group relative overflow-hidden shrink-0 shadow-inner";
             btnSel.style.boxShadow = "none";
-            
-            // FIX CRITICO: Riattiva l'evento click che veniva annullato dopo il primo utilizzo!
             btnSel.onclick = () => RelicSystem.openReforgeModal();
             
         } else {
-            reforgeSection.classList.add('hidden');
-        }
+            reforgeSection.classList.add('hidden');
+            reforgeSection.style.display = 'none'; // Failsafe
+        }
 
-       // RESETTA IL TASTO PROCEDI ALLA SITUAZIONE DI PARTENZA
+        // RESETTA IL TASTO PROCEDI ALLA SITUAZIONE DI PARTENZA
         if (this.currentChoices.length === 0) {
             if (Game.player.relics.length === 0) {
                 this.proceedToNextFloor(true); 
@@ -2114,20 +2113,24 @@ const RelicSystem = {
         } else {
             btnProceed.disabled = true;
             btnProceed.innerText = "Seleziona una reliquia";
-           btnProceed.className = "mt-4 sm:mt-6 btn-cyber glass-panel box-glow-gray w-full max-w-[500px] mx-auto py-3 sm:py-4 px-6 text-[10px] sm:text-xs text-gray-500 shrink-0 cursor-not-allowed";
+            btnProceed.className = "mt-4 sm:mt-6 btn-cyber glass-panel box-glow-gray w-full max-w-[500px] mx-auto py-3 sm:py-4 px-6 text-[10px] sm:text-xs text-gray-500 shrink-0 cursor-not-allowed";
         }
         
         // CREAZIONE CARTE SCELTA ADATTIVE
         for(let i=0; i<this.currentChoices.length; i++) {
             let relic = this.currentChoices[i];
-            let colorClass = "rarity-common bg-green-900/60 text-green-300"; let fallbackIcon = "fa-gem"; let rarityLabel = "COMUNE";
-            if (relic.rarity === 'rare') { colorClass = "rarity-rare bg-blue-900/60 text-blue-300"; fallbackIcon = "fa-shield-halved"; rarityLabel = "RARA"; }
-            if (relic.rarity === 'epic') { colorClass = "rarity-epic bg-purple-900/60 text-purple-300"; fallbackIcon = "fa-eye"; rarityLabel = "EPICA"; }
-            if (relic.rarity === 'legendary') { colorClass = "rarity-legendary bg-amber-900/60 text-amber-400"; fallbackIcon = "fa-crown"; rarityLabel = "LEGGENDA"; }
+            
+            // Assegnazione colori di Sfondo e Bordo iniziali
+            let bgClass = "bg-green-900/40 text-green-300 border-green-600/50"; 
+            let fallbackIcon = "fa-gem"; let rarityLabel = "COMUNE";
+            
+            if (relic.rarity === 'rare') { bgClass = "bg-blue-900/40 text-blue-300 border-blue-600/50"; fallbackIcon = "fa-shield-halved"; rarityLabel = "RARA"; }
+            if (relic.rarity === 'epic') { bgClass = "bg-purple-900/40 text-purple-300 border-purple-600/50"; fallbackIcon = "fa-eye"; rarityLabel = "EPICA"; }
+            if (relic.rarity === 'legendary') { bgClass = "bg-amber-900/40 text-amber-400 border-amber-600/50"; fallbackIcon = "fa-crown"; rarityLabel = "LEGGENDA"; }
             
             let iconClass = relic.icon || fallbackIcon;
             
-           let visualElement = `
+            let visualElement = `
                 <div class="relative flex justify-center items-center my-1.5 w-[4.5rem] h-[4.5rem] sm:w-[5rem] sm:h-[5rem] shrink-0 bg-black border-2 border-gray-800">
                     <img src="${relic.image}" alt="${relic.name}" onload="this.nextElementSibling.style.display='none';" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" class="w-full h-full object-cover">
                     <i class="fa-solid ${iconClass} text-4xl sm:text-5xl opacity-90 drop-shadow-md" style="display:none;"></i>
@@ -2136,10 +2139,9 @@ const RelicSystem = {
 
             let card = document.createElement('div'); 
             card.id = `main-relic-card-${i}`;
-            // Rimossi border-radius, background sfocati e scale
-            card.className = `relic-card stagger-enter flex flex-col items-center justify-start p-2 sm:p-3 w-[32%] sm:flex-1 max-w-[190px] ${colorClass} opacity-75 min-h-[170px] sm:min-h-[190px]`;
+            // Aggiunto il background colorato e le transizioni fluide per l'ingrandimento
+            card.className = `relic-card stagger-enter flex flex-col items-center justify-start p-2 sm:p-3 w-[32%] sm:flex-1 max-w-[190px] ${bgClass} border-2 min-h-[170px] sm:min-h-[190px] transition-all duration-300 cursor-pointer hover:brightness-125`;
             
-            // Ritardo dinamico per l'effetto cascata
             card.style.animationDelay = `${i * 150}ms`;
 
             card.innerHTML = `
@@ -2148,37 +2150,38 @@ const RelicSystem = {
                 <p class="text-[8px] sm:text-[10px] font-bold text-center leading-tight text-white/90 mt-1 w-full pointer-events-none">${relic.desc}</p>
             `;
 
-            // EFFETTO TILT OLOGRAFICO 3D (Solo PC)
-          card.onclick = () => { 
+            // EFFETTO SELEZIONE (Glow + Scale)
+            card.onclick = () => { 
                 AudioEngine.playHover(); 
                 this.selectedMainRelic = relic;
 
+                // Spegne e rimpicciolisce tutte le altre carte
                 for(let j=0; j<this.currentChoices.length; j++) {
                     let c = document.getElementById(`main-relic-card-${j}`);
                     let r = this.currentChoices[j];
                     
-                    // Rende le carte NON selezionate piccole, grigie e trasparenti
-                    c.classList.add('opacity-50', 'grayscale');
+                    c.classList.add('opacity-40', 'grayscale', 'scale-95');
                     c.classList.remove('scale-105', 'z-10');
-                    c.style.transform = 'scale(0.95)'; 
+                    c.style.transform = '';
                     
-                    if (r.rarity === 'legendary') { c.style.borderColor = '#78350f'; c.style.boxShadow = 'none'; }
-                    else if (r.rarity === 'epic') { c.style.borderColor = '#581c87'; c.style.boxShadow = 'none'; }
-                    else if (r.rarity === 'rare') { c.style.borderColor = '#1e3a8a'; c.style.boxShadow = 'none'; }
-                    else { c.style.borderColor = '#14532d'; c.style.boxShadow = 'none'; }
+                    // Riporta i bordi allo stato spento
+                    if (r.rarity === 'legendary') { c.style.borderColor = 'rgba(217, 119, 6, 0.5)'; c.style.boxShadow = 'none'; }
+                    else if (r.rarity === 'epic') { c.style.borderColor = 'rgba(147, 51, 234, 0.5)'; c.style.boxShadow = 'none'; }
+                    else if (r.rarity === 'rare') { c.style.borderColor = 'rgba(37, 99, 235, 0.5)'; c.style.boxShadow = 'none'; }
+                    else { c.style.borderColor = 'rgba(22, 163, 74, 0.5)'; c.style.boxShadow = 'none'; }
                 }
 
-                // Estrae il colore corretto per il neon
+                // Estrae il colore corretto per il neon della carta SELEZIONATA
                 let glowCol = relic.rarity === 'legendary' ? '#fbbf24' : 
                               relic.rarity === 'epic' ? '#a855f7' : 
                               relic.rarity === 'rare' ? '#3b82f6' : '#22c55e';
 
-                // La carta selezionata si ingrandisce, si illumina a giorno ed emerge in primo piano
-                card.classList.remove('opacity-50', 'grayscale');
+                // Accende e ingrandisce la carta cliccata
+                card.classList.remove('opacity-40', 'grayscale', 'scale-95');
                 card.classList.add('scale-105', 'z-10');
                 card.style.transform = 'translateY(-8px)';
                 card.style.borderColor = '#ffffff'; 
-                card.style.boxShadow = `0px 0px 40px ${glowCol}, inset 0px 0px 15px ${glowCol}`;
+                card.style.boxShadow = `0px 0px 35px ${glowCol}, inset 0px 0px 15px ${glowCol}`;
 
                 btnProceed.disabled = false;
                 btnProceed.innerText = "PROCEDI AL PROSSIMO PIANO";
@@ -8652,11 +8655,12 @@ Game.scene.add(this.telegraphMesh);
             }
         }
 
-        // 3. Spedisce tutto al sistema Time-Slicing in un millisecondo
+       // 3. Spedisce tutto al sistema Time-Slicing in un millisecondo
         let dropRadius = itemsToSpawn.length === 1 ? 0 : 25;
         for (let i = 0; i < itemsToSpawn.length; i++) {
-            // Usa il true alla fine per far schizzare le monete in aria come vulcani anche dai nemici normali!
-            Game.queueDrop(itemsToSpawn[i], this.x, this.y, dropRadius, true); 
+            // FIX: Passiamo 'false' alla fine, così i nemici normali droppano il bottino piatto a terra.
+            // L'effetto vulcano rimane un'esclusiva spettacolare dei Boss e degli Obelischi!
+            Game.queueDrop(itemsToSpawn[i], this.x, this.y, dropRadius, false); 
         }
         // --- FINE SISTEMA DROP ---
 

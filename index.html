@@ -442,7 +442,7 @@ body.colorblind-mode #opt-colorblind-text {
 
                 <!-- CREDITS (Stile Cabinato Arcade) -->
                <div class="text-center mt-2 relative z-10">
-                    <p class="text-white/50 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 138</p>
+                    <p class="text-white/50 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 139</p>
                 </div>
             </div>
         </div>
@@ -1384,37 +1384,27 @@ playCoin() {
         }
     },
   
-    playMenuMusic() {
+ playMenuMusic() {
         if (this.musicMuted || this.musicNode) return;
         this.stopGameMusic(); this.stopBossMusic();
         clearInterval(this._menuFade);
         this.menuBGM.volume = 0;
         this.menuBGM.currentTime = 0; 
         let p = this.menuBGM.play();
-        if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
+        if(p !== undefined) p.catch(e => console.warn("Audio bloccato", e));
         this.musicNode = true;
         
         this._menuFade = setInterval(() => {
-            if(this.menuBGM.volume < 0.4) {
-                this.menuBGM.volume = Math.min(0.4, this.menuBGM.volume + 0.05);
-            } else {
-                clearInterval(this._menuFade);
-            }
+            if(this.menuBGM.volume < 0.4) this.menuBGM.volume = Math.min(0.4, this.menuBGM.volume + 0.05);
+            else clearInterval(this._menuFade);
         }, 100);
     },
     stopMenuMusic() {
         if (!this.musicNode) return;
         clearInterval(this._menuFade);
-        
         this._menuFade = setInterval(() => {
-            if(this.menuBGM.volume > 0.05) {
-                this.menuBGM.volume = Math.max(0, this.menuBGM.volume - 0.05);
-            } else {
-                this.menuBGM.volume = 0;
-                this.menuBGM.pause();
-                this.musicNode = null;
-                clearInterval(this._menuFade);
-            }
+            if(this.menuBGM.volume > 0.05) this.menuBGM.volume = Math.max(0, this.menuBGM.volume - 0.05);
+            else { this.menuBGM.volume = 0; this.menuBGM.pause(); this.musicNode = null; clearInterval(this._menuFade); }
         }, 100);
     },
     playGameMusic() {
@@ -1423,25 +1413,17 @@ playCoin() {
         clearInterval(this._gameFade);
         this.gameBGM.volume = 0;
         let p = this.gameBGM.play();
-        if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
+        if(p !== undefined) p.catch(e => console.warn("Audio bloccato", e));
         this._gameFade = setInterval(() => {
-            if(this.gameBGM.volume < 0.3) {
-                this.gameBGM.volume = Math.min(0.3, this.gameBGM.volume + 0.05);
-            } else {
-                clearInterval(this._gameFade);
-            }
+            if(this.gameBGM.volume < 0.3) this.gameBGM.volume = Math.min(0.3, this.gameBGM.volume + 0.05);
+            else clearInterval(this._gameFade);
         }, 100);
     },
     stopGameMusic() {
         clearInterval(this._gameFade);
         this._gameFade = setInterval(() => {
-            if(this.gameBGM.volume > 0.05) {
-                this.gameBGM.volume = Math.max(0, this.gameBGM.volume - 0.05);
-            } else {
-                this.gameBGM.volume = 0;
-                this.gameBGM.pause();
-                clearInterval(this._gameFade);
-            }
+            if(this.gameBGM.volume > 0.05) this.gameBGM.volume = Math.max(0, this.gameBGM.volume - 0.05);
+            else { this.gameBGM.volume = 0; this.gameBGM.pause(); clearInterval(this._gameFade); }
         }, 100);
     },
     playBossMusic() {
@@ -1451,25 +1433,17 @@ playCoin() {
         this.bossBGM.volume = 0;
         this.bossBGM.currentTime = 0; 
         let p = this.bossBGM.play();
-        if(p !== undefined) p.catch(e => console.warn("Autoplay audio bloccato", e));
+        if(p !== undefined) p.catch(e => console.warn("Audio bloccato", e));
         this._bossFade = setInterval(() => {
-            if(this.bossBGM.volume < 0.4) {
-                this.bossBGM.volume = Math.min(0.4, this.bossBGM.volume + 0.05);
-            } else {
-                clearInterval(this._bossFade);
-            }
+            if(this.bossBGM.volume < 0.4) this.bossBGM.volume = Math.min(0.4, this.bossBGM.volume + 0.05);
+            else clearInterval(this._bossFade);
         }, 100);
     },
     stopBossMusic() {
         clearInterval(this._bossFade);
         this._bossFade = setInterval(() => {
-            if(this.bossBGM.volume > 0.05) {
-                this.bossBGM.volume = Math.max(0, this.bossBGM.volume - 0.05);
-            } else {
-                this.bossBGM.volume = 0;
-                this.bossBGM.pause();
-                clearInterval(this._bossFade);
-            }
+            if(this.bossBGM.volume > 0.05) this.bossBGM.volume = Math.max(0, this.bossBGM.volume - 0.05);
+            else { this.bossBGM.volume = 0; this.bossBGM.pause(); clearInterval(this._bossFade); }
         }, 100);
     },
     stopAllMusic() {
@@ -2022,7 +1996,7 @@ const RelicSystem = {
         { id: 'c2', name: "Siero Adrenalinico", desc: "Se i tuoi HP scendono sotto il 30%, la Velocità d'Attacco aumenta del +30%.", rarity: "common", image: "icona_adrenalina.png", icon: "fa-bolt", apply: (p) => p.modifiers.lowHpAtkSpeed = true },
         { id: 'c3', name: "Piuma Spettrale", desc: "Dopo aver eseguito uno Scatto, ottieni invulnerabilità totale per 0.4 secondi e +20% velocità per 2 sec.", rarity: "common", image: "icona_piuma.png", icon: "fa-feather", apply: (p) => { p.modifiers.dashInvul = true; p.modifiers.dashSpeedBuff = true; } },
        { id: 'c4', name: "Cristallo Rigenerante", desc: "Se non subisci danni per 5 sec, rigeneri 1% di Salute al secondo.", rarity: "common", image: "icona_cristallo_vitale.png", icon: "fa-heart", apply: (p) => p.modifiers.outOfCombatRegen = true },
-        { id: 'r5', name: "Magnete delle Anime", desc: "Raggio raccolta x2. Raccogliere un'essenza dona +5% Velocità di movimento (Max 20%).", rarity: "common", image: "icona_magnete_delle_anime.png", icon: "fa-magnet", apply: (p) => { p.modifiers.pickupRadiusMult += 1.0; p.modifiers.essenceSpeedStacks = true; } },
+       { id: 'r5', name: "Magnete delle Anime", desc: "Attrae automaticamente le monete cadute. Raccogliere un'essenza dona +5% Velocità di movimento (Max 20%).", rarity: "common", image: "icona_magnete_delle_anime.png", icon: "fa-magnet", apply: (p) => { p.modifiers.pickupRadiusMult += 1.0; p.modifiers.essenceSpeedStacks = true; p.modifiers.coinMagnet = true; } },
 
         // RARE: Meccaniche di combattimento
        { id: 'c5', name: "Runa dell'Agguato", desc: "Infliggi il +20% di danni ai nemici che hanno più dell'80% di Salute.", rarity: "rare", image: "icona_runa_minore.png", icon: "fa-fire", apply: (p) => p.modifiers.openerDmg = true },
@@ -2181,20 +2155,30 @@ const RelicSystem = {
 
                 for(let j=0; j<this.currentChoices.length; j++) {
                     let c = document.getElementById(`main-relic-card-${j}`);
-                    c.classList.add('opacity-75');
-                    c.style.transform = ''; // Resetta traslazioni
+                    let r = this.currentChoices[j];
                     
-                    if (this.currentChoices[j].rarity === 'legendary') { c.style.borderColor = '#fbbf24'; c.style.boxShadow = '6px 6px 0px #78350f'; }
-                    else if (this.currentChoices[j].rarity === 'epic') { c.style.borderColor = '#a855f7'; c.style.boxShadow = '6px 6px 0px #581c87'; }
-                    else if (this.currentChoices[j].rarity === 'rare') { c.style.borderColor = '#3b82f6'; c.style.boxShadow = '6px 6px 0px #1e3a8a'; }
-                    else { c.style.borderColor = '#22c55e'; c.style.boxShadow = '6px 6px 0px #14532d'; }
+                    // Rende le carte NON selezionate piccole, grigie e trasparenti
+                    c.classList.add('opacity-50', 'grayscale');
+                    c.classList.remove('scale-105', 'z-10');
+                    c.style.transform = 'scale(0.95)'; 
+                    
+                    if (r.rarity === 'legendary') { c.style.borderColor = '#78350f'; c.style.boxShadow = 'none'; }
+                    else if (r.rarity === 'epic') { c.style.borderColor = '#581c87'; c.style.boxShadow = 'none'; }
+                    else if (r.rarity === 'rare') { c.style.borderColor = '#1e3a8a'; c.style.boxShadow = 'none'; }
+                    else { c.style.borderColor = '#14532d'; c.style.boxShadow = 'none'; }
                 }
 
-                card.classList.remove('opacity-75');
-                // Effetto "incastrato" di selezione
-                card.style.transform = 'translate(2px, 2px)';
-                card.style.borderColor = '#fbbf24'; 
-                card.style.boxShadow = '0px 0px 0px transparent';
+                // Estrae il colore corretto per il neon
+                let glowCol = relic.rarity === 'legendary' ? '#fbbf24' : 
+                              relic.rarity === 'epic' ? '#a855f7' : 
+                              relic.rarity === 'rare' ? '#3b82f6' : '#22c55e';
+
+                // La carta selezionata si ingrandisce, si illumina a giorno ed emerge in primo piano
+                card.classList.remove('opacity-50', 'grayscale');
+                card.classList.add('scale-105', 'z-10');
+                card.style.transform = 'translateY(-8px)';
+                card.style.borderColor = '#ffffff'; 
+                card.style.boxShadow = `0px 0px 40px ${glowCol}, inset 0px 0px 15px ${glowCol}`;
 
                 btnProceed.disabled = false;
                 btnProceed.innerText = "PROCEDI AL PROSSIMO PIANO";
@@ -2419,33 +2403,45 @@ window.GLOBAL_SCORCH_GEO = new THREE.PlaneGeometry(90, 90);
 
 
 class Coin {
-    constructor() {
-        this.active = false; this.group = new THREE.Group();
-        let core = new THREE.Mesh(SharedGeo.coin, SharedMat.coin);
-        core.rotation.x = Math.PI / 2; // La mette in piedi
-        this.group.matrixAutoUpdate = false; 
-        core.matrixAutoUpdate = false; core.updateMatrix();
-        this.group.add(core); this.group.visible = false; Game.scene.add(this.group);
-        this.groundGlow = new THREE.Mesh(new THREE.PlaneGeometry(55, 55), new THREE.MeshBasicMaterial({map: GLOW_TEX, color: 0xffaa00, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
-        this.groundGlow.rotation.x = -Math.PI / 2; this.groundGlow.visible = false; Game.scene.add(this.groundGlow);
+    constructor() {
+        this.active = false; this.group = new THREE.Group();
+        let core = new THREE.Mesh(SharedGeo.coin, SharedMat.coin);
+        core.rotation.x = Math.PI / 2; // La mette in piedi
+        this.group.matrixAutoUpdate = false; 
+        core.matrixAutoUpdate = false; core.updateMatrix();
+        this.group.add(core); this.group.visible = false; Game.scene.add(this.group);
+        this.groundGlow = new THREE.Mesh(new THREE.PlaneGeometry(55, 55), new THREE.MeshBasicMaterial({map: GLOW_TEX, color: 0xffaa00, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
+        this.groundGlow.rotation.x = -Math.PI / 2; this.groundGlow.visible = false; Game.scene.add(this.groundGlow);
         this.isHealingFromShield = false;
-    }
-   spawn(x, y) { 
+    }
+    spawn(x, y, isVolcano = false) { 
         this.active = true; this.x = x; this.y = y; this.life = 15.0; 
-        this.isMagnetized = false; // <-- FIX: Reset stato calamita
-        this.group.position.set(x, 15, y); this.group.updateMatrix(); this.group.visible = true; 
+        this.isMagnetized = false; 
+        
+        if (isVolcano) {
+            this.z = 60; // Parte dalla cima dell'obelisco
+            let a = Math.random() * Math.PI * 2;
+            let spd = Math.random() * 80 + 40;
+            this.vx = Math.cos(a) * spd;
+            this.vz = Math.sin(a) * spd;
+            this.vy = Math.random() * 200 + 200; // Esplode verso l'alto
+        } else {
+            this.z = 15;
+            this.vx = 0; this.vy = 0; this.vz = 0;
+        }
+        
+        this.group.position.set(x, this.z, y); this.group.updateMatrix(); this.group.visible = true; 
         if (isTouchDevice) { this.groundGlow.position.set(x, 0.2, y); this.groundGlow.visible = true; }
     }
-   destroy() { 
+    destroy() { 
         this.active = false; 
         this.group.visible = false; 
         this.groundGlow.visible = false; 
         
-        // QoL: Genera scintille dorate SOLO se il frame attuale non è già sovraccarico
         if (Game.particlesThisFrame < 40) {
             let sparkCount = isTouchDevice ? 1 : 3;
             for(let i=0; i<sparkCount; i++) {
-                Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteYellow, 'spark');
+                Game.getParticle().spawn(this.x, this.z || 15, this.y, SharedMat.spriteYellow, 'spark');
             }
         }
     }
@@ -3965,7 +3961,14 @@ Game.scene.add(this.dynamicDebrisMesh);
     },
     resize() {
         this.width = window.innerWidth; this.height = window.innerHeight; this.renderer.setSize(this.width, this.height);
-        this.camera.aspect = this.width / this.height; this.camera.updateProjectionMatrix(); this.uiCanvas.width = this.width; this.uiCanvas.height = this.height;
+        this.camera.aspect = this.width / this.height; this.camera.updateProjectionMatrix(); 
+        
+        // FIX NITIDEZZA: Moltiplica i pixel reali per la densità dello schermo (Retina Display)
+        let dpr = window.devicePixelRatio || 1;
+        this.uiCanvas.width = this.width * dpr; 
+        this.uiCanvas.height = this.height * dpr;
+        if (this.uiCtx) this.uiCtx.scale(dpr, dpr);
+        
         if(this.composer) this.composer.setSize(this.width, this.height);
     },
     setupInputs() {
@@ -4549,6 +4552,7 @@ startGame(diffMult) {
         this.difficultyMult = this.baseDifficultyMult;
         this.floor = 1; this.totalKills = 0; this.lives = 3; this.playTime = 0; this.coins = 0; this.lastRelicCount = 0;
         this.matchStats = { dmgDealt: 0, dmgTaken: 0, essencesUsed: { red: 0, blue: 0, green: 0 } };
+        this.pendingDrops = []; // FIX LAG: Inizializza la coda dei drop
         this.currentThemeIndex = undefined; 
         if(UI.els.coins) UI.els.coins.innerText = "0";
         this.ultimateCharge = 0; this.ultimateActive = false;
@@ -4573,14 +4577,42 @@ startGame(diffMult) {
         }
     },
     
-update(combatDt, visualDt) {
+// Nuova funzione helper per aggiungere oggetti alla coda a costo CPU 0
+    queueDrop(type, originX, originY, spreadRadius, isVolcano = false) {
+        this.pendingDrops.push({ type, x: originX, y: originY, rad: spreadRadius, isVolcano });
+    },
+
+    update(combatDt, visualDt) {
         if (this.state !== 'PLAYING' && this.state !== 'PAUSED') return;
-        let dt = combatDt; // Preserva compatibilità con calcoli interni esistenti
+        let dt = combatDt; 
         
-        // FIX: Cappa il tempo visivo massimo per evitare l'esplosione delle particelle cambiando Tab
         let safeVisualDt = Math.min(visualDt, 0.1);
         if (this.visualTime === undefined) this.visualTime = 0;
         this.visualTime += safeVisualDt;
+
+        // --- SISTEMA TIME-SLICING: Elaborazione Coda Drop (Previene i freeze) ---
+        if (this.pendingDrops && this.pendingDrops.length > 0) {
+            // Processa max 2 drop su low, 4 su mobile normale, 10 su PC Ultra
+            let limit = AppSettings.isLow ? 2 : (isTouchDevice ? 4 : 10);
+            let toProcess = Math.min(this.pendingDrops.length, limit);
+            
+            for (let i = 0; i < toProcess; i++) {
+                let d = this.pendingDrops.pop(); // O(1) performance
+                
+                // Calcola la matematica della dispersione ORA, spalmando il carico sulla CPU
+                let angle = Math.random() * Math.PI * 2;
+                let dist = d.rad > 0 ? MathUtils.randomRange(15, d.rad) : 0;
+                let dropX = d.x + Math.cos(angle) * dist;
+                let dropY = d.y + Math.sin(angle) * dist;
+                
+                if (this.map && this.map.isSolid(dropX, dropY)) { dropX = d.x; dropY = d.y; }
+                
+                if (d.type === 'coin') this.getCoin().spawn(dropX, dropY, d.isVolcano);
+                else if (d.type === 'life') this.getExtraLife().spawn(dropX, dropY);
+                else if (d.type === 'essence') this.getEssence().spawn(dropX, dropY, ESSENCE_TYPES[Math.floor(Math.random() * ESSENCE_TYPES.length)]);
+            }
+        }
+        // -------------------------------------------------------------------------
 
         // Effetti visivi indipendenti dalla pausa
         let debrisMoved = false;
@@ -4654,8 +4686,17 @@ update(combatDt, visualDt) {
                         a.radius -= shrinkSpeed * combatDt;
                         a.radiusSq = a.radius * a.radius;
                         
-                        // JUICE: Suono continuo mentre l'aura si restringe
+                       // JUICE: Suono continuo mentre l'aura si restringe
                         AudioEngine.playObeliskCapture(combatDt);
+                        
+                        // --- EFFETTO VULCANO: ERUZIONE MONETE ---
+                        if (a.volcanoTimer === undefined) a.volcanoTimer = 0;
+                        a.volcanoTimer += combatDt;
+                        if (a.volcanoTimer >= 1.0) { // 1 moneta al secondo
+                            a.volcanoTimer = 0;
+                            Game.getCoin().spawn(a.x, a.y, true); // true attiva la fisica dell'esplosione
+                            Game.getParticle().spawn(a.x, 65, a.y, SharedMat.spriteYellow, 'spark');
+                        }
                         
                         let meshes = this.map.auraMeshes[a.type];
                     let dummy = this._dummyFog; 
@@ -5134,7 +5175,7 @@ update(combatDt, visualDt) {
             }
         }
 
-      for(let i = 0, len = this.coinDrops.length; i < len; i++) {
+     for(let i = 0, len = this.coinDrops.length; i < len; i++) {
             let c = this.coinDrops[i];
             if(c.active) {
                 if (!this.player.modifiers.miserPact) c.life -= combatDt;
@@ -5142,25 +5183,40 @@ update(combatDt, visualDt) {
                 if (!this.player.modifiers.miserPact && c.life < 3.0) c.group.visible = Math.floor(c.life * 8) % 2 === 0;
                 else c.group.visible = true;
 
-               // NUOVO SISTEMA MAGNETE: Si attiva solo passando vicini, si spezza se ti allontani
+                // FISICA DELLE MONETE: Gravità e Rimbalzo per l'effetto Vulcano
+                if (c.vy !== 0 || c.z > 15) {
+                    c.vy -= 800 * combatDt; 
+                    c.x += c.vx * combatDt;
+                    c.y += c.vz * combatDt;
+                    c.z += c.vy * combatDt;
+                    if (c.z <= 15) {
+                        c.z = 15;
+                        c.vy *= -0.5; // Rimbalzo
+                        c.vx *= 0.6; // Attrito
+                        c.vz *= 0.6;
+                        if (Math.abs(c.vy) < 30) { c.vy = 0; c.vx = 0; c.vz = 0; }
+                    }
+                }
+
                 let dx = this.player.x - c.x; 
                 let dy = this.player.y - c.y;
                 let dist = Math.sqrt(dx*dx + dy*dy);
 
-                // Se passi vicino (80 unità), la moneta si calamita a te
-                if (dist < 80) c.isMagnetized = true;
-                
-                // Se scatti via veloce o ti allontani (oltre 200 unità), il legame si spezza
-                if (dist > 200) c.isMagnetized = false;
+                // MAGNETE DELLE ANIME: Si attiva SOLO se il giocatore ha la reliquia
+                if (this.player.modifiers.coinMagnet) {
+                    if (dist < 150) c.isMagnetized = true;
+                    if (dist > 300) c.isMagnetized = false;
 
-                if (c.isMagnetized && dist > 10) {
-                    // Vola verso il giocatore molto più velocemente (400) per un feeling "snappy"
-                    c.x += (dx/dist) * 400 * dt;
-                    c.y += (dy/dist) * 400 * dt;
+                    if (c.isMagnetized && dist > 10) {
+                        c.x += (dx/dist) * 500 * combatDt;
+                        c.y += (dy/dist) * 500 * combatDt;
+                    }
+                } else {
+                    c.isMagnetized = false;
                 }
 
                 c.group.rotation.y += combatDt * 3; 
-                c.group.position.set(c.x, 15 + this.animFloat, c.y); // Usa set() per posizione dinamica
+                c.group.position.set(c.x, c.z + this.animFloat, c.y); 
                 c.group.updateMatrix();
 
                 if (MathUtils.distanceSq(this.player, c) < pRadiusSq) { 
@@ -6439,7 +6495,7 @@ class Player extends Entity {
             timeSinceLastHit: 0, explosiveShield: false, shieldDurationAdd: 0, dashCritsEnabled: false, dashCritsStacks: 0, dashLightning: false,
           // NUOVI TRATTI RELIQUIE E SHOP
            critGold: false, lowHpAtkSpeed: false, dashInvul: false, outOfCombatRegen: false, essenceSpeedStacks: false, levelUpNova: false, openerDmg: false, miserPact: false, dashSpeedBuff: false, dashResist: false,
-            seismicShield: false, ultDurationPerKill: false, ultKillCount: 0, twinKinetic: false
+           seismicShield: false, ultDurationPerKill: false, ultKillCount: 0, twinKinetic: false, coinMagnet: false
         };
         
         this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}), new THREE.MeshPhongMaterial({color: 0xffff00, emissive: 0xffff00}));
@@ -8222,10 +8278,13 @@ Game.scene.add(this.telegraphMesh);
             return;
         }
 
-            if (this.distToTargetSq > this.attackRangeSq) { 
+           if (this.distToTargetSq > this.attackRangeSq) { 
                 this.move(this.moveX, this.moveY, dt); 
                 if (this.type !== 'mage' && this.type !== 'pyromancer' && this.type !== 'goblin') { this.mesh.position.y = Game.animBounce; }
             } else {
+                // FIX AI: I nemici smettono di attaccare se il giocatore è morto
+                if (!Game.player || Game.player.dead) return; 
+                
                 if (this.type === 'leaper' && this.leapCooldown <= 0) { 
                     this.state = 'leaping'; this.leapTimer = 0; this.leapDuration = 0.5; this.leapAngle = this.angle; this.leapCooldown = 2.0; 
                 } 
@@ -8588,26 +8647,11 @@ Game.scene.add(this.telegraphMesh);
             }
         }
 
-        // 3. Distribuzione spaziale (Scatter circolare)
-        let dropRadius = 25; // Ampiezza del cerchio di dispersione
-        let angleStep = (Math.PI * 2) / itemsToSpawn.length;
-        
+        // 3. Spedisce tutto al sistema Time-Slicing in un millisecondo
+        let dropRadius = itemsToSpawn.length === 1 ? 0 : 25;
         for (let i = 0; i < itemsToSpawn.length; i++) {
-            let type = itemsToSpawn[i];
-            
-            // Se c'è un solo oggetto lo mettiamo al centro, altrimenti li spargiamo
-            let dist = itemsToSpawn.length === 1 ? 0 : MathUtils.randomRange(15, dropRadius);
-            let angle = angleStep * i + Math.random(); // Angolo base + deviazione organica
-            
-            let dropX = this.x + Math.cos(angle) * dist;
-            let dropY = this.y + Math.sin(angle) * dist;
-            
-            // Sicurezza: se finisce in un muro, lo ributtiamo ai piedi del nemico morto
-            if (Game.map.isSolid(dropX, dropY)) { dropX = this.x; dropY = this.y; }
-
-            if (type === 'coin') Game.getCoin().spawn(dropX, dropY);
-            if (type === 'life') Game.getExtraLife().spawn(dropX, dropY);
-            if (type === 'essence') Game.getEssence().spawn(dropX, dropY, ESSENCE_TYPES[Math.floor(Math.random() * ESSENCE_TYPES.length)]);
+            // Usa il true alla fine per far schizzare le monete in aria come vulcani anche dai nemici normali!
+            Game.queueDrop(itemsToSpawn[i], this.x, this.y, dropRadius, true); 
         }
         // --- FINE SISTEMA DROP ---
 
@@ -8767,8 +8811,9 @@ class BossEnemy extends Enemy {
             this.hazardTimer = this.isEnraged ? 3.0 : 5.0; 
         }
 
-        this.bossLeapCooldown -= dt;
-        if (this.level >= 10 && this.bossLeapCooldown <= 0 && this.state !== 'leaping' && MathUtils.distanceSq(this, Game.player) > 300*300) {
+       this.bossLeapCooldown -= dt;
+        // FIX AI BOSS: Smette di saltare addosso al giocatore se è morto
+        if (this.level >= 10 && this.bossLeapCooldown <= 0 && this.state !== 'leaping' && !Game.player.dead && MathUtils.distanceSq(this, Game.player) > 300*300) {
             this.state = 'leaping';
             this.leapTimer = 0;
             this.leapAngle = Math.atan2(Game.player.y - this.y, Game.player.x - this.x);
@@ -8954,23 +8999,14 @@ class BossEnemy extends Enemy {
         });
         this.mat.dispose(); Game.scene.remove(this.mesh); Game.addTrauma(2.0); AudioEngine.playShoot('explosive_arrow');
         
-        // Esplosione di loot a raggiera
+       // Esplosione di loot a fontana (Time-Slicing)
         let bossLoot = ['life'];
         for(let i=0; i<6; i++) bossLoot.push('essence');
         for(let i=0; i<15; i++) bossLoot.push('coin');
 
-        let bStep = (Math.PI * 2) / bossLoot.length;
         for(let i=0; i<bossLoot.length; i++) {
-            let angle = bStep * i;
-            let dist = MathUtils.randomRange(30, 80);
-            let dropX = this.x + Math.cos(angle) * dist;
-            let dropY = this.y + Math.sin(angle) * dist;
-            
-            if (Game.map.isSolid(dropX, dropY)) { dropX = this.x; dropY = this.y; }
-
-            if (bossLoot[i] === 'coin') Game.getCoin().spawn(dropX, dropY);
-            if (bossLoot[i] === 'life') Game.getExtraLife().spawn(dropX, dropY);
-            if (bossLoot[i] === 'essence') Game.getEssence().spawn(dropX, dropY, ESSENCE_TYPES[Math.floor(Math.random() * ESSENCE_TYPES.length)]);
+            // radius a 80. Passiamo true per attivare l'eruzione vulcanica delle monete!
+            Game.queueDrop(bossLoot[i], this.x, this.y, 80, true); 
         }
         
         Game.getFloatingText().spawn(this.x, this.y, "VITTORIA!", '#ffaa00', 80, true); Game.bossDefeatedTimer = 5.0;
@@ -9560,10 +9596,11 @@ function clearScene() {
             }
         });
       if (Game.map && Game.map.obeliskMat) Game.map.obeliskMat.dispose();
-        Game.scene.remove(Game.map.mapGroup);
+    Game.scene.remove(Game.map.mapGroup);
         Game.map.fogMesh = null;
         Game.map.treePositions = [];
         Game.auras = []; Game.auraIcons = [];
+        Game.pendingDrops = []; // FIX LAG: Svuota la coda al cambio scena
     }
     
    if (Game.dynamicDebrisMesh) {
@@ -9891,7 +9928,7 @@ const Preloader = {
 
   const ShopSystem = {
     bonus: { hp: 0, dmg: 0, speed: 0, atkSpeed: 0, crit: 0 },
-    costs: { hp: 4, dmg: 6, speed: 5, atkSpeed: 6, crit: 7 },
+    costs: { hp: 6, dmg: 9, speed: 7, atkSpeed: 9, crit: 8 },
 
     // Funzione per animare fluidamente i numeri che salgono
     animateValue(elementId, start, end, duration, formatStr = "", isFloat = false) {
@@ -9960,7 +9997,7 @@ const Preloader = {
             Game.coins -= cost;
             AudioEngine.playCoin();
 
-            this.costs[type] += 2; // Rincaro lineare
+            this.costs[type] += 4; // Rincaro lineare ++
 
             if (type === 'hp') { 
                 Game.player.stats.maxHp += 15; Game.player.baseStats.maxHp += 15; Game.player.stats.hp += 15; this.bonus.hp += 15; 
@@ -10000,7 +10037,7 @@ const Preloader = {
 
     reset() {
         this.bonus = { hp: 0, dmg: 0, speed: 0, atkSpeed: 0, crit: 0 };
-        this.costs = { hp: 4, dmg: 6, speed: 5, atkSpeed: 6, crit: 7 };
+        this.costs = { hp: 6, dmg: 9, speed: 7, atkSpeed: 9, crit: 8 };
     }
 };
 

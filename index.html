@@ -5270,18 +5270,18 @@ startGame(diffMult) {
                 Game.getFloatingText().spawn(this.player.x, this.player.y, "PORTALE INSTABILE!", '#ff3300', 40, true);
             }
 
-            // Inizia il conto alla rovescia se mancano 3 o meno nemici
-            if (enemiesLeft <= 3 && enemiesLeft > 0 && !this.floorEndTriggered) {
+           // Inizia il conto alla rovescia se mancano 3 o meno nemici
+            if (enemiesLeft <= 3 && !this.floorEndTriggered) {
                 this.floorEndTriggered = true;
-                this.floorEndTimer = 5.0; // Sempre 5 secondi completi base
+                
+                // FIX: Diamo sempre 5 secondi garantiti per permettere al giocatore di raccogliere il loot, 
+                // il timer non viene più azzerato artificialmente quando la stanza si svuota.
+                this.floorEndTimer = 5.0; 
+                
                 Game.getFloatingText().spawn(this.player.x, this.player.y, "IL PORTALE SI APRE!", '#00DDFF', 40, true);
             }
 
-            // BUGFIX 2: Scorciatoia immediata: Se non ci sono più nemici, salta l'attesa di 5 secondi!
-            if (enemiesLeft <= 0 && this.state === 'PLAYING') {
-                this.floorEndTimer = 0;
-                this.floorEndTriggered = true; 
-            }
+            // (Rimossa la scorciatoia che causava il troncamento dell'attesa)
 
             // BUGFIX 3: Procede col timer solo se il giocatore è ancora vivo
             if (this.floorEndTriggered) {

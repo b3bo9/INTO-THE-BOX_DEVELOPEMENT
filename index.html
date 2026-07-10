@@ -4135,14 +4135,15 @@ loop(timestamp) {
         }
 
         // --- NUOVO POSIZIONAMENTO FRAME-RATE INDEPENDENT PER IL WARP ---
-   // --- ANIMAZIONE ENTRATA IN GIOCO (WARP IN) ---
+  // --- ANIMAZIONE ENTRATA IN GIOCO (WARP IN) ---
         if (this.state === 'WARPING_IN') {
             this.warpTimer -= frameTime;
             let progress = 1.0 - (this.warpTimer / 1.0); // Va da 0.0 a 1.0
 
             if (this.player && this.player.mesh) {
+                this.player.mesh.visible = true; // FIX TRASPARENZA: Forza visibilità ad ogni frame della caduta
                 // Rotazione a trivella velocissima
-                this.player.mesh.rotation.y += frameTime * (25 - progress * 10); 
+                this.player.mesh.rotation.y += frameTime * (25 - progress * 10);
                 
                 // Caduta accelerata (ease-in): parte da 800 di altezza e si schianta a 0
                 let dropCurve = Math.pow(progress, 3); 
@@ -4195,7 +4196,7 @@ loop(timestamp) {
             requestAnimationFrame(this._boundLoop);
             return; 
         }
-  if (this.state === 'WARPING_OUT') {
+ if (this.state === 'WARPING_OUT') {
             let fixedDelta = 0.016; 
             this.warpTimer -= fixedDelta; 
             let progress = Math.max(0, Math.min(1, 1.0 - (this.warpTimer / 1.2))); 
@@ -4211,7 +4212,7 @@ loop(timestamp) {
                     if (this.player.shadowMesh) this.player.shadowMesh.visible = false;
                     this.player.isDashing = false; 
 
-                    // --- PRE-CALCOLO TEMA SUCCESSIVO E SETUP PORTALE ---
+                    // --- PRE-CALCOLO TEMA SUCCESSIVO E SETUP DEL PORTALE MULTI-STRATO ---
                     if (this.nextThemeIndex === undefined) {
                         let offset = Math.floor(Math.random() * (MAP_THEMES.length - 1)) + 1;
                         this.nextThemeIndex = (this.currentThemeIndex + offset) % MAP_THEMES.length;
@@ -4220,31 +4221,56 @@ loop(timestamp) {
                     let portalColor = this.nextThemeIndex === 2 ? 0x00DDFF : (this.nextThemeIndex === 1 ? 0xff3300 : 0x33ff00);
                     this.portalMat = this.nextThemeIndex === 2 ? SharedMat.spriteBlue : (this.nextThemeIndex === 1 ? SharedMat.spriteRed : SharedMat.spriteGreen);
                     
-                    if (!this.portalMesh) {
-                        this.portalMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
-                        this.portalMesh.rotation.x = -Math.PI / 2;
-                        this.scene.add(this.portalMesh);
+                    if (!this.portalGroup) {
+                        this.portalGroup = new THREE.Group();
+                        
+                        // 1. Bordo netto del portale (Anello luminoso)
+                        let ringGeo = new THREE.RingGeometry(0.85, 1.0, 32);
+                        this.portalRingMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
+                        let ring = new THREE.Mesh(ringGeo, this.portalRingMat);
+                        
+                        // 2. Sfondo nero (Crea il "Buco" visivo che copre l'erba/terreno sotto)
+                        let voidGeo = new THREE.CircleGeometry(0.86, 32);
+                        this.portalVoidMat = new THREE.MeshBasicMaterial({ color: 0x050505 });
+                        let voidMesh = new THREE.Mesh(voidGeo, this.portalVoidMat);
+                        voidMesh.position.z = -0.01; // Spinto un filo sotto per non buggare il ring
+                        
+                        // 3. Vortice luminoso di energia
+                        let innerGeo = new THREE.CircleGeometry(0.9, 32);
+                        this.portalInnerMat = new THREE.MeshBasicMaterial({ map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+                        let inner = new THREE.Mesh(innerGeo, this.portalInnerMat);
+                        
+                        this.portalGroup.add(ring);
+                        this.portalGroup.add(voidMesh);
+                        this.portalGroup.add(inner);
+                        
+                        this.portalGroup.rotation.x = -Math.PI / 2;
+                        this.scene.add(this.portalGroup);
                     }
-                    this.portalMesh.material.color.setHex(portalColor);
-                    this.portalMesh.position.set(this.player.x, 0.5, this.player.y);
-                    this.portalMesh.scale.set(0.01, 0.01, 1);
-                    this.portalMesh.visible = true;
+                    
+                    this.portalRingMat.color.setHex(portalColor);
+                    this.portalInnerMat.color.setHex(portalColor);
+                    
+                    this.portalGroup.position.set(this.player.x, 0.5, this.player.y);
+                    this.portalGroup.scale.set(0.01, 0.01, 1);
+                    this.portalGroup.visible = true;
                     
                     AudioEngine.playShoot('explosive_arrow');
                 }
 
-              // --- ANIMAZIONE A 2 FASI (SALTO -> RISUCCHIO) ---
+                // --- ANIMAZIONE A 2 FASI (SALTO -> RISUCCHIO) ---
                 if (progress < 0.35) {
                     // 1. Salto in alto per staccarsi da terra
                     let jumpProg = progress / 0.35;
                     this.player.mesh.position.y = Math.sin(jumpProg * (Math.PI / 2)) * 60;
                     this.player.mesh.rotation.y += fixedDelta * 5;
                     
-                    // Il portale si allarga ENORMEMENTE sotto di lui
-                    let pScale = Math.min(1.0, jumpProg * 1.5) * 220; 
-                    this.portalMesh.scale.set(pScale, pScale, 1);
-                    this.portalMesh.rotation.z += fixedDelta * 2;
-                    this.portalMesh.material.opacity = jumpProg;
+                    // Il portale si allarga sotto di lui
+                    let pScale = Math.min(1.0, jumpProg * 1.5) * 55; 
+                    this.portalGroup.scale.set(pScale, pScale, 1);
+                    this.portalGroup.rotation.z += fixedDelta * 3;
+                    this.portalRingMat.opacity = jumpProg;
+                    this.portalInnerMat.opacity = jumpProg;
                 } else {
                     // 2. Discesa vorticosa nel portale
                     let descProg = (progress - 0.35) / 0.65;
@@ -4252,15 +4278,15 @@ loop(timestamp) {
                     this.player.mesh.rotation.y += fixedDelta * (25 + descProg * 35); 
                     this.player.mesh.scale.setScalar(Math.max(0.01, 1.0 - descProg)); 
                     
-                    // Il portale vortica e poi collassa alla fine
-                    this.portalMesh.rotation.z += fixedDelta * (8 + descProg * 15);
+                    // Il portale vortica, gira al contrario e poi collassa alla fine
+                    this.portalGroup.rotation.z -= fixedDelta * (8 + descProg * 15);
                     if (descProg > 0.8) {
                         let shrink = (1.0 - descProg) / 0.2;
-                        this.portalMesh.scale.set(shrink * 220, shrink * 220, 1);
+                        this.portalGroup.scale.set(shrink * 55, shrink * 55, 1);
                     }
                 }
                 
-                this.portalMesh.updateMatrix();
+                this.portalGroup.updateMatrix();
                 this.player.mesh.updateMatrix();
                 this.player.mesh.updateMatrixWorld(true); 
             }
@@ -4277,13 +4303,13 @@ loop(timestamp) {
             }
             
             // GEISER DI PARTICELLE DAL PORTALE VERSO L'ALTO
-            if (this.frameCount % 2 === 0 && this.portalMesh) {
+            if (this.frameCount % 2 === 0 && this.portalGroup && this.portalGroup.visible) {
                 let p = Game.getParticle();
                 let a = Math.random() * Math.PI * 2;
-                let d = Math.random() * (this.portalMesh.scale.x * 0.45);
+                let d = Math.random() * (this.portalGroup.scale.x * 0.9);
                 p.spawn(this.player.x + Math.cos(a)*d, 2, this.player.y + Math.sin(a)*d, this.portalMat || SharedMat.spriteWhite, 'trail');
-                p.vy = MathUtils.randomRange(150, 350); // Schizzano con forza verso l'alto
-                p.baseSize = MathUtils.randomRange(20, 40); // Particelle grosse e corpose
+                p.vy = MathUtils.randomRange(150, 350); 
+                p.baseSize = MathUtils.randomRange(15, 30); 
             }
             
             for (let i = 0; i < this.particles.length; i++) if(this.particles[i].active) this.particles[i].update(frameTime);
@@ -4294,7 +4320,7 @@ loop(timestamp) {
             UI.update();
 
             if (this.warpTimer <= 0) {
-                if (this.portalMesh) this.portalMesh.visible = false;
+                if (this.portalGroup) this.portalGroup.visible = false; // Nascondi portale
                 
                 // Nascondiamo fisicamente il giocatore, così non "poppa" a schermo se la UI ha un ritardo
                 this.player.mesh.visible = false;
@@ -10057,11 +10083,12 @@ window.nextFloor = function(corrupted = false) {
 
     Game.setupFloor(); 
     
-    // --- MODIFICA WARP IN NEI PIANI SUCCESSIVI ---
+   // --- MODIFICA WARP IN NEI PIANI SUCCESSIVI ---
     Game.state = 'WARPING_IN';
     Game.warpTimer = 1.0;
     Game.camera.fov = 90;
     Game.camera.updateProjectionMatrix();
+    Game.player.mesh.visible = true; // FIX TRASPARENZA (Failsafe Assoluto)
     Game.player.mesh.position.y = 800;
     Game.player.mesh.scale.setScalar(0.01);
     // ---------------------------------------------

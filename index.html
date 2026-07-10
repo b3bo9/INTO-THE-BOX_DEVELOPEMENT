@@ -5202,7 +5202,7 @@ startGame(diffMult) {
                 let dy = this.player.y - c.y;
                 let dist = Math.sqrt(dx*dx + dy*dy);
 
-                // MAGNETE DELLE ANIME: Si attiva SOLO se il giocatore ha la reliquia
+              // MAGNETE DELLE ANIME: Si attiva SOLO se il giocatore ha la reliquia
                 if (this.player.modifiers.coinMagnet) {
                     if (dist < 150) c.isMagnetized = true;
                     if (dist > 300) c.isMagnetized = false;
@@ -5218,6 +5218,11 @@ startGame(diffMult) {
                 c.group.rotation.y += combatDt * 3; 
                 c.group.position.set(c.x, c.z + this.animFloat, c.y); 
                 c.group.updateMatrix();
+                
+                // FIX BAGLIORE: Il finto bloom a terra segue la moneta in tempo reale durante i rimbalzi e l'attrazione!
+                if (c.groundGlow.visible) {
+                    c.groundGlow.position.set(c.x, 0.2, c.y);
+                }
 
                 if (MathUtils.distanceSq(this.player, c) < pRadiusSq) { 
                     c.destroy(); AudioEngine.playCoin();

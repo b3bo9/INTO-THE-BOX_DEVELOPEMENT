@@ -7558,7 +7558,7 @@ if (this.modifiers.flowMastery && !wasDead) {
 
         if (!wasDead) {
             Game.addTrauma(0.8);
-            if (this.stats.hp <= 0) {
+           if (this.stats.hp <= 0) {
                 this.dead = true;
                 Game.lives--;
                 
@@ -7569,13 +7569,60 @@ if (this.modifiers.flowMastery && !wasDead) {
                 AudioEngine.stopAllMusic();
                 if (Game.lives > 0) AudioEngine.playDeathMusic(); else AudioEngine.playGameOverSound();
 
-                Game.addTrauma(3.0); Game.hitStop = 0.2; 
+                // --- INIZIO ESPLOSIONE EPICA ---
+                Game.addTrauma(4.5); // Screen shake massimo!
+                Game.hitStop = 0.35; // Congela il gioco per una frazione di secondo (Impatto)
+                
+                AudioEngine.playShoot('explosive_arrow');
+                setTimeout(() => AudioEngine.playShoot('chain_lightning'), 80); // Doppio suono sovrapposto per un "CRUNCH" magico
+                
+                // Flash di luce intenso e bruciatura sul terreno
+                Game.spawnLightFlash(this.x, this.y, 0xff1133, 25.0, 1200, 1.5);
+                Game.spawnDecal(this.x, this.y, 'scorch');
+                
+                // Onde d'urto concentriche multiple
+                let n1 = Game.getParticle(); n1.spawn(this.x, 20, this.y, SharedMat.spriteWhite, 'nova'); n1.baseSize = 150;
+                let n2 = Game.getParticle(); n2.spawn(this.x, 20, this.y, SharedMat.spriteRed, 'nova'); n2.baseSize = 250;
+                
                 let pCount = AppSettings.isLow ? 20 : 60;
-                for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
-                Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'nova');
+                for(let i=0; i<pCount; i++) {
+                    // Pioggia di sangue
+                    Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
+                    
+                    // Raggiera di scintille magiche sparate a velocità estrema
+                    let a = (Math.PI * 2 / pCount) * i;
+                    let spark = Game.getParticle();
+                    spark.spawn(this.x, 20, this.y, SharedMat.spriteYellow, 'trail', a);
+                    spark.vx = Math.cos(a) * MathUtils.randomRange(300, 800);
+                    spark.vz = Math.sin(a) * MathUtils.randomRange(300, 800);
+                    spark.vy = MathUtils.randomRange(100, 500);
+                }
+                
+                // Esplosione fisica del Mago (Frammenti 3D lanciati in aria)
+                let debrisCount = AppSettings.isLow ? 8 : 25;
+                let pCol = this.modelParts.body.material.color.getHex();
+                if (Game.ultimateActive || this.overdrive) pCol = this.modelParts.body.material.emissive.getHex();
+                
+                for(let i=0; i<debrisCount; i++) {
+                    let debris = Game.getDebris();
+                    if (debris) {
+                        Game._vec3.set(this.x, 20, this.y);
+                        Game._dummyQuat.set(0, 0, 0, 1);
+                        Game._dummyScale.set(1.5, 1.5, 1.5);
+                        // IsElite a "true" mischia il colore del giocatore con un rosso/nero bruciato
+                        debris.spawn(Game._vec3, Game._dummyQuat, Game._dummyScale, null, pCol, this.radius, true);
+                        debris.vy = MathUtils.randomRange(350, 800); // Schizzano in aria violentemente
+                    }
+                }
+                // --- FINE ESPLOSIONE EPICA ---
 
-               let pChildren = this.mesh.children;
+                // Disintegra visivamente il giocatore
+                let pChildren = this.mesh.children;
                 for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = false;
+                if(this.shieldMesh) this.shieldMesh.visible = false;
+                if(this.glacialShieldMesh) this.glacialShieldMesh.visible = false;
+                this.auraRingMesh.visible = false;
+                this.auraGlow.visible = false;
 
                 // Usa il riferimento in cache per il sangue
                 if (UI.els.bloodVignette) {

@@ -442,7 +442,7 @@ body.colorblind-mode #opt-colorblind-text {
 
                 <!-- CREDITS (Stile Cabinato Arcade) -->
                <div class="text-center mt-2 relative z-10">
-                    <p class="text-white/50 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 139</p>
+                    <p class="text-white/50 text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase pointer-events-none whitespace-nowrap">b3bo 2026 - Build 140</p>
                 </div>
             </div>
         </div>
@@ -7628,82 +7628,89 @@ if (this.modifiers.flowMastery && !wasDead) {
                     spark.vy = MathUtils.randomRange(300, 900);
                 }
                 
-// ESPLOSIONE IN PEZZI GIGANTI 3D
-                let debrisCount = AppSettings.isLow ? 20 : 60;
-                let pCol = this.modelParts.body.material.color.getHex();
-                if (Game.ultimateActive || this.overdrive) pCol = this.modelParts.body.material.emissive.getHex();
-                let detritiColors = [pCol, 0x880000, 0xdddddd]; // Corpo, Sciarpa, Testa
-                
-                for(let i=0; i<debrisCount; i++) {
-                    let debris = Game.getDebris();
-                    if (debris) {
-                        Game._vec3.set(this.x, 20, this.y);
-                        Game._dummyQuat.set(Math.random(), Math.random(), Math.random(), 1).normalize();
-                        
-                        let s = MathUtils.randomRange(2.0, 4.0); 
-                        Game._dummyScale.set(s, s, s);
-                        
-                        let partCol = detritiColors[i % 3];
-                        
-                        // FIX: Passiamo 'true' alla fine per forzare lo spawn ignorando il limite di sistema!
-                        debris.spawn(Game._vec3, Game._dummyQuat, Game._dummyScale, null, partCol, this.radius, false, true);
-                        
-                        let da = Math.random() * Math.PI * 2;
-                        let dSpeed = MathUtils.randomRange(40, 150); 
-                        
-                        debris.vx = (Math.cos(da) * dSpeed) + (momentumX * 0.12);
-                        debris.vz = (Math.sin(da) * dSpeed) + (momentumZ * 0.12);
-                        debris.vy = MathUtils.randomRange(200, 450); 
-                    }
+// SMEMBRAMENTO FISICO DEL GIOCATORE (Ultra-Ottimizzato)
+                if (!Game.deadPlayerParts) Game.deadPlayerParts = [];
+                let activePhysicsParts = [];
+
+                // Il personaggio è composto da 4 pezzi: 0=Corpo, 1=Testa, 2=Sciarpa, 3=Bacchetta (WeaponGroup)
+                for (let i = 0; i < 4; i++) {
+                    let originalPart = this.mesh.children[i];
+                    if (!originalPart) continue;
+
+                    // 1. Cattura la posizione esatta nello spazio 3D
+                    originalPart.getWorldPosition(Game._vec3);
+                    originalPart.getWorldQuaternion(Game._dummyQuat);
+                    originalPart.getWorldScale(Game._dummyScale);
+
+                    // 2. Clona la parte (Zero-Allocation su Geometria/Materiali, clona solo la matrice)
+                    let clone = originalPart.clone();
+                    Game.scene.add(clone);
+                    clone.position.copy(Game._vec3);
+                    clone.quaternion.copy(Game._dummyQuat);
+                    clone.scale.copy(Game._dummyScale);
+                    
+                    Game.deadPlayerParts.push(clone);
+
+                    // 3. Calcolo Inerzia Individuale
+                    let da = Math.random() * Math.PI * 2;
+                    let dSpeed = MathUtils.randomRange(50, 150); 
+                    
+                    let pVx = (Math.cos(da) * dSpeed) + (momentumX * 0.15);
+                    let pVz = (Math.sin(da) * dSpeed) + (momentumZ * 0.15);
+                    let pVy = MathUtils.randomRange(300, 600); // Salto in alto
+                    let rX = Math.random() * 12 - 6;
+                    let rZ = Math.random() * 12 - 6;
+
+                    // Aggiungi al motore fisico temporaneo
+                    activePhysicsParts.push({
+                        mesh: clone,
+                        vx: pVx, vy: pVy, vz: pVz,
+                        rx: rX, rz: rZ
+                    });
                 }
 
-                // Clona la bacchetta (Zero Memory Leak) invece di rubarla al giocatore
-                let wand = this.modelParts.weaponGroup;
-                wand.getWorldPosition(Game._vec3);
-                wand.getWorldQuaternion(Game._dummyQuat);
-                wand.getWorldScale(Game._dummyScale);
-
-                if (Game.dummyWand) { Game.scene.remove(Game.dummyWand); }
-                Game.dummyWand = wand.clone();
-                Game.scene.add(Game.dummyWand);
-                Game.dummyWand.position.copy(Game._vec3);
-                Game.dummyWand.quaternion.copy(Game._dummyQuat);
-                Game.dummyWand.scale.copy(Game._dummyScale);
-                
-                if (!Game.deadObelisks) Game.deadObelisks = [];
-                Game.deadObelisks.push(Game.dummyWand);
-
-                let wandVy = MathUtils.randomRange(250, 400);
-                let wandVx = MathUtils.randomRange(-40, 40) + (momentumX * 0.15);
-                let wandVz = MathUtils.randomRange(-40, 40) + (momentumZ * 0.15);
-                let rotSpdX = Math.random() * 8 - 4;
-                let rotSpdZ = Math.random() * 8 - 4;
-                
-                if (Game.wandInterval) clearInterval(Game.wandInterval);
-                Game.wandInterval = setInterval(() => {
-                    if(Game.state === 'MENU') { clearInterval(Game.wandInterval); return; }
-                    wandVy -= 1000 * (1/60); 
-                    Game.dummyWand.position.x += wandVx * (1/60);
-                    Game.dummyWand.position.y += wandVy * (1/60);
-                    Game.dummyWand.position.z += wandVz * (1/60);
-                    Game.dummyWand.rotation.x += rotSpdX * (1/60);
-                    Game.dummyWand.rotation.z += rotSpdZ * (1/60);
+                // LOOP FISICO TEMPORANEO E AUTOPULENTE
+                if (Game.playerDeathInterval) clearInterval(Game.playerDeathInterval);
+                Game.playerDeathInterval = setInterval(() => {
+                    if (Game.state === 'MENU') { clearInterval(Game.playerDeathInterval); return; }
                     
-                    if (Game.dummyWand.position.y <= 2) {
-                        Game.dummyWand.position.y = 2;
-                        wandVy *= -0.35; 
-                        wandVx *= 0.6;   
-                        wandVz *= 0.6;
-                        rotSpdX *= 0.6;
-                        rotSpdZ *= 0.6;
-                        if (Math.abs(wandVy) < 25) {
-                            wandVy = 0;
-                            clearInterval(Game.wandInterval);
+                    let movingParts = 0;
+                    for (let i = 0; i < activePhysicsParts.length; i++) {
+                        let p = activePhysicsParts[i];
+                        if (p.vy === 0 && p.vx === 0 && p.vz === 0) continue; // Pezzo fermo a terra
+                        
+                        movingParts++;
+                        p.vy -= 1200 * (1/60); // Gravità
+                        
+                        p.mesh.position.x += p.vx * (1/60);
+                        p.mesh.position.y += p.vy * (1/60);
+                        p.mesh.position.z += p.vz * (1/60);
+                        p.mesh.rotation.x += p.rx * (1/60);
+                        p.mesh.rotation.z += p.rz * (1/60);
+                        
+                        // Rimbalzo e attrito
+                        if (p.mesh.position.y <= 2) {
+                            p.mesh.position.y = 2;
+                            p.vy *= -0.35; 
+                            p.vx *= 0.6;   
+                            p.vz *= 0.6;
+                            p.rx *= 0.6;
+                            p.rz *= 0.6;
+                            
+                            // Ferma completamente il pezzo se la spinta è esaurita (Risparmio CPU)
+                            if (Math.abs(p.vy) < 30) {
+                                p.vy = 0; p.vx = 0; p.vz = 0;
+                            }
                         }
+                    }
+
+                    // Se tutti i pezzi sono fermi, spegni il motore fisico!
+                    if (movingParts === 0) {
+                        clearInterval(Game.playerDeathInterval);
                     }
                 }, 16);
 
-                // Disintegra il corpo originale all'istante nascondendolo
+                // Disintegra (nasconde) il corpo originale all'istante
                 let pChildren = this.mesh.children;
                 for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = false;
                 if(this.shieldMesh) this.shieldMesh.visible = false;
@@ -7711,6 +7718,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                 this.auraRingMesh.visible = false;
                 this.auraGlow.visible = false;
 
+                // Sipario di sangue: Ritardato per godersi i pezzi che cadono
                 if (UI.els.bloodVignette) {
                     UI.els.bloodVignette.classList.remove('vignette-low-hp-active');
                     setTimeout(() => {
@@ -7719,6 +7727,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                 }
                 document.body.classList.remove('crt-active');
 
+                // Ritardiamo la UI della morte
                 setTimeout(() => {
                     if (Game.state === 'MENU' || !this.dead) return;
                     
@@ -9689,7 +9698,15 @@ class FloatingText {
     }
 }
 function clearScene() {
-    if (Game.wandInterval) clearInterval(Game.wandInterval); // FIX BUG: Ferma la bacchetta in volo
+    // PREVENZIONE MEMORY LEAK: Ferma il motore fisico della morte ed elimina i resti
+    if (Game.playerDeathInterval) clearInterval(Game.playerDeathInterval);
+    if (Game.deadPlayerParts) {
+        for (let i = 0; i < Game.deadPlayerParts.length; i++) {
+            Game.scene.remove(Game.deadPlayerParts[i]);
+        }
+        Game.deadPlayerParts = [];
+    }
+
     if (Game.deadObelisks) {
         for (let i = 0; i < Game.deadObelisks.length; i++) {
             Game.scene.remove(Game.deadObelisks[i]);
@@ -9830,9 +9847,15 @@ function clearScene() {
 function respawnPlayer() {
     AudioEngine.playClick();
     TransitionSystem.wipeIn(() => {
-        if (Game.wandInterval) clearInterval(Game.wandInterval);
-        if (Game.dummyWand) { Game.scene.remove(Game.dummyWand); Game.dummyWand = null; }
-        
+        // PULIZIA RESTI PRE-RESPAWN
+        if (Game.playerDeathInterval) clearInterval(Game.playerDeathInterval);
+        if (Game.deadPlayerParts) {
+            for (let i = 0; i < Game.deadPlayerParts.length; i++) {
+                Game.scene.remove(Game.deadPlayerParts[i]);
+            }
+            Game.deadPlayerParts = [];
+        }
+
         document.getElementById('deathScreen').classList.add('hidden');
         UI.els.bloodVignette.classList.remove('death-fade-active');
         document.body.classList.remove('crt-active'); // Failsafe

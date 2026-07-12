@@ -3560,14 +3560,18 @@ const UI = {
             AudioEngine.setLowHpState(isLowHp);
         }
         
-        // DESATURAZIONE DINAMICA (Sotto il 20% HP scende gradualmente)
+     // DESATURAZIONE DINAMICA E DISSOLVENZA ALLA MORTE
         let container = document.getElementById('game-container');
         if (hpRatio <= 0.30 && hpRatio > 0 && !Game.player.dead) {
             let grayVal = 1.0 - (hpRatio / 0.30);
+            container.style.transition = 'none'; // Reagisce all'istante durante il combattimento
             container.style.filter = `grayscale(${grayVal})`;
         } else if (Game.player.dead) {
-            container.style.filter = `grayscale(1)`; // Alla morte resta totalmente grigio
+            // Usa una transizione CSS accelerata in Hardware per sfumare dolcemente dal livello attuale di saturazione allo 0% (100% Grigio) in 2.5s
+            container.style.transition = 'filter 2.5s ease-out';
+            container.style.filter = `grayscale(1)`; 
         } else {
+            container.style.transition = 'none';
             container.style.filter = 'none';
         }
     },
@@ -7628,22 +7632,40 @@ if (this.modifiers.flowMastery && !wasDead) {
                     spark.vy = MathUtils.randomRange(300, 900);
                 }
                 
-// SMEMBRAMENTO FISICO DEL GIOCATORE (Ultra-Ottimizzato)
+// SMEMBRAMENTO FISICO DEL GIOCATORE (Corpo tagliato con sciarpa integrata)
                 if (!Game.deadPlayerParts) Game.deadPlayerParts = [];
                 let activePhysicsParts = [];
 
-                // Il personaggio è composto da 4 pezzi: 0=Corpo, 1=Testa, 2=Sciarpa, 3=Bacchetta (WeaponGroup)
-                for (let i = 0; i < 4; i++) {
-                    let originalPart = this.mesh.children[i];
-                    if (!originalPart) continue;
+                // 1. Corpo tagliato con Sciarpa attaccata
+                let pBody = this.modelParts.body.clone();
+                pBody.geometry = new THREE.CylinderGeometry(0.35, 1, 2, 8); // Geometria svasata, tagliata in alto!
+                let pScarf = this.modelParts.scarf.clone();
+                pScarf.position.set(0, 0.5, 0); // La posizioniamo esattamente in cima al taglio
+                pScarf.scale.set(6/16, 6/24, 2/16); // Compensiamo le dimensioni del parent
+                pScarf.rotation.x = Math.PI / 2;
+                pBody.add(pScarf);
 
-                    // 1. Cattura la posizione esatta nello spazio 3D
-                    originalPart.getWorldPosition(Game._vec3);
-                    originalPart.getWorldQuaternion(Game._dummyQuat);
-                    originalPart.getWorldScale(Game._dummyScale);
+                // 2. Testa
+                let pHead = this.modelParts.head.clone();
 
-                    // 2. Clona la parte (Zero-Allocation su Geometria/Materiali, clona solo la matrice)
-                    let clone = originalPart.clone();
+                // 3. Bacchetta
+                let pWeapon = this.modelParts.weaponGroup.clone();
+
+                let partsToDrop = [
+                    { mesh: pBody, original: this.modelParts.body },
+                    { mesh: pHead, original: this.modelParts.head },
+                    { mesh: pWeapon, original: this.modelParts.weaponGroup }
+                ];
+
+                for (let i = 0; i < partsToDrop.length; i++) {
+                    let part = partsToDrop[i];
+                    
+                    // Preleva le coordinate globali dai pezzi originali per posizionarli perfettamente
+                    part.original.getWorldPosition(Game._vec3);
+                    part.original.getWorldQuaternion(Game._dummyQuat);
+                    part.original.getWorldScale(Game._dummyScale);
+
+                    let clone = part.mesh;
                     Game.scene.add(clone);
                     clone.position.copy(Game._vec3);
                     clone.quaternion.copy(Game._dummyQuat);
@@ -7651,17 +7673,16 @@ if (this.modifiers.flowMastery && !wasDead) {
                     
                     Game.deadPlayerParts.push(clone);
 
-                    // 3. Calcolo Inerzia Individuale
+                    // Fisica Inerziale 
                     let da = Math.random() * Math.PI * 2;
-                    let dSpeed = MathUtils.randomRange(50, 150); 
+                    let dSpeed = MathUtils.randomRange(40, 120); 
                     
-                    let pVx = (Math.cos(da) * dSpeed) + (momentumX * 0.15);
-                    let pVz = (Math.sin(da) * dSpeed) + (momentumZ * 0.15);
-                    let pVy = MathUtils.randomRange(300, 600); // Salto in alto
-                    let rX = Math.random() * 12 - 6;
-                    let rZ = Math.random() * 12 - 6;
+                    let pVx = (Math.cos(da) * dSpeed) + (momentumX * 0.18);
+                    let pVz = (Math.sin(da) * dSpeed) + (momentumZ * 0.18);
+                    let pVy = MathUtils.randomRange(250, 500); 
+                    let rX = Math.random() * 8 - 4;
+                    let rZ = Math.random() * 8 - 4;
 
-                    // Aggiungi al motore fisico temporaneo
                     activePhysicsParts.push({
                         mesh: clone,
                         vx: pVx, vy: pVy, vz: pVz,
@@ -7677,10 +7698,10 @@ if (this.modifiers.flowMastery && !wasDead) {
                     let movingParts = 0;
                     for (let i = 0; i < activePhysicsParts.length; i++) {
                         let p = activePhysicsParts[i];
-                        if (p.vy === 0 && p.vx === 0 && p.vz === 0) continue; // Pezzo fermo a terra
+                        if (p.vy === 0 && p.vx === 0 && p.vz === 0) continue; 
                         
                         movingParts++;
-                        p.vy -= 1200 * (1/60); // Gravità
+                        p.vy -= 1200 * (1/60); 
                         
                         p.mesh.position.x += p.vx * (1/60);
                         p.mesh.position.y += p.vy * (1/60);
@@ -7688,29 +7709,25 @@ if (this.modifiers.flowMastery && !wasDead) {
                         p.mesh.rotation.x += p.rx * (1/60);
                         p.mesh.rotation.z += p.rz * (1/60);
                         
-                        // Rimbalzo e attrito
                         if (p.mesh.position.y <= 2) {
                             p.mesh.position.y = 2;
-                            p.vy *= -0.35; 
+                            p.vy *= -0.4; 
                             p.vx *= 0.6;   
                             p.vz *= 0.6;
                             p.rx *= 0.6;
                             p.rz *= 0.6;
                             
-                            // Ferma completamente il pezzo se la spinta è esaurita (Risparmio CPU)
-                            if (Math.abs(p.vy) < 30) {
+                            // Spegne il calcolo per i pezzi che si sono fermati (Zero-CPU cost)
+                            if (Math.abs(p.vy) < 25) {
                                 p.vy = 0; p.vx = 0; p.vz = 0;
                             }
                         }
                     }
 
-                    // Se tutti i pezzi sono fermi, spegni il motore fisico!
-                    if (movingParts === 0) {
-                        clearInterval(Game.playerDeathInterval);
-                    }
+                    if (movingParts === 0) clearInterval(Game.playerDeathInterval);
                 }, 16);
 
-                // Disintegra (nasconde) il corpo originale all'istante
+                // Disintegra il corpo originale all'istante
                 let pChildren = this.mesh.children;
                 for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = false;
                 if(this.shieldMesh) this.shieldMesh.visible = false;

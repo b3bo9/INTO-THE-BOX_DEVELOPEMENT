@@ -7636,25 +7636,31 @@ if (this.modifiers.flowMastery && !wasDead) {
                 if (!Game.deadPlayerParts) Game.deadPlayerParts = [];
                 let activePhysicsParts = [];
 
+                // Riferimenti diretti sicuri ai pezzi reali del modello nella scena
+                let oBody = this.mesh.children[0];
+                let oHead = this.mesh.children[1];
+                let oScarf = this.mesh.children[2];
+                let oWeapon = this.mesh.children[3];
+
                 // 1. Corpo tagliato con Sciarpa attaccata
-                let pBody = this.modelParts.body.clone();
+                let pBody = oBody.clone();
                 pBody.geometry = new THREE.CylinderGeometry(0.35, 1, 2, 8); // Geometria svasata, tagliata in alto!
-                let pScarf = this.modelParts.scarf.clone();
+                let pScarf = oScarf.clone();
                 pScarf.position.set(0, 0.5, 0); // La posizioniamo esattamente in cima al taglio
                 pScarf.scale.set(6/16, 6/24, 2/16); // Compensiamo le dimensioni del parent
                 pScarf.rotation.x = Math.PI / 2;
                 pBody.add(pScarf);
 
                 // 2. Testa
-                let pHead = this.modelParts.head.clone();
+                let pHead = oHead.clone();
 
                 // 3. Bacchetta
-                let pWeapon = this.modelParts.weaponGroup.clone();
+                let pWeapon = oWeapon.clone();
 
                 let partsToDrop = [
-                    { mesh: pBody, original: this.modelParts.body },
-                    { mesh: pHead, original: this.modelParts.head },
-                    { mesh: pWeapon, original: this.modelParts.weaponGroup }
+                    { mesh: pBody, original: oBody },
+                    { mesh: pHead, original: oHead },
+                    { mesh: pWeapon, original: oWeapon }
                 ];
 
                 for (let i = 0; i < partsToDrop.length; i++) {

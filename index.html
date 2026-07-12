@@ -7640,54 +7640,59 @@ if (this.modifiers.flowMastery && !wasDead) {
                         Game._vec3.set(this.x, 20, this.y);
                         Game._dummyQuat.set(Math.random(), Math.random(), Math.random(), 1).normalize();
                         
-                        // Frammenti scala ridotta e controllata (visibili ma non coprono la scena)
                         let s = MathUtils.randomRange(2.0, 4.0); 
                         Game._dummyScale.set(s, s, s);
                         
                         let partCol = detritiColors[i % 3];
-                        debris.spawn(Game._vec3, Game._dummyQuat, Game._dummyScale, null, partCol, this.radius, true);
                         
-                        // FISICA OTTIMIZZATA: Il momentum dà la spinta in avanti, ma è ridotto al 12% per non uscire dallo schermo
+                        // FIX: Passiamo 'true' alla fine per forzare lo spawn ignorando il limite di sistema!
+                        debris.spawn(Game._vec3, Game._dummyQuat, Game._dummyScale, null, partCol, this.radius, false, true);
+                        
                         let da = Math.random() * Math.PI * 2;
-                        let dSpeed = MathUtils.randomRange(40, 150); // Dispersione radiale molto bassa
+                        let dSpeed = MathUtils.randomRange(40, 150); 
                         
                         debris.vx = (Math.cos(da) * dSpeed) + (momentumX * 0.12);
                         debris.vz = (Math.sin(da) * dSpeed) + (momentumZ * 0.12);
-                        debris.vy = MathUtils.randomRange(200, 450); // Salto parabolico basso
+                        debris.vy = MathUtils.randomRange(200, 450); 
                     }
                 }
 
-                // Stacca la bacchetta magica e falla volare morbidamente in avanti
+                // Clona la bacchetta (Zero Memory Leak) invece di rubarla al giocatore
                 let wand = this.modelParts.weaponGroup;
                 wand.getWorldPosition(Game._vec3);
-                Game.scene.add(wand);
-                wand.position.copy(Game._vec3);
+                wand.getWorldQuaternion(Game._dummyQuat);
+                wand.getWorldScale(Game._dummyScale);
+
+                if (Game.dummyWand) { Game.scene.remove(Game.dummyWand); }
+                Game.dummyWand = wand.clone();
+                Game.scene.add(Game.dummyWand);
+                Game.dummyWand.position.copy(Game._vec3);
+                Game.dummyWand.quaternion.copy(Game._dummyQuat);
+                Game.dummyWand.scale.copy(Game._dummyScale);
                 
                 if (!Game.deadObelisks) Game.deadObelisks = [];
-                Game.deadObelisks.push(wand);
+                Game.deadObelisks.push(Game.dummyWand);
 
-                // Inerzia moderata anche per la bacchetta
                 let wandVy = MathUtils.randomRange(250, 400);
                 let wandVx = MathUtils.randomRange(-40, 40) + (momentumX * 0.15);
                 let wandVz = MathUtils.randomRange(-40, 40) + (momentumZ * 0.15);
                 let rotSpdX = Math.random() * 8 - 4;
                 let rotSpdZ = Math.random() * 8 - 4;
                 
-                // FIX MEMORY LEAK: Usiamo un intervallo globale cancellabile
                 if (Game.wandInterval) clearInterval(Game.wandInterval);
                 Game.wandInterval = setInterval(() => {
                     if(Game.state === 'MENU') { clearInterval(Game.wandInterval); return; }
-                    wandVy -= 1000 * (1/60); // Gravità dimezzata per caduta visibile
-                    wand.position.x += wandVx * (1/60);
-                    wand.position.y += wandVy * (1/60);
-                    wand.position.z += wandVz * (1/60);
-                    wand.rotation.x += rotSpdX * (1/60);
-                    wand.rotation.z += rotSpdZ * (1/60);
+                    wandVy -= 1000 * (1/60); 
+                    Game.dummyWand.position.x += wandVx * (1/60);
+                    Game.dummyWand.position.y += wandVy * (1/60);
+                    Game.dummyWand.position.z += wandVz * (1/60);
+                    Game.dummyWand.rotation.x += rotSpdX * (1/60);
+                    Game.dummyWand.rotation.z += rotSpdZ * (1/60);
                     
-                    if (wand.position.y <= 2) {
-                        wand.position.y = 2;
-                        wandVy *= -0.35; // Rimbalzo debole
-                        wandVx *= 0.6;   // Attrito forte
+                    if (Game.dummyWand.position.y <= 2) {
+                        Game.dummyWand.position.y = 2;
+                        wandVy *= -0.35; 
+                        wandVx *= 0.6;   
                         wandVz *= 0.6;
                         rotSpdX *= 0.6;
                         rotSpdZ *= 0.6;
@@ -7698,7 +7703,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                     }
                 }, 16);
 
-                // Disintegra il corpo originale all'istante
+                // Disintegra il corpo originale all'istante nascondendolo
                 let pChildren = this.mesh.children;
                 for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = false;
                 if(this.shieldMesh) this.shieldMesh.visible = false;
@@ -7706,16 +7711,14 @@ if (this.modifiers.flowMastery && !wasDead) {
                 this.auraRingMesh.visible = false;
                 this.auraGlow.visible = false;
 
-                // Sipario di sangue
                 if (UI.els.bloodVignette) {
                     UI.els.bloodVignette.classList.remove('vignette-low-hp-active');
                     setTimeout(() => {
                         if (Game.state !== 'MENU') UI.els.bloodVignette.classList.add('death-fade-active');
-                    }, 2500); // Aspetta 2.5 secondi per farti vedere i resti sul pavimento
+                    }, 2500); 
                 }
                 document.body.classList.remove('crt-active');
 
-                // Ritardiamo la UI della morte in modo che si allinei
                 setTimeout(() => {
                     if (Game.state === 'MENU' || !this.dead) return;
                     
@@ -7730,7 +7733,6 @@ if (this.modifiers.flowMastery && !wasDead) {
                         ds.style.backgroundImage = "url('bg_box.png')";
                         document.getElementById('deathTitle').innerText = "R I P"; document.getElementById('deathSubtitle').innerText = `Piano: ${Game.floor} | Demoni: ${Game.totalKills} | Tempo: ${ScoreManager.formatTime(Game.playTime)}`; document.getElementById('deathQuote').innerText = `"${DEATH_QUOTES[Math.floor(Math.random() * DEATH_QUOTES.length)]}"`; document.getElementById('deathQuote').classList.remove('hidden'); 
                         
-                        // CALCOLO E RENDER STATISTICHE PARTITA
                         let mostUsed = 'NESSUNA'; let maxUse = 0; let eColors = { red: '#FF1133', blue: '#00AAFF', green: '#33FF00' }; let eCol = '#ffffff';
                         if (Game.matchStats) {
                             for (let e in Game.matchStats.essencesUsed) {
@@ -7747,7 +7749,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                         document.getElementById('btn-respawn').classList.add('hidden'); document.getElementById('btn-restart').classList.remove('hidden'); document.getElementById('score-save-container').classList.remove('hidden'); document.getElementById('playerName').value = '';
                         let btnSave = document.getElementById('btn-save-score'); btnSave.innerText = 'SALVA PUNTEGGIO'; btnSave.disabled = false; btnSave.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-700'); btnSave.classList.add('bg-red-900', 'hover:bg-red-700');
                     }
-                }, 4000); // <-- 4 secondi totali
+                }, 4000); 
             }
         }
     }
@@ -9558,9 +9560,9 @@ class Debris {
         // RAM purissima: zero mesh create qui dentro!
     }
     
-   spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, enemyRadius, isElite = false) {
-        if (Game.debrisThisFrame > (isTouchDevice ? 4 : 15)) return;
-        Game.debrisThisFrame = (Game.debrisThisFrame || 0) + 1;
+ spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, enemyRadius, isElite = false, forceSpawn = false) {
+        if (!forceSpawn && Game.debrisThisFrame > (isTouchDevice ? 4 : 15)) return;
+        if (!forceSpawn) Game.debrisThisFrame = (Game.debrisThisFrame || 0) + 1;
         this.active = true;
         
         /* COMPROMESSO: Un InstancedMesh usa una sola geometria. Il parametro "geometry" 
@@ -9828,6 +9830,9 @@ function clearScene() {
 function respawnPlayer() {
     AudioEngine.playClick();
     TransitionSystem.wipeIn(() => {
+        if (Game.wandInterval) clearInterval(Game.wandInterval);
+        if (Game.dummyWand) { Game.scene.remove(Game.dummyWand); Game.dummyWand = null; }
+        
         document.getElementById('deathScreen').classList.add('hidden');
         UI.els.bloodVignette.classList.remove('death-fade-active');
         document.body.classList.remove('crt-active'); // Failsafe

@@ -6477,10 +6477,10 @@ class Entity {
 
 class Player extends Entity {
     constructor(x, y) {
-        // BILANCIAMENTO: Movimento base leggermente più agile (220), ma Attack Speed abbassato (2.2).
+        // BILANCIAMENTO: Movimento base leggermente più agile (200), ma Attack Speed abbassato (2.8).
         // Ora i potenziamenti dello Shop e le Reliquie si faranno sentire davvero!
-        super(x, y, 16, 220); this.baseSpeed = 220; this.level = 1; this.xp = 0; this.xpNeeded = 100; this.tempHp = 0;
-        this.attackTimer = 0; this.baseAttackSpeed = 2.2; this.isAttacking = false; this.attackSwing = 0;
+        super(x, y, 16, 220); this.baseSpeed = 200; this.level = 1; this.xp = 0; this.xpNeeded = 100; this.tempHp = 0;
+        this.attackTimer = 0; this.baseAttackSpeed = 2.8; this.isAttacking = false; this.attackSwing = 0;
         this.dashTimer = 0; this.isDashing = false; this.dashCooldown = 0;
        this.stats = { hp: 100, maxHp: 100, minDmg: 8, maxDmg: 15 };
         this.baseStats = { maxHp: 100, minDmg: 8, maxDmg: 15 };

@@ -7626,10 +7626,11 @@ if (this.modifiers.flowMastery && !wasDead) {
                     spark.vy = MathUtils.randomRange(300, 900);
                 }
                 
-                // ESPLOSIONE IN PEZZI GIGANTI 3D DEL COLORE DEL PLAYER
-                let debrisCount = AppSettings.isLow ? 15 : 45;
+// ESPLOSIONE IN PEZZI GIGANTI 3D
+                let debrisCount = AppSettings.isLow ? 20 : 60;
                 let pCol = this.modelParts.body.material.color.getHex();
                 if (Game.ultimateActive || this.overdrive) pCol = this.modelParts.body.material.emissive.getHex();
+                let detritiColors = [pCol, 0x880000, 0xdddddd]; // Corpo, Sciarpa, Testa
                 
                 for(let i=0; i<debrisCount; i++) {
                     let debris = Game.getDebris();
@@ -7637,21 +7638,61 @@ if (this.modifiers.flowMastery && !wasDead) {
                         Game._vec3.set(this.x, 20, this.y);
                         Game._dummyQuat.set(Math.random(), Math.random(), Math.random(), 1).normalize();
                         
-                        // Frammenti giganti (simulano le vere parti del corpo del Mago)
-                        let s = MathUtils.randomRange(2.5, 5.0); 
+                        // Frammenti molto più grossi e marcati
+                        let s = MathUtils.randomRange(3.5, 7.0); 
                         Game._dummyScale.set(s, s, s);
                         
-                        // Passa il vero colore del player
-                        debris.spawn(Game._vec3, Game._dummyQuat, Game._dummyScale, null, pCol, this.radius, true);
+                        // Colora i pezzi per simulare le varie parti del corpo
+                        let partCol = detritiColors[i % 3];
+                        debris.spawn(Game._vec3, Game._dummyQuat, Game._dummyScale, null, partCol, this.radius, true);
                         
-                        // Fisica asimmetrica: esplosione radiale sommata all'inerzia di movimento!
+                        // Esplosione violentissima
                         let da = Math.random() * Math.PI * 2;
-                        let dSpeed = MathUtils.randomRange(500, 1300);
-                        debris.vx = (Math.cos(da) * dSpeed) + momentumX * 0.9;
-                        debris.vz = (Math.sin(da) * dSpeed) + momentumZ * 0.9;
-                        debris.vy = MathUtils.randomRange(700, 1600); // Schizzano in aria per rimbalzare più volte!
+                        let dSpeed = MathUtils.randomRange(700, 1800);
+                        debris.vx = (Math.cos(da) * dSpeed) + momentumX * 1.2;
+                        debris.vz = (Math.sin(da) * dSpeed) + momentumZ * 1.2;
+                        debris.vy = MathUtils.randomRange(900, 2200); 
                     }
                 }
+
+                // Stacca la bacchetta magica e falla volare con fisica propria
+                let wand = this.modelParts.weaponGroup;
+                wand.getWorldPosition(Game._vec3); // Salva la posizione globale attuale
+                Game.scene.add(wand); // Spostala nella scena principale per svincolarla dal player invisibile
+                wand.position.copy(Game._vec3);
+                
+                if (!Game.deadObelisks) Game.deadObelisks = [];
+                Game.deadObelisks.push(wand); // Trick per farla eliminare al riavvio tramite clearScene()
+
+                let wandVy = MathUtils.randomRange(800, 1200);
+                let wandVx = MathUtils.randomRange(-400, 400) + (momentumX * 0.8);
+                let wandVz = MathUtils.randomRange(-400, 400) + (momentumZ * 0.8);
+                let rotSpdX = Math.random() * 20;
+                let rotSpdZ = Math.random() * 20;
+                
+                let wandInterval = setInterval(() => {
+                    if(Game.state === 'MENU') { clearInterval(wandInterval); return; }
+                    wandVy -= 2200 * (1/60); // Gravità applicata alla bacchetta
+                    wand.position.x += wandVx * (1/60);
+                    wand.position.y += wandVy * (1/60);
+                    wand.position.z += wandVz * (1/60);
+                    wand.rotation.x += rotSpdX * (1/60);
+                    wand.rotation.z += rotSpdZ * (1/60);
+                    
+                    // Rimbalzo sul terreno
+                    if (wand.position.y <= 2) {
+                        wand.position.y = 2;
+                        wandVy *= -0.5; 
+                        wandVx *= 0.6; 
+                        wandVz *= 0.6;
+                        rotSpdX *= 0.5;
+                        rotSpdZ *= 0.5;
+                        if (Math.abs(wandVy) < 40) {
+                            wandVy = 0;
+                            clearInterval(wandInterval); // Si ferma per terra
+                        }
+                    }
+                }, 16);
 
                 // Disintegra il corpo originale all'istante
                 let pChildren = this.mesh.children;
@@ -7661,14 +7702,16 @@ if (this.modifiers.flowMastery && !wasDead) {
                 this.auraRingMesh.visible = false;
                 this.auraGlow.visible = false;
 
-                // Sipario di sangue sullo schermo che cala MENTRE i pezzi volano via fluidamente
+                // Sipario di sangue: Ritardiamo l'annerimento dello schermo per farti vedere i pezzi volare!
                 if (UI.els.bloodVignette) {
                     UI.els.bloodVignette.classList.remove('vignette-low-hp-active');
-                    UI.els.bloodVignette.classList.add('death-fade-active');
+                    setTimeout(() => {
+                        if (Game.state !== 'MENU') UI.els.bloodVignette.classList.add('death-fade-active');
+                    }, 2000); // 2 secondi di puro spettacolo esplosivo prima del buio
                 }
                 document.body.classList.remove('crt-active');
 
-                // Lasciamo scorrere la scena per 2.5 secondi (per ammirare la pioggia di frammenti) prima di mostrare l'UI
+                // Ritardiamo la UI della morte in modo che si allinei col nuovo fade
                 setTimeout(() => {
                     if (Game.state === 'MENU' || !this.dead) return;
                     
@@ -7700,7 +7743,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                         document.getElementById('btn-respawn').classList.add('hidden'); document.getElementById('btn-restart').classList.remove('hidden'); document.getElementById('score-save-container').classList.remove('hidden'); document.getElementById('playerName').value = '';
                         let btnSave = document.getElementById('btn-save-score'); btnSave.innerText = 'SALVA PUNTEGGIO'; btnSave.disabled = false; btnSave.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-700'); btnSave.classList.add('bg-red-900', 'hover:bg-red-700');
                     }
-                }, 2500); // <-- Tempo aumentato a 2.5s per poter guardare il disastro
+                }, 4000); // <-- Tempo portato a 4 secondi (2s visuale + 2s fade)
             }
         }
     }

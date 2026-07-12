@@ -7640,6 +7640,13 @@ if (this.modifiers.flowMastery && !wasDead) {
                 if (!Game.deadPlayerParts) Game.deadPlayerParts = [];
                 let activePhysicsParts = [];
 
+                // FIX COLORE: Il materiale rimaneva incastrato nel flash del colpo mortale (bianco).
+                // Resettiamo l'emissione di tutti i pezzi a 0 (scuro) prima di clonarli!
+                for (let i = 0; i < this.flashMats.length; i++) {
+                    this.flashMats[i].emissive.setHex(0x000000);
+                }
+                this.updateAppearance();
+
                 // Riferimenti diretti sicuri ai pezzi reali del modello nella scena
                 let oBody = this.mesh.children[0];
                 let oHead = this.mesh.children[1];
@@ -7648,10 +7655,17 @@ if (this.modifiers.flowMastery && !wasDead) {
 
                 // 1. Corpo tagliato con Sciarpa attaccata
                 let pBody = oBody.clone();
-                pBody.geometry = new THREE.CylinderGeometry(0.35, 1, 2, 8); // Geometria svasata, tagliata in alto!
+                
+                // OTTIMIZZAZIONE VRAM: Usiamo una geometria globale tagliata invece di istanziarne 
+                // una nuova a ogni morte (Prevenzione Memory Leak totale).
+                if (!window.GLOBAL_DEAD_BODY_GEO) {
+                    window.GLOBAL_DEAD_BODY_GEO = new THREE.CylinderGeometry(0.35, 1, 2, 8);
+                }
+                pBody.geometry = window.GLOBAL_DEAD_BODY_GEO; // Cambia il cono in un tronco!
+                
                 let pScarf = oScarf.clone();
-                pScarf.position.set(0, 0.5, 0); // La posizioniamo esattamente in cima al taglio
-                pScarf.scale.set(6/16, 6/24, 2/16); // Compensiamo le dimensioni del parent
+                pScarf.position.set(0, 0.5, 0); // La posizioniamo esattamente in cima al tronco
+                pScarf.scale.set(6/16, 6/24, 2/16); // Scala matematica esatta in base al parent
                 pScarf.rotation.x = Math.PI / 2;
                 pBody.add(pScarf);
 
@@ -7683,7 +7697,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                     
                     Game.deadPlayerParts.push(clone);
 
-                    // Fisica Inerziale 
+                    // Fisica Inerziale Realistica
                     let da = Math.random() * Math.PI * 2;
                     let dSpeed = MathUtils.randomRange(40, 120); 
                     
@@ -7700,7 +7714,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                     });
                 }
 
-                // LOOP FISICO TEMPORANEO E AUTOPULENTE
+                // LOOP FISICO TEMPORANEO E AUTOPULENTE (Impatto 0 sulla CPU a riposo)
                 if (Game.playerDeathInterval) clearInterval(Game.playerDeathInterval);
                 Game.playerDeathInterval = setInterval(() => {
                     if (Game.state === 'MENU') { clearInterval(Game.playerDeathInterval); return; }
@@ -7727,7 +7741,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                             p.rx *= 0.6;
                             p.rz *= 0.6;
                             
-                            // Spegne il calcolo per i pezzi che si sono fermati (Zero-CPU cost)
+                            // Spegne il calcolo per i pezzi che si sono fermati
                             if (Math.abs(p.vy) < 25) {
                                 p.vy = 0; p.vx = 0; p.vz = 0;
                             }
@@ -7737,7 +7751,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                     if (movingParts === 0) clearInterval(Game.playerDeathInterval);
                 }, 16);
 
-     // Disintegra il corpo originale all'istante
+                // Disintegra il corpo originale all'istante
                 let pChildren = this.mesh.children;
                 for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = false;
                 if(this.shieldMesh) this.shieldMesh.visible = false;
@@ -7745,17 +7759,17 @@ if (this.modifiers.flowMastery && !wasDead) {
                 this.auraRingMesh.visible = false;
                 this.auraGlow.visible = false;
 
-                // Sipario di sangue: Ritardato per godersi i pezzi che cadono (1 Secondo In Meno)
+                // Sipario di sangue: Ritardato per godersi i pezzi che cadono (1.5s)
                 if (UI.els.bloodVignette) {
                     UI.els.bloodVignette.classList.remove('vignette-low-hp-active');
                     setTimeout(() => {
                         if (Game.state !== 'MENU') UI.els.bloodVignette.classList.add('death-fade-active');
-                    }, 1500); // <-- Ridotto da 2500 a 1500
+                    }, 1500); 
                 }
                 
-                // (La rimozione della classe crt-active è stata tolta intenzionalmente per mantenerla attiva)
+                // NOTA: Il filtro CRT non viene tolto per lasciarlo visibile durante l'esplosione!
 
-                // Ritardiamo la UI della morte (1 Secondo In Meno)
+                // Ritardiamo la UI della morte di 3 secondi totali
                 setTimeout(() => {
                     if (Game.state === 'MENU' || !this.dead) return;
                     
@@ -7786,7 +7800,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                         document.getElementById('btn-respawn').classList.add('hidden'); document.getElementById('btn-restart').classList.remove('hidden'); document.getElementById('score-save-container').classList.remove('hidden'); document.getElementById('playerName').value = '';
                         let btnSave = document.getElementById('btn-save-score'); btnSave.innerText = 'SALVA PUNTEGGIO'; btnSave.disabled = false; btnSave.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-700'); btnSave.classList.add('bg-red-900', 'hover:bg-red-700');
                     }
-                }, 3000); // <-- Ridotto da 4000 a 3000
+                }, 3000); 
             }
         }
     }

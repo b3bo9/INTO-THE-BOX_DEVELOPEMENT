@@ -7638,58 +7638,59 @@ if (this.modifiers.flowMastery && !wasDead) {
                         Game._vec3.set(this.x, 20, this.y);
                         Game._dummyQuat.set(Math.random(), Math.random(), Math.random(), 1).normalize();
                         
-                        // Frammenti molto più grossi e marcati
-                        let s = MathUtils.randomRange(3.5, 7.0); 
+                        // Frammenti ben visibili ma non enormi per non coprire tutto
+                        let s = MathUtils.randomRange(2.5, 5.0); 
                         Game._dummyScale.set(s, s, s);
                         
-                        // Colora i pezzi per simulare le varie parti del corpo
                         let partCol = detritiColors[i % 3];
                         debris.spawn(Game._vec3, Game._dummyQuat, Game._dummyScale, null, partCol, this.radius, true);
                         
-                        // Esplosione violentissima
+                        // Fisica leggibile: pochissimo schizzo casuale, molta enfasi sull'inerzia del player
                         let da = Math.random() * Math.PI * 2;
-                        let dSpeed = MathUtils.randomRange(700, 1800);
-                        debris.vx = (Math.cos(da) * dSpeed) + momentumX * 1.2;
-                        debris.vz = (Math.sin(da) * dSpeed) + momentumZ * 1.2;
-                        debris.vy = MathUtils.randomRange(900, 2200); 
+                        let dSpeed = MathUtils.randomRange(100, 300); // Dispersione laterale minima
+                        
+                        // I detriti seguono la direzione di movimento al momento della morte
+                        debris.vx = (Math.cos(da) * dSpeed) + (momentumX * 0.45);
+                        debris.vz = (Math.sin(da) * dSpeed) + (momentumZ * 0.45);
+                        debris.vy = MathUtils.randomRange(300, 700); // Arco di caduta morbido
                     }
                 }
 
                 // Stacca la bacchetta magica e falla volare con fisica propria
                 let wand = this.modelParts.weaponGroup;
-                wand.getWorldPosition(Game._vec3); // Salva la posizione globale attuale
-                Game.scene.add(wand); // Spostala nella scena principale per svincolarla dal player invisibile
+                wand.getWorldPosition(Game._vec3);
+                Game.scene.add(wand);
                 wand.position.copy(Game._vec3);
                 
                 if (!Game.deadObelisks) Game.deadObelisks = [];
-                Game.deadObelisks.push(wand); // Trick per farla eliminare al riavvio tramite clearScene()
+                Game.deadObelisks.push(wand);
 
-                let wandVy = MathUtils.randomRange(800, 1200);
-                let wandVx = MathUtils.randomRange(-400, 400) + (momentumX * 0.8);
-                let wandVz = MathUtils.randomRange(-400, 400) + (momentumZ * 0.8);
-                let rotSpdX = Math.random() * 20;
-                let rotSpdZ = Math.random() * 20;
+                // Anche la bacchetta segue l'inerzia del giocatore
+                let wandVy = MathUtils.randomRange(400, 600);
+                let wandVx = MathUtils.randomRange(-100, 100) + (momentumX * 0.5);
+                let wandVz = MathUtils.randomRange(-100, 100) + (momentumZ * 0.5);
+                let rotSpdX = Math.random() * 10 - 5;
+                let rotSpdZ = Math.random() * 10 - 5;
                 
                 let wandInterval = setInterval(() => {
                     if(Game.state === 'MENU') { clearInterval(wandInterval); return; }
-                    wandVy -= 2200 * (1/60); // Gravità applicata alla bacchetta
+                    wandVy -= 1200 * (1/60); // Gravità abbassata per renderla più realistica
                     wand.position.x += wandVx * (1/60);
                     wand.position.y += wandVy * (1/60);
                     wand.position.z += wandVz * (1/60);
                     wand.rotation.x += rotSpdX * (1/60);
                     wand.rotation.z += rotSpdZ * (1/60);
                     
-                    // Rimbalzo sul terreno
                     if (wand.position.y <= 2) {
                         wand.position.y = 2;
-                        wandVy *= -0.5; 
-                        wandVx *= 0.6; 
-                        wandVz *= 0.6;
+                        wandVy *= -0.4; 
+                        wandVx *= 0.5; 
+                        wandVz *= 0.5;
                         rotSpdX *= 0.5;
                         rotSpdZ *= 0.5;
-                        if (Math.abs(wandVy) < 40) {
+                        if (Math.abs(wandVy) < 30) {
                             wandVy = 0;
-                            clearInterval(wandInterval); // Si ferma per terra
+                            clearInterval(wandInterval);
                         }
                     }
                 }, 16);
@@ -7707,7 +7708,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                     UI.els.bloodVignette.classList.remove('vignette-low-hp-active');
                     setTimeout(() => {
                         if (Game.state !== 'MENU') UI.els.bloodVignette.classList.add('death-fade-active');
-                    }, 2000); // 2 secondi di puro spettacolo esplosivo prima del buio
+                    }, 2000); 
                 }
                 document.body.classList.remove('crt-active');
 
@@ -7743,7 +7744,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                         document.getElementById('btn-respawn').classList.add('hidden'); document.getElementById('btn-restart').classList.remove('hidden'); document.getElementById('score-save-container').classList.remove('hidden'); document.getElementById('playerName').value = '';
                         let btnSave = document.getElementById('btn-save-score'); btnSave.innerText = 'SALVA PUNTEGGIO'; btnSave.disabled = false; btnSave.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-700'); btnSave.classList.add('bg-red-900', 'hover:bg-red-700');
                     }
-                }, 4000); // <-- Tempo portato a 4 secondi (2s visuale + 2s fade)
+                }, 4000); 
             }
         }
     }

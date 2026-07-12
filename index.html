@@ -3804,6 +3804,8 @@ this.dynamicDebrisMesh = new THREE.InstancedMesh(debrisGeo, debrisMat, maxDynami
 this.dynamicDebrisMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 this.dynamicDebrisMesh.castShadow = false; // Spento per massimizzare gli FPS
 this.dynamicDebrisMesh.receiveShadow = false;
+// OTTIMIZZAZIONE PERFORMANCE: Pre-alloca il buffer dei colori per evitare micro-lag alla primissima esplosione
+this.dynamicDebrisMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(maxDynamicDebris * 3), 3);
 
 // Nascondiamo tutto sotto terra all'avvio
 let hideMat = new THREE.Matrix4().makeTranslation(0, -1000, 0);
@@ -7638,25 +7640,24 @@ if (this.modifiers.flowMastery && !wasDead) {
                         Game._vec3.set(this.x, 20, this.y);
                         Game._dummyQuat.set(Math.random(), Math.random(), Math.random(), 1).normalize();
                         
-                        // Frammenti ben visibili ma non enormi per non coprire tutto
-                        let s = MathUtils.randomRange(2.5, 5.0); 
+                        // Frammenti scala ridotta e controllata (visibili ma non coprono la scena)
+                        let s = MathUtils.randomRange(2.0, 4.0); 
                         Game._dummyScale.set(s, s, s);
                         
                         let partCol = detritiColors[i % 3];
                         debris.spawn(Game._vec3, Game._dummyQuat, Game._dummyScale, null, partCol, this.radius, true);
                         
-                        // Fisica leggibile: pochissimo schizzo casuale, molta enfasi sull'inerzia del player
+                        // FISICA OTTIMIZZATA: Il momentum dà la spinta in avanti, ma è ridotto al 12% per non uscire dallo schermo
                         let da = Math.random() * Math.PI * 2;
-                        let dSpeed = MathUtils.randomRange(100, 300); // Dispersione laterale minima
+                        let dSpeed = MathUtils.randomRange(40, 150); // Dispersione radiale molto bassa
                         
-                        // I detriti seguono la direzione di movimento al momento della morte
-                        debris.vx = (Math.cos(da) * dSpeed) + (momentumX * 0.45);
-                        debris.vz = (Math.sin(da) * dSpeed) + (momentumZ * 0.45);
-                        debris.vy = MathUtils.randomRange(300, 700); // Arco di caduta morbido
+                        debris.vx = (Math.cos(da) * dSpeed) + (momentumX * 0.12);
+                        debris.vz = (Math.sin(da) * dSpeed) + (momentumZ * 0.12);
+                        debris.vy = MathUtils.randomRange(200, 450); // Salto parabolico basso
                     }
                 }
 
-                // Stacca la bacchetta magica e falla volare con fisica propria
+                // Stacca la bacchetta magica e falla volare morbidamente in avanti
                 let wand = this.modelParts.weaponGroup;
                 wand.getWorldPosition(Game._vec3);
                 Game.scene.add(wand);
@@ -7665,16 +7666,18 @@ if (this.modifiers.flowMastery && !wasDead) {
                 if (!Game.deadObelisks) Game.deadObelisks = [];
                 Game.deadObelisks.push(wand);
 
-                // Anche la bacchetta segue l'inerzia del giocatore
-                let wandVy = MathUtils.randomRange(400, 600);
-                let wandVx = MathUtils.randomRange(-100, 100) + (momentumX * 0.5);
-                let wandVz = MathUtils.randomRange(-100, 100) + (momentumZ * 0.5);
-                let rotSpdX = Math.random() * 10 - 5;
-                let rotSpdZ = Math.random() * 10 - 5;
+                // Inerzia moderata anche per la bacchetta
+                let wandVy = MathUtils.randomRange(250, 400);
+                let wandVx = MathUtils.randomRange(-40, 40) + (momentumX * 0.15);
+                let wandVz = MathUtils.randomRange(-40, 40) + (momentumZ * 0.15);
+                let rotSpdX = Math.random() * 8 - 4;
+                let rotSpdZ = Math.random() * 8 - 4;
                 
-                let wandInterval = setInterval(() => {
-                    if(Game.state === 'MENU') { clearInterval(wandInterval); return; }
-                    wandVy -= 1200 * (1/60); // Gravità abbassata per renderla più realistica
+                // FIX MEMORY LEAK: Usiamo un intervallo globale cancellabile
+                if (Game.wandInterval) clearInterval(Game.wandInterval);
+                Game.wandInterval = setInterval(() => {
+                    if(Game.state === 'MENU') { clearInterval(Game.wandInterval); return; }
+                    wandVy -= 1000 * (1/60); // Gravità dimezzata per caduta visibile
                     wand.position.x += wandVx * (1/60);
                     wand.position.y += wandVy * (1/60);
                     wand.position.z += wandVz * (1/60);
@@ -7683,14 +7686,14 @@ if (this.modifiers.flowMastery && !wasDead) {
                     
                     if (wand.position.y <= 2) {
                         wand.position.y = 2;
-                        wandVy *= -0.4; 
-                        wandVx *= 0.5; 
-                        wandVz *= 0.5;
-                        rotSpdX *= 0.5;
-                        rotSpdZ *= 0.5;
-                        if (Math.abs(wandVy) < 30) {
+                        wandVy *= -0.35; // Rimbalzo debole
+                        wandVx *= 0.6;   // Attrito forte
+                        wandVz *= 0.6;
+                        rotSpdX *= 0.6;
+                        rotSpdZ *= 0.6;
+                        if (Math.abs(wandVy) < 25) {
                             wandVy = 0;
-                            clearInterval(wandInterval);
+                            clearInterval(Game.wandInterval);
                         }
                     }
                 }, 16);
@@ -7703,16 +7706,16 @@ if (this.modifiers.flowMastery && !wasDead) {
                 this.auraRingMesh.visible = false;
                 this.auraGlow.visible = false;
 
-                // Sipario di sangue: Ritardiamo l'annerimento dello schermo per farti vedere i pezzi volare!
+                // Sipario di sangue
                 if (UI.els.bloodVignette) {
                     UI.els.bloodVignette.classList.remove('vignette-low-hp-active');
                     setTimeout(() => {
                         if (Game.state !== 'MENU') UI.els.bloodVignette.classList.add('death-fade-active');
-                    }, 2000); 
+                    }, 2500); // Aspetta 2.5 secondi per farti vedere i resti sul pavimento
                 }
                 document.body.classList.remove('crt-active');
 
-                // Ritardiamo la UI della morte in modo che si allinei col nuovo fade
+                // Ritardiamo la UI della morte in modo che si allinei
                 setTimeout(() => {
                     if (Game.state === 'MENU' || !this.dead) return;
                     
@@ -7744,7 +7747,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                         document.getElementById('btn-respawn').classList.add('hidden'); document.getElementById('btn-restart').classList.remove('hidden'); document.getElementById('score-save-container').classList.remove('hidden'); document.getElementById('playerName').value = '';
                         let btnSave = document.getElementById('btn-save-score'); btnSave.innerText = 'SALVA PUNTEGGIO'; btnSave.disabled = false; btnSave.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-700'); btnSave.classList.add('bg-red-900', 'hover:bg-red-700');
                     }
-                }, 4000); 
+                }, 4000); // <-- 4 secondi totali
             }
         }
     }
@@ -9684,6 +9687,7 @@ class FloatingText {
     }
 }
 function clearScene() {
+    if (Game.wandInterval) clearInterval(Game.wandInterval); // FIX BUG: Ferma la bacchetta in volo
     if (Game.deadObelisks) {
         for (let i = 0; i < Game.deadObelisks.length; i++) {
             Game.scene.remove(Game.deadObelisks[i]);

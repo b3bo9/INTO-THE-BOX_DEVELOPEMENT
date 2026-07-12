@@ -3543,7 +3543,7 @@ const UI = {
         
    let hpRatio = Game.player.stats.hp / Game.player.stats.maxHp;
 
-        // ATTIVAZIONE SCHERMO CRT & VIGNETTA SANGUE (Sotto il 30% HP)
+       // ATTIVAZIONE SCHERMO CRT & VIGNETTA SANGUE (Sotto il 30% HP)
         let isLowHp = hpRatio < 0.30 && !Game.player.dead;
         
         // FIX: Forziamo l'aggiornamento grafico ad ogni frame per evitare desync
@@ -3552,7 +3552,11 @@ const UI = {
             document.body.classList.add('crt-active');
         } else {
             this.els.bloodVignette.classList.remove('vignette-low-hp-active');
-            document.body.classList.remove('crt-active');
+            // IMPORTANTE: Rimuove l'effetto CRT solo se il giocatore NON è morto
+            // Così facendo, il filtro rimane a schermo durante l'animazione di morte
+            if (!Game.player.dead) {
+                document.body.classList.remove('crt-active');
+            }
         }
 
         // Lo stato dell'audio si aggiorna solo se ci sono cambiamenti
@@ -7733,7 +7737,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                     if (movingParts === 0) clearInterval(Game.playerDeathInterval);
                 }, 16);
 
-                // Disintegra il corpo originale all'istante
+     // Disintegra il corpo originale all'istante
                 let pChildren = this.mesh.children;
                 for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = false;
                 if(this.shieldMesh) this.shieldMesh.visible = false;
@@ -7741,16 +7745,17 @@ if (this.modifiers.flowMastery && !wasDead) {
                 this.auraRingMesh.visible = false;
                 this.auraGlow.visible = false;
 
-                // Sipario di sangue: Ritardato per godersi i pezzi che cadono
+                // Sipario di sangue: Ritardato per godersi i pezzi che cadono (1 Secondo In Meno)
                 if (UI.els.bloodVignette) {
                     UI.els.bloodVignette.classList.remove('vignette-low-hp-active');
                     setTimeout(() => {
                         if (Game.state !== 'MENU') UI.els.bloodVignette.classList.add('death-fade-active');
-                    }, 2500); 
+                    }, 1500); // <-- Ridotto da 2500 a 1500
                 }
-                document.body.classList.remove('crt-active');
+                
+                // (La rimozione della classe crt-active è stata tolta intenzionalmente per mantenerla attiva)
 
-                // Ritardiamo la UI della morte
+                // Ritardiamo la UI della morte (1 Secondo In Meno)
                 setTimeout(() => {
                     if (Game.state === 'MENU' || !this.dead) return;
                     
@@ -7781,7 +7786,7 @@ if (this.modifiers.flowMastery && !wasDead) {
                         document.getElementById('btn-respawn').classList.add('hidden'); document.getElementById('btn-restart').classList.remove('hidden'); document.getElementById('score-save-container').classList.remove('hidden'); document.getElementById('playerName').value = '';
                         let btnSave = document.getElementById('btn-save-score'); btnSave.innerText = 'SALVA PUNTEGGIO'; btnSave.disabled = false; btnSave.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-green-700'); btnSave.classList.add('bg-red-900', 'hover:bg-red-700');
                     }
-                }, 4000); 
+                }, 3000); // <-- Ridotto da 4000 a 3000
             }
         }
     }

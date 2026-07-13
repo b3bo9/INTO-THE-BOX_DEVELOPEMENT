@@ -3550,17 +3550,17 @@ const UI = {
         
    let hpRatio = Game.player.stats.hp / Game.player.stats.maxHp;
 
-       // ATTIVAZIONE SCHERMO CRT & VIGNETTA SANGUE (Sotto il 30% HP)
+      // ATTIVAZIONE SCHERMO CRT & VIGNETTA SANGUE (Sotto il 30% HP)
         let isLowHp = hpRatio < 0.30 && !Game.player.dead;
         
-        // FIX: Forziamo l'aggiornamento grafico ad ogni frame per evitare desync
-        if (isLowHp) {
+        // FIX BUG WARP-OUT: Disattiviamo la classe CSS se stiamo cambiando livello.
+        // Se non lo facciamo, "opacity: 1 !important" della classe bloccherà il fade-to-black dell'animazione!
+        if (isLowHp && Game.state !== 'WARPING_OUT' && Game.state !== 'WARPING_IN') {
             this.els.bloodVignette.classList.add('vignette-low-hp-active');
             document.body.classList.add('crt-active');
         } else {
             this.els.bloodVignette.classList.remove('vignette-low-hp-active');
             // IMPORTANTE: Rimuove l'effetto CRT solo se il giocatore NON è morto
-            // Così facendo, il filtro rimane a schermo durante l'animazione di morte
             if (!Game.player.dead) {
                 document.body.classList.remove('crt-active');
             }
@@ -5110,12 +5110,12 @@ startGame(diffMult) {
             }
         }
         // ----------------------------------------------------------------------
+     
         let isLow = (this.player.stats.hp / this.player.stats.maxHp) < 0.30 && !this.player.dead;
         if (isLow !== AudioEngine.isLowHp) {
             AudioEngine.setLowHpState(isLow);
-            let vignette = document.getElementById('blood-vignette');
-            if(isLow) vignette.classList.add('vignette-low-hp-active');
-            else vignette.classList.remove('vignette-low-hp-active');
+            // FIX RIDONDANZA DOM: La manipolazione della classe CSS per la vignetta è stata
+            // spostata unicamente dentro UI.update() per permettere allo schermo di sfumare correttamente.
         }
         if (isLow) AudioEngine.playHeartbeat(combatDt);
 
@@ -7444,12 +7444,26 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         }
     }
     
-   dash() {
+  dash() {
         if (this.dashCooldown > 0 && !(this.overdrive && this.essence === 'blue')) return; 
         
         let perfectDodge = false; let grazeRange = this.radius + 30; let nearby = Game.enemyGrid.findNearby(this, grazeRange);
         if (nearby.length > 0) { 
-            perfectDodge = true; Game.getFloatingText().spawn(this.x, this.y, "PERFECT!", '#ffffff', 40, true); 
+            perfectDodge = true; 
+            
+            // FIX PERFECT DODGE: Rimossa la scritta e sostituita con un'esplosione di scintille dorate Arcade!
+            let pCount = AppSettings.isLow ? 8 : 20;
+            for(let i=0; i<pCount; i++) {
+                let a = (Math.PI * 2 / pCount) * i;
+                let p = Game.getParticle();
+                p.spawn(this.x, 20, this.y, SharedMat.spriteYellow, 'spark', a);
+                // Le rendiamo molto esplosive ed evidenti per dare un forte feedback visivo
+                p.vx = Math.cos(a) * MathUtils.randomRange(300, 600);
+                p.vz = Math.sin(a) * MathUtils.randomRange(300, 600);
+                p.vy = MathUtils.randomRange(100, 300);
+                p.baseSize = MathUtils.randomRange(15, 30);
+            }
+            
             Game.hitStop = 0.1; Game.addCombo(2);
             AudioEngine.playPerfectDodge(); 
         } else {

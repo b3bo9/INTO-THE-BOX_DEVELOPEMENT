@@ -579,11 +579,11 @@ body.colorblind-mode #opt-colorblind-text {
 
             <div class="flex-1 w-full min-h-[80px] lg:min-h-[250px]"></div>
 
-            <div class="flex flex-col gap-3 items-center w-full max-w-[400px] shrink-0 backdrop-blur-xl bg-black/50 p-5 sm:p-6 rounded-3xl border border-red-900/40 shadow-[0_10px_50px_rgba(220,38,38,0.3)] mb-2 sm:mb-6">
+          <div class="glass-panel flex flex-col gap-3 items-center w-full max-w-[400px] shrink-0 p-5 sm:p-6 border-2 border-red-900 mb-2 sm:mb-6">
                 <div id="score-save-container" class="w-full flex flex-col gap-3 mb-2 hidden">
                     <p class="text-[10px] sm:text-xs text-red-400 font-bold uppercase tracking-widest text-center"><i class="fa-solid fa-pen-fancy"></i> Registra la tua fine</p>
-                    <input type="text" id="playerName" maxlength="10" placeholder="IL TUO NOME..." class="w-full bg-black/80 border border-red-900/50 text-white font-bold text-center py-3.5 rounded-xl focus:outline-none focus:border-red-500 uppercase tracking-widest text-sm shadow-inner transition-colors">
-                    <button id="btn-save-score" onclick="submitScore()" class="w-full bg-red-900 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl text-sm border border-red-700 transition-colors uppercase tracking-widest shadow-[0_0_20px_rgba(220,38,38,0.4)]">Salva Punteggio</button>
+                    <input type="text" id="playerName" maxlength="10" placeholder="IL TUO NOME..." class="w-full bg-black/80 border-2 border-red-900 text-white font-bold text-center py-3.5 rounded-none focus:outline-none focus:border-red-500 focus:shadow-[4px_4px_0px_#ef4444] uppercase tracking-widest text-sm transition-all">
+                    <button id="btn-save-score" onclick="submitScore()" class="btn-cyber box-glow-red w-full bg-red-950 text-white font-bold py-3.5 rounded-none text-sm border-2 border-red-600 transition-colors uppercase tracking-widest">Salva Punteggio</button>
                 </div>
                 
                <button id="btn-restart" onclick="restartGame()" class="btn-cyber glass-panel box-glow-purple w-full py-4 sm:py-5 text-xl sm:text-2xl font-display text-purple-400 border-purple-500/30 group">
@@ -619,9 +619,8 @@ body.colorblind-mode #opt-colorblind-text {
 
         <!-- NEGOZIO E STATISTICHE COMPATTO (LISTA ORIZZONTALE) -->
             <div class="flex-1 w-full flex flex-col items-center justify-center gap-2.5 my-2 z-20 overflow-hidden">
-                
-                <!-- TITOLO NEGOZIO & MONETE -->
-                <div class="flex items-center justify-between w-full max-w-[450px] bg-black/60 px-5 py-2.5 rounded-xl border border-yellow-500/30 shadow-[0_0_15px_rgba(250,204,21,0.2)] shrink-0">
+             <!-- TITOLO NEGOZIO & MONETE -->
+                <div class="glass-panel flex items-center justify-between w-full max-w-[450px] px-5 py-2.5 rounded-none border-2 border-yellow-600 shadow-[4px_4px_0px_rgba(202,138,4,0.6)]! shrink-0">
                     <span class="text-gray-300 font-bold tracking-widest text-[10px] sm:text-xs uppercase">Potenziamenti:</span>
                     <span class="text-yellow-400 font-black text-xl sm:text-2xl drop-shadow-[0_0_8px_rgba(250,204,21,0.8)] flex items-center gap-2"><i class="fa-solid fa-coins"></i> <span id="shop-coins">0</span></span>
                 </div>
@@ -3398,9 +3397,17 @@ const UI = {
        /* Blocco JS Box-Shadow eliminato per preservare il framerate */
         
         let hasEssence = Game.player.essenceList.length > 0 || Game.player.overdrive;
-        if (hasEssence) {
-            this.els.essenceHud.classList.remove('opacity-0'); this.els.essenceHud.classList.add('opacity-100');
-            if (Game.player.overdrive) {
+        if (this.cache.hasEssence !== hasEssence) {
+            if (hasEssence) {
+                this.els.essenceHud.classList.remove('opacity-0'); this.els.essenceHud.classList.add('opacity-100');
+            } else {
+                this.els.essenceHud.classList.remove('opacity-100'); this.els.essenceHud.classList.add('opacity-0');
+            }
+            this.cache.hasEssence = hasEssence;
+        }
+        
+        if (hasEssence) {
+            if (Game.player.overdrive) {
                 for(let i=0; i<3; i++) this.els.stacks[i].className = `stack-dot active ${Game.player.essence}`;
                 this.els.overdriveText.classList.remove('hidden'); this.els.overdriveText.innerText = ESSENCE_NAMES[Game.player.essence]; this.els.overdriveText.style.color = '#' + ESSENCE_COLORS[Game.player.essence].toString(16).padStart(6,'0');
             } else {
@@ -3533,10 +3540,10 @@ const UI = {
                 }
             }
         }
-  // FLASH DANNO HARDWARE ACCELERATED (VERO Zero Reflow tramite Opacity)
-        // Ora si attiva SOLO se il giocatore è stato fisicamente colpito (flashTimer), non per il semplice screen shake.
+ // Ora si attiva SOLO se il giocatore è stato fisicamente colpito (flashTimer), non per il semplice screen shake.
         if (Game.player && Game.player.flashTimer > 0 && !Game.player.dead) {
-            this.els.damageFlash.style.opacity = '0.6';
+            // Dissolvenza legata matematicamente al timer di flash
+            this.els.damageFlash.style.opacity = (Game.player.flashTimer / 0.1) * 0.6;
         } else {
             this.els.damageFlash.style.opacity = '0';
         }

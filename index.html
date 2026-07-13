@@ -5526,17 +5526,31 @@ startGame(diffMult) {
                 this.uiCtx.translate(Math.round(pos.x), Math.round(pos.y));
                 this.uiCtx.scale(finalScale, finalScale);
                 
-                // OTTIMIZZAZIONE GPU/CPU: Rimosso lo shadowBlur (pesantissimo su mobile in loop).
-                // Sostituito con un triplo layer per dare spessore neon a costo ~zero.
-                this.uiCtx.lineWidth = isTouchDevice ? 4 : 6;
-                this.uiCtx.strokeStyle = 'rgba(0,0,0,0.85)'; // Ombra nera dura per staccare dal fondo
-                this.uiCtx.strokeText(ft.text, 2, 2); 
+               // ESTETICA & PERFORMANCE: Stile "Crisp Arcade".
+                // Dividiamo lineWidth e offset per finalScale: questo mantiene i bordi spessi sempre ESATTAMENTE 
+                // degli stessi pixel a schermo, prevenendo l'effetto "blob" illeggibile durante l'animazione di pop-in.
+                this.uiCtx.lineJoin = "round"; 
                 
-                this.uiCtx.lineWidth = isTouchDevice ? 2 : 3;
-                this.uiCtx.strokeStyle = ft.color; // Bordo colorato
+                let offset = (isTouchDevice ? 2 : 3) / finalScale;
+                
+                // 1. Drop Shadow nera (crea un forte distacco dal caos del pavimento 3D)
+                this.uiCtx.lineWidth = (isTouchDevice ? 3 : 5) / finalScale;
+                this.uiCtx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+                this.uiCtx.strokeText(ft.text, offset, offset); 
+                
+                // 2. Bordo nero netto e sottile (ridà nitidezza assoluta ai bordi del font)
+                this.uiCtx.lineWidth = (isTouchDevice ? 2 : 3) / finalScale;
+                this.uiCtx.strokeStyle = '#000000';
                 this.uiCtx.strokeText(ft.text, 0, 0); 
                 
+                // 3. Colore interno del font (Pieno e brillante)
+                this.uiCtx.fillStyle = ft.color;
                 this.uiCtx.fillText(ft.text, 0, 0); 
+                
+                // 4. Highlight luminoso interno (Aggiunge un effetto 3D "glossy" a costo computazionale zero)
+                this.uiCtx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                this.uiCtx.fillText(ft.text, -1 / finalScale, -1 / finalScale);
+                
                 this.uiCtx.restore();
             }
         }

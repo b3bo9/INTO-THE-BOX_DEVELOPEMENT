@@ -3299,7 +3299,6 @@ const UI = {
         this.els.btnDashFill = document.getElementById('btn-dash-fill');
         this.els.vignette = document.getElementById('vignette');
         this.els.bloodVignette = document.getElementById('blood-vignette');
-        // --- NUOVO: Aggiungi queste 7 righe qui sotto ---
         let flashDiv = document.createElement('div');
         flashDiv.className = 'absolute inset-0 pointer-events-none z-[6] opacity-0 transition-opacity duration-75';
         flashDiv.style.background = 'radial-gradient(circle at center, transparent 40%, rgba(255, 0, 0, 0.8) 100%)';
@@ -3307,7 +3306,16 @@ const UI = {
         document.getElementById('hud').appendChild(flashDiv);
         this.els.damageFlash = flashDiv;
         // -------------------------------------------------
-    },
+        
+        // --- INIZIO ANNUNCIATORE ARCADE ---
+        let annDiv = document.createElement('div');
+        annDiv.className = 'absolute top-[15%] sm:top-[12%] left-1/2 transform -translate-x-1/2 z-50 pointer-events-none text-center opacity-0 transition-all duration-200';
+        annDiv.innerHTML = '<h1 id="announcer-text" class="text-4xl sm:text-6xl font-black italic tracking-tighter uppercase font-display drop-shadow-[0_0_20px_rgba(255,0,0,0.8)]" style="transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: skewX(-5deg) scale(0.5);"></h1>';
+        document.getElementById('hud').appendChild(annDiv);
+        this.els.announcer = annDiv;
+        this.els.announcerText = document.getElementById('announcer-text');
+        // --- FINE ANNUNCIATORE ARCADE ---
+    },
     update() {
         
         if (!Game.player) return;
@@ -3645,9 +3653,31 @@ triggerComboAnim(combo) {
             comboPanel.style.borderColor = `rgba(75, 85, 99, 0.4) ${borderColor} rgba(75, 85, 99, 0.4) rgba(75, 85, 99, 0.4)`;
         }
 
-        setTimeout(() => { 
+      setTimeout(() => { 
             this.els.comboText.style.transform = `scale(${1 + Math.min(combo * 0.01, 0.1)})`; 
         }, 50);
+    },
+    
+    showAnnouncer(text, colorHex) {
+        if (!this.els.announcer) return;
+        this.els.announcerText.innerText = text;
+        this.els.announcerText.style.color = colorHex;
+        this.els.announcerText.style.textShadow = `0 0 25px ${colorHex}`;
+        
+        this.els.announcer.classList.remove('opacity-0', 'translate-y-4');
+        this.els.announcer.classList.add('opacity-100', 'translate-y-0');
+        this.els.announcerText.style.transform = 'skewX(-8deg) scale(1.3)';
+        
+        setTimeout(() => {
+            if(this.els.announcerText) this.els.announcerText.style.transform = 'skewX(-8deg) scale(1.0)';
+        }, 150);
+        
+        clearTimeout(this._announcerTimeout);
+        this._announcerTimeout = setTimeout(() => {
+            this.els.announcer.classList.remove('opacity-100', 'translate-y-0');
+            this.els.announcer.classList.add('opacity-0', '-translate-y-4');
+            this.els.announcerText.style.transform = 'skewX(-8deg) scale(0.5)';
+        }, 2000);
     }
 };
 const Game = {
@@ -3864,14 +3894,33 @@ Game.scene.add(this.dynamicDebrisMesh);
         fl.life = duration; fl.maxLife = duration;
     },
 
-    spawnDecal(x, z, type) {
+   spawnDecal(x, z, type, angle = null) {
         if (!this.bloodMesh) return;
         let dummy = this._dummyFog; 
         dummy.position.set(x, 0.15 + (this.bloodIdx * 0.001), z);
         
-       let s = type === 'blood' ? MathUtils.randomRange(1.2, 2.5) : MathUtils.randomRange(3.0, 5.0);
-        dummy.scale.set(s, 1, s);
-        dummy.rotation.set(0, Math.random() * Math.PI * 2, 0); // <-- FIX: Resetta X e Z a 0
+        if (type === 'blood') {
+            // Decalcomania allungata per simulare lo schizzo balistico (Stretch)
+            let sWidth = MathUtils.randomRange(0.8, 1.5);
+            let sLength = MathUtils.randomRange(3.0, 5.0); 
+            dummy.scale.set(sWidth, 1, sLength);
+            
+            // Applica la rotazione se c'è un angolo d'impatto, altrimenti spargimento casuale
+            let rotY = angle !== null ? (-angle + Math.PI/2 + MathUtils.randomRange(-0.15, 0.15)) : (Math.random() * Math.PI * 2);
+            dummy.rotation.set(0, rotY, 0);
+            
+            // Sposta la macchia in avanti rispetto al punto di impatto, così il sangue schizza "dietro" al nemico
+            if (angle !== null) {
+                dummy.position.x += Math.cos(angle) * (sLength * 2.5);
+                dummy.position.z += Math.sin(angle) * (sLength * 2.5);
+            }
+        } else {
+            // Comportamento standard rotondo per pozze e bruciature
+            let s = MathUtils.randomRange(3.0, 5.0);
+            dummy.scale.set(s, 1, s);
+            dummy.rotation.set(0, Math.random() * Math.PI * 2, 0);
+        }
+        
         dummy.updateMatrix();
         
         this.bloodMesh.setMatrixAt(this.bloodIdx, dummy.matrix);
@@ -3944,14 +3993,33 @@ Game.scene.add(this.dynamicDebrisMesh);
     getDecoy() { let d = this.decoys[this._decoyIdx]; this._decoyIdx = (this._decoyIdx + 1) % this.decoys.length; return d; },
     getDashLine() { let d = this.dashLines[this._dashLineIdx]; this._dashLineIdx = (this._dashLineIdx + 1) % this.dashLines.length; return d; },
 
-    addCombo(amount = 1) { 
-        this.combo += amount * (this.player ? this.player.modifiers.comboStep : 1); 
-        let maxCombo = (this.isCorrupted && this.corruptedType === 'combo') ? 300 : 100;
-        this.combo = Math.min(this.combo, maxCombo); 
-        this.comboMaxTime = 5.0 + (this.player ? this.player.modifiers.comboDecayAdd : 0);
-        this.comboTimer = this.comboMaxTime; 
-        UI.triggerComboAnim(this.combo); 
-    },
+   addCombo(amount = 1) { 
+        let oldCombo = this.combo;
+        this.combo += amount * (this.player ? this.player.modifiers.comboStep : 1); 
+        let maxCombo = (this.isCorrupted && this.corruptedType === 'combo') ? 300 : 100;
+        this.combo = Math.min(this.combo, maxCombo); 
+        this.comboMaxTime = 5.0 + (this.player ? this.player.modifiers.comboDecayAdd : 0);
+        this.comboTimer = this.comboMaxTime; 
+        UI.triggerComboAnim(this.combo); 
+        
+        // --- TRIGGER ANNUNCIATORE ARCADE ---
+        let thresholds = [
+            { hit: 25, text: "CARNAGE!", color: "#ffaa00" },
+            { hit: 50, text: "UNSTOPPABLE!", color: "#ff3300" },
+            { hit: 75, text: "GODLIKE!", color: "#aa00ff" },
+            { hit: 100, text: "ULTRA KILL!", color: "#00DDFF" },
+            { hit: 200, text: "APOCALYPSE!", color: "#ff00ff" },
+            { hit: 300, text: "TRANSCENDENT!", color: "#ffffff" }
+        ];
+        
+        for (let i = 0; i < thresholds.length; i++) {
+            if (oldCombo < thresholds[i].hit && this.combo >= thresholds[i].hit) {
+                if (UI.showAnnouncer) UI.showAnnouncer(thresholds[i].text, thresholds[i].color);
+                AudioEngine.playLevelUp(); // Causa un trillo molto appagante!
+                this.addTrauma(1.5); // Tremolio d'impatto a schermo
+            }
+        }
+    },
     resetCombo() { this.combo = 0; this.comboTimer = 0; },
     addUltimateCharge(amount) { if (!this.ultimateActive) this.ultimateCharge = Math.min(100, this.ultimateCharge + amount); },
 
@@ -8790,12 +8858,14 @@ Game.scene.add(this.telegraphMesh);
 
      
 
-      // --- SANGUE CORRETTAMENTE POSIZIONATO ---
-        // Ora usa la funzione unificata: se infetto lascia la pozza verde velenosa, altrimenti sangue
+     // --- SANGUE DIREZIONALE E CORRETTAMENTE POSIZIONATO ---
         if (this.infected) {
             Game.spawnDecal(this.x, this.y, 'poison');
         } else {
-            Game.spawnDecal(this.x, this.y, 'blood');
+            let impactAngle = null;
+            // Se conosciamo la fonte del danno (giocatore o proiettile), calcoliamo il vettore balistico
+            if (source) impactAngle = Math.atan2(this.y - source.y, this.x - source.x);
+            Game.spawnDecal(this.x, this.y, 'blood', impactAngle);
         }
         // ----------------------------------------
       // CLEANUP MATERIALI CLONATI (Es. Pursuer)

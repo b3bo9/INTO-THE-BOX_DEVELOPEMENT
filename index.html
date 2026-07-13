@@ -6521,7 +6521,8 @@ class Entity {
         
        // --- HIT FEEDBACK DIREZIONALE ELEMENTALE (IMPATTO POTENZIATO) ---
         if (source === Game.player) {
-            let bounceAngle = Math.atan2(Game.player.y - this.y, Game.player.x - this.x);
+            // Calcola la direzione del proiettile (dal giocatore VERSO il nemico)
+            let impactAngle = Math.atan2(this.y - Game.player.y, this.x - Game.player.x);
             
             let sparkMat = SharedMat.spriteWhite;
             if (Game.ultimateActive) sparkMat = SharedMat.spriteBlue;
@@ -6541,7 +6542,8 @@ class Entity {
             // 2. SCINTILLE VIOLENTE: Più veloci, più grandi, ma vivono meno a lungo (Look anime/arcade)
             let sparkCount = AppSettings.isLow ? 2 : (isCrit ? 6 : 3);
             for(let i=0; i<sparkCount; i++) {
-                let spread = bounceAngle + MathUtils.randomRange(-0.4, 0.4);
+                // Allarghiamo il cono visivo a -0.6 / +0.6 per un effetto "Shotgun" che si apre dietro al nemico
+                let spread = impactAngle + MathUtils.randomRange(-0.6, 0.6); 
                 let p = Game.getParticle();
                 p.spawn(this.x, 20, this.y, sparkMat, 'spark');
                 

@@ -3822,14 +3822,52 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         this.prewarmShaders(); this.setupInputs(); this.initPools(); this._boundLoop = this.loop.bind(this); requestAnimationFrame(this._boundLoop);
     },
 prewarmShaders() {
+      prewarmShaders() {
         // Crea una scena invisibile usa-e-getta per forzare la GPU a compilare i materiali
         let warmScene = new THREE.Scene();
         let warmCam = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
+        
         SharedMatSet.forEach(mat => {
             let mesh = new THREE.Mesh(window.GLOBAL_WALL_GEO || SharedGeo.box, mat);
             mesh.position.z = -2;
             warmScene.add(mesh);
         });
+
+        // FIX TEXTURE NERE MOBILE: Creiamo e compiliamo in anticipo i materiali della mappa!
+        // Questo spinge fisicamente i JPG nella VRAM della GPU del telefono DURANTE la schermata di caricamento.
+        if (!window.GLOBAL_THEME_MATS) {
+            window.GLOBAL_THEME_MATS = [];
+            const variants = ['', '_lava', '_ice'];
+            const MapMaterialClass = THREE.MeshPhongMaterial; // Garantisce coerenza con GameMap
+            
+            for (let i = 0; i < 3; i++) {
+                let v = variants[i];
+                let tDirt = Preloader.textures['dirt' + v];
+                let tGrass = Preloader.textures['grass' + v];
+                let tRock = Preloader.textures['rock' + v];
+                let tWall = Preloader.textures['wall' + v];
+                
+                [tDirt, tGrass, tRock, tWall].forEach(t => {
+                    if (t) { t.anisotropy = this.renderer.capabilities.getMaxAnisotropy(); t.encoding = THREE.sRGBEncoding; }
+                });
+                if (tWall) { tWall.wrapS = THREE.RepeatWrapping; tWall.wrapT = THREE.RepeatWrapping; tWall.repeat.set(1, 1.5); }
+
+                let mats = {
+                    dirt: new MapMaterialClass({ map: tDirt, shininess: 0, specular: 0x000000 }),
+                    grass: new MapMaterialClass({ map: tGrass, shininess: 0, specular: 0x000000, alphaMap: GLOBAL_ALPHA_TEX, transparent: true, depthWrite: false }),
+                    rock: new MapMaterialClass({ map: tRock, shininess: 15, specular: 0x222222, alphaMap: GLOBAL_ALPHA_TEX, transparent: true, depthWrite: false }),
+                    wall: new MapMaterialClass({ map: tWall, shininess: 10, specular: 0x111111 })
+                };
+                window.GLOBAL_THEME_MATS.push(mats);
+                
+                // Mettiamo i nuovi materiali nella finta scena per dirgli "Compilali Subito!"
+                warmScene.add(new THREE.Mesh(SharedGeo.box, mats.dirt));
+                warmScene.add(new THREE.Mesh(SharedGeo.box, mats.grass));
+                warmScene.add(new THREE.Mesh(SharedGeo.box, mats.rock));
+                warmScene.add(new THREE.Mesh(SharedGeo.box, mats.wall));
+            }
+        }
+
         this.renderer.compile(warmScene, warmCam);
     },
     initPools() {
@@ -6521,7 +6559,6 @@ class Entity {
         
        // --- HIT FEEDBACK DIREZIONALE ELEMENTALE (IMPATTO POTENZIATO) ---
         if (source === Game.player) {
-            // Calcola la direzione del proiettile (dal giocatore VERSO il nemico)
             let impactAngle = Math.atan2(this.y - Game.player.y, this.x - Game.player.x);
             
             let sparkMat = SharedMat.spriteWhite;
@@ -6533,8 +6570,8 @@ class Entity {
             // 1. FLASH DI IMPATTO: Un cerchio istantaneo che "poppa" sul punto di contatto
             if (!AppSettings.isLow) {
                 let flash = Game.getParticle();
-                // Usiamo 'nova' che è un cerchio che si espande e svanisce velocemente
-                flash.spawn(this.x + Math.cos(bounceAngle)*10, 20, this.y + Math.sin(bounceAngle)*10, sparkMat, 'nova');
+                // FIX CRASH: La variabile ora si chiama correttamente impactAngle!
+                flash.spawn(this.x + Math.cos(impactAngle)*10, 20, this.y + Math.sin(impactAngle)*10, sparkMat, 'nova');
                 flash.baseSize = isCrit ? 65 : 40;
                 flash.life = 0.1; flash.maxLife = 0.1; // Fulmineo
             }
@@ -10224,14 +10261,20 @@ const Preloader = {
             initScreen.style.pointerEvents = 'auto';
         };
 
-        this.manager.onProgress = (url, itemsLoaded, itemsTotal) => {
+       this.manager.onProgress = (url, itemsLoaded, itemsTotal) => {
             if (itemsTotal > 0) loadingProgress.innerText = Math.floor((itemsLoaded / itemsTotal) * 100);
         };
 
-        this.manager.onLoad = () => { forceUnlock(); };
+        this.manager.onLoad = () => { 
+            loadingProgress.innerText = "100";
+            // Diamo 500ms in più alla fine del download per permettere alla GPU del telefono di assestarsi
+            setTimeout(forceUnlock, 500); 
+        };
         this.manager.onError = (url) => { console.warn("Manca file:", url); };
 
-        setTimeout(forceUnlock, 2000); 
+        // FIX TEXTURE NERE: Rimosso il blocco forzato di 2 secondi. Aggiungiamo un failsafe 
+        // lunghissimo (12 secondi) in caso la connessione mobile del giocatore cada.
+        setTimeout(forceUnlock, 12000); 
 
         const texLoader = new THREE.TextureLoader(this.manager);
         this.textures.smoke = texLoader.load('smoke.png');

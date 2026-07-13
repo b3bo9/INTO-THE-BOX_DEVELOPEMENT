@@ -3822,7 +3822,7 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         this.prewarmShaders(); this.setupInputs(); this.initPools(); this._boundLoop = this.loop.bind(this); requestAnimationFrame(this._boundLoop);
     },
 prewarmShaders() {
-      prewarmShaders() {
+   
         // Crea una scena invisibile usa-e-getta per forzare la GPU a compilare i materiali
         let warmScene = new THREE.Scene();
         let warmCam = new THREE.PerspectiveCamera(50, 1, 0.1, 10);

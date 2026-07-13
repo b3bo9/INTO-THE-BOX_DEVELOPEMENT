@@ -67,14 +67,26 @@
             position: relative;
         }
         
-        /* I Pannelli HUD In-Game: Traslucidi, bordo sottile, non ostruiscono l'azione */
+        /* I Pannelli HUD In-Game: Traslucidi con Pattern Cyber-Grid */
         .hud-panel {
-            background: rgba(5, 5, 8, 0.55) !important;
-            backdrop-filter: blur(2px) !important;
-            -webkit-backdrop-filter: blur(2px) !important;
+            background: rgba(5, 5, 8, 0.65) !important;
+            /* Griglia olografica CSS-only a costo zero */
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px) !important;
+            background-size: 6px 6px !important;
+            backdrop-filter: blur(3px) !important;
+            -webkit-backdrop-filter: blur(3px) !important;
             border: 1px solid rgba(255, 255, 255, 0.15) !important;
             border-radius: 0 !important;
             box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.4) !important;
+            position: relative;
+        }
+        /* Bagliore interno per incastonare la griglia nel vetro */
+        .hud-panel::before {
+            content: ""; position: absolute; inset: 0;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+            pointer-events: none; z-index: -1;
         }
 
         /* Dettaglio Cyber-Hardware (Rinforzi agli angoli) solo per i menu */
@@ -856,7 +868,8 @@ body.colorblind-mode #opt-colorblind-text {
                     </div>
                     <!-- HEALTH BAR (Brutalista) -->
                     <div class="w-full h-3.5 sm:h-4 bg-gray-900 border border-gray-700 overflow-hidden relative">
-                        <div id="ui-hp-fill" class="h-full bg-red-600 transition-all duration-150"></div>
+                        <div id="ui-hp-catchup" class="absolute top-0 left-0 h-full w-full bg-white transition-transform origin-left"></div>
+                        <div id="ui-hp-fill" class="absolute top-0 left-0 h-full w-full bg-red-600 transition-transform duration-100 origin-left"></div>
                     </div>
                 </div>
             </div>
@@ -1557,26 +1570,24 @@ const MathUtils = {
 
 const TILE_SIZE = 64; const CHUNK_SIZE = 30; const FIXED_TIME_STEP = 1 / 60; const MAX_TIME_STEP = 0.1;
  const MAP_THEMES = [
-    // TEMA 1: FORESTA OSCURA (Contrasto Teal & Orange)
-    // Ombre blu notte profondo, luce della luna arancio/calda
+   const MAP_THEMES = [
+    // TEMA 1: FORESTA OSCURA (Complementare: Ombre Indigo profondo vs Luce Oro tagliente)
     { 
-        dirt: 0x705848, grass: 0x446048, rock: 0x5c5c6e, wall: 0x3a3a48, 
+        dirt: 0x504038, grass: 0x2a402a, rock: 0x4a4a5a, wall: 0x2a2a38, 
         grassShader: 0x1a2b16, tree: 0x0a0807,
-        ambient: 0x0a1128, dirLight: 0xffa055, fog: 0x050a14
+        ambient: 0x0b001a, dirLight: 0xff8c00, fog: 0x080511
     },
-   // TEMA 2: ABISSO INFERNALE (Contrasto Viola & Giallo Zolfo)
-   // Ombre viola/cremisi scuro, luce giallo accecante
+    // TEMA 2: ABISSO INFERNALE (Complementare: Ombre Ottanio scuro vs Luce Cremisi)
     { 
-        dirt: 0x702020, grass: 0xbb2020, rock: 0x501515, wall: 0x301010, 
-        grassShader: 0x600505, tree: 0x200505,
-        ambient: 0x1a0515, dirLight: 0xffcc00, fog: 0x11020a
+        dirt: 0x501515, grass: 0x881515, rock: 0x3a1010, wall: 0x220a0a, 
+        grassShader: 0x4a0505, tree: 0x1a0505,
+        ambient: 0x001a22, dirLight: 0xff3300, fog: 0x0a0205
     },
-    // TEMA 3: CAVERNA GLACIALE (Contrasto Blu Abissale & Ciano Elettrico)
-    // Ombre blu scurissimo, luce azzurro/bianco tagliente
+    // TEMA 3: CAVERNA GLACIALE (Complementare: Ombre Prugna/Magenta vs Luce Ciano)
     { 
-        dirt: 0x0f2035, grass: 0x155b88, rock: 0x10253a, wall: 0x0a1525, 
-        grassShader: 0x052a55, tree: 0x051a35,
-        ambient: 0x050a1a, dirLight: 0x99eeff, fog: 0x02050f
+        dirt: 0x0a1525, grass: 0x0f4066, rock: 0x081525, wall: 0x050a15, 
+        grassShader: 0x051a35, tree: 0x020a1a,
+        ambient: 0x1a001a, dirLight: 0x00ffff, fog: 0x05020a
     }
 ];
 
@@ -3276,11 +3287,13 @@ const UI = {
     cache: { hpPct: null, hpText: null, floor: null, enemiesLeft: null, ultActive: null, ultCharge: null, comboOpacity: null, lives: null, level: null, xpPct: null, isBossFloor: false, progressPct: null },
     els: {},
     init() { 
-        this.els.fpsValue = document.getElementById('fps-value'); // <--- RIGA CORRETTA
-        this.els.coins = document.getElementById('ui-coins');
-        this.els.hpFill = document.getElementById('ui-hp-fill'); this.els.hpText = document.getElementById('ui-hp-text');
+        this.els.fpsValue = document.getElementById('fps-value'); // <--- RIGA CORRETTA
+        this.els.coins = document.getElementById('ui-coins');
+        this.els.hpFill = document.getElementById('ui-hp-fill'); 
+        this.els.hpCatchup = document.getElementById('ui-hp-catchup'); // NUOVO CATCHUP
+        this.els.hpText = document.getElementById('ui-hp-text');
         this.els.lives = document.getElementById('ui-lives'); this.els.level = document.getElementById('ui-level'); 
-       this.els.xpCircle = document.getElementById('ui-xp-circle');
+        this.els.xpCircle = document.getElementById('ui-xp-circle');
         this.els.floor = document.getElementById('ui-floor'); 
         this.els.floorIcon = document.getElementById('ui-floor-icon'); // <-- NUOVA RIGA
         this.els.corruptionLabel = document.getElementById('ui-corruption-label');
@@ -3333,9 +3346,17 @@ const UI = {
             this.cache.maxHp = maxHp;
         }
 
-        let hpPct = (Game.player.stats.hp / Game.player.stats.maxHp) * 100;
+      let hpPct = (Game.player.stats.hp / Game.player.stats.maxHp) * 100;
         if (this.cache.hpPct !== hpPct) { 
-           this.els.hpFill.style.transform = `scaleX(${hpPct / 100})`;
+            // Se stiamo subendo danni, la barra bianca si ferma e poi "cade" verso il rosso in ritardo
+            if (this.cache.hpPct !== undefined && hpPct < this.cache.hpPct) {
+                this.els.hpCatchup.style.transition = 'transform 0.4s ease-out 0.15s';
+            } else {
+                // Se ci stiamo curando, la barra bianca sale istantaneamente e non crea artefatti
+                this.els.hpCatchup.style.transition = 'none';
+            }
+            this.els.hpFill.style.transform = `scaleX(${hpPct / 100})`;
+            this.els.hpCatchup.style.transform = `scaleX(${hpPct / 100})`;
             this.cache.hpPct = hpPct; 
         }
 
@@ -7339,6 +7360,40 @@ class Player extends Entity {
             // 2. La luce reale segue la bacchetta con un lievissimo ritardo (elastico)
             this.light.position.x += (this.modelParts.weaponGroup.position.x - this.light.position.x) * dt * 15;
             this.light.position.y += (this.modelParts.weaponGroup.position.y + 10 - this.light.position.y) * dt * 15;
+            
+            // --- NUOVO: FIAMMA DELL'ARMA REATTIVA AL VENTO CINETICO ---
+            // Se l'arma è carica (essenza o overdrive), emette una fiamma
+            if ((this.essence || this.overdrive || Game.ultimateActive) && Game.frameCount % (isTouchDevice ? 4 : 2) === 0) {
+                let pMat = SharedMat.spriteWhite;
+                if (Game.ultimateActive) pMat = SharedMat.spriteBlue;
+                else if (this.essence === 'red') pMat = SharedMat.spriteRed;
+                else if (this.essence === 'blue') pMat = SharedMat.spriteBlue;
+                else if (this.essence === 'green') pMat = SharedMat.spriteGreen;
+
+                let p = Game.getParticle();
+                
+                // La particella nasce esattamente sulla punta della bacchetta magica
+                let wAngle = -this.mesh.rotation.y + Math.PI/2;
+                let tipX = this.x + Math.cos(wAngle) * 12;
+                let tipZ = this.y + Math.sin(wAngle) * 12;
+                let tipY = 28 + this.animFloat;
+
+                p.spawn(tipX, tipY, tipZ, pMat, 'trail');
+                p.baseSize = Game.ultimateActive ? 22 : 14;
+                
+                // Dinamica del Vento: La fiamma viene "stirata" fisicamente nella direzione OPPOSTA al movimento!
+                // Più il giocatore corre veloce, più il fuoco si allunga all'indietro.
+                if (isMoving) {
+                    p.vx = -dx * this.speed * 0.45;
+                    p.vz = -dy * this.speed * 0.45;
+                } else {
+                    p.vx = MathUtils.randomRange(-10, 10);
+                    p.vz = MathUtils.randomRange(-10, 10);
+                }
+                // Tende sempre verso l'alto come il vero fuoco
+                p.vy = MathUtils.randomRange(30, 80); 
+                p.life = 0.25; p.maxLife = 0.25;
+            }
             // --------------------------------------------------------
 
             // Assicuriamoci che la scala torni normale quando non scatta

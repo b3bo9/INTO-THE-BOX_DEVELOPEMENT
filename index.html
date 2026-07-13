@@ -5519,18 +5519,23 @@ startGame(diffMult) {
                 
                 let fontStr = `900 40px 'Impact', sans-serif`; // Stringa statica!
                 
-               if (currentFont !== fontStr) { this.uiCtx.font = fontStr; currentFont = fontStr; }
+              if (currentFont !== fontStr) { this.uiCtx.font = fontStr; currentFont = fontStr; }
                 if (currentColor !== ft.color) { this.uiCtx.fillStyle = ft.color; currentColor = ft.color; }
                 
                this.uiCtx.save();
                 this.uiCtx.translate(Math.round(pos.x), Math.round(pos.y));
                 this.uiCtx.scale(finalScale, finalScale);
                 
-                // EFFETTO BLOOM SUI TESTI CANVAS:
-                this.uiCtx.shadowColor = ft.color;
-                this.uiCtx.shadowBlur = 12; // Sfocatura neon
+                // OTTIMIZZAZIONE GPU/CPU: Rimosso lo shadowBlur (pesantissimo su mobile in loop).
+                // Sostituito con un triplo layer per dare spessore neon a costo ~zero.
+                this.uiCtx.lineWidth = isTouchDevice ? 4 : 6;
+                this.uiCtx.strokeStyle = 'rgba(0,0,0,0.85)'; // Ombra nera dura per staccare dal fondo
+                this.uiCtx.strokeText(ft.text, 2, 2); 
                 
+                this.uiCtx.lineWidth = isTouchDevice ? 2 : 3;
+                this.uiCtx.strokeStyle = ft.color; // Bordo colorato
                 this.uiCtx.strokeText(ft.text, 0, 0); 
+                
                 this.uiCtx.fillText(ft.text, 0, 0); 
                 this.uiCtx.restore();
             }
@@ -9628,12 +9633,14 @@ class Debris {
         Nel caos dell'esplosione, il giocatore non noterà la differenza.
         */
 
-        // 1. Colore dell'istanza (Zero-Allocation)
-        Game._dummyColor = Game._dummyColor || new THREE.Color();
+        // 1. Colore dell'istanza (Zero-Allocation Fix Definitivo)
+        if (!Game._dummyColor) Game._dummyColor = new THREE.Color();
+        if (!Game._eliteMixColor) Game._eliteMixColor = new THREE.Color(0x440000); // Istanzia in cache una volta sola!
+        
         Game._dummyColor.setHex(colorHex);
         // Gli InstancedMesh non supportano l'emissivo per-istanza nativamente, 
         // quindi scuriamo/mischiamo il colore se è un Elite per distinguerlo.
-        if (isElite) Game._dummyColor.lerp(new THREE.Color(0x440000), 0.5);
+        if (isElite) Game._dummyColor.lerp(Game._eliteMixColor, 0.5); // Niente più 'new THREE.Color' nel loop
         
         Game.dynamicDebrisMesh.setColorAt(this.index, Game._dummyColor);
         Game.dynamicDebrisMesh.instanceColor.needsUpdate = true;
@@ -10206,7 +10213,7 @@ const Preloader = {
             Game.coins -= cost;
             AudioEngine.playCoin();
 
-            this.costs[type] += 4; // Rincaro lineare ++
+            this.costs[type] += 3; // Rincaro lineare ++
 
             if (type === 'hp') { 
                 Game.player.stats.maxHp += 15; Game.player.baseStats.maxHp += 15; Game.player.stats.hp += 15; this.bonus.hp += 15; 
@@ -10246,7 +10253,7 @@ const Preloader = {
 
     reset() {
         this.bonus = { hp: 0, dmg: 0, speed: 0, atkSpeed: 0, crit: 0 };
-        this.costs = { hp: 6, dmg: 9, speed: 7, atkSpeed: 9, crit: 8 };
+        this.costs = { hp: 6, dmg: 8, speed: 7, atkSpeed: 9, crit: 8 };
     }
 };
 

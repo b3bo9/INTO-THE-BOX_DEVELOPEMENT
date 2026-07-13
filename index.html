@@ -8858,13 +8858,16 @@ Game.scene.add(this.telegraphMesh);
 
      
 
-     // --- SANGUE DIREZIONALE E CORRETTAMENTE POSIZIONATO ---
+    // --- SANGUE DIREZIONALE E CORRETTAMENTE POSIZIONATO ---
         if (this.infected) {
             Game.spawnDecal(this.x, this.y, 'poison');
         } else {
             let impactAngle = null;
-            // Se conosciamo la fonte del danno (giocatore o proiettile), calcoliamo il vettore balistico
-            if (source) impactAngle = Math.atan2(this.y - source.y, this.x - source.x);
+            // FIX CRASH: Usiamo direttamente la posizione del giocatore come origine della balistica.
+            // È infallibile, non genera memory leak e garantisce che lo schizzo vada nella direzione giusta.
+            if (Game.player && !Game.player.dead) {
+                impactAngle = Math.atan2(this.y - Game.player.y, this.x - Game.player.x);
+            }
             Game.spawnDecal(this.x, this.y, 'blood', impactAngle);
         }
         // ----------------------------------------

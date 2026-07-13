@@ -3307,10 +3307,12 @@ const UI = {
         this.els.damageFlash = flashDiv;
         // -------------------------------------------------
         
-        // --- INIZIO ANNUNCIATORE ARCADE ---
+       // --- INIZIO ANNUNCIATORE ARCADE ---
         let annDiv = document.createElement('div');
-        annDiv.className = 'absolute top-[15%] sm:top-[12%] left-1/2 transform -translate-x-1/2 z-50 pointer-events-none text-center opacity-0 transition-all duration-200';
-        annDiv.innerHTML = '<h1 id="announcer-text" class="text-4xl sm:text-6xl font-black italic tracking-tighter uppercase font-display drop-shadow-[0_0_20px_rgba(255,0,0,0.8)]" style="transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: skewX(-5deg) scale(0.5);"></h1>';
+        // FIX UI: Abbassato dal 15% al 22% su Mobile (e dal 12% al 20% su PC) per non coprire l'HUD
+        annDiv.className = 'absolute top-[22%] sm:top-[20%] left-1/2 transform -translate-x-1/2 z-50 pointer-events-none text-center opacity-0 transition-all duration-200';
+        // FIX UI: Ingrandito da 4xl a 5xl su Mobile (e da 6xl a 7xl su PC) per maggiore impatto
+        annDiv.innerHTML = '<h1 id="announcer-text" class="text-5xl sm:text-7xl font-black italic tracking-tighter uppercase font-display drop-shadow-[0_0_20px_rgba(255,0,0,0.8)]" style="transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: skewX(-5deg) scale(0.5);"></h1>';
         document.getElementById('hud').appendChild(annDiv);
         this.els.announcer = annDiv;
         this.els.announcerText = document.getElementById('announcer-text');
@@ -6576,21 +6578,20 @@ class Entity {
                 flash.life = 0.1; flash.maxLife = 0.1; // Fulmineo
             }
 
-            // 2. SCINTILLE VIOLENTE: Più veloci, più grandi, ma vivono meno a lungo (Look anime/arcade)
+            // 2. SCINTILLE CORPOSE: Rallentate e ingrandite per far apprezzare la direzione del colpo
             let sparkCount = AppSettings.isLow ? 2 : (isCrit ? 6 : 3);
             for(let i=0; i<sparkCount; i++) {
-                // Allarghiamo il cono visivo a -0.6 / +0.6 per un effetto "Shotgun" che si apre dietro al nemico
-                let spread = impactAngle + MathUtils.randomRange(-0.6, 0.6); 
+                let spread = impactAngle + MathUtils.randomRange(-0.4, 0.4);
                 let p = Game.getParticle();
                 p.spawn(this.x, 20, this.y, sparkMat, 'spark');
                 
-                // Fisica esplosiva e tagliente: sparate a velocità doppia ma con vita cortissima
-                let spd = MathUtils.randomRange(600, 1100);
+                // Fisica rallentata e più visibile: le schegge restano in aria più a lungo
+                let spd = MathUtils.randomRange(300, 650); // Velocità dimezzata
                 p.vx = Math.cos(spread) * spd;
                 p.vz = Math.sin(spread) * spd;
-                p.vy = MathUtils.randomRange(50, 150); // Più orizzontali e dirette
-                p.baseSize = MathUtils.randomRange(18, 30);
-                p.life = MathUtils.randomRange(0.1, 0.2); // Spariscono quasi subito creando una "lama" di luce
+                p.vy = MathUtils.randomRange(80, 200); // Più arco verticale per renderle tridimensionali
+                p.baseSize = MathUtils.randomRange(22, 35); // Leggermente più spesse per compensare la lentezza
+                p.life = MathUtils.randomRange(0.2, 0.45); // Vivono più del doppio di prima
                 p.maxLife = p.life;
             }
         }

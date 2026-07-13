@@ -3558,18 +3558,16 @@ const UI = {
         
    let hpRatio = Game.player.stats.hp / Game.player.stats.maxHp;
 
-      // ATTIVAZIONE SCHERMO CRT & VIGNETTA SANGUE (Sotto il 30% HP)
+     // ATTIVAZIONE SCHERMO CRT & VIGNETTA SANGUE (Sotto il 30% HP)
         let isLowHp = hpRatio < 0.30 && !Game.player.dead;
         
-        // FIX BUG WARP-OUT: Disattiviamo la classe CSS se stiamo cambiando livello.
-        // Se non lo facciamo, "opacity: 1 !important" della classe bloccherà il fade-to-black dell'animazione!
         if (isLowHp && Game.state !== 'WARPING_OUT' && Game.state !== 'WARPING_IN') {
             this.els.bloodVignette.classList.add('vignette-low-hp-active');
             document.body.classList.add('crt-active');
         } else {
             this.els.bloodVignette.classList.remove('vignette-low-hp-active');
-            // IMPORTANTE: Rimuove l'effetto CRT solo se il giocatore NON è morto
-            if (!Game.player.dead) {
+            // FIX DEFINITIVO: Rimuove l'effetto CRT sia se il giocatore si cura, sia se compare la schermata di morte
+            if (!Game.player.dead || Game.state === 'DEAD') {
                 document.body.classList.remove('crt-active');
             }
         }
@@ -3894,32 +3892,15 @@ Game.scene.add(this.dynamicDebrisMesh);
         fl.life = duration; fl.maxLife = duration;
     },
 
-   spawnDecal(x, z, type, angle = null) {
+  spawnDecal(x, z, type) {
         if (!this.bloodMesh) return;
         let dummy = this._dummyFog; 
         dummy.position.set(x, 0.15 + (this.bloodIdx * 0.001), z);
         
-        if (type === 'blood') {
-            // Decalcomania allungata per simulare lo schizzo balistico (Stretch)
-            let sWidth = MathUtils.randomRange(0.8, 1.5);
-            let sLength = MathUtils.randomRange(3.0, 5.0); 
-            dummy.scale.set(sWidth, 1, sLength);
-            
-            // Applica la rotazione se c'è un angolo d'impatto, altrimenti spargimento casuale
-            let rotY = angle !== null ? (-angle + Math.PI/2 + MathUtils.randomRange(-0.15, 0.15)) : (Math.random() * Math.PI * 2);
-            dummy.rotation.set(0, rotY, 0);
-            
-            // Sposta la macchia in avanti rispetto al punto di impatto, così il sangue schizza "dietro" al nemico
-            if (angle !== null) {
-                dummy.position.x += Math.cos(angle) * (sLength * 2.5);
-                dummy.position.z += Math.sin(angle) * (sLength * 2.5);
-            }
-        } else {
-            // Comportamento standard rotondo per pozze e bruciature
-            let s = MathUtils.randomRange(3.0, 5.0);
-            dummy.scale.set(s, 1, s);
-            dummy.rotation.set(0, Math.random() * Math.PI * 2, 0);
-        }
+        // RIPRISTINO SANGUE: Torniamo alle pozzanghere circolari di varia grandezza
+        let s = type === 'blood' ? MathUtils.randomRange(1.2, 2.5) : MathUtils.randomRange(3.0, 5.0);
+        dummy.scale.set(s, 1, s);
+        dummy.rotation.set(0, Math.random() * Math.PI * 2, 0);
         
         dummy.updateMatrix();
         
@@ -6535,8 +6516,37 @@ class Entity {
             }
         }
 
-        let pCount = AppSettings.isLow ? (isCrit ? 2 : 1) : (isCrit ? (isTouchDevice ? 4 : (AppSettings.isUltraPC ? 16 : 8)) : (isTouchDevice ? 2 : (AppSettings.isUltraPC ? 8 : 4)));
-       for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
+       let pCount = AppSettings.isLow ? (isCrit ? 2 : 1) : (isCrit ? (isTouchDevice ? 4 : (AppSettings.isUltraPC ? 16 : 8)) : (isTouchDevice ? 2 : (AppSettings.isUltraPC ? 8 : 4)));
+        for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
+        
+        // --- HIT FEEDBACK DIREZIONALE ELEMENTALE ---
+        if (source === Game.player) {
+            // Calcola la direzione opposta (dal nemico verso il giocatore) per simulare l'impatto e il rimbalzo
+            let bounceAngle = Math.atan2(Game.player.y - this.y, Game.player.x - this.x);
+            
+            // Assegna il colore dell'elemento o dell'ascensione attiva
+            let sparkMat = SharedMat.spriteWhite;
+            if (Game.ultimateActive) sparkMat = SharedMat.spriteBlue;
+            else if (Game.player.essence === 'red') sparkMat = SharedMat.spriteRed;
+            else if (Game.player.essence === 'blue') sparkMat = SharedMat.spriteBlue;
+            else if (Game.player.essence === 'green') sparkMat = SharedMat.spriteGreen;
+
+            // Spawna poche scintille mirate
+            let sparkCount = AppSettings.isLow ? 1 : 3;
+            for(let i=0; i<sparkCount; i++) {
+                let spread = bounceAngle + MathUtils.randomRange(-0.3, 0.3); // Leggera dispersione a cono
+                let p = Game.getParticle();
+                p.spawn(this.x, 20, this.y, sparkMat, 'spark');
+                
+                // Fisica: le spara fisicamente in direzione del giocatore
+                p.vx = Math.cos(spread) * MathUtils.randomRange(250, 450);
+                p.vz = Math.sin(spread) * MathUtils.randomRange(250, 450);
+                p.vy = MathUtils.randomRange(150, 300);
+                p.baseSize = MathUtils.randomRange(10, 18);
+            }
+        }
+        // -------------------------------------------
+        
         this.flashTimer = 0.1; 
         this.hitSquashTimer = 0.15; // Innesca lo Squash & Stretch
         for (let i = 0; i < this.flashMats.length; i++) this.flashMats[i].emissive.setHex(0x555555);
@@ -8858,19 +8868,12 @@ Game.scene.add(this.telegraphMesh);
 
      
 
-    // --- SANGUE DIREZIONALE E CORRETTAMENTE POSIZIONATO ---
-        if (this.infected) {
+    if (this.infected) {
             Game.spawnDecal(this.x, this.y, 'poison');
         } else {
-            let impactAngle = null;
-            // FIX CRASH: Usiamo direttamente la posizione del giocatore come origine della balistica.
-            // È infallibile, non genera memory leak e garantisce che lo schizzo vada nella direzione giusta.
-            if (Game.player && !Game.player.dead) {
-                impactAngle = Math.atan2(this.y - Game.player.y, this.x - Game.player.x);
-            }
-            Game.spawnDecal(this.x, this.y, 'blood', impactAngle);
+            // Richiamo pulito senza angoli balistici
+            Game.spawnDecal(this.x, this.y, 'blood');
         }
-        // ----------------------------------------
       // CLEANUP MATERIALI CLONATI (Es. Pursuer)
         const cleanupChild = (child) => {
             if ((child.isMesh || child.isSprite) && child.material && child.material !== this.mat && !SharedMatSet.has(child.material)) {

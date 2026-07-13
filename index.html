@@ -6519,30 +6519,40 @@ class Entity {
        let pCount = AppSettings.isLow ? (isCrit ? 2 : 1) : (isCrit ? (isTouchDevice ? 4 : (AppSettings.isUltraPC ? 16 : 8)) : (isTouchDevice ? 2 : (AppSettings.isUltraPC ? 8 : 4)));
         for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteBlood, 'blood');
         
-        // --- HIT FEEDBACK DIREZIONALE ELEMENTALE ---
+       // --- HIT FEEDBACK DIREZIONALE ELEMENTALE (IMPATTO POTENZIATO) ---
         if (source === Game.player) {
-            // Calcola la direzione opposta (dal nemico verso il giocatore) per simulare l'impatto e il rimbalzo
             let bounceAngle = Math.atan2(Game.player.y - this.y, Game.player.x - this.x);
             
-            // Assegna il colore dell'elemento o dell'ascensione attiva
             let sparkMat = SharedMat.spriteWhite;
             if (Game.ultimateActive) sparkMat = SharedMat.spriteBlue;
             else if (Game.player.essence === 'red') sparkMat = SharedMat.spriteRed;
             else if (Game.player.essence === 'blue') sparkMat = SharedMat.spriteBlue;
             else if (Game.player.essence === 'green') sparkMat = SharedMat.spriteGreen;
 
-            // Spawna poche scintille mirate
-            let sparkCount = AppSettings.isLow ? 1 : 3;
+            // 1. FLASH DI IMPATTO: Un cerchio istantaneo che "poppa" sul punto di contatto
+            if (!AppSettings.isLow) {
+                let flash = Game.getParticle();
+                // Usiamo 'nova' che è un cerchio che si espande e svanisce velocemente
+                flash.spawn(this.x + Math.cos(bounceAngle)*10, 20, this.y + Math.sin(bounceAngle)*10, sparkMat, 'nova');
+                flash.baseSize = isCrit ? 65 : 40;
+                flash.life = 0.1; flash.maxLife = 0.1; // Fulmineo
+            }
+
+            // 2. SCINTILLE VIOLENTE: Più veloci, più grandi, ma vivono meno a lungo (Look anime/arcade)
+            let sparkCount = AppSettings.isLow ? 2 : (isCrit ? 6 : 3);
             for(let i=0; i<sparkCount; i++) {
-                let spread = bounceAngle + MathUtils.randomRange(-0.3, 0.3); // Leggera dispersione a cono
+                let spread = bounceAngle + MathUtils.randomRange(-0.4, 0.4);
                 let p = Game.getParticle();
                 p.spawn(this.x, 20, this.y, sparkMat, 'spark');
                 
-                // Fisica: le spara fisicamente in direzione del giocatore
-                p.vx = Math.cos(spread) * MathUtils.randomRange(250, 450);
-                p.vz = Math.sin(spread) * MathUtils.randomRange(250, 450);
-                p.vy = MathUtils.randomRange(150, 300);
-                p.baseSize = MathUtils.randomRange(10, 18);
+                // Fisica esplosiva e tagliente: sparate a velocità doppia ma con vita cortissima
+                let spd = MathUtils.randomRange(600, 1100);
+                p.vx = Math.cos(spread) * spd;
+                p.vz = Math.sin(spread) * spd;
+                p.vy = MathUtils.randomRange(50, 150); // Più orizzontali e dirette
+                p.baseSize = MathUtils.randomRange(18, 30);
+                p.life = MathUtils.randomRange(0.1, 0.2); // Spariscono quasi subito creando una "lama" di luce
+                p.maxLife = p.life;
             }
         }
         // -------------------------------------------
@@ -7887,11 +7897,12 @@ if (this.modifiers.flowMastery && !wasDead) {
                 
                 // NOTA: Il filtro CRT non viene tolto per lasciarlo visibile durante l'esplosione!
 
-                // Ritardiamo la UI della morte di 3 secondi totali
+              // Ritardiamo la UI della morte di 3 secondi totali
                 setTimeout(() => {
                     if (Game.state === 'MENU' || !this.dead) return;
                     
                     Game.state = 'DEAD';
+                    document.body.classList.remove('crt-active'); // FIX: Spegne brutalmente il vecchio monitor
                     let ds = document.getElementById('deathScreen');
                     ds.classList.remove('hidden');
                     

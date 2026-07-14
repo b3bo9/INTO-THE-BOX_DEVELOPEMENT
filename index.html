@@ -276,30 +276,49 @@
             0%, 100% { opacity: 0.3; }
             50% { opacity: 1; }
         }
-    /* --- NEBBIA VOLUMETRICA PARALLASSE (DOPPIO STRATO) --- */
-        #mist, #mist::after {
-            position: absolute; inset: -50%; z-index: 4; pointer-events: none;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.015' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.25'/%3E%3C/svg%3E");
-            mix-blend-mode: screen; 
-        }
-        #mist {
-            opacity: 0.35;
-            animation: mist-drift-layer1 70s linear infinite;
-        }
-        #mist::after {
-            content: '';
-            opacity: 0.25;
-            /* Lo strato superiore si muove in direzione diversa ed è scalato, creando parallasse */
-            animation: mist-drift-layer2 45s linear infinite;
-        }
-        @keyframes mist-drift-layer1 { 
-            from { transform: scale(1.2) translate(0, 0); } 
-            to { transform: scale(1.2) translate(-15%, -10%); } 
-        }
-        @keyframes mist-drift-layer2 { 
-            from { transform: scale(1.8) translate(0, 0) rotate(10deg); } 
-            to { transform: scale(1.8) translate(10%, -15%) rotate(10deg); } 
-        }
+    /* --- NEBBIA PNG OTTIMIZZATA PER MOBILE (60 FPS) --- */
+#mist, #mist::after {
+    position: absolute; 
+    top: 0; left: 0; 
+    width: 200%; height: 200%; /* Abbassato rispetto all'enorme inset: -50% */
+    z-index: 4; 
+    pointer-events: none;
+    
+    /* Inserisci qui il tuo file PNG */
+    background-image: url('smoke.png'); 
+    background-size: 256px 256px; /* Forza una dimensione fissa per evitare ricalcoli */
+    background-repeat: repeat;
+    
+    /* FIX CRITICO 1: NIENTE mix-blend-mode. Usiamo solo la normale opacità */
+    opacity: 0.15; /* Regola l'opacità per simulare l'effetto screen */
+    
+    /* FIX CRITICO 2: Forza l'uso di un core GPU dedicato per questo livello */
+    will-change: transform; 
+    backface-visibility: hidden;
+}
+
+#mist {
+    /* Translate3d forza l'accelerazione hardware rispetto al semplice Translate */
+    animation: mist-drift-layer1 60s linear infinite;
+}
+
+#mist::after {
+    content: '';
+    opacity: 0.10;
+    /* Strato superiore più grande per la parallasse */
+    background-size: 400px 400px;
+    animation: mist-drift-layer2 40s linear infinite;
+}
+
+@keyframes mist-drift-layer1 { 
+    from { transform: translate3d(0, 0, 0); } 
+    to { transform: translate3d(-256px, -256px, 0); } /* Si muove esattamente di un "tile" per essere infinito e invisibile al reset */
+}
+
+@keyframes mist-drift-layer2 { 
+    from { transform: translate3d(0, 0, 0); } 
+    to { transform: translate3d(400px, -400px, 0); } 
+}
        /* Stili Brutalisti per le Carte Reliquia */
         .relic-card { 
             transition: all 0.05s ease-out; cursor: pointer; 

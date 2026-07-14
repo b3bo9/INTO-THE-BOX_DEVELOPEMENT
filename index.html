@@ -6147,11 +6147,11 @@ class GameMap {
         } else if (Game.currentThemeIndex === 1) {
             // TEMA LAVA: Rocce opache ma incandescenti alla base
             activeMats.rock.shininess = 5;
-            activeMats.rock.emissive.setHex(0x220505);
-            if (AppSettings.isLow) {
-                activeMats.dirt.emissive.setHex(0x220505);
-                activeMats.dirt.emissiveIntensity = 0.5;
-            }
+            activeMats.rock.emissive.setHex(0x330000); // Rosso più intenso
+            
+            // FIX: Assegniamo l'emissivo SEMPRE, altrimenti l'intensità dinamica pulserà sul colore nero!
+            activeMats.dirt.emissive.setHex(0x220505);
+            activeMats.dirt.emissiveIntensity = 0.5;
         } else { 
             // TEMA FORESTA: Organico, ruvido e opaco
             activeMats.rock.shininess = 15;
@@ -6178,14 +6178,14 @@ class GameMap {
     window.GLOBAL_TELEGRAPH_GEO.rotateX(-Math.PI / 2);
 }
       const wallMesh = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, this.wallMat, wallCount);
-      // --- PREPARAZIONE RADICI (TEMA FORESTA) ---
+     // --- PREPARAZIONE RADICI (TEMA FORESTA) ---
         let rootMesh = null;
         let rIdx = 0;
         if (Game.currentThemeIndex === 0) {
             if (!window.GLOBAL_ROOT_MAT) {
-                // Ricicliamo la texture dell'ombra/bruciatura ma la tingiamo di verde muschio scuro!
+                // FIX: Colore verde brillante, opacità al 100% per farle risaltare sul pavimento scuro!
                 window.GLOBAL_ROOT_MAT = new THREE.MeshBasicMaterial({ 
-                    map: BLOB_SHADOW_TEX, color: 0x0a1a0f, transparent: true, opacity: 0.85, depthWrite: false 
+                    map: BLOB_SHADOW_TEX, color: 0x33aa33, transparent: true, opacity: 1.0, depthWrite: false 
                 });
             }
             rootMesh = new THREE.InstancedMesh(window.GLOBAL_SCORCH_GEO, window.GLOBAL_ROOT_MAT, wallCount + pillarCount);
@@ -7571,12 +7571,13 @@ class Player extends Entity {
                 // Il respiro esce "davanti" alla faccia del giocatore in base a dove mira
                 let px = this.x + Math.cos(this.angle) * 12;
                 let pz = this.y + Math.sin(this.angle) * 12;
-                // Usa la particella 'dust' bianca e la rende morbida
-                p.spawn(px, 26 + Game.animFloat, pz, SharedMat.spriteWhite, 'dust');
-                p.vy = MathUtils.randomRange(5, 10); // Sale lentamente
-                p.vx = Math.cos(this.angle) * 15; // Spinto leggermente in avanti
-                p.vz = Math.sin(this.angle) * 15;
-                p.baseSize = MathUtils.randomRange(8, 14);
+                // FIX: Usiamo 'ambient' e forziamo la vita a 1 secondo intero per simulare una condensa densa
+                p.spawn(px, 26 + Game.animFloat, pz, SharedMat.spriteWhite, 'ambient');
+                p.life = 1.0; p.maxLife = 1.0; 
+                p.vy = MathUtils.randomRange(2, 6); // Sale appena
+                p.vx = Math.cos(this.angle) * 20;    // Soffiato in avanti
+                p.vz = Math.sin(this.angle) * 20;
+                p.baseSize = MathUtils.randomRange(14, 20); // Più grande e visibile
             }
         }
         }
@@ -8392,9 +8393,11 @@ Game.scene.add(this.telegraphMesh);
                 let px = this.x + Math.cos(this.angle) * (this.radius * 0.8);
                 let pz = this.y + Math.sin(this.angle) * (this.radius * 0.8);
                 
-                p.spawn(px, headHeight, pz, SharedMat.spriteWhite, 'dust');
-                p.vy = 8; p.vx = Math.cos(this.angle) * 10; p.vz = Math.sin(this.angle) * 10;
-                p.baseSize = this.type === 'orc' ? 18 : 10; // L'orco fa nuvole più grosse
+               // FIX NEBBIA NEMICI
+                p.spawn(px, headHeight, pz, SharedMat.spriteWhite, 'ambient');
+                p.life = 1.2; p.maxLife = 1.2;
+                p.vy = 5; p.vx = Math.cos(this.angle) * 15; p.vz = Math.sin(this.angle) * 15;
+                p.baseSize = this.type === 'orc' ? 25 : 15; // Molto più grande
             }
         }
         if (dt === 0) return; // FIX BETA: Immobilizza l'IA dei mostri e ferma i calcoli dei Profeti se in pausa!

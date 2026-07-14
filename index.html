@@ -276,25 +276,29 @@
             0%, 100% { opacity: 0.3; }
             50% { opacity: 1; }
         }
-    /* --- NEBBIA PNG OTTIMIZZATA PER MOBILE (60 FPS) --- */
-#mist, #mist::after {
-    position: absolute; 
-    top: 0; left: 0; 
-    width: 200%; height: 200%; /* Abbassato rispetto all'enorme inset: -50% */
+/* --- NEBBIA PARALLASSE (SCORRE COL MONDO A 60 FPS) --- */
+.mist-overlay {
+    position: absolute;
+    /* Margini giganti per permettere lo scivolamento senza mai rivelare il taglio */
+    top: -500px; left: -500px; right: -500px; bottom: -500px;
     z-index: 4; 
     pointer-events: none;
-    
-    /* Inserisci qui il tuo file PNG */
-    background-image: url('smoke.png'); 
-    background-size: 256px 256px; /* Forza una dimensione fissa per evitare ricalcoli */
+    background-image: url('smoke.png');
     background-repeat: repeat;
-    
-    /* FIX CRITICO 1: NIENTE mix-blend-mode. Usiamo solo la normale opacità */
-    opacity: 0.15; /* Regola l'opacità per simulare l'effetto screen */
-    
-    /* FIX CRITICO 2: Forza l'uso di un core GPU dedicato per questo livello */
-    will-change: transform; 
+    will-change: transform;
     backface-visibility: hidden;
+}
+
+#mist-layer1 {
+    background-size: 256px 256px;
+    opacity: 0.15;
+}
+
+#mist-layer2 {
+    background-size: 400px 400px;
+    opacity: 0.10;
+    /* Ruotiamo e invertiamo il pattern per variare l'estetica della nuvola */
+    transform: scaleX(-1); 
 }
 
 #mist {
@@ -836,7 +840,8 @@ body.colorblind-mode #opt-colorblind-text {
     <!-- CONTAINER 3D -->
     <div id="game-container"></div>
     <canvas id="uiCanvas"></canvas>
-    <div id="mist"></div>
+    <div id="mist-layer1" class="mist-overlay"></div>
+<div id="mist-layer2" class="mist-overlay"></div>
     <div id="vignette"></div>
 <div id="blood-vignette" class="absolute inset-0 pointer-events-none opacity-0 z-[6]"></div>
     <!-- CONTROLLI MOBILE -->
@@ -4231,6 +4236,29 @@ Game.scene.add(this.dynamicDebrisMesh);
         // Applica le coordinate calcolate e le vibrazioni (shake) alla telecamera
         this.camera.position.set(camX + shakeX, camY + shakeY, camZ + shakeZ);
         this.camera.lookAt(this.player.x + shakeX, 0, this.player.y + shakeZ);
+       // --- CALCOLO PARALLASSE NEBBIA 2D ---
+        let mist1 = document.getElementById('mist-layer1');
+        let mist2 = document.getElementById('mist-layer2');
+        if (mist1 && mist2) {
+            this.mistTime = (this.mistTime || 0) + dt;
+            
+            // Layer 1: Parallasse (0.8, segue quasi fedelmente) + Vento (+20x, +15y)
+            let l1x = (-this.camera.position.x * 0.8 + this.mistTime * 20) % 256;
+            let l1y = (-this.camera.position.z * 0.8 + this.mistTime * 15) % 256;
+            
+            // Layer 2: Parallasse (0.4, molto più lento/distante) + Vento (-12x, +8y)
+            let l2x = (-this.camera.position.x * 0.4 - this.mistTime * 12) % 400;
+            let l2y = (-this.camera.position.z * 0.4 + this.mistTime * 8) % 400;
+            
+            // Trucco del modulo: Forza i valori rigorosamente tra -N e 0. 
+            // Quando scatta da 0 a -256, il salto è invisibile all'occhio perché la texture combacia perfettamente.
+            if (l1x > 0) l1x -= 256; if (l1y > 0) l1y -= 256;
+            if (l2x > 0) l2x -= 400; if (l2y > 0) l2y -= 400;
+
+            // Translate3D sfrutta un core dedicato della GPU
+            mist1.style.transform = `translate3d(${l1x}px, ${l1y}px, 0)`;
+            mist2.style.transform = `translate3d(${l2x}px, ${l2y}px, 0)`;
+        }
     },
     
     updateMouseWorld() {

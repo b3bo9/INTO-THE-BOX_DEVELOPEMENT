@@ -6149,11 +6149,10 @@ class GameMap {
             activeMats.rock.emissive.setHex(0xff3300); // Arancio Lava vivo
             activeMats.dirt.emissive.setHex(0xff0000); // Rosso Sangue vivo
             activeMats.dirt.emissiveIntensity = 0.5;
-        } else {
-            // Reset di sicurezza per Foresta e Ghiaccio
+     
+        } else { 
             activeMats.rock.emissive.setHex(0x000000);
             activeMats.dirt.emissive.setHex(0x000000);
-        } else { 
             // TEMA FORESTA: Organico, ruvido e opaco
             activeMats.rock.shininess = 15;
             activeMats.rock.emissive.setHex(0x000000);

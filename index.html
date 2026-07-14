@@ -953,27 +953,29 @@ const AppSettings = {
     get isUltraPC() { return this.mode === 2 && !isTouchDevice; },
     get shadowsEnabled() { return this.mode === 2; },
     
-    init() {
+   init() {
         if (this.isLow) {
             document.body.classList.add('low-spec');
-            document.getElementById('mist').style.display = 'none';
+            // FIX: La nebbia 3D viene spenta automaticamente in Game.updateCamera
         }
     },
     
     toggleGraphics() {
         this.mode = (this.mode + 1) % 3;
         const vignette = document.getElementById('vignette');
-        const mist = document.getElementById('mist');
         
-        if (this.mode === 0) {
-            vignette.style.opacity = '0';
-            mist.style.display = 'none'; // Spegne fisicamente il calcolo SVG
-        } else {
-            vignette.style.opacity = '1';
-            mist.style.display = 'block'; // Riaccende la nebbia 2D
+        // 1. Gestione Vignetta
+        if (vignette) {
+            if (this.mode === 0) vignette.style.opacity = '0';
+            else vignette.style.opacity = '1';
         }
 
-        // OTTIMIZZAZIONE UI: Spegne il Glassmorphism e le ombre CSS pesanti su dispositivi lenti
+        // 2. GESTIONE DELLA NUOVA NEBBIA 3D
+        if (typeof Game !== 'undefined' && Game.mistSystem) {
+            Game.mistSystem.visible = !this.isLow;
+        }
+
+        // 3. OTTIMIZZAZIONE UI: Spegne il Glassmorphism e le ombre CSS pesanti su dispositivi lenti
         if (this.isLow) document.body.classList.add('low-spec');
         else document.body.classList.remove('low-spec');
 
@@ -982,12 +984,10 @@ const AppSettings = {
             // OTTIMIZZAZIONE SCALABILITÀ (Impedisce il rendering 4K sui telefoni)
             let pr = 1.0;
             if (isTouchDevice) {
-                // Mobile: Evita ratio > 1.5. Modalità prestazioni fissa la risoluzione bassissima per salvare batteria.
                 if (this.mode === 2) pr = Math.min(window.devicePixelRatio, 1.25);
                 else if (this.mode === 1) pr = Math.min(window.devicePixelRatio, 0.9);
-                else pr = 0.6; // Modalità Performance estrema su mobile
+                else pr = 0.6; 
             } else {
-                // PC: Più flessibilità
                 if (this.mode === 2) pr = Math.min(window.devicePixelRatio, 1.5);
                 else if (this.mode === 1) pr = Math.min(window.devicePixelRatio, 1.0); 
                 else pr = 0.75; 
@@ -1004,13 +1004,14 @@ const AppSettings = {
                 if (treeShadows) treeShadows.visible = showFakeShadows;
             }
         }
-       if (Game.bloomPass) { Game.bloomPass.strength = this.isUltraPC ? 0.9 : 0.7; Game.bloomPass.radius = 0.4; }
+        
+        if (Game.bloomPass) { Game.bloomPass.strength = this.isUltraPC ? 0.9 : 0.7; Game.bloomPass.radius = 0.4; }
+        
         if (window.GLOBAL_THEME_MATS) {
             window.GLOBAL_THEME_MATS.forEach((mats) => {
                 mats.dirt.roughness = this.isUltraPC ? 0.7 : 0.9; mats.dirt.metalness = 0.1;
                 mats.wall.roughness = this.isUltraPC ? 0.6 : 0.8; mats.wall.metalness = 0.2;
                 
-                // OTTIMIZZAZIONE: Rimosse le bumpMap per uniformare lo stile PC a quello Mobile e salvare il Framerate
                 mats.dirt.bumpMap = null; mats.grass.bumpMap = null;
                 mats.rock.bumpMap = null; mats.wall.bumpMap = null;
                 

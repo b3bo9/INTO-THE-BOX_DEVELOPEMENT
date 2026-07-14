@@ -4983,15 +4983,14 @@ startGame(diffMult) {
         }
       // --- AGGIORNAMENTO SHADER ERBA INTERATTIVA ---
         InteractiveGrassSystem.uniforms.uTime.value = this.visualTime;
-        // --- PULSAZIONE MAGMA (TEMA LAVA) ---
+       // --- PULSAZIONE MAGMA (TEMA LAVA) ---
         if (this.currentThemeIndex === 1 && window.GLOBAL_THEME_MATS) {
             let lavaMats = window.GLOBAL_THEME_MATS[1];
-            // Un'onda morbida che va da 0.3 a 0.8
-            let calore = 0.3 + Math.abs(Math.sin(this.visualTime * 2.0)) * 0.5;
+            // Calore più alto per non far spegnere mai la lava
+            let calore = 0.15 + Math.abs(Math.sin(this.visualTime * 2.5)) * 0.45;
             
-            // Fa pulsare il terreno e le rocce
             lavaMats.dirt.emissiveIntensity = calore;
-            lavaMats.rock.emissiveIntensity = calore * 0.5;
+            lavaMats.rock.emissiveIntensity = calore * 0.6;
         }
         
         let windSources = InteractiveGrassSystem.uniforms.uWindSources.value;
@@ -6144,14 +6143,16 @@ class GameMap {
             activeMats.rock.shininess = 35;
             activeMats.rock.specular.setHex(0x112233); // Speculare scuro e ciano, previene le sbavature bloom
             activeMats.rock.emissive.setHex(0x000000);
-        } else if (Game.currentThemeIndex === 1) {
-            // TEMA LAVA: Rocce opache ma incandescenti alla base
+       } else if (Game.currentThemeIndex === 1) {
+            // TEMA LAVA: Colori incandescenti!
             activeMats.rock.shininess = 5;
-            activeMats.rock.emissive.setHex(0x330000); // Rosso più intenso
-            
-            // FIX: Assegniamo l'emissivo SEMPRE, altrimenti l'intensità dinamica pulserà sul colore nero!
-            activeMats.dirt.emissive.setHex(0x220505);
+            activeMats.rock.emissive.setHex(0xff3300); // Arancio Lava vivo
+            activeMats.dirt.emissive.setHex(0xff0000); // Rosso Sangue vivo
             activeMats.dirt.emissiveIntensity = 0.5;
+        } else {
+            // Reset di sicurezza per Foresta e Ghiaccio
+            activeMats.rock.emissive.setHex(0x000000);
+            activeMats.dirt.emissive.setHex(0x000000);
         } else { 
             // TEMA FORESTA: Organico, ruvido e opaco
             activeMats.rock.shininess = 15;
@@ -7562,22 +7563,22 @@ class Player extends Entity {
                 this.modelParts.weaponGroup.rotation.x = 0; 
                 this.modelParts.weaponGroup.position.z = 8; 
             } 
-           // --- RESPIRO GELIDO (GIOCATORE) ---
+        // --- RESPIRO GELIDO (GIOCATORE) ---
         if (Game.currentThemeIndex === 2 && !this.dead) {
             this.breathTimer = (this.breathTimer || 0) - dt;
             if (this.breathTimer <= 0) {
-                this.breathTimer = MathUtils.randomRange(2.0, 3.5); // Respira ogni 2-3.5 sec
+                this.breathTimer = MathUtils.randomRange(1.5, 2.5); // Più frequente
                 let p = Game.getParticle();
-                // Il respiro esce "davanti" alla faccia del giocatore in base a dove mira
                 let px = this.x + Math.cos(this.angle) * 12;
                 let pz = this.y + Math.sin(this.angle) * 12;
-                // FIX: Usiamo 'ambient' e forziamo la vita a 1 secondo intero per simulare una condensa densa
-                p.spawn(px, 26 + Game.animFloat, pz, SharedMat.spriteWhite, 'ambient');
-                p.life = 1.0; p.maxLife = 1.0; 
-                p.vy = MathUtils.randomRange(2, 6); // Sale appena
-                p.vx = Math.cos(this.angle) * 20;    // Soffiato in avanti
-                p.vz = Math.sin(this.angle) * 20;
-                p.baseSize = MathUtils.randomRange(14, 20); // Più grande e visibile
+                
+                // Usiamo 'dust' che viaggia lineare per simulare una nuvoletta sparata in aria
+                p.spawn(px, 26 + Game.animFloat, pz, SharedMat.spriteWhite, 'dust');
+                p.life = 0.8; p.maxLife = 0.8; 
+                p.vy = 8; 
+                p.vx = Math.cos(this.angle) * 35; // Spinto più forte in avanti
+                p.vz = Math.sin(this.angle) * 35;
+                p.baseSize = 40; // GIGANTE per essere visto
             }
         }
         }
@@ -8383,7 +8384,7 @@ Game.scene.add(this.telegraphMesh);
     }
  update(dt) {
         if (!this.active || this.dead) return; 
-     // --- RESPIRO GELIDO (NEMICI) ---
+    // --- RESPIRO GELIDO (NEMICI) ---
         if (Game.currentThemeIndex === 2 && (this.type === 'orc' || this.type === 'goblin')) {
             this.breathTimer = (this.breathTimer || 0) - dt;
             if (this.breathTimer <= 0) {
@@ -8393,11 +8394,10 @@ Game.scene.add(this.telegraphMesh);
                 let px = this.x + Math.cos(this.angle) * (this.radius * 0.8);
                 let pz = this.y + Math.sin(this.angle) * (this.radius * 0.8);
                 
-               // FIX NEBBIA NEMICI
-                p.spawn(px, headHeight, pz, SharedMat.spriteWhite, 'ambient');
-                p.life = 1.2; p.maxLife = 1.2;
-                p.vy = 5; p.vx = Math.cos(this.angle) * 15; p.vz = Math.sin(this.angle) * 15;
-                p.baseSize = this.type === 'orc' ? 25 : 15; // Molto più grande
+                p.spawn(px, headHeight, pz, SharedMat.spriteWhite, 'dust');
+                p.life = 0.8; p.maxLife = 0.8;
+                p.vy = 5; p.vx = Math.cos(this.angle) * 30; p.vz = Math.sin(this.angle) * 30;
+                p.baseSize = this.type === 'orc' ? 50 : 30; // Nuvoloni spessi per gli orchi
             }
         }
         if (dt === 0) return; // FIX BETA: Immobilizza l'IA dei mostri e ferma i calcoli dei Profeti se in pausa!

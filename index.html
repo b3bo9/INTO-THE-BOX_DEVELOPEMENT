@@ -276,53 +276,7 @@
             0%, 100% { opacity: 0.3; }
             50% { opacity: 1; }
         }
-/* --- NEBBIA PARALLASSE (SCORRE COL MONDO A 60 FPS) --- */
-.mist-overlay {
-    position: absolute;
-    /* Margini giganti per permettere lo scivolamento senza mai rivelare il taglio */
-    top: -500px; left: -500px; right: -500px; bottom: -500px;
-    z-index: 4; 
-    pointer-events: none;
-    background-image: url('smoke.png');
-    background-repeat: repeat;
-    will-change: transform;
-    backface-visibility: hidden;
-}
 
-#mist-layer1 {
-    background-size: 256px 256px;
-    opacity: 0.15;
-}
-
-#mist-layer2 {
-    background-size: 400px 400px;
-    opacity: 0.10;
-    /* Ruotiamo e invertiamo il pattern per variare l'estetica della nuvola */
-    transform: scaleX(-1); 
-}
-
-#mist {
-    /* Translate3d forza l'accelerazione hardware rispetto al semplice Translate */
-    animation: mist-drift-layer1 60s linear infinite;
-}
-
-#mist::after {
-    content: '';
-    opacity: 0.10;
-    /* Strato superiore più grande per la parallasse */
-    background-size: 400px 400px;
-    animation: mist-drift-layer2 40s linear infinite;
-}
-
-@keyframes mist-drift-layer1 { 
-    from { transform: translate3d(0, 0, 0); } 
-    to { transform: translate3d(-256px, -256px, 0); } /* Si muove esattamente di un "tile" per essere infinito e invisibile al reset */
-}
-
-@keyframes mist-drift-layer2 { 
-    from { transform: translate3d(0, 0, 0); } 
-    to { transform: translate3d(400px, -400px, 0); } 
-}
        /* Stili Brutalisti per le Carte Reliquia */
         .relic-card { 
             transition: all 0.05s ease-out; cursor: pointer; 
@@ -3865,7 +3819,39 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         this.stats.dom.style.zIndex = '9999';
         document.body.appendChild(this.stats.dom);
         // ----------------------------------------
+// --- NUOVO SISTEMA NEBBIA 3D GLOBALE ---
+        this.mistSystem = new THREE.Group();
+        let texMist = Preloader.textures.smoke ? Preloader.textures.smoke.clone() : null;
+        if (texMist) {
+            texMist.wrapS = THREE.RepeatWrapping; texMist.wrapT = THREE.RepeatWrapping;
+            texMist.repeat.set(8, 8); // Grandezza nuvole strato 1
 
+            let texMist2 = texMist.clone();
+            texMist2.repeat.set(12, 12); // Grandezza nuvole strato 2
+
+            this.mistMat1 = new THREE.MeshBasicMaterial({
+                map: texMist, transparent: true, opacity: 0.12, depthWrite: false, blending: THREE.AdditiveBlending
+            });
+            this.mistMat2 = new THREE.MeshBasicMaterial({
+                map: texMist2, transparent: true, opacity: 0.08, depthWrite: false, blending: THREE.AdditiveBlending
+            });
+
+            // Strato basso (Sotto la cima dei muri, copre player e nemici)
+            let plane1 = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), this.mistMat1);
+            plane1.rotation.x = -Math.PI / 2;
+            plane1.position.y = 45; 
+
+            // Strato alto (Quasi a filo col muro, crea parallasse estremo)
+            let plane2 = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), this.mistMat2);
+            plane2.rotation.x = -Math.PI / 2;
+            plane2.position.y = 65; 
+
+            this.mistSystem.add(plane1);
+            this.mistSystem.add(plane2);
+            this.scene.add(this.mistSystem);
+        }
+        // ^^^ INCOLLA SOPRA QUESTA RIGA ^^^
+        this.prewarmShaders(); this.setupInputs(); this.initPools();
         this.prewarmShaders(); this.setupInputs(); this.initPools(); this._boundLoop = this.loop.bind(this); requestAnimationFrame(this._boundLoop);
     },
 prewarmShaders() {
@@ -4236,30 +4222,28 @@ Game.scene.add(this.dynamicDebrisMesh);
         // Applica le coordinate calcolate e le vibrazioni (shake) alla telecamera
         this.camera.position.set(camX + shakeX, camY + shakeY, camZ + shakeZ);
         this.camera.lookAt(this.player.x + shakeX, 0, this.player.y + shakeZ);
-       // --- CALCOLO PARALLASSE NEBBIA 2D ---
-        let mist1 = document.getElementById('mist-layer1');
-        let mist2 = document.getElementById('mist-layer2');
-        if (mist1 && mist2) {
-            this.mistTime = (this.mistTime || 0) + dt;
+       // --- ANIMAZIONE PARALLASSE DELLA NEBBIA 3D ---
+        if (this.mistSystem && this.player) {
+            // Il piano gigante segue il giocatore fisicamente...
+            this.mistSystem.position.x = this.player.x;
+            this.mistSystem.position.z = this.player.y;
             
-            // Layer 1: Parallasse (0.8, segue quasi fedelmente) + Vento (+20x, +15y)
-            let l1x = (-this.camera.position.x * 0.8 + this.mistTime * 20) % 256;
-            let l1y = (-this.camera.position.z * 0.8 + this.mistTime * 15) % 256;
+            this.mistWindTime = (this.mistWindTime || 0) + dt;
             
-            // Layer 2: Parallasse (0.4, molto più lento/distante) + Vento (-12x, +8y)
-            let l2x = (-this.camera.position.x * 0.4 - this.mistTime * 12) % 400;
-            let l2y = (-this.camera.position.z * 0.4 + this.mistTime * 8) % 400;
+            // ...ma le texture scorrono all'incontrario per annullare il movimento
+            // e agganciarsi realisticamente al terreno, aggiungendo il vento!
+            if (this.mistMat1 && this.mistMat1.map) {
+                this.mistMat1.map.offset.x = (this.player.x / 6000) * 8 + (this.mistWindTime * 0.015);
+                this.mistMat1.map.offset.y = -(this.player.y / 6000) * 8 + (this.mistWindTime * 0.010);
+            }
+            if (this.mistMat2 && this.mistMat2.map) {
+                this.mistMat2.map.offset.x = (this.player.x / 6000) * 12 - (this.mistWindTime * 0.008);
+                this.mistMat2.map.offset.y = -(this.player.y / 6000) * 12 + (this.mistWindTime * 0.018);
+            }
             
-            // Trucco del modulo: Forza i valori rigorosamente tra -N e 0. 
-            // Quando scatta da 0 a -256, il salto è invisibile all'occhio perché la texture combacia perfettamente.
-            if (l1x > 0) l1x -= 256; if (l1y > 0) l1y -= 256;
-            if (l2x > 0) l2x -= 400; if (l2y > 0) l2y -= 400;
-
-            // Translate3D sfrutta un core dedicato della GPU
-            mist1.style.transform = `translate3d(${l1x}px, ${l1y}px, 0)`;
-            mist2.style.transform = `translate3d(${l2x}px, ${l2y}px, 0)`;
+            this.mistSystem.visible = !AppSettings.isLow; 
         }
-    },
+    }, 
     
     updateMouseWorld() {
         if (isTouchDevice) return; // STOP! Niente calcoli a matrice su smartphone, mira col joystick!
@@ -4593,6 +4577,13 @@ loop(timestamp) {
         let currentTheme = MAP_THEMES[this.currentThemeIndex];
         // Impostiamo nebbia, sfondo e luci in base al tema corrente!
         this.scene.background = new THREE.Color(currentTheme.fog); 
+        // Tinge la nebbia 3D per farla amalgamare al mondo
+        if (this.mistSystem && this.mistMat1 && this.mistMat2) {
+            let baseColor = new THREE.Color(currentTheme.fog);
+            baseColor.lerp(new THREE.Color(0xffffff), 0.25); // Schiarisce leggermente il fumo
+            this.mistMat1.color.copy(baseColor);
+            this.mistMat2.color.copy(baseColor);
+        }
    // --- ATMOSFERA E VISIBILITÀ DINAMICA ---
         if (this.currentThemeIndex === 2) {
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist + 100, camDist + 1000);

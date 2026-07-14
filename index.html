@@ -276,12 +276,12 @@
             0%, 100% { opacity: 0.3; }
             50% { opacity: 1; }
         }
-  /* --- NEBBIA VOLUMETRICA PARALLASSE (DOPPIO STRATO) --- */
-    #mist, #mist::after {
-        position: absolute; inset: -50%; z-index: 4; pointer-events: none;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.015' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.25'/%3E%3C/svg%3E");
-        mix-blend-mode: screen; 
-    }
+    /* --- NEBBIA VOLUMETRICA PARALLASSE (DOPPIO STRATO) --- */
+        #mist, #mist::after {
+            position: absolute; inset: -50%; z-index: 4; pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.015' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.25'/%3E%3C/svg%3E");
+            mix-blend-mode: screen; 
+        }
         #mist {
             opacity: 0.35;
             animation: mist-drift-layer1 70s linear infinite;
@@ -9397,27 +9397,17 @@ class BossEnemy extends Enemy {
         for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 30, this.y, bloodMat, 'blood');
         
         
-      this.mesh.traverse(child => {
+       this.mesh.traverse(child => {
             // FIX VRAM: Assicuriamoci che anche i Boss distruggano eventuali Sprite assegnati
-            if (child.isMesh || child.isSprite) {
-                if (child.geometry && !SharedGeoSet.has(child.geometry)) child.geometry.dispose();
-                if (child.material && !SharedMatSet.has(child.material)) {
-                    if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
-                    else child.material.dispose();
-                }
-            }
-        });
-        
-        this.mat.dispose(); 
-        Game.scene.remove(this.mesh); 
-        
-        // FIX SCENE GRAPH LEAK ALLA MORTE
-        if (this.telegraphMesh) { this.telegraphMesh.visible = false; Game.scene.remove(this.telegraphMesh); }
-        if (this.shadowMesh) { this.shadowMesh.visible = false; Game.scene.remove(this.shadowMesh); }
-        if (this.auraRingMesh) { this.auraRingMesh.visible = false; Game.scene.remove(this.auraRingMesh); }
-        if (this.auraGlow) { this.auraGlow.visible = false; Game.scene.remove(this.auraGlow); }
-
-        Game.addTrauma(2.0); AudioEngine.playShoot('explosive_arrow');
+            if (child.isMesh || child.isSprite) {
+                if (child.geometry && !SharedGeoSet.has(child.geometry)) child.geometry.dispose();
+                if (child.material && !SharedMatSet.has(child.material)) {
+                    if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                    else child.material.dispose();
+                }
+            }
+        });
+        this.mat.dispose(); Game.scene.remove(this.mesh); Game.addTrauma(2.0); AudioEngine.playShoot('explosive_arrow');
         
        // Esplosione di loot a fontana (Time-Slicing)
         let bossLoot = ['life'];
@@ -9983,10 +9973,10 @@ function clearScene() {
         Game.deadPlayerParts = [];
     }
 
-   if (Game.deadObelisks) {
+    if (Game.deadObelisks) {
         for (let i = 0; i < Game.deadObelisks.length; i++) {
             Game.scene.remove(Game.deadObelisks[i]);
-            // FIX MEMORY LEAK: NON distruggere il materiale condiviso SharedMat.deadObelisk!
+            if (Game.deadObelisks[i].material) Game.deadObelisks[i].material.dispose();
         }
         Game.deadObelisks = [];
     }
@@ -10047,7 +10037,7 @@ function clearScene() {
     for(let i=0, len=Game.enemies.length; i<len; i++) { 
         let e = Game.enemies[i];
         
-       if (e.isBoss) {
+        if (e.isBoss) {
           e.mesh.traverse(child => {
                 if (child.isMesh) {
                     if (child.geometry && !SharedGeoSet.has(child.geometry)) child.geometry.dispose();
@@ -10059,12 +10049,7 @@ function clearScene() {
             });
             if (e.mat) e.mat.dispose(); 
             Game.scene.remove(e.mesh);
-            
-            // FIX SCENE GRAPH LEAK: Rimuove i componenti che restavano orfani nella scena
             if (e.shadowMesh) { e.shadowMesh.visible = false; Game.scene.remove(e.shadowMesh); }
-            if (e.telegraphMesh) { e.telegraphMesh.visible = false; Game.scene.remove(e.telegraphMesh); }
-            if (e.auraRingMesh) { e.auraRingMesh.visible = false; Game.scene.remove(e.auraRingMesh); }
-            if (e.auraGlow) { e.auraGlow.visible = false; Game.scene.remove(e.auraGlow); }
         }
     }
     

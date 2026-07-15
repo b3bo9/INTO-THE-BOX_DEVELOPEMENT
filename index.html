@@ -2563,6 +2563,7 @@ const GLOBAL_ALPHA_TEX = createOrganicAlphaMap();
         spritePink: new THREE.SpriteMaterial({color: 0xff66bb, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
         spriteBlood: new THREE.SpriteMaterial({color: 0xaa0000, map: GLOW_TEX, transparent: true, depthWrite: false}),
         spriteDust: new THREE.SpriteMaterial({color: 0x2a1e16, map: GLOW_TEX, transparent: true, opacity: 0.6, depthWrite: false}),
+        spriteBlackSmoke: new THREE.SpriteMaterial({color: 0x111111, map: GLOW_TEX, transparent: true, opacity: 0.85, blending: THREE.NormalBlending, depthWrite: false}),
         
         arrow: new THREE.MeshPhongMaterial({color: 0x888888, emissive: 0x444444}),
         playerArrow: new ProjMatClass(isTouchDevice ? { color: 0xffff00 } : { color: 0x000000, emissive: 0xffff00, emissiveIntensity: 2.0 }),
@@ -6215,7 +6216,7 @@ class GameMap {
         const meshRock = new THREE.InstancedMesh(floorGeo, activeMats.rock, floorCount);
         meshDirt.renderOrder = -10; meshGrass.renderOrder = -9; meshRock.renderOrder = -8;
         
-        // INSTANCED MESH DEI PROPS (Nascondiamo tutto sotto terra di default)
+       // INSTANCED MESH DEI PROPS E DELLE LORO OMBRE
         const maxCrates = isTouchDevice ? 25 : 60;
         const maxUrns = isTouchDevice ? 25 : 60;
         this.crateMesh = new THREE.InstancedMesh(SharedGeo.crate, SharedMat.crate, maxCrates);
@@ -6223,10 +6224,25 @@ class GameMap {
         this.crateMesh.receiveShadow = true; this.crateMesh.castShadow = AppSettings.shadowsEnabled;
         this.urnMesh.receiveShadow = true; this.urnMesh.castShadow = AppSettings.shadowsEnabled;
 
+        if (!window.GLOBAL_TREE_SHADOW_GEO) {
+            window.GLOBAL_TREE_SHADOW_GEO = new THREE.PlaneGeometry(1, 1);
+            window.GLOBAL_TREE_SHADOW_GEO.rotateX(-Math.PI / 2);
+        }
+        this.crateShadowMesh = new THREE.InstancedMesh(window.GLOBAL_TREE_SHADOW_GEO, SharedMat.blobShadow, maxCrates);
+        this.urnShadowMesh = new THREE.InstancedMesh(window.GLOBAL_TREE_SHADOW_GEO, SharedMat.blobShadow, maxUrns);
+
         let cPropIdx = 0, uPropIdx = 0;
         let hideMatProp = new THREE.Matrix4().makeTranslation(0,-1000,0);
-        for(let i=0; i<maxCrates; i++) { this.crateMesh.setMatrixAt(i, hideMatProp); Game.propsCrates[i].active = false; }
-        for(let i=0; i<maxUrns; i++) { this.urnMesh.setMatrixAt(i, hideMatProp); Game.propsUrns[i].active = false; }
+        for(let i=0; i<maxCrates; i++) { 
+            this.crateMesh.setMatrixAt(i, hideMatProp); 
+            this.crateShadowMesh.setMatrixAt(i, hideMatProp);
+            Game.propsCrates[i].active = false; 
+        }
+        for(let i=0; i<maxUrns; i++) { 
+            this.urnMesh.setMatrixAt(i, hideMatProp); 
+            this.urnShadowMesh.setMatrixAt(i, hideMatProp);
+            Game.propsUrns[i].active = false; 
+        }
         
        if (!window.GLOBAL_WALL_GEO) {
             window.GLOBAL_WALL_GEO = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE*1.5, TILE_SIZE);
@@ -6318,50 +6334,72 @@ class GameMap {
                                 
                                 let spawnCrate = Math.random() < 0.6; // 60% Cassa, 40% Vaso singolo
                                 
-                                if (spawnCrate && cPropIdx < maxCrates) {
+                         if (spawnCrate && cPropIdx < maxCrates) {
                                     let pScale = MathUtils.randomRange(0.9, 1.2);
-let pRot = Math.random() * Math.PI;
-dummy.position.set(px - 10, 12, pz - 10); 
-dummy.rotation.set(0, pRot, 0);
-dummy.scale.setScalar(pScale);
-dummy.updateMatrix();
-this.crateMesh.setMatrixAt(cPropIdx, dummy.matrix);
-let pObj = Game.propsCrates[cPropIdx];
-pObj.spawn(px - 10, pz - 10);
-pObj.originalScale = pScale; // <-- SALVA SCALA
-pObj.originalRotY = pRot;    // <-- SALVA ROTAZIONE
-cPropIdx++;
+                                    let pRot = Math.random() * Math.PI;
+                                    dummy.position.set(px - 10, 12, pz - 10); 
+                                    dummy.rotation.set(0, pRot, 0);
+                                    dummy.scale.setScalar(pScale);
+                                    dummy.updateMatrix();
+                                    this.crateMesh.setMatrixAt(cPropIdx, dummy.matrix);
                                     
-// 2. Probabilità estrema (40%) di trovare un VASO vicino alla cassa appena generata!
-if (Math.random() < 0.40 && uPropIdx < maxUrns) {
-let uScale = MathUtils.randomRange(0.8, 1.1);
-let uRot = Math.random() * Math.PI;
-// FIX: Spostiamo fisicamente l'anfora rispetto alle coordinate base così non si accavallano!
-dummy.position.set(px + 15, 14, pz + 15); 
-dummy.rotation.set(0, uRot, 0);
-dummy.scale.setScalar(uScale);
-dummy.updateMatrix();
-this.urnMesh.setMatrixAt(uPropIdx, dummy.matrix);
-let pUrn = Game.propsUrns[uPropIdx];
-pUrn.spawn(dummy.position.x, dummy.position.z);
-pUrn.originalScale = uScale;
-pUrn.originalRotY = uRot;
-uPropIdx++;
-}
-} else if (!spawnCrate && uPropIdx < maxUrns) {
-let uScale = MathUtils.randomRange(0.8, 1.1);
-let uRot = Math.random() * Math.PI;
-// ... (lascia il position set come era)
-dummy.rotation.set(0, uRot, 0);
-dummy.scale.setScalar(uScale);
-dummy.updateMatrix();
-this.urnMesh.setMatrixAt(uPropIdx, dummy.matrix);
-let pUrn = Game.propsUrns[uPropIdx];
-// Usa le coord corrette in base al blocco if in cui ti trovi
-pUrn.spawn(dummy.position.x, dummy.position.z);
-pUrn.originalScale = uScale; // <-- SALVA SCALA
-pUrn.originalRotY = uRot;    // <-- SALVA ROTAZIONE
-uPropIdx++;
+                                    // FAKE SHADOW
+                                    dummy.position.set(px - 10, 0.2, pz - 10);
+                                    dummy.rotation.set(0, 0, 0);
+                                    dummy.scale.set(30 * pScale, 30 * pScale, 1);
+                                    dummy.updateMatrix();
+                                    this.crateShadowMesh.setMatrixAt(cPropIdx, dummy.matrix);
+
+                                    let pObj = Game.propsCrates[cPropIdx];
+                                    pObj.spawn(px - 10, pz - 10);
+                                    pObj.originalScale = pScale; 
+                                    pObj.originalRotY = pRot;    
+                                    cPropIdx++;
+                                    
+                                    // 2. Probabilità estrema (40%) di trovare un VASO vicino alla cassa appena generata!
+                                    if (Math.random() < 0.40 && uPropIdx < maxUrns) {
+                                        let uScale = MathUtils.randomRange(0.8, 1.1);
+                                        let uRot = Math.random() * Math.PI;
+                                        dummy.position.set(px + 15, 14, pz + 15); 
+                                        dummy.rotation.set(0, uRot, 0);
+                                        dummy.scale.setScalar(uScale);
+                                        dummy.updateMatrix();
+                                        this.urnMesh.setMatrixAt(uPropIdx, dummy.matrix);
+                                        
+                                        // FAKE SHADOW
+                                        dummy.position.set(px + 15, 0.2, pz + 15);
+                                        dummy.rotation.set(0, 0, 0);
+                                        dummy.scale.set(20 * uScale, 20 * uScale, 1);
+                                        dummy.updateMatrix();
+                                        this.urnShadowMesh.setMatrixAt(uPropIdx, dummy.matrix);
+
+                                        let pUrn = Game.propsUrns[uPropIdx];
+                                        pUrn.spawn(px + 15, pz + 15);
+                                        pUrn.originalScale = uScale;
+                                        pUrn.originalRotY = uRot;
+                                        uPropIdx++;
+                                    }
+                                } else if (!spawnCrate && uPropIdx < maxUrns) {
+                                    let uScale = MathUtils.randomRange(0.8, 1.1);
+                                    let uRot = Math.random() * Math.PI;
+                                    dummy.position.set(px - 10, 14, pz - 10); 
+                                    dummy.rotation.set(0, uRot, 0);
+                                    dummy.scale.setScalar(uScale);
+                                    dummy.updateMatrix();
+                                    this.urnMesh.setMatrixAt(uPropIdx, dummy.matrix);
+                                    
+                                    // FAKE SHADOW
+                                    dummy.position.set(px - 10, 0.2, pz - 10);
+                                    dummy.rotation.set(0, 0, 0);
+                                    dummy.scale.set(20 * uScale, 20 * uScale, 1);
+                                    dummy.updateMatrix();
+                                    this.urnShadowMesh.setMatrixAt(uPropIdx, dummy.matrix);
+
+                                    let pUrn = Game.propsUrns[uPropIdx];
+                                    pUrn.spawn(px - 10, pz - 10);
+                                    pUrn.originalScale = uScale; 
+                                    pUrn.originalRotY = uRot;    
+                                    uPropIdx++;
                                 }
                             }
                         }
@@ -6549,10 +6587,21 @@ uPropIdx++;
         
         this.crateMesh.count = cPropIdx;
         this.urnMesh.count = uPropIdx;
+        this.crateShadowMesh.count = cPropIdx;
+        this.urnShadowMesh.count = uPropIdx;
         this.crateMesh.instanceMatrix.needsUpdate = true;
         this.urnMesh.instanceMatrix.needsUpdate = true;
-        if(cPropIdx > 0) this.mapGroup.add(this.crateMesh);
-        if(uPropIdx > 0) this.mapGroup.add(this.urnMesh);
+        this.crateShadowMesh.instanceMatrix.needsUpdate = true;
+        this.urnShadowMesh.instanceMatrix.needsUpdate = true;
+
+        if(cPropIdx > 0) {
+            this.mapGroup.add(this.crateMesh);
+            if (!AppSettings.shadowsEnabled) this.mapGroup.add(this.crateShadowMesh);
+        }
+        if(uPropIdx > 0) {
+            this.mapGroup.add(this.urnMesh);
+            if (!AppSettings.shadowsEnabled) this.mapGroup.add(this.urnShadowMesh);
+        }
         if (idxDebris > 0) this.mapGroup.add(meshDebris);
         
         interactiveGrassMesh.instanceMatrix.needsUpdate = true; 
@@ -6744,17 +6793,17 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
         let pCount = AppSettings.isLow ? 4 : (isTouchDevice ? 8 : 12);
         for(let i=0; i<pCount; i++) {
             let p = Game.getParticle();
-            // Usiamo la polvere base, ma la sbalziamo verso l'alto e la ingrandiamo a dismisura
-            p.spawn(this.x, 10, this.y, SharedMat.spriteDust, 'dust');
-            p.baseSize = MathUtils.randomRange(40, 75); // Nuvole giganti
-            p.vy = MathUtils.randomRange(30, 70); // Salgono lente ma costanti
-            p.vx = MathUtils.randomRange(-35, 35); // Si allargano a sbuffo
-            p.vz = MathUtils.randomRange(-35, 35);
-            p.life = MathUtils.randomRange(0.6, 0.8); // Durano un po' di più
+            // Usiamo la nuova polvere scura
+            p.spawn(this.x, 10, this.y, SharedMat.spriteBlackSmoke, 'dust');
+            p.baseSize = MathUtils.randomRange(40, 80); // Nuvole giganti
+            p.vy = MathUtils.randomRange(20, 50); // Salita controllata
+            p.vx = MathUtils.randomRange(-45, 45); // Apertura a sbuffo
+            p.vz = MathUtils.randomRange(-45, 45);
+            p.life = MathUtils.randomRange(0.9, 1.2); // Persistenza aumentata!
             p.maxLife = p.life;
         }
         
-        // Aggiungiamo anche un paio di schegge di legno/ceramica
+        // Schegge di legno/ceramica
         let debrisMat = this.type === 'crate' ? SharedMat.spriteYellow : SharedMat.spriteWhite;
         for(let i=0; i<3; i++) Game.getParticle().spawn(this.x, 15, this.y, debrisMat, 'spark');
 
@@ -6767,16 +6816,26 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
         if (this.type === 'crate' && Game.map.crateMesh) {
             Game.map.crateMesh.setMatrixAt(this.index, dummy.matrix);
             Game.map.crateMesh.instanceMatrix.needsUpdate = true;
+            // Pulisce l'ombra
+            if (Game.map.crateShadowMesh) {
+                Game.map.crateShadowMesh.setMatrixAt(this.index, dummy.matrix);
+                Game.map.crateShadowMesh.instanceMatrix.needsUpdate = true;
+            }
         } else if (this.type === 'urn' && Game.map.urnMesh) {
             Game.map.urnMesh.setMatrixAt(this.index, dummy.matrix);
             Game.map.urnMesh.instanceMatrix.needsUpdate = true;
+            // Pulisce l'ombra
+            if (Game.map.urnShadowMesh) {
+                Game.map.urnShadowMesh.setMatrixAt(this.index, dummy.matrix);
+                Game.map.urnShadowMesh.instanceMatrix.needsUpdate = true;
+            }
         }
         
         // --- NUOVO SISTEMA DROP CASSE E VASI ---
         let r = Math.random();
 
-        if (r < 0.01) { 
-            // 1% - Reliquia Segreta
+        if (r < 0.015) { 
+            // 1.5% - Reliquia Segreta
             let choices = RelicSystem.getChoices();
             if (choices.length > 0) {
                 let dropRelic = choices[0]; 

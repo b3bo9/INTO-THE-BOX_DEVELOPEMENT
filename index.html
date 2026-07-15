@@ -4965,7 +4965,8 @@ startGame(diffMult) {
                         this.getHazard().spawn(a.x, a.y, 250, 0.4, 0, 0xffffff, 'nova_ring');
                         this.addTrauma(1.5);
                         AudioEngine.playShoot('explosive_arrow');
-                        let pCount = AppSettings.isLow ? 10 : 30;
+                        // FIX LAG: Dimezzate le particelle Nova che causavano spike di fill-rate
+                        let pCount = AppSettings.isLow ? 5 : 12;
                         for(let p=0; p<pCount; p++) this.getParticle().spawn(a.x, 20, a.y, SharedMat.spriteWhite, 'nova');
                         
                         let itemsToSpawn = [];
@@ -4980,8 +4981,6 @@ startGame(diffMult) {
                             for(let c=0; c<MathUtils.randomInt(4, 8); c++) itemsToSpawn.push('coin');
                             itemsToSpawn.push('essence');
                             if (Math.random() < 0.6) itemsToSpawn.push('essence'); 
-                            
-                            // DROP RELIQUIA RARO DA OBELISCO (2%)
                             if (Math.random() < 0.02) dropsRelic = true;
                         }
                         
@@ -5001,9 +5000,8 @@ startGame(diffMult) {
                                 dropY = this.player.y + MathUtils.randomRange(-15, 15); 
                             }
                             
-                            if (type === 'coin') this.getCoin().spawn(dropX, dropY);
-                            if (type === 'life') this.getExtraLife().spawn(dropX, dropY);
-                            if (type === 'essence') this.getEssence().spawn(dropX, dropY, ESSENCE_TYPES[Math.floor(Math.random() * ESSENCE_TYPES.length)]);
+                            // FIX LAG: Utilizziamo la coda Time-Slicing per scaglionare lo spawn fisico degli oggetti
+                            this.queueDrop(type, dropX, dropY, 0, false);
                         }
                         
                         if (dropsRelic) {
@@ -5015,7 +5013,8 @@ startGame(diffMult) {
                                 AudioEngine.playRelicDrop();
                                 Game.getFloatingText().spawn(a.x, a.y + 60, "RELIQUIA: " + dropRelic.name.toUpperCase(), '#cc33ff', 45, true);
                             } else {
-                                for(let c=0; c<15; c++) this.getCoin().spawn(a.x + MathUtils.randomRange(-20,20), a.y + MathUtils.randomRange(-20,20));
+                                // FIX LAG: Anche le monete di emergenza vanno in coda asincrona
+                                for(let c=0; c<15; c++) this.queueDrop('coin', a.x, a.y, 40, true);
                             }
                         }
                         this.getFloatingText().spawn(a.x, a.y + 40, "OBELISCO PROSCIUGATO!", '#00DDFF', 40, true);
@@ -6335,21 +6334,22 @@ pObj.originalScale = pScale; // <-- SALVA SCALA
 pObj.originalRotY = pRot;    // <-- SALVA ROTAZIONE
 cPropIdx++;
                                     
-                                    // 2. Probabilità estrema (40%) di trovare un VASO vicino alla cassa appena generata!
-                                    if (Math.random() < 0.40 && uPropIdx < maxUrns) {
-                                        let uScale = MathUtils.randomRange(0.8, 1.1);
+ // 2. Probabilità  (40%) di trovare un VASO vicino alla cassa appena generata!
+if (Math.random() < 0.40 && uPropIdx < maxUrns) {
+let uScale = MathUtils.randomRange(0.8, 1.1);
 let uRot = Math.random() * Math.PI;
-// ... (lascia il position set come era)
+// FIX: Spostiamo fisicamente l'anfora rispetto alle coordinate base così non si accavallano!
+dummy.position.set(px + 15, 14, pz + 15); 
 dummy.rotation.set(0, uRot, 0);
 dummy.scale.setScalar(uScale);
 dummy.updateMatrix();
 this.urnMesh.setMatrixAt(uPropIdx, dummy.matrix);
 let pUrn = Game.propsUrns[uPropIdx];
-// Usa le coord corrette in base al blocco if in cui ti trovi
 pUrn.spawn(dummy.position.x, dummy.position.z);
-pUrn.originalScale = uScale; // <-- SALVA SCALA
-pUrn.originalRotY = uRot;    // <-- SALVA ROTAZIONE
+pUrn.originalScale = uScale;
+pUrn.originalRotY = uRot;
 uPropIdx++;
+                                    }
                                     }
                                 } else if (!spawnCrate && uPropIdx < maxUrns) {
                                     let uScale = MathUtils.randomRange(0.8, 1.1);
@@ -6759,7 +6759,7 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
             Game.map.urnMesh.instanceMatrix.needsUpdate = true;
         }
         
-        let r = Math.random();
+       let r = Math.random();
         if (r < 0.01) { 
             let choices = RelicSystem.getChoices();
             if (choices.length > 0) {
@@ -6768,7 +6768,7 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
                 AudioEngine.playRelicDrop();
                 Game.getFloatingText().spawn(this.x, this.y + 40, "RELIQUIA SEGRETA!", '#fbbf24', 35, true);
             } else {
-                for(let c=0; c<10; c++) Game.queueDrop('coin', this.x, this.y, 30, true);
+                for(let c=0; c<10; c++) Game.queueDrop('coin', this.x, this.y, 30, false);
             }
         } else if (r < 0.12) { 
             let mini = Game.getEnemy();
@@ -6780,10 +6780,10 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
                 Game.getFloatingText().spawn(this.x, this.y + 20, "TRAPPOLA!", '#aa00ff', 25, true);
             }
         } else if (r < 0.27) { 
-            Game.queueDrop('essence', this.x, this.y, 20, true);
+            Game.queueDrop('essence', this.x, this.y, 20, false);
         } else { 
             let numCoins = MathUtils.randomInt(1, 2);
-            for(let i=0; i<numCoins; i++) Game.queueDrop('coin', this.x, this.y, 20, true);
+            for(let i=0; i<numCoins; i++) Game.queueDrop('coin', this.x, this.y, 20, false);
         }
     }
 }

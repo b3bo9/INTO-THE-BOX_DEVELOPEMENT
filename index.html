@@ -2614,15 +2614,17 @@ SharedGeo.crate = new THREE.BoxGeometry(24, 24, 24); // Cassa gigantesca
 // Profilo al tornio (Lathe) per simulare le curve di una VERA anfora!
 const urnPoints = [];
 urnPoints.push(new THREE.Vector2(0, 0));
-urnPoints.push(new THREE.Vector2(6, 0));   // Base
-urnPoints.push(new THREE.Vector2(9, 5));   // Fondo arrotondato
-urnPoints.push(new THREE.Vector2(14, 14)); // Pancia larga
-urnPoints.push(new THREE.Vector2(6, 23));  // Collo stretto
-urnPoints.push(new THREE.Vector2(6, 26));  // Collo dritto
-urnPoints.push(new THREE.Vector2(8, 28));  // Bordo svasato verso l'esterno
-urnPoints.push(new THREE.Vector2(0, 28));  // Ritorno all'asse per chiudere
-SharedGeo.urn = new THREE.LatheGeometry(urnPoints, 12);
-SharedGeo.urn.translate(0, -14, 0); // Centriamo l'anfora rispetto all'asse Y
+urnPoints.push(new THREE.Vector2(5, 0));   // Base appiattita
+urnPoints.push(new THREE.Vector2(7, 3));   // Piede
+urnPoints.push(new THREE.Vector2(16, 16)); // Pancia bella tonda e larga
+urnPoints.push(new THREE.Vector2(12, 23)); // Spalla
+urnPoints.push(new THREE.Vector2(5, 28));  // Collo stretto
+urnPoints.push(new THREE.Vector2(5, 32));  // Collo dritto
+urnPoints.push(new THREE.Vector2(7, 34));  // Labbro svasato per versare
+urnPoints.push(new THREE.Vector2(0, 34));  // Chiusura interna
+// Portiamo i segmenti da 12 a 24 per farla sembrare perfettamente rotonda
+SharedGeo.urn = new THREE.LatheGeometry(urnPoints, 24); 
+SharedGeo.urn.translate(0, -17, 0); // Centriamo l'anfora
 
 // Applichiamo le texture generate al volo
 SharedMat.crate = new THREE.MeshPhongMaterial({ map: createPatternTexture('crate'), shininess: 10 });
@@ -5170,8 +5172,11 @@ startGame(diffMult) {
                 this.projectiles[i].update(combatDt);
             }
         }
+// Aggiorna l'animazione fisica di colpo ricevuto per casse e anfore
+        for(let i=0, len=this.propsCrates.length; i<len; i++) this.propsCrates[i].update(visualDt);
+        for(let i=0, len=this.propsUrns.length; i<len; i++) this.propsUrns[i].update(visualDt);
 
-        this.updateMouseWorld(); 
+        this.updateMouseWorld();   
         this.player.update(combatDt); 
         this.updateCamera(visualDt); // La telecamera segue fluida il tempo reale
 
@@ -6317,34 +6322,49 @@ class GameMap {
                                 let spawnCrate = Math.random() < 0.6; // 60% Cassa, 40% Vaso singolo
                                 
                                 if (spawnCrate && cPropIdx < maxCrates) {
-                                    // 1. Spawna una Cassa grande spostata un po' dal centro
-                                    dummy.position.set(px - 10, 12, pz - 10); // Y=12 perché è alta 24 (allineata al pavimento)
-                                    dummy.rotation.set(0, Math.random() * Math.PI, 0);
-                                    dummy.scale.setScalar(MathUtils.randomRange(0.9, 1.2));
-                                    dummy.updateMatrix();
-                                    this.crateMesh.setMatrixAt(cPropIdx, dummy.matrix);
-                                    Game.propsCrates[cPropIdx].spawn(px - 10, pz - 10);
-                                    cPropIdx++;
+                                    let pScale = MathUtils.randomRange(0.9, 1.2);
+let pRot = Math.random() * Math.PI;
+dummy.position.set(px - 10, 12, pz - 10); 
+dummy.rotation.set(0, pRot, 0);
+dummy.scale.setScalar(pScale);
+dummy.updateMatrix();
+this.crateMesh.setMatrixAt(cPropIdx, dummy.matrix);
+let pObj = Game.propsCrates[cPropIdx];
+pObj.spawn(px - 10, pz - 10);
+pObj.originalScale = pScale; // <-- SALVA SCALA
+pObj.originalRotY = pRot;    // <-- SALVA ROTAZIONE
+cPropIdx++;
                                     
-                                    // 2. Probabilità estrema (70%) di trovare un VASO vicino alla cassa appena generata!
-                                    if (Math.random() < 0.70 && uPropIdx < maxUrns) {
-                                        dummy.position.set(px + 14, 14, pz + 12); // Y=14 perché è alta 28 (centrata)
-                                        dummy.rotation.set(0, Math.random() * Math.PI, 0);
-                                        dummy.scale.setScalar(MathUtils.randomRange(0.8, 1.1));
-                                        dummy.updateMatrix();
-                                        this.urnMesh.setMatrixAt(uPropIdx, dummy.matrix);
-                                        Game.propsUrns[uPropIdx].spawn(px + 14, pz + 12);
-                                        uPropIdx++;
+                                    // 2. Probabilità estrema (40%) di trovare un VASO vicino alla cassa appena generata!
+                                    if (Math.random() < 0.40 && uPropIdx < maxUrns) {
+                                        let uScale = MathUtils.randomRange(0.8, 1.1);
+let uRot = Math.random() * Math.PI;
+// ... (lascia il position set come era)
+dummy.rotation.set(0, uRot, 0);
+dummy.scale.setScalar(uScale);
+dummy.updateMatrix();
+this.urnMesh.setMatrixAt(uPropIdx, dummy.matrix);
+let pUrn = Game.propsUrns[uPropIdx];
+// Usa le coord corrette in base al blocco if in cui ti trovi
+pUrn.spawn(dummy.position.x, dummy.position.z);
+pUrn.originalScale = uScale; // <-- SALVA SCALA
+pUrn.originalRotY = uRot;    // <-- SALVA ROTAZIONE
+uPropIdx++;
                                     }
                                 } else if (!spawnCrate && uPropIdx < maxUrns) {
-                                    // 3. Spawna solo un Vaso solitario in mezzo al nulla
-                                    dummy.position.set(px, 14, pz); 
-                                    dummy.rotation.set(0, Math.random() * Math.PI, 0);
-                                    dummy.scale.setScalar(MathUtils.randomRange(0.9, 1.2));
-                                    dummy.updateMatrix();
-                                    this.urnMesh.setMatrixAt(uPropIdx, dummy.matrix);
-                                    Game.propsUrns[uPropIdx].spawn(px, pz);
-                                    uPropIdx++;
+                                    let uScale = MathUtils.randomRange(0.8, 1.1);
+let uRot = Math.random() * Math.PI;
+// ... (lascia il position set come era)
+dummy.rotation.set(0, uRot, 0);
+dummy.scale.setScalar(uScale);
+dummy.updateMatrix();
+this.urnMesh.setMatrixAt(uPropIdx, dummy.matrix);
+let pUrn = Game.propsUrns[uPropIdx];
+// Usa le coord corrette in base al blocco if in cui ti trovi
+pUrn.spawn(dummy.position.x, dummy.position.z);
+pUrn.originalScale = uScale; // <-- SALVA SCALA
+pUrn.originalRotY = uRot;    // <-- SALVA ROTAZIONE
+uPropIdx++;
                                 }
                             }
                         }
@@ -6652,39 +6672,81 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
         this.id = 'prop_' + type + '_' + index;
         this.active = false;
         this.dead = false;
+        this.hitTimer = 0; // Timer animazione wobble
+        this.originalScale = 1.0;
+        this.originalRotY = 0;
     }
-   spawn(x, y) {
+    spawn(x, y) {
         this.x = x; this.y = y;
-        this.radius = 18; // Hitbox ingrandita per matchare i nuovi modelli enormi
-        this.hp = Game.floor * 10 + 20; // Scala coi piani
+        this.radius = 18; 
+        this.hp = Game.floor * 10 + 20; 
         this.active = true;
         this.dead = false;
+        this.hitTimer = 0;
         Game.enemyGrid.insert(this);
     }
     takeDamage(amount, source, isCrit) {
         if (!this.active || this.dead) return;
         this.hp -= amount;
         
+        // Innesca l'animazione di Wobble (0.3s di durata)
+        this.hitTimer = 0.3;
+
         Game.getParticle().spawn(this.x, 10, this.y, SharedMat.spriteDust, 'spark');
-        
+
         if (this.hp <= 0) {
             this.dead = true;
+            this.hitTimer = 0; // Ferma il wobble
             this.destroy();
         }
     }
-    push() {} // Interfaccia Dummy per evitare crash quando le magie provano a sbalzarlo
+    push() {} 
     hideAuras() {} 
+
+    // Aggiornamento a 60fps per animare fisicamente la matrice
+    update(dt) {
+        if (!this.active || this.dead || this.hitTimer <= 0) return;
+
+        this.hitTimer -= dt;
+        let dummy = Game._dummyDebris; // Zero-allocation: ricicliamo il dummy object globale
+        let py = this.type === 'crate' ? 12 : 14;
+
+        if (this.hitTimer > 0) {
+            let intensity = this.hitTimer / 0.3; // sfuma da 1 a 0
+            // Oscillazione laterale e schiacciamento
+            let wobbleAngle = Math.sin(this.hitTimer * 40) * 0.35 * intensity;
+            let squish = 1.0 - (Math.sin(this.hitTimer * 25) * 0.2 * intensity);
+
+            dummy.position.set(this.x, py * squish, this.y); // Rimbalza verso il basso
+            dummy.rotation.set(wobbleAngle, this.originalRotY, wobbleAngle); // Tremolio direzionale
+            dummy.scale.set(this.originalScale, this.originalScale * squish, this.originalScale);
+        } else {
+            // Ritorno allo stato di riposo perfetto
+            dummy.position.set(this.x, py, this.y);
+            dummy.rotation.set(0, this.originalRotY, 0);
+            dummy.scale.setScalar(this.originalScale);
+        }
+
+        dummy.updateMatrix();
+
+        // Passa la nuova matrice deformata alla GPU
+        if (this.type === 'crate') {
+            Game.map.crateMesh.setMatrixAt(this.index, dummy.matrix);
+            Game.map.crateMesh.instanceMatrix.needsUpdate = true;
+        } else {
+            Game.map.urnMesh.setMatrixAt(this.index, dummy.matrix);
+            Game.map.urnMesh.instanceMatrix.needsUpdate = true;
+        }
+    }
 
     destroy() {
         this.active = false;
-        Game.enemyGrid.remove(this); // Lo toglie dal motore fisico
+        Game.enemyGrid.remove(this); 
         
-        // Esplosione visiva e sonora
         let pMat = this.type === 'crate' ? SharedMat.spriteDust : SharedMat.spriteWhite;
         for(let i=0; i<4; i++) Game.getParticle().spawn(this.x, 10, this.y, pMat, 'dust');
         AudioEngine.playHit('enemy');
         
-        // Nascondiamo l'istanza sotto terra (Zero-Allocation)
         let dummy = Game._dummyDebris;
         dummy.position.set(0, -1000, 0);
         dummy.updateMatrix();
@@ -6697,10 +6759,8 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
             Game.map.urnMesh.instanceMatrix.needsUpdate = true;
         }
         
-        // --- SISTEMA DI DROP PROPS ---
         let r = Math.random();
-        if (r < 0.02) { 
-            // 2% DROP RELIQUIA
+        if (r < 0.01) { 
             let choices = RelicSystem.getChoices();
             if (choices.length > 0) {
                 let dropRelic = choices[0]; 
@@ -6711,7 +6771,6 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
                 for(let c=0; c<10; c++) Game.queueDrop('coin', this.x, this.y, 30, true);
             }
         } else if (r < 0.12) { 
-            // 10% TRAPPOLA SLIME
             let mini = Game.getEnemy();
             if (mini) {
                 mini.spawn(this.x, this.y, 'slime_mini', Game.floor);
@@ -6721,11 +6780,9 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
                 Game.getFloatingText().spawn(this.x, this.y + 20, "TRAPPOLA!", '#aa00ff', 25, true);
             }
         } else if (r < 0.27) { 
-            // 15% ESSENZA ELEMENTALE
             Game.queueDrop('essence', this.x, this.y, 20, true);
         } else { 
-            // 73% MONETE
-            let numCoins = MathUtils.randomInt(1, 3);
+            let numCoins = MathUtils.randomInt(1, 2);
             for(let i=0; i<numCoins; i++) Game.queueDrop('coin', this.x, this.y, 20, true);
         }
     }

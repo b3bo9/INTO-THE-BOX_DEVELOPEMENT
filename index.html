@@ -3366,7 +3366,7 @@ const UI = {
             this.cache.maxHp = maxHp;
         }
 
-      let hpPct = (Game.player.stats.hp / Game.player.stats.maxHp) * 100;
+      let hpPct = Math.round((Game.player.stats.hp / Game.player.stats.maxHp) * 100);
         if (this.cache.hpPct !== hpPct) { 
             // Se stiamo subendo danni, la barra bianca si ferma e poi "cade" verso il rosso in ritardo
             if (this.cache.hpPct !== undefined && hpPct < this.cache.hpPct) {
@@ -3473,8 +3473,8 @@ const UI = {
             }
         } else { this.els.essenceHud.classList.remove('opacity-100'); this.els.essenceHud.classList.add('opacity-0'); }
 
-       if (Game.ultimateActive) {
-            let uPct = `${(Game.ultimateTimer / (10.0 + Game.player.modifiers.ascensionDurationAdd)) * 100}%`;
+      if (Game.ultimateActive) {
+            let uPct = `${Math.round((Game.ultimateTimer / (10.0 + Game.player.modifiers.ascensionDurationAdd)) * 100)}%`;
             if(this.cache.ultCharge !== uPct || !this.cache.ultActive) {
                 if(this.els.btnUltFill) { 
                     this.els.btnUltFill.style.height = uPct; 
@@ -3484,8 +3484,8 @@ const UI = {
                 if(this.els.ultChargeText) { this.els.ultChargeText.innerText = "ON"; }
                 this.cache.ultCharge = uPct; this.cache.ultActive = true;
             }
-        } else {
-            let uPct = `${Game.ultimateCharge}%`;
+       } else {
+            let uPct = `${Math.floor(Game.ultimateCharge)}%`;
             if (this.cache.ultCharge !== uPct || this.cache.ultActive) {
                 if(this.els.btnUltFill) { 
                     this.els.btnUltFill.style.height = uPct; 
@@ -3593,10 +3593,11 @@ const UI = {
         }
  // Ora si attiva SOLO se il giocatore è stato fisicamente colpito (flashTimer), non per il semplice screen shake.
         if (Game.player && Game.player.flashTimer > 0 && !Game.player.dead) {
-            // Dissolvenza legata matematicamente al timer di flash
             this.els.damageFlash.style.opacity = (Game.player.flashTimer / 0.1) * 0.6;
-        } else {
+            this.cache.flashActive = true;
+        } else if (this.cache.flashActive) {
             this.els.damageFlash.style.opacity = '0';
+            this.cache.flashActive = false;
         }
         
    let hpRatio = Game.player.stats.hp / Game.player.stats.maxHp;
@@ -3604,15 +3605,17 @@ const UI = {
      // ATTIVAZIONE SCHERMO CRT & VIGNETTA SANGUE (Sotto il 30% HP)
         let isLowHp = hpRatio < 0.30 && !Game.player.dead;
         
-        if (isLowHp && Game.state !== 'WARPING_OUT' && Game.state !== 'WARPING_IN') {
-            this.els.bloodVignette.classList.add('vignette-low-hp-active');
-            document.body.classList.add('crt-active');
-        } else {
-            this.els.bloodVignette.classList.remove('vignette-low-hp-active');
-            // FIX DEFINITIVO: Rimuove l'effetto CRT sia se il giocatore si cura, sia se compare la schermata di morte
-            if (!Game.player.dead || Game.state === 'DEAD') {
-                document.body.classList.remove('crt-active');
+        if (this.cache.isLowHp !== isLowHp) {
+            if (isLowHp && Game.state !== 'WARPING_OUT' && Game.state !== 'WARPING_IN') {
+                this.els.bloodVignette.classList.add('vignette-low-hp-active');
+                document.body.classList.add('crt-active');
+            } else {
+                this.els.bloodVignette.classList.remove('vignette-low-hp-active');
+                if (!Game.player.dead || Game.state === 'DEAD') {
+                    document.body.classList.remove('crt-active');
+                }
             }
+            this.cache.isLowHp = isLowHp;
         }
 
         // Lo stato dell'audio si aggiorna solo se ci sono cambiamenti
@@ -3624,15 +3627,24 @@ const UI = {
         let container = document.getElementById('game-container');
         if (hpRatio <= 0.30 && hpRatio > 0 && !Game.player.dead) {
             let grayVal = 1.0 - (hpRatio / 0.30);
-            container.style.transition = 'none'; // Reagisce all'istante durante il combattimento
-            container.style.filter = `grayscale(${grayVal})`;
+            let roundedGray = Math.round(grayVal * 10) / 10; // Arrotondamento per limitare le chiamate CSS
+            if (this.cache.grayVal !== roundedGray) {
+                container.style.transition = 'none'; 
+                container.style.filter = `grayscale(${roundedGray})`;
+                this.cache.grayVal = roundedGray;
+            }
         } else if (Game.player.dead) {
-            // Usa una transizione CSS accelerata in Hardware per sfumare dolcemente dal livello attuale di saturazione allo 0% (100% Grigio) in 2.5s
-            container.style.transition = 'filter 2.5s ease-out';
-            container.style.filter = `grayscale(1)`; 
+            if (this.cache.grayVal !== 'dead') {
+                container.style.transition = 'filter 2.5s ease-out';
+                container.style.filter = `grayscale(1)`; 
+                this.cache.grayVal = 'dead';
+            }
         } else {
-            container.style.transition = 'none';
-            container.style.filter = 'none';
+            if (this.cache.grayVal !== 0) {
+                container.style.transition = 'none';
+                container.style.filter = 'none';
+                this.cache.grayVal = 0;
+            }
         }
     },
      
@@ -4036,25 +4048,16 @@ Game.scene.add(this.dynamicDebrisMesh);
         do {
             let d = this.debris[this._debrisIdx];
             this._debrisIdx = (this._debrisIdx + 1) % this.debris.length;
-            if (!d.active) return d; // Restituisce solo se inattivo
+            if (!d.active) return d; 
         } while (this._debrisIdx !== startIdx);
-        return null; // Pool esaurito: evita di teletrasportare detriti già in volo
+        return null; 
     },
    getParticle() { 
-        let startIdx = this._particleIdx;
-        do {
-            let p = this.particles[this._particleIdx];
-            this._particleIdx = (this._particleIdx + 1) % this.particles.length;
-            if (!p.active) return p; 
-        } while (this._particleIdx !== startIdx);
-        
-        // FIX RAM: Creiamo il manichino staticamente una sola volta in memoria. 
-        // Zero allocazioni di memoria nei momenti di stress!
-        if (!this._dummyParticle) {
-            this._dummyParticle = { spawn: () => {}, mesh: { scale: { set: () => {} } } };
-        }
-        return this._dummyParticle; 
-    },
+        // FIX OVERHEAD: Rimuove i cicli while. Se saturo, sovrascrive a O(1).
+        let p = this.particles[this._particleIdx];
+        this._particleIdx = (this._particleIdx + 1) % this.particles.length;
+        return p;
+    },
    getProjectile() { 
         let startIdx = this._projectileIdx;
         do {
@@ -4065,15 +4068,10 @@ Game.scene.add(this.dynamicDebrisMesh);
         if(!this._dummyProj) this._dummyProj = { spawn: () => {}, group: {visible: false}, active: false };
         return this._dummyProj;
     },
-    getFloatingText() { 
-        let startIdx = this._textIdx;
-        do {
-            let f = this.floatingTexts[this._textIdx];
-            this._textIdx = (this._textIdx + 1) % this.floatingTexts.length;
-            if (!f.active) return f;
-        } while (this._textIdx !== startIdx);
-        if(!this._dummyTxt) this._dummyTxt = { spawn: () => {}, active: false };
-        return this._dummyTxt;
+    getFloatingText() { 
+        let f = this.floatingTexts[this._textIdx];
+        this._textIdx = (this._textIdx + 1) % this.floatingTexts.length;
+        return f;
     },
     getHazard() { 
         let startIdx = this._hazardIdx;
@@ -5283,8 +5281,8 @@ startGame(diffMult) {
             for (let i = 0; i < Math.min(visibleCount, maxTreesToProcess); i++) {
                 let tree = this._tempVisibleTrees[Math.floor(Math.random() * visibleCount)];
 
-                // 30% di probabilità per frame di emettere fuoco su quell'albero
-                if (Math.random() < 0.3) {
+               // FIX OVERSPAWN: Genera fumo e fiamme solo a precisi intervalli per non bruciare tutto il pool!
+                if (Game.frameCount % (isTouchDevice ? 15 : 6) === 0 && Math.random() < 0.5) {
                     // Il fuoco nasce alla base della chioma e sale
                     let rx = tree.x + MathUtils.randomRange(-7, 7) * tree.scale;
                     let rz = tree.z + MathUtils.randomRange(-7, 7) * tree.scale;

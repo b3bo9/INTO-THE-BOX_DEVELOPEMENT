@@ -6740,8 +6740,24 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
         this.active = false;
         Game.enemyGrid.remove(this); 
         
-        let pMat = this.type === 'crate' ? SharedMat.spriteDust : SharedMat.spriteWhite;
-        for(let i=0; i<4; i++) Game.getParticle().spawn(this.x, 10, this.y, pMat, 'dust');
+        // --- EFFETTO NUVOLA FUMO NERO (Stile Crash Bandicoot) ---
+        let pCount = AppSettings.isLow ? 4 : (isTouchDevice ? 8 : 12);
+        for(let i=0; i<pCount; i++) {
+            let p = Game.getParticle();
+            // Usiamo la polvere base, ma la sbalziamo verso l'alto e la ingrandiamo a dismisura
+            p.spawn(this.x, 10, this.y, SharedMat.spriteDust, 'dust');
+            p.baseSize = MathUtils.randomRange(40, 75); // Nuvole giganti
+            p.vy = MathUtils.randomRange(30, 70); // Salgono lente ma costanti
+            p.vx = MathUtils.randomRange(-35, 35); // Si allargano a sbuffo
+            p.vz = MathUtils.randomRange(-35, 35);
+            p.life = MathUtils.randomRange(0.6, 0.8); // Durano un po' di più
+            p.maxLife = p.life;
+        }
+        
+        // Aggiungiamo anche un paio di schegge di legno/ceramica
+        let debrisMat = this.type === 'crate' ? SharedMat.spriteYellow : SharedMat.spriteWhite;
+        for(let i=0; i<3; i++) Game.getParticle().spawn(this.x, 15, this.y, debrisMat, 'spark');
+
         AudioEngine.playHit('enemy');
         
         let dummy = Game._dummyDebris;
@@ -6756,8 +6772,11 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
             Game.map.urnMesh.instanceMatrix.needsUpdate = true;
         }
         
+        // --- NUOVO SISTEMA DROP CASSE E VASI ---
         let r = Math.random();
+
         if (r < 0.01) { 
+            // 1% - Reliquia Segreta
             let choices = RelicSystem.getChoices();
             if (choices.length > 0) {
                 let dropRelic = choices[0]; 
@@ -6767,20 +6786,30 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
             } else {
                 for(let c=0; c<10; c++) Game.queueDrop('coin', this.x, this.y, 30, false);
             }
-        } else if (r < 0.12) { 
-            let mini = Game.getEnemy();
-            if (mini) {
-                mini.spawn(this.x, this.y, 'slime_mini', Game.floor);
-                Game.enemies.push(mini); 
-                Game.enemyGrid.insert(mini);
-                Game.floorMaxKills++; 
-                Game.getFloatingText().spawn(this.x, this.y + 20, "TRAPPOLA!", '#aa00ff', 25, true);
+        } else if (r < 0.18) { 
+            // 16.5% - Buff Magici (5 Secondi)
+            let buffType = Math.random();
+            if (buffType < 0.33) {
+                Game.player.shortBuffs.atkSpeed = 5.0;
+                Game.getFloatingText().spawn(this.x, this.y + 30, "FRENESIA! (+15% ATK)", '#ffaa00', 30, true);
+            } else if (buffType < 0.66) {
+                Game.player.shortBuffs.movSpeed = 5.0;
+                Game.getFloatingText().spawn(this.x, this.y + 30, "SCATTO! (+10% VEL)", '#00aaff', 30, true);
+            } else {
+                Game.player.shortBuffs.regen = 5.0;
+                Game.getFloatingText().spawn(this.x, this.y + 30, "RIGENERO! (+20% HP)", '#33ff00', 30, true);
             }
-        } else if (r < 0.27) { 
+            // Esplosione particellare magica per festeggiare il buff
+            for(let i=0; i<6; i++) Game.getParticle().spawn(this.x, 25, this.y, SharedMat.spriteLevel, 'spark');
+            AudioEngine.playCollect();
+
+        } else if (r < 0.38) { 
+            // 20% - Essenza
             Game.queueDrop('essence', this.x, this.y, 20, false);
         } else { 
-            let numCoins = MathUtils.randomInt(1, 2);
-            for(let i=0; i<numCoins; i++) Game.queueDrop('coin', this.x, this.y, 20, false);
+            // 62% - Monete
+            let numCoins = MathUtils.randomInt(1, 3);
+            for(let i=0; i<numCoins; i++) Game.queueDrop('coin', this.x, this.y, 25, false);
         }
     }
 }
@@ -6981,6 +7010,7 @@ class Player extends Entity {
         this.chaosHoTTickTimer = 0;  // Per il testo visivo
         this.dashSpeedTimer = 0; // NUOVO: Timer velocità post-scatto
         this.dashResistTimer = 0; // NUOVO: Timer resistenza post-scatto
+        this.shortBuffs = { atkSpeed: 0, movSpeed: 0, regen: 0 }; // Buff da Casse/Vasi
         
         this.modifiers = {
             critChance: 0.10, bonusCritChance: 0, dmgMult: 1.0, speedMult: 1.0, atkSpeedMult: 1.0, bonusAtkSpeed: 0, dashCooldownMult: 1.0, vampirismMaxHp: 0, 
@@ -7529,6 +7559,20 @@ class Player extends Entity {
         if (this.dashSpeedTimer > 0) this.dashSpeedTimer -= dt;
         if (this.dashResistTimer > 0) this.dashResistTimer -= dt;
         let dashSpdMult = this.dashSpeedTimer > 0 ? 1.20 : 1.0; // +20% velocità per 2 sec
+
+        // --- GESTIONE BUFF BREVI DA CASSE E VASI ---
+        if (this.shortBuffs.atkSpeed > 0) this.shortBuffs.atkSpeed -= dt;
+        if (this.shortBuffs.movSpeed > 0) this.shortBuffs.movSpeed -= dt;
+        if (this.shortBuffs.regen > 0) {
+            this.shortBuffs.regen -= dt;
+            // Cura il 20% in 5 secondi (4% al secondo) in modo fluido
+            let healAmount = this.stats.maxHp * 0.04 * dt; 
+            this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
+            // Scintille verdi per indicare la guarigione in corso
+            if (Game.frameCount % 20 === 0) {
+                Game.getParticle().spawn(this.x, 25, this.y, SharedMat.spriteGreen, 'spark');
+            }
+        }
         
         // TIMING REWORK RELIQUIA: Riduce il tempo del buff e azzera gli stack allo scadere dei 3 secondi
         if (this.miserBuffTimer === undefined) { this.miserBuffTimer = 0; this.miserBuffStacks = 0; }
@@ -7600,7 +7644,8 @@ class Player extends Entity {
                 Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'dust');
             }
         }
-        let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult * shockSpdMult * dashSpdMult * miserSpdBonus * (1.0 + (this.essenceSpeedBonus || 0)) * auraSpdMult;
+       let buffMovMult = this.shortBuffs.movSpeed > 0 ? 1.10 : 1.0; // +10% Speed
+        let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult * shockSpdMult * dashSpdMult * miserSpdBonus * (1.0 + (this.essenceSpeedBonus || 0)) * auraSpdMult * buffMovMult;
         if (Game.ultimateActive) currentSpeed *= 1.5; currentSpeed = Math.min(currentSpeed, Game.ultimateActive ? 750 : 550);
         
         if (Game.ultimateActive && Game.frameCount % (isTouchDevice ? 8 : 3) === 0) Game.getParticle().spawn(this.x + MathUtils.randomRange(-15, 15), 15, this.y + MathUtils.randomRange(-15, 15), SharedMat.spriteBlue, 'trail');
@@ -7881,7 +7926,8 @@ class Player extends Entity {
         let aura = Game.getAuraAt(this.x, this.y); 
         // FIX OBELISCO ROSSO: +20% Velocità d'attacco se sei nell'Aura Rossa
         let auraAtkSpd = (aura === 'blue') ? 0.6 : (aura === 'red' ? 1.2 : 1.0);
-        let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult * shopSpeed * adrenalineSpeed * (1 + shieldSpeed) * shockAtkSpeed * miserAtkSpeedBonus * auraAtkSpd;
+        let buffAtkMult = this.shortBuffs.atkSpeed > 0 ? 1.15 : 1.0; // +15% Atk Speed
+        let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult * shopSpeed * adrenalineSpeed * (1 + shieldSpeed) * shockAtkSpeed * miserAtkSpeedBonus * auraAtkSpd * buffAtkMult;
         if (this.overdrive && this.essence === 'blue') spdMult *= 3.0; 
         
         // --- MODIFICA CADENZA ARMA ROSSA ---

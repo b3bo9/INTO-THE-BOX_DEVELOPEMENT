@@ -2501,6 +2501,24 @@ function createPatternTexture(type) {
         for(let i=0; i<8; i++) { let y = i*32; let offset = (i%2)*32; ctx.fillRect(offset+2, y+2, 60, 28); ctx.fillRect(offset+66, y+2, 60, 28); ctx.fillRect(offset+130, y+2, 60, 28); ctx.fillRect(offset+194, y+2, 60, 28); if(offset > 0) ctx.fillRect(-30, y+2, 60, 28); }
     } else if (type === 'blood') {
         let grad = ctx.createRadialGradient(128,128,0,128,128,128); grad.addColorStop(0, 'rgba(200,0,0,0.8)'); grad.addColorStop(0.5, 'rgba(100,0,0,0.5)'); grad.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = grad; ctx.fillRect(0,0,256,256);
+    } else if (type === 'crate') {
+        ctx.fillStyle = '#C07D3E'; ctx.fillRect(0, 0, 256, 256); // Base Legno
+        ctx.strokeStyle = '#5C3317'; ctx.lineWidth = 24;
+        ctx.strokeRect(12, 12, 232, 232); // Bordo della cassa
+        ctx.beginPath(); ctx.moveTo(12, 12); ctx.lineTo(244, 244); ctx.stroke(); // Diagonale 1
+        ctx.beginPath(); ctx.moveTo(244, 12); ctx.lineTo(12, 244); ctx.stroke(); // Diagonale 2
+        ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 2; // Venature del legno
+        for(let i=0; i<20; i++) { ctx.beginPath(); ctx.moveTo(0, Math.random()*256); ctx.lineTo(256, Math.random()*256); ctx.stroke(); }
+    } else if (type === 'urn') {
+        ctx.fillStyle = '#A35233'; ctx.fillRect(0, 0, 256, 256); // Base Terracotta
+        ctx.fillStyle = '#4A2511';
+        ctx.fillRect(0, 40, 256, 25); // Banda decorativa alta
+        ctx.fillRect(0, 150, 256, 15); // Banda media
+        ctx.fillRect(0, 200, 256, 10); // Banda bassa
+        for(let i=0; i<300; i++) { // Porosità della ceramica
+            ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)';
+            ctx.fillRect(Math.random()*256, Math.random()*256, 4, 4);
+        }
     }
     const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
     tex.encoding = THREE.sRGBEncoding; // <--- AGGIUNGI QUESTA RIGA (FONDAMENTALE)
@@ -2591,10 +2609,24 @@ const GLOBAL_ALPHA_TEX = createOrganicAlphaMap();
 SharedMat.coin = new THREE.MeshStandardMaterial({color: 0xffd700, emissive: 0xaa6600, metalness: 1.0, roughness: 0.2});
 
 // --- NUOVI MODELLI PROPS (Casse e Urne) ---
-SharedGeo.crate = new THREE.BoxGeometry(14, 14, 14);
-SharedGeo.urn = new THREE.CylinderGeometry(5, 4, 16, 8);
-SharedMat.crate = new THREE.MeshPhongMaterial({ color: 0x5c4033, shininess: 5, flatShading: true });
-SharedMat.urn = new THREE.MeshPhongMaterial({ color: 0x888888, shininess: 25, flatShading: true });
+SharedGeo.crate = new THREE.BoxGeometry(24, 24, 24); // Cassa gigantesca
+
+// Profilo al tornio (Lathe) per simulare le curve di una VERA anfora!
+const urnPoints = [];
+urnPoints.push(new THREE.Vector2(0, 0));
+urnPoints.push(new THREE.Vector2(6, 0));   // Base
+urnPoints.push(new THREE.Vector2(9, 5));   // Fondo arrotondato
+urnPoints.push(new THREE.Vector2(14, 14)); // Pancia larga
+urnPoints.push(new THREE.Vector2(6, 23));  // Collo stretto
+urnPoints.push(new THREE.Vector2(6, 26));  // Collo dritto
+urnPoints.push(new THREE.Vector2(8, 28));  // Bordo svasato verso l'esterno
+urnPoints.push(new THREE.Vector2(0, 28));  // Ritorno all'asse per chiudere
+SharedGeo.urn = new THREE.LatheGeometry(urnPoints, 12);
+SharedGeo.urn.translate(0, -14, 0); // Centriamo l'anfora rispetto all'asse Y
+
+// Applichiamo le texture generate al volo
+SharedMat.crate = new THREE.MeshPhongMaterial({ map: createPatternTexture('crate'), shininess: 10 });
+SharedMat.urn = new THREE.MeshPhongMaterial({ map: createPatternTexture('urn'), shininess: 30, flatShading: true });
 
 const SharedGeoSet = new Set(Object.values(SharedGeo));
 const SharedMatSet = new Set(Object.values(SharedMat));
@@ -6275,31 +6307,40 @@ class GameMap {
                         dummy.updateMatrix(); 
                         meshDirt.setMatrixAt(idxDirt++, dummy.matrix);
                         
-                        // --- LOGICA SPAWN PROPS (Lungo i bordi della stanza) ---
+                        // --- LOGICA SPAWN PROPS (Spazi aperti e Cluster Dinamici) ---
                         if (!isBossFloor && this.grid[x][y] === 2) {
-                            let isBorder = false;
-                            if (x>0 && this.grid[x-1][y]===1) isBorder = true;
-                            if (x<this.width-1 && this.grid[x+1][y]===1) isBorder = true;
-                            if (y>0 && this.grid[x][y-1]===1) isBorder = true;
-                            if (y<this.height-1 && this.grid[x][y+1]===1) isBorder = true;
-                            
-                            // 10% di probabilità di spawn se è un bordo
-                            if (isBorder && Math.random() < 0.10) {
-                                let px = (x * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-10, 10);
-                                let pz = (y * TILE_SIZE + TILE_SIZE / 2) + MathUtils.randomRange(-10, 10);
+                            // 4% probabilità base di trovare props su ogni singolo tile calpestabile
+                            if (Math.random() < 0.04) {
+                                let px = (x * TILE_SIZE + TILE_SIZE / 2);
+                                let pz = (y * TILE_SIZE + TILE_SIZE / 2);
                                 
-                                if (Math.random() > 0.5 && cPropIdx < maxCrates) {
-                                    dummy.position.set(px, 7, pz);
+                                let spawnCrate = Math.random() < 0.6; // 60% Cassa, 40% Vaso singolo
+                                
+                                if (spawnCrate && cPropIdx < maxCrates) {
+                                    // 1. Spawna una Cassa grande spostata un po' dal centro
+                                    dummy.position.set(px - 10, 12, pz - 10); // Y=12 perché è alta 24 (allineata al pavimento)
                                     dummy.rotation.set(0, Math.random() * Math.PI, 0);
-                                    dummy.scale.setScalar(MathUtils.randomRange(0.9, 1.3));
+                                    dummy.scale.setScalar(MathUtils.randomRange(0.9, 1.2));
                                     dummy.updateMatrix();
                                     this.crateMesh.setMatrixAt(cPropIdx, dummy.matrix);
-                                    Game.propsCrates[cPropIdx].spawn(px, pz);
+                                    Game.propsCrates[cPropIdx].spawn(px - 10, pz - 10);
                                     cPropIdx++;
-                                } else if (uPropIdx < maxUrns) {
-                                    dummy.position.set(px, 8, pz);
+                                    
+                                    // 2. Probabilità estrema (70%) di trovare un VASO vicino alla cassa appena generata!
+                                    if (Math.random() < 0.70 && uPropIdx < maxUrns) {
+                                        dummy.position.set(px + 14, 14, pz + 12); // Y=14 perché è alta 28 (centrata)
+                                        dummy.rotation.set(0, Math.random() * Math.PI, 0);
+                                        dummy.scale.setScalar(MathUtils.randomRange(0.8, 1.1));
+                                        dummy.updateMatrix();
+                                        this.urnMesh.setMatrixAt(uPropIdx, dummy.matrix);
+                                        Game.propsUrns[uPropIdx].spawn(px + 14, pz + 12);
+                                        uPropIdx++;
+                                    }
+                                } else if (!spawnCrate && uPropIdx < maxUrns) {
+                                    // 3. Spawna solo un Vaso solitario in mezzo al nulla
+                                    dummy.position.set(px, 14, pz); 
                                     dummy.rotation.set(0, Math.random() * Math.PI, 0);
-                                    dummy.scale.setScalar(MathUtils.randomRange(0.8, 1.2));
+                                    dummy.scale.setScalar(MathUtils.randomRange(0.9, 1.2));
                                     dummy.updateMatrix();
                                     this.urnMesh.setMatrixAt(uPropIdx, dummy.matrix);
                                     Game.propsUrns[uPropIdx].spawn(px, pz);
@@ -6612,9 +6653,9 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
         this.active = false;
         this.dead = false;
     }
-    spawn(x, y) {
+   spawn(x, y) {
         this.x = x; this.y = y;
-        this.radius = 12;
+        this.radius = 18; // Hitbox ingrandita per matchare i nuovi modelli enormi
         this.hp = Game.floor * 10 + 20; // Scala coi piani
         this.active = true;
         this.dead = false;

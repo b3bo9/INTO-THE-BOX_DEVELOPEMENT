@@ -6334,7 +6334,7 @@ pObj.originalScale = pScale; // <-- SALVA SCALA
 pObj.originalRotY = pRot;    // <-- SALVA ROTAZIONE
 cPropIdx++;
                                     
- // 2. Probabilità  (40%) di trovare un VASO vicino alla cassa appena generata!
+// 2. Probabilità estrema (40%) di trovare un VASO vicino alla cassa appena generata!
 if (Math.random() < 0.40 && uPropIdx < maxUrns) {
 let uScale = MathUtils.randomRange(0.8, 1.1);
 let uRot = Math.random() * Math.PI;
@@ -6349,10 +6349,9 @@ pUrn.spawn(dummy.position.x, dummy.position.z);
 pUrn.originalScale = uScale;
 pUrn.originalRotY = uRot;
 uPropIdx++;
-                                    }
-                                    }
-                                } else if (!spawnCrate && uPropIdx < maxUrns) {
-                                    let uScale = MathUtils.randomRange(0.8, 1.1);
+}
+} else if (!spawnCrate && uPropIdx < maxUrns) {
+let uScale = MathUtils.randomRange(0.8, 1.1);
 let uRot = Math.random() * Math.PI;
 // ... (lascia il position set come era)
 dummy.rotation.set(0, uRot, 0);
@@ -6759,7 +6758,7 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
             Game.map.urnMesh.instanceMatrix.needsUpdate = true;
         }
         
-       let r = Math.random();
+        let r = Math.random();
         if (r < 0.01) { 
             let choices = RelicSystem.getChoices();
             if (choices.length > 0) {

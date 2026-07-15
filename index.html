@@ -6545,9 +6545,13 @@ class Entity {
         this.angle = 0; this.dead = false; this.mesh = new THREE.Group(); this.stats = { hp: 100, maxHp: 100, minDmg: 5, maxDmg: 10 };
         this.mesh.matrixAutoUpdate = false; // OTTIMIZZAZIONE GPU MASSICCIA: Disabilita il calcolo matriciale automatico
         this.flashTimer = 0; this.flashMats = []; 
-       // --- INIZIO FAKE SHADOW ---
-        this.shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), SharedMat.blobShadow);
-        this.shadowMesh.rotation.x = -Math.PI / 2; // La sdraiamo sul pavimento
+     // --- INIZIO FAKE SHADOW ---
+        // FIX BOTTLENECK GPU: Condivisione della geometria dell'ombra invece di istanziarne 80 nuove!
+        if (!window.GLOBAL_TELEGRAPH_GEO) {
+            window.GLOBAL_TELEGRAPH_GEO = new THREE.PlaneGeometry(1, 1);
+            window.GLOBAL_TELEGRAPH_GEO.rotateX(-Math.PI / 2);
+        }
+        this.shadowMesh = new THREE.Mesh(window.GLOBAL_TELEGRAPH_GEO, SharedMat.blobShadow);
         this.shadowMesh.matrixAutoUpdate = false;
         this.shadowMesh.visible = false;
         Game.scene.add(this.shadowMesh); // La aggiungiamo alla scena, indipendente dai salti del personaggio
@@ -9030,16 +9034,15 @@ Game.scene.add(this.telegraphMesh);
             // Richiamo pulito senza angoli balistici
             Game.spawnDecal(this.x, this.y, 'blood');
         }
-      // CLEANUP MATERIALI CLONATI (Es. Pursuer)
-        const cleanupChild = (child) => {
-            if ((child.isMesh || child.isSprite) && child.material && child.material !== this.mat && !SharedMatSet.has(child.material)) {
-                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
-                else child.material.dispose();
-            }
-        };
+      // CLEANUP MATERIALI CLONATI (Solo per Mesh interne, es. Inseguitore)
+        const cleanupChild = (child) => {
+            if ((child.isMesh || child.isSprite) && child.material && child.material !== this.mat && !SharedMatSet.has(child.material)) {
+                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                else child.material.dispose();
+            }
+        };
         this.mesh.traverse(cleanupChild);
-        if (this.telegraphMesh) cleanupChild(this.telegraphMesh);
-        if (this.shadowMesh) cleanupChild(this.shadowMesh);
+        // NON puliamo telegraphMesh e shadowMesh: appartengono al Pool e vivono in eterno
         
         this.active = false; this.mesh.visible = false;
            
@@ -10044,7 +10047,7 @@ function clearScene() {
     if (Game.map) {
         Game.map.mapGroup.traverse((child) => {
             if (child.isMesh || child.isInstancedMesh) {
-                if (child.geometry && 
+               if (child.geometry && 
                     child.geometry !== InteractiveGrassSystem.geo && 
                     child.geometry !== window.GLOBAL_TREE_GEO && 
                     child.geometry !== window.GLOBAL_DEBRIS_GEO && 
@@ -10055,6 +10058,8 @@ function clearScene() {
                     child.geometry !== window.GLOBAL_SHAFT_GEO && 
                     child.geometry !== window.GLOBAL_CAP_GEO && 
                     child.geometry !== window.GLOBAL_FOG_GEO && 
+                    child.geometry !== window.GLOBAL_DEAD_BODY_GEO && 
+                    child.geometry !== window.GLOBAL_TELEGRAPH_GEO && 
                !SharedGeoSet.has(child.geometry)) {
                     child.geometry.dispose();
                 }
@@ -10129,6 +10134,13 @@ function clearScene() {
             ep.mesh.visible = false; 
             ep.hideAuras();
             if(ep.shadowMesh) ep.shadowMesh.visible = false; 
+            
+            // FIX MEMORY LEAK: Se è il Pursuer, forza la distruzione dei materiali clonati al prossimo riutilizzo del pool
+            if (ep.isPursuer) {
+                ep.currentType = null;
+                ep.isPursuer = false;
+            }
+
            if(ep.beams) {
                 for(let j=0; j<3; j++) {
                     ep.beams[j].visible = false;

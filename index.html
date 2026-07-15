@@ -1550,11 +1550,11 @@ const MathUtils = {
 const TILE_SIZE = 64; const CHUNK_SIZE = 30; const FIXED_TIME_STEP = 1 / 60; const MAX_TIME_STEP = 0.1;
  
    const MAP_THEMES = [
-    // TEMA 1: FORESTA OSCURA (Complementare: Ombre Indigo profondo vs Luce Oro tagliente)
+   // TEMA 1: FORESTA SMERALDO (Atmosfera magica, nebbia profonda Teal vs Luce Ciano)
     { 
-        dirt: 0x454035, grass: 0x284228, rock: 0x4a5a52, wall: 0x2a352d, 
-        grassShader: 0x162b1a, tree: 0x0a0a08,
-        ambient: 0x05140a, dirLight: 0xc9b865, fog: 0x040d07
+        dirt: 0x152119, grass: 0x113320, rock: 0x192e27, wall: 0x11211a, 
+        grassShader: 0x0a1c14, tree: 0x081510,
+        ambient: 0x0c1c16, dirLight: 0x66ffd4, fog: 0x081812
     },
     // TEMA 2: ABISSO INFERNALE (Complementare: Ombre Ottanio scuro vs Luce Cremisi)
     { 
@@ -4599,11 +4599,13 @@ loop(timestamp) {
                 this.bloomPass.strength = !isTouchDevice ? 0.65 : 0.9;
                 this.bloomPass.threshold = 0.35;
             }
-        } else {
-            this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 150, camDist + 500);
+       } else {
+            // FORESTA: Nebbia più densa e avvolgente per nascondere l'orizzonte e creare mistero
+            this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 250, camDist + 350);
             if (this.bloomPass) {
-                this.bloomPass.strength = !isTouchDevice ? 0.5 : 0.7;
-                this.bloomPass.threshold = 0.35;
+                // Leggermente più alto per far brillare particelle e proiettili nell'oscurità
+                this.bloomPass.strength = !isTouchDevice ? 0.6 : 0.8;
+                this.bloomPass.threshold = 0.30;
             }
         }
         Game.arenaEvolution = false; // DEVE ESSERE FALSE ALL'INIZIO!
@@ -5177,9 +5179,9 @@ startGame(diffMult) {
                 let p = this.getParticle();
                 let magicMat;
 
-                // Tema 0: Foresta (Spore verdi/gialle)
+            // Tema 0: Foresta (Lucciole magiche smeraldo e oro)
                 if (this.currentThemeIndex === 0) {
-                    magicMat = Math.random() > 0.5 ? SharedMat.spriteGreen : SharedMat.spriteYellow;
+                    magicMat = Math.random() > 0.6 ? SharedMat.spriteGreen : SharedMat.spriteYellow;
                 } 
                 // Tema 1: Abisso (Cenere rossa/gialla)
                 else if (this.currentThemeIndex === 1) {
@@ -5192,10 +5194,17 @@ startGame(diffMult) {
 
                 p.spawn(px, py, pz, magicMat, 'ambient');
                 
-                // Diamo alla neve una fisica dedicata: fiocchi leggermente più grandi e caduta più decisa
+                // --- FISICA PARTICELLARE PERSONALIZZATA (Costo CPU: 0) ---
                 if (isIceTheme) {
+                    // NEVE: Fiocchi più grandi e caduta decisa
                     p.baseSize = MathUtils.randomRange(8, 18);
                     p.vy = MathUtils.randomRange(-220, -120);
+                } else if (this.currentThemeIndex === 0) {
+                    // FORESTA: Lucciole magiche che fluttuano verso l'alto e danzano lateralmente
+                    p.baseSize = MathUtils.randomRange(4, 9);
+                    p.vy = MathUtils.randomRange(-10, 40); // Sconfiggono la gravità di default
+                    p.vx *= 2.5; // Movimento orizzontale più ampio ed erratico
+                    p.vz *= 2.5;
                 }
             }
         }
@@ -6143,9 +6152,11 @@ class GameMap {
                 activeMats.dirt.emissiveIntensity = 0.5;
             }
         } else { 
-            // TEMA FORESTA: Organico, ruvido e opaco
-            activeMats.rock.shininess = 15;
+            // TEMA FORESTA: Umido, organico, con riflessi stile muschio bagnato
+            activeMats.rock.shininess = 25;
+            activeMats.rock.specular.setHex(0x113322); // Leggero riflesso smeraldo
             activeMats.rock.emissive.setHex(0x000000);
+            activeMats.dirt.emissive.setHex(0x000000);
         }
         // --- FINE SISTEMA TEMI ---
         

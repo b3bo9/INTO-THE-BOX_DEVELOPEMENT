@@ -2364,36 +2364,41 @@ const BLOB_SHADOW_TEX = createBlobShadowTexture();
 const BLOOD_TEX = createPatternTexture('blood'); const GLOW_TEX = createGlowTexture();
 
 // --- TEXTURE PROCEDURALE PERSONAGGI (Stile Miniatura/Materico) ---
+// --- TEXTURE PROCEDURALE PERSONAGGI (Stile Miniatura/Materico) ---
 function createCharacterTexture() {
     const canvas = document.createElement('canvas'); 
-    canvas.width = 128; canvas.height = 128; // Risoluzione minuscola per performance estreme
+    canvas.width = 128; canvas.height = 128; // Risoluzione per performance estreme
     const ctx = canvas.getContext('2d');
     
-    // Sfondo base chiarissimo (non scurisce i colori originali del gioco)
-    ctx.fillStyle = '#f2f2f2'; 
+    // Sfondo BIANCO PURO: così i colori base dei modelli non si scuriscono artificialmente
+    ctx.fillStyle = '#ffffff'; 
     ctx.fillRect(0, 0, 128, 128);
 
-    // Porosità stile terracotta/metallo usurato
-    for (let i = 0; i < 400; i++) {
-        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.06)';
-        let size = Math.random() * 2 + 1;
+    // Porosità nette e aggressive (Macchie scure e scaglie chiare)
+    for (let i = 0; i < 800; i++) {
+        ctx.fillStyle = Math.random() > 0.3 ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.9)'; 
+        let size = Math.random() * 3 + 1;
         ctx.fillRect(Math.random() * 128, Math.random() * 128, size, size);
     }
 
-    // Graffi sottili per dare l'effetto "combattimento"
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 80; i++) { 
-        ctx.strokeStyle = Math.random() > 0.5 ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)';
+    // Graffi neri spessi da usura/combattimento
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 60; i++) { 
+        ctx.strokeStyle = 'rgba(0,0,0,0.6)';
         let x = Math.random() * 128; let y = Math.random() * 128;
         ctx.beginPath(); 
         ctx.moveTo(x, y); 
-        ctx.lineTo(x + Math.random() * 10 - 5, y + Math.random() * 10 - 5); 
+        ctx.lineTo(x + Math.random() * 15 - 7.5, y + Math.random() * 15 - 7.5); 
         ctx.stroke();
     }
     
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    // FONDAMENTALE: Ingrandiamo i dettagli ripetendo la texture!
+    tex.repeat.set(2, 2); 
     tex.encoding = THREE.sRGBEncoding;
+    // Rende i dettagli "croccanti" e non sfocati
+    tex.magFilter = THREE.NearestFilter; 
     return tex;
 }
 const CHAR_GRUNGE_TEX = createCharacterTexture();
@@ -2629,7 +2634,13 @@ const GLOBAL_ALPHA_TEX = createOrganicAlphaMap();
     // FIX SCUDO PROFETA: Una sfera tridimensionale semitrasparente e additiva come quella della glaciazione
     prophetShield: new THREE.MeshBasicMaterial({color: 0xff5500, transparent: true, opacity: 0.35, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false}),
     
-   enemyDark: new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9, map: CHAR_GRUNGE_TEX, bumpMap: isTouchDevice ? null : CHAR_GRUNGE_TEX, bumpScale: 0.05}),
+   enemyDark: new THREE.MeshStandardMaterial({
+        color: 0x444444, // Schiarito per permettere allo sporco di creare contrasto!
+        roughness: 0.9, 
+        map: CHAR_GRUNGE_TEX, 
+        bumpMap: isTouchDevice ? null : CHAR_GRUNGE_TEX, 
+        bumpScale: 0.08
+    }),
     enemyEye: new THREE.MeshBasicMaterial({color: 0xff0000}),
    leaperTeeth: new THREE.MeshBasicMaterial({color: 0xffffff}),
     dashLine: new THREE.MeshBasicMaterial({color: 0x00ffff, blending: THREE.AdditiveBlending, transparent: true}),
@@ -7144,7 +7155,19 @@ class Player extends Entity {
         };
         
        // Il mantello del giocatore riceve la texture e il bump (solo su PC)
-        this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.7, metalness: 0.1, map: CHAR_GRUNGE_TEX, bumpMap: isTouchDevice ? null : CHAR_GRUNGE_TEX, bumpScale: 0.05}), new THREE.MeshPhongMaterial({color: 0xffff00, emissive: 0xffff00}));
+        // Il mantello del giocatore riceve la texture e il bump (solo su PC)
+        // Colore base schiarito a 0x555555 così i graffi neri risaltano in modo incredibile!
+        this.modelParts = ModelFactory.buildPlayer(
+            new THREE.MeshStandardMaterial({
+                color: 0x555555, 
+                roughness: 0.7, 
+                metalness: 0.1, 
+                map: CHAR_GRUNGE_TEX, 
+                bumpMap: isTouchDevice ? null : CHAR_GRUNGE_TEX, 
+                bumpScale: 0.08
+            }), 
+            new THREE.MeshPhongMaterial({color: 0xffff00, emissive: 0xffff00})
+        );
         this.mesh = this.modelParts.group; this.staffGemMat = this.modelParts.staffGem.material;
         
        // Luce più calda (ambra/arancio), raggio esteso e decadimento più morbido (1.5 invece di 2) 

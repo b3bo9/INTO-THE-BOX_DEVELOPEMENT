@@ -3796,10 +3796,12 @@ getEnemy() {
         // OTTIMIZZAZIONE SCALABILITÀ: Assegnazione corretta e SICURA della risoluzione al lancio!
         let pixelRatio = 1.0;
         if (isTouchDevice) {
-            // Mobile: Evita ratio > 1.25 per non fondere la batteria
-            if (AppSettings.isUltra) pixelRatio = Math.min(window.devicePixelRatio, 1.25);
-            else if (AppSettings.mode === 1) pixelRatio = Math.min(window.devicePixelRatio, 0.9);
-            else pixelRatio = 0.6; // Modalità Performance estrema su mobile
+            // FIX THERMAL THROTTLING: I telefoni moderni (es. Pixel 8 Pro) hanno risoluzioni 2K/3K.
+            // Manteniamo un tetto massimo ferreo per impedire alla GPU di surriscaldarsi.
+            let maxDPR = window.devicePixelRatio;
+            if (AppSettings.isUltra) pixelRatio = Math.min(maxDPR, 1.0);
+            else if (AppSettings.mode === 1) pixelRatio = Math.min(maxDPR, 0.75);
+            else pixelRatio = 0.5; // Performance: dimezza la risoluzione
         } else {
             // PC: Più flessibilità
             if (AppSettings.isUltra) pixelRatio = Math.min(window.devicePixelRatio, 1.5);
@@ -5338,8 +5340,17 @@ startGame(diffMult) {
                 
                 // CULLING MANUALE A COSTO ZERO: Nasconde i nemici distanti per salvare Draw Calls
                 let distToCamSq = (camX - e.x) * (camX - e.x) + (camY - e.y) * (camY - e.y);
-                e.mesh.visible = (distToCamSq < 1600000); // circa 1250 unità di distanza visiva
+                let isVisible = (distToCamSq < 1600000); // circa 1250 unità di distanza visiva
+                e.mesh.visible = isVisible;
                 
+                // FIX THERMAL THROTTLING: Se il nemico è lontano e invisibile, bypassa l'aggiornamento
+                // costante della sua MatrixAutoUpdate (calcoli su rotazione braccia, squash&stretch, etc).
+                if (!isVisible) {
+                    e.mesh.matrixAutoUpdate = false;
+                } else {
+                    e.mesh.matrixAutoUpdate = true;
+                }
+
                 e.update(combatDt); 
                 if ((Game.frameCount + e.thinkOffset) % 2 === 0) {
                     this.enemyGrid.updateClient(e); 
@@ -9983,20 +9994,25 @@ class Projectile {
        this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt; this.group.position.set(this.x, 15, this.y);
         
        // --- AGGIORNAMENTO DEL RIFLESSO A TERRA (FAKE LIGHT) ---
-        if (this.groundGlow.visible) {
+        // FIX THERMAL THROTTLING: Calcola le trasparenze del bagliore SOLO se il proiettile è nell'inquadratura.
+        let isVisibleToCam = Math.abs(this.x - Game.camera.position.x) < 800 && Math.abs(this.y - Game.camera.position.z) < 1200;
+
+        if (this.type !== 'arrow' && isVisibleToCam) {
+            this.groundGlow.visible = true;
             this.groundGlow.position.set(this.x, 1.5, this.y);
-            
-            // FAKE DYNAMIC LIGHT: Pulsazione caotica tramite onde sovrapposte per simulare il plasma/fuoco
+            // FAKE DYNAMIC LIGHT: Pulsazione caotica
             let flicker = (Math.sin(this.life * 30) * 0.1) + (Math.cos(this.life * 45) * 0.1);
             this.groundGlow.material.opacity = Math.max(0.2, Math.min(1.0, 0.8 + flicker));
-            
-            // Fa tremare caoticamente anche la dimensione dell'alone, fingendo che sia vera luce!
             let baseScale = (this.type === 'explosive_arrow' || this.type === 'enemy_fireball' || this.type === 'fire_shape') ? 85 : 
                             (this.type === 'chain_lightning' || this.type === 'homing_arrow' || this.type === 'enemy_bolt') ? 65 : 50; 
             this.groundGlow.scale.setScalar(baseScale + (flicker * 15));
+        } else {
+            // Spegne il piano invisibile per salvare fill-rate
+            this.groundGlow.visible = false;
         }
+
        if (this.type !== 'arrow' && this.type !== 'player_arrow' && this.type !== 'homing_arrow') {
-            this.mesh.rotation.x += dt * 5; this.mesh.rotation.y += dt * 5;
+            this.mesh.rotation.x += dt * 5; this.mesh.rotation.y += dt * 5;
             this.mesh.updateMatrix(); 
         }
         
@@ -10196,50 +10212,53 @@ class Particle {
     }
     
     update(dt) {
-        if (!this.active) return;
-        
-        if (this.type === 'nova') {
-            let pct = this.life / this.maxLife;
-            let currentSize = Math.sin(pct * Math.PI) * this.baseSize;
-            this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
-        } else if (this.type === 'ambient') { 
-            // --- MOVIMENTO CENERE INFUOCATA ---
-            // Le particelle dondolano lateralmente (simulando resistenza dell'aria)
-            this.vx += Math.sin(this.life * 2.0 + this.seed) * 20.0 * dt;
-            this.vz += Math.cos(this.life * 1.5 + this.seed) * 20.0 * dt;
-            
-            this.mesh.position.x += this.vx * dt; 
-            this.mesh.position.y += this.vy * dt; 
-            this.mesh.position.z += this.vz * dt;
-            
-            let pct = this.life / this.maxLife;
-            // Sfuma morbidamente per non "poppare" a schermo
-            let fade = Math.sin(pct * Math.PI); 
-            
-            let currentSize = this.baseSize * fade;
-            this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
-        } else if (this.type === 'dust') { 
-            this.mesh.position.x += this.vx * dt; 
-            this.mesh.position.y += this.vy * dt; 
-            this.mesh.position.z += this.vz * dt;
-            let pct = this.life / this.maxLife;
-            let currentSize = this.baseSize * pct; 
-            this.mesh.scale.set(currentSize, currentSize, 1);
-        } else {
-            if(this.type === 'blood' || this.type === 'spark') this.vy -= 600 * dt; 
-            if(this.type === 'flame') { 
-                this.vx -= this.vx * 2.5 * dt; 
-                this.vz -= this.vz * 2.5 * dt; 
-                this.baseSize += dt * 120; 
-            }
-            this.mesh.position.x += this.vx * dt; this.mesh.position.y += this.vy * dt; this.mesh.position.z += this.vz * dt;
-            if (this.mesh.position.y < 2) { this.mesh.position.y = 2; this.vx *= 0.5; this.vz *= 0.5; this.vy *= -0.3; } 
-            
-            let currentSize = this.baseSize * (this.type === 'flame' ? (this.life / this.maxLife) * 1.5 : (this.life / this.maxLife));
+        if (!this.active) return;
+        
+        // FIX THERMAL THROTTLING: Se la particella è ampiamente fuori dall'inquadratura, uccidila subito.
+        // Libera istantaneamente il Pool ed evita calcoli fisici e matriciali inutili.
+        let camX = Game.camera.position.x;
+        let camZ = Game.camera.position.z;
+        if (Math.abs(this.mesh.position.x - camX) > 1000 || Math.abs(this.mesh.position.z - camZ) > 1400) {
+            this.active = false; 
+            this.mesh.visible = false; 
+            return;
+        }
+
+        if (this.type === 'nova') {
+            let pct = this.life / this.maxLife;
+            let currentSize = Math.sin(pct * Math.PI) * this.baseSize;
+            this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
+        } else if (this.type === 'ambient') { 
+            this.vx += Math.sin(this.life * 2.0 + this.seed) * 20.0 * dt;
+            this.vz += Math.cos(this.life * 1.5 + this.seed) * 20.0 * dt;
+            this.mesh.position.x += this.vx * dt; 
+            this.mesh.position.y += this.vy * dt; 
+            this.mesh.position.z += this.vz * dt;
+            let pct = this.life / this.maxLife;
+            let fade = Math.sin(pct * Math.PI); 
+            let currentSize = this.baseSize * fade;
+            this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
+        } else if (this.type === 'dust') { 
+            this.mesh.position.x += this.vx * dt; 
+            this.mesh.position.y += this.vy * dt; 
+            this.mesh.position.z += this.vz * dt;
+            let pct = this.life / this.maxLife;
+            let currentSize = this.baseSize * pct; 
+            this.mesh.scale.set(currentSize, currentSize, 1);
+        } else {
+            if(this.type === 'blood' || this.type === 'spark') this.vy -= 600 * dt; 
+            if(this.type === 'flame') { 
+                this.vx -= this.vx * 2.5 * dt; 
+                this.vz -= this.vz * 2.5 * dt; 
+                this.baseSize += dt * 120; 
+            }
+            this.mesh.position.x += this.vx * dt; this.mesh.position.y += this.vy * dt; this.mesh.position.z += this.vz * dt;
+            if (this.mesh.position.y < 2) { this.mesh.position.y = 2; this.vx *= 0.5; this.vz *= 0.5; this.vy *= -0.3; } 
+            let currentSize = this.baseSize * (this.type === 'flame' ? (this.life / this.maxLife) * 1.5 : (this.life / this.maxLife));
             this.mesh.scale.set(Math.max(0.01, currentSize), Math.max(0.01, currentSize), 1);
         }
 
-        this.mesh.updateMatrix(); // <-- Aggiunto: Aggiorna la matrice solo per la singola particella attiva e in movimento
+        this.mesh.updateMatrix(); 
         this.life -= dt; 
         if(this.life <= 0) { this.active = false; this.mesh.visible = false; }
     }

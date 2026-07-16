@@ -1009,7 +1009,7 @@ const AppSettings = {
             }
         }
         
-        if (Game.bloomPass) { Game.bloomPass.strength = this.isUltraPC ? 0.9 : 0.7; Game.bloomPass.radius = 0.4; }
+       if (Game.bloomPass) { Game.bloomPass.strength = this.isUltraPC ? 0.25 : 0.15; Game.bloomPass.radius = 0.2; }
         
         if (window.GLOBAL_THEME_MATS) {
             window.GLOBAL_THEME_MATS.forEach((mats) => {
@@ -3844,29 +3844,29 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         this.dirLight.shadow.camera.near = 100; 
         this.dirLight.shadow.camera.far = 3000; 
         
-       // OTTIMIZZAZIONE OMBRE: Map Size ridotto per performance PC
+       // QUALITÀ OMBRE PC: Alziamo la risoluzione per avere contorni netti e definiti
         if (AppSettings.isUltraPC) {
-            this.dirLight.shadow.mapSize.width = 1024; // Dimezzato da 2048
-            this.dirLight.shadow.mapSize.height = 1024;
-            this.dirLight.shadow.bias = -0.0005; 
-            this.dirLight.shadow.normalBias = 0.02; 
+            this.dirLight.shadow.mapSize.width = 2048; // Riportato al massimo per un look HD
+            this.dirLight.shadow.mapSize.height = 2048;
+            this.dirLight.shadow.bias = -0.0004; 
+            this.dirLight.shadow.normalBias = 0.02;
+            this.dirLight.shadow.radius = 1.5; // Applica una leggera sfocatura realistica sui bordi alti
         } else {
-            // Su "Bilanciata" o su Smartphone, scendiamo a 512 per prestazioni ottimali
-            this.dirLight.shadow.mapSize.width = 512; 
-            this.dirLight.shadow.mapSize.height = 512;
+            // Su "Bilanciata" PC usiamo 1024 (buona qualità), su Smartphone 512
+            this.dirLight.shadow.mapSize.width = isTouchDevice ? 512 : 1024; 
+            this.dirLight.shadow.mapSize.height = isTouchDevice ? 512 : 1024;
             this.dirLight.shadow.bias = -0.001; 
         }
         this.scene.add(this.dirLight);
         this.scene.add(this.dirLight.target);
 
        const renderScene = new THREE.RenderPass(this.scene, this.camera);
-        // Se non è touch (PC), iniziamo con 0.5, altrimenti 0.7
-        let initialStrength = !isTouchDevice ? 0.5 : 0.7;
-        let initialRadius = 0.4;
+        // BLOOM RIDOTTO: Abbassato drasticamente per avvicinarsi alla pulizia dello smartphone
+        let initialStrength = 0.2; 
+        let initialRadius = 0.2; // Raggio ridotto per evitare il "lavaggio" dell'immagine globale
         // FIX BLOOM GPU: Calcoliamo il bagliore a un quarto (1/4) della risoluzione!
-        // Salva il 75% del calcolo sui frammenti senza perdere qualità visibile.
-        this.bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(this.width / 4, this.height / 4), initialStrength, initialRadius, 0.35);
-        this.bloomPass.threshold = 0.35;
+        this.bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(this.width / 4, this.height / 4), initialStrength, initialRadius, 0.65);
+        this.bloomPass.threshold = 0.65; // Soglia alzata in modo che brillino SOLO elementi davvero luminosi (neon/proiettili)
        this.composer = new THREE.EffectComposer(this.renderer);
         this.composer.addPass(renderScene); 
         // Aggiungi il Bloom SOLO se NON è un dispositivo touch
@@ -4643,23 +4643,24 @@ loop(timestamp) {
         if (this.currentThemeIndex === 2) {
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist + 100, camDist + 1000);
             if (this.bloomPass) {
-                // Su PC (non touch) usiamo valori ridotti
-                this.bloomPass.strength = !isTouchDevice ? 0.55 : 0.8;
-                this.bloomPass.threshold = 0.65;
+                // Ghiaccio: Bloom molto leggero e tagliente
+                this.bloomPass.strength = 0.25;
+                this.bloomPass.threshold = 0.70;
             }
         } else if (this.currentThemeIndex === 1) {
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 300, camDist + 250);
             if (this.bloomPass) {
-                this.bloomPass.strength = !isTouchDevice ? 0.65 : 0.9;
-                this.bloomPass.threshold = 0.35;
+                // Lava: Bagliore visibile solo sui rossi molto intensi
+                this.bloomPass.strength = 0.30;
+                this.bloomPass.threshold = 0.60;
             }
        } else {
             // FORESTA: Nebbia più densa e avvolgente per nascondere l'orizzonte e creare mistero
             this.scene.fog = new THREE.Fog(currentTheme.fog, camDist - 250, camDist + 350);
             if (this.bloomPass) {
-                // Leggermente più alto per far brillare particelle e proiettili nell'oscurità
-                this.bloomPass.strength = !isTouchDevice ? 0.6 : 0.8;
-                this.bloomPass.threshold = 0.30;
+                // Foresta: Bloom quasi spento per mantenere il buio e il contrasto intatti
+                this.bloomPass.strength = 0.20;
+                this.bloomPass.threshold = 0.65;
             }
         }
         Game.arenaEvolution = false; // DEVE ESSERE FALSE ALL'INIZIO!

@@ -1221,6 +1221,30 @@ const AudioEngine = {
             this.playNoise(0.05, 'high', 0.1);
         }
     },
+    playBreak(type) {
+        if (!this.ctx || this.sfxMuted || this.ctx.state === 'suspended') return;
+        let t = this.ctx.currentTime;
+        
+        if (type === 'crate') {
+            // Cassa in legno: rumore sordo e "croccante"
+            this.playNoise(0.15, 'low', 0.6); 
+            let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+            osc.type = 'square'; osc.frequency.setValueAtTime(150, t); osc.frequency.exponentialRampToValueAtTime(40, t + 0.1);
+            gain.gain.setValueAtTime(0.4, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+            osc.connect(gain); gain.connect(this.masterCompressor ? this.masterCompressor : this.ctx.destination);
+            osc.start(t); osc.stop(t + 0.1);
+        } else if (type === 'urn') {
+            // Vaso/Ceramica: "Tssshh" acuto, tagliente e vetroso
+            this.playNoise(0.2, 'high', 0.5); 
+            [800, 1200, 2000].forEach((freq) => {
+                let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(freq + (Math.random()*200), t); osc.frequency.exponentialRampToValueAtTime(freq*0.5, t + 0.15);
+                gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+                osc.connect(gain); gain.connect(this.masterCompressor ? this.masterCompressor : this.ctx.destination);
+                osc.start(t); osc.stop(t + 0.15);
+            });
+        }
+    },
     playEnemyDeath() {
         if (!this.ctx || this.sfxMuted) return;
         let t = this.ctx.currentTime;
@@ -6878,7 +6902,7 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
         let debrisMat = this.type === 'crate' ? SharedMat.spriteYellow : SharedMat.spriteWhite;
         for(let i=0; i<3; i++) Game.getParticle().spawn(this.x, 15, this.y, debrisMat, 'spark');
 
-        AudioEngine.playHit('enemy');
+        AudioEngine.playBreak(this.type); // <-- Emette il suono dedicato (Legno o Ceramica)
         
         let dummy = Game._dummyDebris;
         dummy.position.set(0, -1000, 0);
@@ -7202,12 +7226,29 @@ class Player extends Entity {
         // Riagganciamo il bloom alla bacchetta magica
         this.modelParts.staffGem.add(this.fakeBloom);
        // Attiva e scala l'ombra per il giocatore
-        this.shadowMesh.scale.set(32, 1, 32); // FIX: Asse Z
-        // La mostriamo solo se le ombre reali sono disattivate, per non sovrapporle!
+        this.shadowMesh.scale.set(32, 1, 32); 
         this.shadowMesh.visible = !AppSettings.shadowsEnabled;
         
         this.updateAppearance();
-    }
+        
+        // --- PRE-ALLOCAZIONE SMEMBRAMENTO GIOCATORE (Zero-Allocation Death per azzerare il freeze) ---
+        if (!window.GLOBAL_DEAD_BODY_GEO) window.GLOBAL_DEAD_BODY_GEO = new THREE.CylinderGeometry(0.35, 1, 2, 8);
+        this.deadBody = new THREE.Mesh(window.GLOBAL_DEAD_BODY_GEO, this.mesh.children[0].material);
+        let pScarf = this.mesh.children[2].clone();
+        pScarf.position.set(0, 0.5, 0); pScarf.scale.set(6/16, 6/24, 2/16); pScarf.rotation.x = Math.PI / 2;
+        this.deadBody.add(pScarf);
+        this.deadHead = this.mesh.children[1].clone();
+        this.deadWeapon = this.mesh.children[3].clone();
+        
+        this.deadBody.visible = false; this.deadHead.visible = false; this.deadWeapon.visible = false;
+        Game.scene.add(this.deadBody); Game.scene.add(this.deadHead); Game.scene.add(this.deadWeapon);
+        
+        this.deadPhysicsParts = [
+            { mesh: this.deadBody, original: this.mesh.children[0], vx: 0, vy: 0, vz: 0, rx: 0, rz: 0 },
+            { mesh: this.deadHead, original: this.mesh.children[1], vx: 0, vy: 0, vz: 0, rx: 0, rz: 0 },
+            { mesh: this.deadWeapon, original: this.mesh.children[3], vx: 0, vy: 0, vz: 0, rx: 0, rz: 0 }
+        ];
+    }
     collectEssence(type) {
         if (this.overdrive) { 
             let kept = this.modifiers.keepEssenceOnCombo ? this.essence : null;
@@ -7460,7 +7501,28 @@ class Player extends Entity {
     }
 
     update(dt) {
-        if (this.dead) return; 
+        // --- NUOVO: Fisica dei pezzi morti (Zero CPU Lag) ---
+        if (this.dead) {
+            for (let i = 0; i < this.deadPhysicsParts.length; i++) {
+                let p = this.deadPhysicsParts[i];
+                if (p.vy === 0 && p.vx === 0 && p.vz === 0) continue; 
+                
+                p.vy -= 1200 * dt; 
+                p.mesh.position.x += p.vx * dt;
+                p.mesh.position.y += p.vy * dt;
+                p.mesh.position.z += p.vz * dt;
+                p.mesh.rotation.x += p.rx * dt;
+                p.mesh.rotation.z += p.rz * dt;
+                
+                if (p.mesh.position.y <= 2) {
+                    p.mesh.position.y = 2;
+                    p.vy *= -0.4; p.vx *= 0.6; p.vz *= 0.6; p.rx *= 0.6; p.rz *= 0.6;
+                    if (Math.abs(p.vy) < 25) { p.vy = 0; p.vx = 0; p.vz = 0; }
+                }
+                p.mesh.updateMatrix(); 
+            }
+            return; 
+        }
         this.updateFlash(dt);
         if (dt === 0) return; // FIX BETA: Blocca input, attacchi e i-frames se il gioco è in pausa!
       // --- HOt: CURA NEL TEMPO CAOS ELEMENTALE ---
@@ -8347,122 +8409,38 @@ if (this.modifiers.flowMastery && !wasDead) {
                     spark.vy = MathUtils.randomRange(300, 900);
                 }
                 
-// SMEMBRAMENTO FISICO DEL GIOCATORE (Corpo tagliato con sciarpa integrata)
-                if (!Game.deadPlayerParts) Game.deadPlayerParts = [];
-                let activePhysicsParts = [];
-
-                // FIX COLORE: Il materiale rimaneva incastrato nel flash del colpo mortale (bianco).
-                // Resettiamo l'emissione di tutti i pezzi a 0 (scuro) prima di clonarli!
+// SMEMBRAMENTO FISICO DEL GIOCATORE (Zero-Allocation Fix)
                 for (let i = 0; i < this.flashMats.length; i++) {
                     this.flashMats[i].emissive.setHex(0x000000);
                 }
                 this.updateAppearance();
 
-                // Riferimenti diretti sicuri ai pezzi reali del modello nella scena
-                let oBody = this.mesh.children[0];
-                let oHead = this.mesh.children[1];
-                let oScarf = this.mesh.children[2];
-                let oWeapon = this.mesh.children[3];
-
-                // 1. Corpo tagliato con Sciarpa attaccata
-                let pBody = oBody.clone();
-                
-                // OTTIMIZZAZIONE VRAM: Usiamo una geometria globale tagliata invece di istanziarne 
-                // una nuova a ogni morte (Prevenzione Memory Leak totale).
-                if (!window.GLOBAL_DEAD_BODY_GEO) {
-                    window.GLOBAL_DEAD_BODY_GEO = new THREE.CylinderGeometry(0.35, 1, 2, 8);
-                }
-                pBody.geometry = window.GLOBAL_DEAD_BODY_GEO; // Cambia il cono in un tronco!
-                
-                let pScarf = oScarf.clone();
-                pScarf.position.set(0, 0.5, 0); // La posizioniamo esattamente in cima al tronco
-                pScarf.scale.set(6/16, 6/24, 2/16); // Scala matematica esatta in base al parent
-                pScarf.rotation.x = Math.PI / 2;
-                pBody.add(pScarf);
-
-                // 2. Testa
-                let pHead = oHead.clone();
-
-                // 3. Bacchetta
-                let pWeapon = oWeapon.clone();
-
-                let partsToDrop = [
-                    { mesh: pBody, original: oBody },
-                    { mesh: pHead, original: oHead },
-                    { mesh: pWeapon, original: oWeapon }
-                ];
-
-                for (let i = 0; i < partsToDrop.length; i++) {
-                    let part = partsToDrop[i];
+                // Usa i pezzi pre-allocati all'avvio!
+                for (let i = 0; i < this.deadPhysicsParts.length; i++) {
+                    let part = this.deadPhysicsParts[i];
                     
-                    // Preleva le coordinate globali dai pezzi originali per posizionarli perfettamente
+                    // Copia istantaneamente le coordinate dalla mesh "viva" al pezzo "morto"
                     part.original.getWorldPosition(Game._vec3);
                     part.original.getWorldQuaternion(Game._dummyQuat);
                     part.original.getWorldScale(Game._dummyScale);
 
-                    let clone = part.mesh;
-                    Game.scene.add(clone);
-                    clone.position.copy(Game._vec3);
-                    clone.quaternion.copy(Game._dummyQuat);
-                    clone.scale.copy(Game._dummyScale);
-                    
-                    Game.deadPlayerParts.push(clone);
+                    part.mesh.position.copy(Game._vec3);
+                    part.mesh.quaternion.copy(Game._dummyQuat);
+                    part.mesh.scale.copy(Game._dummyScale);
+                    part.mesh.visible = true;
 
-                    // Fisica Inerziale Realistica
+                    // Assegna la Spinta Inerziale
                     let da = Math.random() * Math.PI * 2;
                     let dSpeed = MathUtils.randomRange(40, 120); 
                     
-                    let pVx = (Math.cos(da) * dSpeed) + (momentumX * 0.18);
-                    let pVz = (Math.sin(da) * dSpeed) + (momentumZ * 0.18);
-                    let pVy = MathUtils.randomRange(250, 500); 
-                    let rX = Math.random() * 8 - 4;
-                    let rZ = Math.random() * 8 - 4;
-
-                    activePhysicsParts.push({
-                        mesh: clone,
-                        vx: pVx, vy: pVy, vz: pVz,
-                        rx: rX, rz: rZ
-                    });
+                    part.vx = (Math.cos(da) * dSpeed) + (momentumX * 0.18);
+                    part.vz = (Math.sin(da) * dSpeed) + (momentumZ * 0.18);
+                    part.vy = MathUtils.randomRange(250, 500); 
+                    part.rx = Math.random() * 8 - 4;
+                    part.rz = Math.random() * 8 - 4;
                 }
 
-                // LOOP FISICO TEMPORANEO E AUTOPULENTE (Impatto 0 sulla CPU a riposo)
-                if (Game.playerDeathInterval) clearInterval(Game.playerDeathInterval);
-                Game.playerDeathInterval = setInterval(() => {
-                    if (Game.state === 'MENU') { clearInterval(Game.playerDeathInterval); return; }
-                    
-                    let movingParts = 0;
-                    for (let i = 0; i < activePhysicsParts.length; i++) {
-                        let p = activePhysicsParts[i];
-                        if (p.vy === 0 && p.vx === 0 && p.vz === 0) continue; 
-                        
-                        movingParts++;
-                        p.vy -= 1200 * (1/60); 
-                        
-                        p.mesh.position.x += p.vx * (1/60);
-                        p.mesh.position.y += p.vy * (1/60);
-                        p.mesh.position.z += p.vz * (1/60);
-                        p.mesh.rotation.x += p.rx * (1/60);
-                        p.mesh.rotation.z += p.rz * (1/60);
-                        
-                        if (p.mesh.position.y <= 2) {
-                            p.mesh.position.y = 2;
-                            p.vy *= -0.4; 
-                            p.vx *= 0.6;   
-                            p.vz *= 0.6;
-                            p.rx *= 0.6;
-                            p.rz *= 0.6;
-                            
-                            // Spegne il calcolo per i pezzi che si sono fermati
-                            if (Math.abs(p.vy) < 25) {
-                                p.vy = 0; p.vx = 0; p.vz = 0;
-                            }
-                        }
-                    }
-
-                    if (movingParts === 0) clearInterval(Game.playerDeathInterval);
-                }, 16);
-
-                // Disintegra il corpo originale all'istante
+                // Disintegra il corpo originale
                 let pChildren = this.mesh.children;
                 for (let c = 0; c < pChildren.length; c++) pChildren[c].visible = false;
                 if(this.shieldMesh) this.shieldMesh.visible = false;
@@ -10475,14 +10453,7 @@ class FloatingText {
     }
 }
 function clearScene() {
-    // PREVENZIONE MEMORY LEAK: Ferma il motore fisico della morte ed elimina i resti
-    if (Game.playerDeathInterval) clearInterval(Game.playerDeathInterval);
-    if (Game.deadPlayerParts) {
-        for (let i = 0; i < Game.deadPlayerParts.length; i++) {
-            Game.scene.remove(Game.deadPlayerParts[i]);
-        }
-        Game.deadPlayerParts = [];
-    }
+   
 
    if (Game.deadObelisks) {
         for (let i = 0; i < Game.deadObelisks.length; i++) {
@@ -10625,6 +10596,12 @@ function clearScene() {
     for(let i=0, len=Game.coinDrops.length; i<len; i++) { Game.coinDrops[i].destroy(); }
     
  if(Game.player) {
+        // RIMUOVI I PEZZI DEL CADAVERE
+        if (Game.player.deadPhysicsParts) {
+            for (let i = 0; i < Game.player.deadPhysicsParts.length; i++) {
+                Game.scene.remove(Game.player.deadPhysicsParts[i].mesh);
+            }
+        }
         // OTTIMIZZAZIONE 4: Pulizia profonda del Giocatore (Previene il leak dei materiali al riavvio)
         Game.player.mesh.traverse((child) => {
             if ((child.isMesh || child.isSprite) && child.material) {

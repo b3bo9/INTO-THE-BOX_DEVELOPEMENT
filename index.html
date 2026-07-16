@@ -1997,9 +1997,9 @@ const UIManager = {
 const RelicSystem = {
     allRelics: [
         // COMUNI: Utility & Traits (Ex statistiche pure)
-        { id: 'c1', name: "Prisma dell'Avarizia", desc: "I tuoi colpi critici hanno il 20% di probabilità di generare 1 Moneta.", rarity: "common", image: "icona_prisma.png", icon: "fa-gem", apply: (p) => p.modifiers.critGold = true },
+       { id: 'c1', name: "Prisma dell'Avarizia", desc: "I tuoi colpi critici hanno il 30% di probabilità di generare 1 Moneta.", rarity: "common", image: "icona_prisma.png", icon: "fa-gem", apply: (p) => p.modifiers.critGold = true },
         { id: 'c2', name: "Siero Adrenalinico", desc: "Se i tuoi HP scendono sotto il 30%, la Velocità d'Attacco aumenta del +30%.", rarity: "common", image: "icona_adrenalina.png", icon: "fa-bolt", apply: (p) => p.modifiers.lowHpAtkSpeed = true },
-        { id: 'c3', name: "Piuma Spettrale", desc: "Dopo aver eseguito uno Scatto, ottieni invulnerabilità totale per 0.4 secondi e +20% velocità per 2 sec.", rarity: "common", image: "icona_piuma.png", icon: "fa-feather", apply: (p) => { p.modifiers.dashInvul = true; p.modifiers.dashSpeedBuff = true; } },
+      { id: 'c3', name: "Piuma Spettrale", desc: "Dopo aver eseguito uno Scatto, ottieni invulnerabilità totale per 0.4 secondi e +15% velocità per 2 sec.", rarity: "common", image: "icona_piuma.png", icon: "fa-feather", apply: (p) => { p.modifiers.dashInvul = true; p.modifiers.dashSpeedBuff = true; } },
        { id: 'c4', name: "Cristallo Rigenerante", desc: "Se non subisci danni per 5 sec, rigeneri 1% di Salute al secondo.", rarity: "common", image: "icona_cristallo_vitale.png", icon: "fa-heart", apply: (p) => p.modifiers.outOfCombatRegen = true },
        { id: 'r5', name: "Magnete delle Anime", desc: "Attrae automaticamente le monete cadute. Raccogliere un'essenza dona +5% Velocità di movimento (Max 20%).", rarity: "common", image: "icona_magnete_delle_anime.png", icon: "fa-magnet", apply: (p) => { p.modifiers.pickupRadiusMult += 1.0; p.modifiers.essenceSpeedStacks = true; p.modifiers.coinMagnet = true; } },
 
@@ -2007,7 +2007,7 @@ const RelicSystem = {
        { id: 'c5', name: "Runa dell'Agguato", desc: "Infliggi il +20% di danni ai nemici che hanno più dell'80% di Salute.", rarity: "rare", image: "icona_runa_minore.png", icon: "fa-fire", apply: (p) => p.modifiers.openerDmg = true },
         { id: 'r1', name: "Bussola Dimensionale", desc: "Tutte le Essenze raccolte e l'Overdrive durano il 50% in più.", rarity: "rare", image: "icona_bussola_dimensionale.png", icon: "fa-compass", apply: (p) => p.modifiers.essenceDurationMult += 0.50 },
         { id: 'r3', name: "Scudo dell'Egidio", desc: "Lo Scudo Cinetico si attiva automaticamente ogni 15 sec.", rarity: "rare", image: "icona_scudo_dell_egidio.png", icon: "fa-shield-halved", apply: (p) => p.modifiers.shieldActive = true },
-        { id: 'r4', name: "Apprendimento Rapido", desc: "+30% XP, subisci +10% danni. Sali di Livello per generare un'onda d'urto.", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.30; p.modifiers.dmgTakenMult += 0.10; p.modifiers.levelUpNova = true; } },
+       { id: 'r4', name: "Apprendimento Rapido", desc: "+10% XP. Sali di Livello per generare un'onda d'urto.", rarity: "rare", image: "icona_spirito_avaro.png", icon: "fa-coins", apply: (p) => { p.modifiers.xpMult += 0.10; p.modifiers.levelUpNova = true; } },
         { id: 'r6', name: "Sovraccarico Cinetico", desc: "Mentre lo Scudo Cinetico è attivo, la tua Velocità d'Attacco aumenta del +40%.", rarity: "rare", image: "icona_sovraccarico_cinetico.png", icon: "fa-bolt", apply: (p) => p.modifiers.shieldAtkSpeedBonus = 0.40 },
         
         // EPICHE: Sinergie Costruttive (Build Definers)
@@ -2018,14 +2018,14 @@ const RelicSystem = {
         { id: 'e4', name: "Sovraccarico Etereo", desc: "La durata dell'Ascensione Finale aumenta di 0.5s ogni 15 nemici uccisi.", rarity: "epic", image: "icona_sovraccarico.png", icon: "fa-bolt-lightning", apply: (p) => p.modifiers.ultDurationPerKill = true },
         { id: 'e5', name: "Sovraccarico Sismico", desc: "Attivare lo Scudo genera un'onda d'urto che respinge i nemici infliggendo lievi danni.", rarity: "epic", image: "icona_zanna_del_vampiro.png", icon: "fa-wifi", apply: (p) => p.modifiers.seismicShield = true },
         { id: 'e9', name: "Gemelli Cinetici", desc: "Mentre lo Scudo è attivo, spari 2 proiettili alla volta (danno ridotto al 70%).", rarity: "epic", image: "icona_gemelli_cinetici.png", icon: "fa-clone", apply: (p) => p.modifiers.twinKinetic = true },
-        { id: 'e6', name: "Batteria a Ioni", desc: "Lo Scudo Cinetico dura 2 secondi in più.", rarity: "epic", image: "icona_batteria_ioni.png", icon: "fa-battery-full", apply: (p) => p.modifiers.shieldDurationAdd += 2.0   },
+        { id: 'e6', name: "Batteria a Ioni", desc: "Lo Scudo Cinetico dura 1 secondo in più e assorbe l'80% dei danni invece del 50%.", rarity: "epic", image: "icona_batteria_ioni.png", icon: "fa-battery-full", apply: (p) => { p.modifiers.shieldDurationAdd += 1.0; p.modifiers.ionBattery = true; } },
        { id: 'e7', name: "Lama del Vento", desc: "Subito dopo uno Scatto, i tuoi prossimi 2 attacchi sono Colpi Critici garantiti.", rarity: "epic", image: "icona_lama_vento.png", icon: "fa-wind", apply: (p) => { p.modifiers.dashCritsEnabled = true; } },
         { id: 'e8', name: "Patto dell'Avaro", desc: "Le monete non scompaiono col tempo. Ogni moneta raccolta aumenta velocità di attacco e movimento per 3 sec.", rarity: "epic", image: "icona_patto_avaro.png", icon: "fa-sack-dollar", apply: (p) => { p.modifiers.miserPact = true; } },
 
         // LEGGENDARIE: Cambiano drasticamente le regole (Trade-offs e Potere)
-        { id: 'l1', name: "Follia Omicida", desc: "I tuoi Colpi Critici infliggono danni estremi, ma subisci +25% Danni dai nemici.", rarity: "legendary", image: "icona_follia_omicida.png", icon: "fa-skull", apply: (p) => { p.modifiers.critDmgMult = 2.5; p.modifiers.dmgTakenMult += 0.25; } },
+        { id: 'l1', name: "Follia Omicida", desc: "Danni critici estremi (2.5x), ma la tua Velocità d'Attacco è ridotta del 20%.", rarity: "legendary", image: "icona_follia_omicida.png", icon: "fa-skull", apply: (p) => { p.modifiers.critDmgMult = 2.5; p.modifiers.atkSpeedPenalty = 0.80; } },
         { id: 'l2', name: "Lama del Giudizio", desc: "Infliggi il DOPPIO dei danni se il nemico ha Meno del 30% di Salute (Esecuzione).", rarity: "legendary", image: "icona_lama_del_giudizio.png", icon: "fa-gavel", apply: (p) => p.modifiers.executioner = true },
-        { id: 'l3', name: "Patto Ascetico", desc: "La Ultimate si ricarica passivamente da sola, ma la tua Salute Massima scende del 30%.", rarity: "legendary", image: "icona_patto_ascetico.png", icon: "fa-link", apply: (p) => { p.modifiers.passiveUltCharge = true; p.stats.maxHp = Math.floor(p.stats.maxHp * 0.7); if(p.stats.hp > p.stats.maxHp) p.stats.hp = p.stats.maxHp; } },
+        { id: 'l3', name: "Patto Ascetico", desc: "La Ultimate si ricarica passivamente da sola, ma la sua durata è ridotta del 40%.", rarity: "legendary", image: "icona_patto_ascetico.png", icon: "fa-link", apply: (p) => { p.modifiers.passiveUltCharge = true; p.modifiers.ultDurationPenalty = 0.60; } },
         { id: 'l4', name: "Sete di Sangue Eterna", desc: "Ogni nemico ucciso ti cura dell'1% HP. Tuttavia, sanguini perdendo lo 0.5% HP al secondo (emorragia disattivata contro i Boss).", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", icon: "fa-droplet", apply: (p) => { p.modifiers.bloodthirst = true; } },
         { id: 'l5', name: "Maestria del Flow", desc: "Cap Combo raddoppiato. Se Combo > 50, fai e subisci +20% danni. Se < 50, fai e subisci -20% danni.", rarity: "legendary", image: "icona_maestria_del_flow.png", icon: "fa-infinity",  apply: (p) => {  p.modifiers.flowMastery = true; p.modifiers.comboDecayRate *= 0.5;  } },
         { id: 'l6', name: "Aegis del Guardiano", desc: "Lo Scudo esplode quando finisce. Il danno e l'area scalano in base ai colpi bloccati.", rarity: "legendary", image: "fa_shieldx.png", icon: "fa-shield", apply: (p) => { p.modifiers.explosiveShield = true; } },
@@ -3536,8 +3536,9 @@ const UI = {
             }
         } else { this.els.essenceHud.classList.remove('opacity-100'); this.els.essenceHud.classList.add('opacity-0'); }
 
-      if (Game.ultimateActive) {
-            let uPct = `${Math.round((Game.ultimateTimer / (10.0 + Game.player.modifiers.ascensionDurationAdd)) * 100)}%`;
+     if (Game.ultimateActive) {
+            let maxUltTime = (10.0 + Game.player.modifiers.ascensionDurationAdd) * Game.player.modifiers.ultDurationPenalty;
+            let uPct = `${Math.max(0, Math.round((Game.ultimateTimer / maxUltTime) * 100))}%`;
             if(this.cache.ultCharge !== uPct || !this.cache.ultActive) {
                 if(this.els.btnUltFill) { 
                     this.els.btnUltFill.style.height = uPct; 
@@ -4190,8 +4191,10 @@ Game.scene.add(this.dynamicDebrisMesh);
     addUltimateCharge(amount) { if (!this.ultimateActive) this.ultimateCharge = Math.min(100, this.ultimateCharge + amount); },
 
    activateUltimate() {
-        if (this.ultimateCharge >= 100 && !this.ultimateActive) {
-            this.ultimateCharge = 0; this.ultimateActive = true; this.ultimateTimer = 10.0 + this.player.modifiers.ascensionDurationAdd; 
+       if (this.ultimateCharge >= 100 && !this.ultimateActive) {
+            this.ultimateCharge = 0; this.ultimateActive = true; 
+            // REWORK PATTO ASCETICO: Riduzione durata totale
+            this.ultimateTimer = (10.0 + this.player.modifiers.ascensionDurationAdd) * this.player.modifiers.ultDurationPenalty;
             this.addTrauma(1.0); this.hitStop = 0.3; AudioEngine.playUltimate();
             Haptics.vibrate([50, 30, 50, 30, 80]);
             this.getFloatingText().spawn(this.player.x, this.player.y, "ASCENSIONE!", '#00DDFF', 40, true);
@@ -4734,8 +4737,8 @@ loop(timestamp) {
         }
         this.difficultyMult = this.baseDifficultyMult;
         
-        if (this.isCorrupted && !this.isBossFloor) {
-            this.difficultyMult *= 1.25; // Aumenta globalmente la difficoltà
+       if (this.isCorrupted && !this.isBossFloor) {
+            this.difficultyMult *= 1.20; // REWORK: Difficoltà ridotta da 1.25 a 1.20
             if (this.corruptedType === 'darkness') { 
                 mutatorText = "OSCURITÀ OPPRIMENTE"; floorColor = "#aa00ff"; 
                 this.scene.fog.color.setHex(0x000000); 
@@ -7156,7 +7159,9 @@ class Player extends Entity {
             timeSinceLastHit: 0, explosiveShield: false, shieldDurationAdd: 0, dashCritsEnabled: false, dashCritsStacks: 0, dashLightning: false,
           // NUOVI TRATTI RELIQUIE E SHOP
            critGold: false, lowHpAtkSpeed: false, dashInvul: false, outOfCombatRegen: false, essenceSpeedStacks: false, levelUpNova: false, openerDmg: false, miserPact: false, dashSpeedBuff: false, dashResist: false,
-           seismicShield: false, ultDurationPerKill: false, ultKillCount: 0, twinKinetic: false, coinMagnet: false
+           seismicShield: false, ultDurationPerKill: false, ultKillCount: 0, twinKinetic: false, coinMagnet: false,
+           // REWORK RELIQUIE
+           ionBattery: false, atkSpeedPenalty: 1.0, ultDurationPenalty: 1.0
         };
         
        // Il mantello del giocatore riceve la texture e il bump (solo su PC)
@@ -7422,7 +7427,8 @@ class Player extends Entity {
             passiveUltCharge: false, noHealDrops: false, noMaxHpLevelUp: false, bloodthirst: false, bloodthirstCount: oldBlood, flowMastery: false,
             timeSinceLastHit: 0, explosiveShield: false, shieldDurationAdd: 0, dashCritsEnabled: false, dashCritsStacks: 0, dashLightning: false,
             critGold: false, lowHpAtkSpeed: false, dashInvul: false, outOfCombatRegen: false, essenceSpeedStacks: false, levelUpNova: false, openerDmg: false, miserPact: false, dashSpeedBuff: false, dashResist: false,
-            seismicShield: false, ultDurationPerKill: false, ultKillCount: oldUlt, twinKinetic: false
+            seismicShield: false, ultDurationPerKill: false, ultKillCount: oldUlt, twinKinetic: false,
+            ionBattery: false, atkSpeedPenalty: 1.0, ultDurationPenalty: 1.0
         };
         
         // 3. Riapplica gli upgrade pagati al Negozio
@@ -7749,7 +7755,7 @@ class Player extends Entity {
        // --- GESTIONE TIMER BUFF DELLO SCATTO ---
         if (this.dashSpeedTimer > 0) this.dashSpeedTimer -= dt;
         if (this.dashResistTimer > 0) this.dashResistTimer -= dt;
-        let dashSpdMult = this.dashSpeedTimer > 0 ? 1.20 : 1.0; // +20% velocità per 2 sec
+        let dashSpdMult = this.dashSpeedTimer > 0 ? 1.15 : 1.0; // REWORK: +15% velocità
 
         // --- GESTIONE BUFF BREVI DA CASSE E VASI ---
         if (this.shortBuffs.atkSpeed > 0) this.shortBuffs.atkSpeed -= dt;
@@ -8115,10 +8121,11 @@ class Player extends Entity {
         let miserAtkSpeedBonus = 1.0 + ((this.miserBuffStacks || 0) * 0.06);
         
         let aura = Game.getAuraAt(this.x, this.y); 
-        // FIX OBELISCO ROSSO: +20% Velocità d'attacco se sei nell'Aura Rossa
+       // FIX OBELISCO ROSSO: +20% Velocità d'attacco se sei nell'Aura Rossa
         let auraAtkSpd = (aura === 'blue') ? 0.6 : (aura === 'red' ? 1.2 : 1.0);
         let buffAtkMult = this.shortBuffs.atkSpeed > 0 ? 1.15 : 1.0; // +15% Atk Speed
-        let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult * shopSpeed * adrenalineSpeed * (1 + shieldSpeed) * shockAtkSpeed * miserAtkSpeedBonus * auraAtkSpd * buffAtkMult;
+        // REWORK: Aggiunto malus Follia Omicida (atkSpeedPenalty)
+        let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult * shopSpeed * adrenalineSpeed * (1 + shieldSpeed) * shockAtkSpeed * miserAtkSpeedBonus * auraAtkSpd * buffAtkMult * this.modifiers.atkSpeedPenalty;
         if (this.overdrive && this.essence === 'blue') spdMult *= 3.0; 
         
         // --- MODIFICA CADENZA ARMA ROSSA ---
@@ -8269,9 +8276,10 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         if (aura === 'green') amount *= 0.6; 
         if (aura === 'corrupted') amount *= 1.2; // +20% Danni subiti
         
-        // Riduzione del 25% se lo Scudo Cinetico base è attivo
+        // REWORK: Riduzione base 50% (Aumenta a 80% se ha Batteria a Ioni)
         if (this.activeShieldTimer > 0) {
-            amount *= 0.75;
+            let shieldReduction = this.modifiers.ionBattery ? 0.20 : 0.50; // Prende solo il 20% o 50% del danno
+            amount *= shieldReduction;
         }
         
         // NUOVO: Riduzione del 20% dai Calzari di Mercurio
@@ -9243,7 +9251,7 @@ Game.scene.add(this.telegraphMesh);
         }
         
         // NUOVO: Prisma (Crit Gold)
-        if (isCrit && source === Game.player && Game.player.modifiers.critGold && Math.random() < 0.20) {
+        if (isCrit && source === Game.player && Game.player.modifiers.critGold && Math.random() < 0.30) {
             Game.coins++; 
             if(UI.els.coins) UI.els.coins.innerText = Game.coins;
             Game.getFloatingText().spawn(this.x, this.y, "+1", '#ffff00', 20);

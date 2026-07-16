@@ -3530,20 +3530,26 @@ const UI = {
         if (Game.player.activeShieldTimer > 0) {
             if (this.cache.shieldActive !== true) {
                 if (this.els.btnShield) {
-                    this.els.btnShield.classList.add('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]');
-                    this.els.btnShield.classList.remove('border-gray-600', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]');
+                    // UX REWORK: Mette il bottone in grigio trasparente per indicare che non è cliccabile
+                    this.els.btnShield.classList.add('border-gray-600', 'opacity-50', 'grayscale');
+                    this.els.btnShield.classList.remove('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]');
                     if (this.els.btnShieldFill) {
-                        this.els.btnShieldFill.style.height = '100%';
-                        this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-100 pointer-events-none";
+                        this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-cyan-900/50 transition-all duration-100 pointer-events-none";
                     }
                 }
                 this.cache.shieldActive = true;
+            }
+            // UX REWORK: Anima lo svuotamento della barra mentre lo scudo è in uso
+            if (this.els.btnShieldFill) {
+                let shieldMaxDur = 3.0 + Game.player.modifiers.shieldDurationAdd;
+                let activePct = Math.round((Game.player.activeShieldTimer / shieldMaxDur) * 100);
+                this.els.btnShieldFill.style.height = `${activePct}%`;
             }
         } else {
             this.cache.shieldActive = false;
             if (this.els.btnShield) {
                 let cdPct = Game.player.activeShieldCooldown > 0 ? (1 - (Game.player.activeShieldCooldown / 8.0)) * 100 : 100;
-                let roundedPct = Math.round(cdPct); // Arrotonda per ridurre la precisione inutile
+                let roundedPct = Math.round(cdPct);
                 
                 if (this.cache.shieldPct !== roundedPct) {
                     if (this.els.btnShieldFill) this.els.btnShieldFill.style.height = `${roundedPct}%`;
@@ -3554,13 +3560,13 @@ const UI = {
                     if (this.cache.shieldReady !== true) {
                         if (this.els.btnShieldFill) this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-100 pointer-events-none";
                         this.els.btnShield.classList.add('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]');
-                        this.els.btnShield.classList.remove('border-gray-600', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]');
+                        this.els.btnShield.classList.remove('border-gray-600', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]', 'opacity-50', 'grayscale');
                         this.cache.shieldReady = true;
                     }
                 } else {
                     if (this.cache.shieldReady !== false) {
                         if (this.els.btnShieldFill) this.els.btnShieldFill.className = "absolute bottom-0 left-0 w-full bg-cyan-500/50 transition-all duration-100 pointer-events-none";
-                        this.els.btnShield.classList.remove('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]');
+                        this.els.btnShield.classList.remove('border-cyan-400', 'opacity-100', 'shadow-[0_0_20px_rgba(34,211,238,0.7)]', 'opacity-50', 'grayscale');
                         this.els.btnShield.classList.add('border-gray-600', 'opacity-75', 'shadow-[0_0_15px_rgba(0,0,0,0.8)]');
                         this.cache.shieldReady = false;
                     }
@@ -6341,12 +6347,13 @@ class GameMap {
                         
                         // --- LOGICA SPAWN PROPS (Spazi aperti e Cluster Dinamici) ---
                         if (!isBossFloor && this.grid[x][y] === 2) {
-                            // 4% probabilità base di trovare props su ogni singolo tile calpestabile
-                            if (Math.random() < 0.04) {
+                            // BILANCIAMENTO: Ridotta probabilità base di trovare props (da 4% a 2.5%)
+                            if (Math.random() < 0.025) {
                                 let px = (x * TILE_SIZE + TILE_SIZE / 2);
                                 let pz = (y * TILE_SIZE + TILE_SIZE / 2);
                                 
-                                let spawnCrate = Math.random() < 0.6; // 60% Cassa, 40% Vaso singolo
+                                // BILANCIAMENTO: Anfore rare da sole. 80% Cassa, 20% Vaso singolo.
+                                let spawnCrate = Math.random() < 0.8;
                                 
                          if (spawnCrate && cPropIdx < maxCrates) {
                                     let pScale = MathUtils.randomRange(0.9, 1.2);
@@ -6850,8 +6857,8 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
         // --- NUOVO SISTEMA DROP CASSE E VASI ---
         let r = Math.random();
 
-        if (r < 0.015) { 
-            // 1.5% - Reliquia Segreta
+        if (r < 0.006) { 
+            // BILANCIAMENTO: 0.6% - Reliquia Segreta (Drasticamente ridotto dal 1.5%)
             let choices = RelicSystem.getChoices();
             if (choices.length > 0) {
                 let dropRelic = choices[0]; 
@@ -6861,8 +6868,8 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
             } else {
                 for(let c=0; c<10; c++) Game.queueDrop('coin', this.x, this.y, 30, false);
             }
-        } else if (r < 0.18) { 
-            // 16.5% - Buff Magici (5 Secondi)
+        } else if (r < 0.17) { 
+            // 16.4% - Buff Magici (5 Secondi)
             let buffType = Math.random();
             if (buffType < 0.33) {
                 Game.player.shortBuffs.atkSpeed = 5.0;
@@ -6874,16 +6881,16 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
                 Game.player.shortBuffs.regen = 5.0;
                 Game.getFloatingText().spawn(this.x, this.y + 30, "RIGENERO! (+20% HP)", '#33ff00', 30, true);
             }
-            // Esplosione particellare magica per festeggiare il buff
             for(let i=0; i<6; i++) Game.getParticle().spawn(this.x, 25, this.y, SharedMat.spriteLevel, 'spark');
             AudioEngine.playCollect();
 
-        } else if (r < 0.38) { 
+        } else if (r < 0.37) { 
             // 20% - Essenza
             Game.queueDrop('essence', this.x, this.y, 20, false);
         } else { 
-            // 62% - Monete
-            let numCoins = MathUtils.randomInt(1, 3);
+            // 63% - Monete 
+            // BILANCIAMENTO: 80% di possibilità di droppare 1 sola moneta, solo il 20% di dropparne 2.
+            let numCoins = Math.random() < 0.2 ? 2 : 1; 
             for(let i=0; i<numCoins; i++) Game.queueDrop('coin', this.x, this.y, 25, false);
         }
     }

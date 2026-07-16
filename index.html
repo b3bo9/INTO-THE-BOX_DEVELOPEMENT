@@ -2363,6 +2363,41 @@ const RelicSystem = {
 const BLOB_SHADOW_TEX = createBlobShadowTexture();
 const BLOOD_TEX = createPatternTexture('blood'); const GLOW_TEX = createGlowTexture();
 
+// --- TEXTURE PROCEDURALE PERSONAGGI (Stile Miniatura/Materico) ---
+function createCharacterTexture() {
+    const canvas = document.createElement('canvas'); 
+    canvas.width = 128; canvas.height = 128; // Risoluzione minuscola per performance estreme
+    const ctx = canvas.getContext('2d');
+    
+    // Sfondo base chiarissimo (non scurisce i colori originali del gioco)
+    ctx.fillStyle = '#f2f2f2'; 
+    ctx.fillRect(0, 0, 128, 128);
+
+    // Porosità stile terracotta/metallo usurato
+    for (let i = 0; i < 400; i++) {
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.06)';
+        let size = Math.random() * 2 + 1;
+        ctx.fillRect(Math.random() * 128, Math.random() * 128, size, size);
+    }
+
+    // Graffi sottili per dare l'effetto "combattimento"
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 80; i++) { 
+        ctx.strokeStyle = Math.random() > 0.5 ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)';
+        let x = Math.random() * 128; let y = Math.random() * 128;
+        ctx.beginPath(); 
+        ctx.moveTo(x, y); 
+        ctx.lineTo(x + Math.random() * 10 - 5, y + Math.random() * 10 - 5); 
+        ctx.stroke();
+    }
+    
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    tex.encoding = THREE.sRGBEncoding;
+    return tex;
+}
+const CHAR_GRUNGE_TEX = createCharacterTexture();
+
 // --- ICONE AUREE E MODELLO OBELISCO ---
 function createAuraIcon(type) {
     const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64; const ctx = canvas.getContext('2d');
@@ -2594,7 +2629,7 @@ const GLOBAL_ALPHA_TEX = createOrganicAlphaMap();
     // FIX SCUDO PROFETA: Una sfera tridimensionale semitrasparente e additiva come quella della glaciazione
     prophetShield: new THREE.MeshBasicMaterial({color: 0xff5500, transparent: true, opacity: 0.35, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false}),
     
-    enemyDark: new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9}),
+   enemyDark: new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9, map: CHAR_GRUNGE_TEX, bumpMap: isTouchDevice ? null : CHAR_GRUNGE_TEX, bumpScale: 0.05}),
     enemyEye: new THREE.MeshBasicMaterial({color: 0xff0000}),
    leaperTeeth: new THREE.MeshBasicMaterial({color: 0xffffff}),
     dashLine: new THREE.MeshBasicMaterial({color: 0x00ffff, blending: THREE.AdditiveBlending, transparent: true}),
@@ -2641,10 +2676,11 @@ const ModelFactory = {
     buildPlayer(mat, gemMat) {
         let group = new THREE.Group();
         let body = new THREE.Mesh(SharedGeo.cone, mat); body.scale.set(16, 24, 16); body.position.y = 12;
-        let head = new THREE.Mesh(SharedGeo.sphere, new THREE.MeshStandardMaterial({color: 0xdddddd, emissive: 0x222222})); head.scale.set(6, 6, 6); head.position.y = 28;
-        let scarf = new THREE.Mesh(SharedGeo.torus, new THREE.MeshStandardMaterial({color: 0x880000})); scarf.scale.set(6, 6, 2); scarf.position.y = 24; scarf.rotation.x = Math.PI/2;
+        // Aggiunta Texture Materica per dare identità alla corazza, sciarpa e legni
+        let head = new THREE.Mesh(SharedGeo.sphere, new THREE.MeshStandardMaterial({color: 0xdddddd, emissive: 0x222222, map: CHAR_GRUNGE_TEX})); head.scale.set(6, 6, 6); head.position.y = 28;
+        let scarf = new THREE.Mesh(SharedGeo.torus, new THREE.MeshStandardMaterial({color: 0x880000, roughness: 0.9, map: CHAR_GRUNGE_TEX, bumpMap: isTouchDevice ? null : CHAR_GRUNGE_TEX, bumpScale: 0.05})); scarf.scale.set(6, 6, 2); scarf.position.y = 24; scarf.rotation.x = Math.PI/2;
         let weaponGroup = new THREE.Group(); weaponGroup.position.set(12, 16, 8);
-        let staff = new THREE.Mesh(SharedGeo.cylinder, new THREE.MeshStandardMaterial({color: 0x444444, metalness: 0.8})); staff.scale.set(2, 35, 2); staff.position.y = 10;
+        let staff = new THREE.Mesh(SharedGeo.cylinder, new THREE.MeshStandardMaterial({color: 0x444444, metalness: 0.8, map: CHAR_GRUNGE_TEX})); staff.scale.set(2, 35, 2); staff.position.y = 10;
         let staffGem = new THREE.Mesh(SharedGeo.icosahedron, gemMat); staffGem.scale.set(4, 4, 4); staffGem.position.y = 28;
         let halo = new THREE.Mesh(SharedGeo.torus, gemMat); halo.scale.set(5, 5, 5); halo.position.y = 28; halo.rotation.x = Math.PI/2;
         weaponGroup.add(staff); weaponGroup.add(staffGem); weaponGroup.add(halo);
@@ -7107,7 +7143,8 @@ class Player extends Entity {
            seismicShield: false, ultDurationPerKill: false, ultKillCount: 0, twinKinetic: false, coinMagnet: false
         };
         
-        this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8, metalness: 0}), new THREE.MeshPhongMaterial({color: 0xffff00, emissive: 0xffff00}));
+       // Il mantello del giocatore riceve la texture e il bump (solo su PC)
+        this.modelParts = ModelFactory.buildPlayer(new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.7, metalness: 0.1, map: CHAR_GRUNGE_TEX, bumpMap: isTouchDevice ? null : CHAR_GRUNGE_TEX, bumpScale: 0.05}), new THREE.MeshPhongMaterial({color: 0xffff00, emissive: 0xffff00}));
         this.mesh = this.modelParts.group; this.staffGemMat = this.modelParts.staffGem.material;
         
        // Luce più calda (ambra/arancio), raggio esteso e decadimento più morbido (1.5 invece di 2) 
@@ -8631,7 +8668,13 @@ Game.scene.add(this.telegraphMesh);
             const EnemyMatClass = isTouchDevice ? THREE.MeshLambertMaterial : THREE.MeshPhongMaterial;
             this.mat = type === 'crystal' ? 
                 new EnemyMatClass({color: 0x000000, emissive: color}) : 
-                new EnemyMatClass({ color: color, shininess: AppSettings.isUltraPC ? 60 : 30 });
+                new EnemyMatClass({ 
+                    color: color, 
+                    shininess: AppSettings.isUltraPC ? 60 : 30,
+                    map: CHAR_GRUNGE_TEX, // Texture condivisa = Costo Zero
+                    bumpMap: isTouchDevice ? null : CHAR_GRUNGE_TEX, // Bump disattivato su smartphone
+                    bumpScale: 0.06
+                });
                 
             // ATTENZIONE: Costruiamo SEMPRE il modello base (non elite)
             let modelData = ModelFactory.buildEnemy(type, size, this.mat);

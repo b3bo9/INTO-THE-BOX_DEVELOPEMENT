@@ -996,12 +996,16 @@ const AppSettings = {
             if (Game.composer) Game.composer.setPixelRatio(pr);
             
             // Accendi/Spegni le ombre finte a terra in tempo reale
+            // Accendi/Spegni le ombre finte a terra in tempo reale
             let showFakeShadows = !this.shadowsEnabled;
             if (Game.player && Game.player.shadowMesh) Game.player.shadowMesh.visible = showFakeShadows;
             for(let i=0; i<Game.enemies.length; i++) if (Game.enemies[i].shadowMesh) Game.enemies[i].shadowMesh.visible = showFakeShadows;
             if (Game.map && Game.map.mapGroup) {
-                let treeShadows = Game.map.mapGroup.children.find(c => c.geometry === window.GLOBAL_TREE_SHADOW_GEO);
-                if (treeShadows) treeShadows.visible = showFakeShadows;
+                Game.map.mapGroup.children.forEach(c => {
+                    if (c.material === SharedMat.blobShadow) {
+                        c.visible = showFakeShadows;
+                    }
+                });
             }
         }
         
@@ -2563,8 +2567,7 @@ const GLOBAL_ALPHA_TEX = createOrganicAlphaMap();
         spritePink: new THREE.SpriteMaterial({color: 0xff66bb, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
         spriteBlood: new THREE.SpriteMaterial({color: 0xaa0000, map: GLOW_TEX, transparent: true, depthWrite: false}),
         spriteDust: new THREE.SpriteMaterial({color: 0x2a1e16, map: GLOW_TEX, transparent: true, opacity: 0.6, depthWrite: false}),
-        spriteBlackSmoke: new THREE.SpriteMaterial({color: 0x111111, map: GLOW_TEX, transparent: true, opacity: 0.85, blending: THREE.NormalBlending, depthWrite: false}),
-        
+        spriteBlackSmoke: new THREE.SpriteMaterial({color: 0x050505, map: GLOW_TEX, transparent: true, opacity: 0.95, blending: THREE.NormalBlending, depthWrite: false}),
         arrow: new THREE.MeshPhongMaterial({color: 0x888888, emissive: 0x444444}),
         playerArrow: new ProjMatClass(isTouchDevice ? { color: 0xffff00 } : { color: 0x000000, emissive: 0xffff00, emissiveIntensity: 2.0 }),
         spriteYellow: new THREE.SpriteMaterial({color: 0xffff00, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
@@ -6343,10 +6346,10 @@ class GameMap {
                                     dummy.updateMatrix();
                                     this.crateMesh.setMatrixAt(cPropIdx, dummy.matrix);
                                     
-                                    // FAKE SHADOW
+                                    // FAKE SHADOW (CASSA)
                                     dummy.position.set(px - 10, 0.2, pz - 10);
                                     dummy.rotation.set(0, 0, 0);
-                                    dummy.scale.set(30 * pScale, 30 * pScale, 1);
+                                    dummy.scale.set(30 * pScale, 1, 30 * pScale); // FIX ASSE Z
                                     dummy.updateMatrix();
                                     this.crateShadowMesh.setMatrixAt(cPropIdx, dummy.matrix);
 
@@ -6388,12 +6391,12 @@ class GameMap {
                                     dummy.updateMatrix();
                                     this.urnMesh.setMatrixAt(uPropIdx, dummy.matrix);
                                     
-                                    // FAKE SHADOW
-                                    dummy.position.set(px - 10, 0.2, pz - 10);
-                                    dummy.rotation.set(0, 0, 0);
-                                    dummy.scale.set(20 * uScale, 20 * uScale, 1);
-                                    dummy.updateMatrix();
-                                    this.urnShadowMesh.setMatrixAt(uPropIdx, dummy.matrix);
+                                    // FAKE SHADOW (VASO)
+                                        dummy.position.set(px + 15, 0.2, pz + 15);
+                                        dummy.rotation.set(0, 0, 0);
+                                        dummy.scale.set(20 * uScale, 1, 20 * uScale); // FIX ASSE Z
+                                        dummy.updateMatrix();
+                                        this.urnShadowMesh.setMatrixAt(uPropIdx, dummy.matrix);
 
                                     let pUrn = Game.propsUrns[uPropIdx];
                                     pUrn.spawn(px - 10, pz - 10);
@@ -6426,11 +6429,11 @@ class GameMap {
                                 // Salva la posizione per l'effetto fuoco del tema Lava
                                 this.treePositions.push({ x: tx, y: sy * 20, z: tz, scale: s });
 
-                                // 2. Piazziamo l'Ombra Fake
+                               // 2. Piazziamo l'Ombra Fake
                                 // La alziamo leggermente (0.3) per non compenetrare il terreno
                                 dummy.position.set(tx, 0.3, tz); 
                                 // Scaliamo l'ombra per farla larga circa quanto i rami
-                                dummy.scale.set(s * 12, s * 12, 1); 
+                                dummy.scale.set(s * 12, 1, s * 12); // FIX ASSE Z
                                 dummy.rotation.set(0, 0, 0); // La geometria è già ruotata piatta
                                 dummy.updateMatrix();
                                 meshTreeShadows.setMatrixAt(idxTree, dummy.matrix);
@@ -6573,16 +6576,15 @@ class GameMap {
         interactiveGrassMesh.count = idxInteractiveGrass;
         meshDebris.count = idxDebris;
         meshDebris.instanceMatrix.needsUpdate = true;
-        meshTrees.count = idxTree; 
+       meshTrees.count = idxTree; 
         meshTrees.instanceMatrix.needsUpdate = true; 
         meshTreeShadows.count = idxTree;
         meshTreeShadows.instanceMatrix.needsUpdate = true;
+        meshTreeShadows.visible = !AppSettings.shadowsEnabled; // Setta la visibilità di base
         
         if (idxTree > 0) {
             this.mapGroup.add(meshTrees);
-            if (!AppSettings.shadowsEnabled) {
-                this.mapGroup.add(meshTreeShadows);
-            }
+            this.mapGroup.add(meshTreeShadows); // Viene sempre aggiunto, la visibilità la gestisce la riga sopra
         }
         
         this.crateMesh.count = cPropIdx;
@@ -6593,14 +6595,17 @@ class GameMap {
         this.urnMesh.instanceMatrix.needsUpdate = true;
         this.crateShadowMesh.instanceMatrix.needsUpdate = true;
         this.urnShadowMesh.instanceMatrix.needsUpdate = true;
+        
+        this.crateShadowMesh.visible = !AppSettings.shadowsEnabled; // Setta la visibilità di base
+        this.urnShadowMesh.visible = !AppSettings.shadowsEnabled;
 
         if(cPropIdx > 0) {
             this.mapGroup.add(this.crateMesh);
-            if (!AppSettings.shadowsEnabled) this.mapGroup.add(this.crateShadowMesh);
+            this.mapGroup.add(this.crateShadowMesh); // Viene sempre aggiunto
         }
         if(uPropIdx > 0) {
             this.mapGroup.add(this.urnMesh);
-            if (!AppSettings.shadowsEnabled) this.mapGroup.add(this.urnShadowMesh);
+            this.mapGroup.add(this.urnShadowMesh); // Viene sempre aggiunto
         }
         if (idxDebris > 0) this.mapGroup.add(meshDebris);
         
@@ -6793,13 +6798,13 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
         let pCount = AppSettings.isLow ? 4 : (isTouchDevice ? 8 : 12);
         for(let i=0; i<pCount; i++) {
             let p = Game.getParticle();
-            // Usiamo la nuova polvere scura
+            // Utilizziamo il nuovo fumo nero denso appena creato
             p.spawn(this.x, 10, this.y, SharedMat.spriteBlackSmoke, 'dust');
-            p.baseSize = MathUtils.randomRange(40, 80); // Nuvole giganti
-            p.vy = MathUtils.randomRange(20, 50); // Salita controllata
-            p.vx = MathUtils.randomRange(-45, 45); // Apertura a sbuffo
-            p.vz = MathUtils.randomRange(-45, 45);
-            p.life = MathUtils.randomRange(0.9, 1.2); // Persistenza aumentata!
+            p.baseSize = MathUtils.randomRange(50, 90); // Ancora più spesse
+            p.vy = MathUtils.randomRange(20, 45); // Più lente per dare volume
+            p.vx = MathUtils.randomRange(-30, 30); 
+            p.vz = MathUtils.randomRange(-30, 30);
+            p.life = MathUtils.randomRange(1.2, 1.8); // Durano fino al doppio!
             p.maxLife = p.life;
         }
         
@@ -7117,10 +7122,10 @@ class Player extends Entity {
         
         // Riagganciamo il bloom alla bacchetta magica
         this.modelParts.staffGem.add(this.fakeBloom);
-        // Attiva e scala l'ombra per il giocatore
-        this.shadowMesh.scale.set(32, 32, 1);
-        // La mostriamo solo se le ombre reali sono disattivate, per non sovrapporle!
-        this.shadowMesh.visible = !AppSettings.shadowsEnabled;
+       // Attiva e scala l'ombra per il giocatore
+        this.shadowMesh.scale.set(32, 1, 32); // FIX: Asse Z
+        // La mostriamo solo se le ombre reali sono disattivate, per non sovrapporle!
+        this.shadowMesh.visible = !AppSettings.shadowsEnabled;
         
         this.updateAppearance();
     }
@@ -8665,8 +8670,8 @@ Game.scene.add(this.telegraphMesh);
         this.mesh.updateMatrix(); // FIX SCATTI: Assegna subito le coordinate corrette
         this.mesh.visible = true;
         
-        this.shadowMesh.position.set(x, 0.2, y);
-        this.shadowMesh.scale.set(size * 2.8, size * 2.8, 1);
+       this.shadowMesh.position.set(x, 0.2, y);
+        this.shadowMesh.scale.set(size * 2.8, 1, size * 2.8); // FIX: Asse Z
         this.shadowMesh.updateMatrix();
         this.shadowMesh.visible = !AppSettings.shadowsEnabled;
         

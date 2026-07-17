@@ -4124,7 +4124,38 @@ const debrisMat = new THREE.MeshStandardMaterial({roughness: 0.8, metalness: 0.2
         }
         this._flashLightIdx = 0;
     },
-
+pushDebris(px, pz, radius, force) {
+        if (!this.debris || !this.debrisMeshes) return;
+        let radSq = radius * radius;
+        for (let i = 0, len = this.debris.length; i < len; i++) {
+            let d = this.debris[i];
+            // Spinge SOLO i detriti dormienti a terra per un effetto più naturale
+            if (!d.active || !d.isSleeping || d.isSinking) continue; 
+            
+            let dx = d.x - px;
+            let dz = d.z - pz;
+            let distSq = dx * dx + dz * dz;
+            
+            if (distSq < radSq && distSq > 0.1) {
+                let dist = Math.sqrt(distSq);
+                d.isSleeping = false; // LO SVEGLIA!
+                
+                // Più il detrito è vicino al centro, più vola lontano
+                let intensity = 1.0 - (dist / radius); 
+                let appliedForce = force * intensity * MathUtils.randomRange(0.8, 1.2);
+                
+                d.vx = (dx / dist) * appliedForce;
+                d.vz = (dz / dist) * appliedForce;
+                d.vy = MathUtils.randomRange(150, 300) * intensity + 50;
+                d.rx = MathUtils.randomRange(-15, 15);
+                d.ry = MathUtils.randomRange(-15, 15);
+                d.rz = MathUtils.randomRange(-15, 15);
+                
+                // Gli diamo 1.5s extra di vita per evitare che svanisca a mezz'aria
+                if (d.life < 1.5) d.life = 1.5; 
+            }
+        }
+    },
     spawnLightFlash(x, z, colorHex, intensity, distance, duration = 0.2) {
         if (AppSettings.isLow) return; // Disattiva sui telefoni scarsi per salvare batteria
         let fl = this.flashLights[this._flashLightIdx];
@@ -4972,10 +5003,13 @@ startGame(diffMult) {
         let debrisMoved = false;
         for (let i = 0, len = this.debris.length; i < len; i++) {
             if(this.debris[i].active) {
-                this.debris[i].update(safeVisualDt);
-                debrisMoved = true;
+                // Il flag diventa true SOLO se il detrito restituisce true (cioè si sta muovendo!)
+                if (this.debris[i].update(safeVisualDt)) {
+                    debrisMoved = true;
+                }
             }
         }
+        // La GPU riposa se tutto è fermo a terra
         if (debrisMoved && Game.debrisMeshes) {
             Game.debrisMeshes[0].instanceMatrix.needsUpdate = true;
             Game.debrisMeshes[1].instanceMatrix.needsUpdate = true;
@@ -8570,6 +8604,7 @@ if (this.modifiers.flowMastery && !wasDead) {
             this.baseStats.minDmg += 3; this.baseStats.maxDmg += 5;
             for(let i=0; i< (isTouchDevice?10:(AppSettings.isUltraPC?60:30)); i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteLevel, 'level'); Game.getFloatingText().spawn(this.x, this.y, "LEVEL UP!", '#ffffff', 28, true);
             AudioEngine.playLevelUp();
+            Game.pushDebris(this.x, this.y, 250, 400);
             // NUOVO: Trigger Onda d'urto Apprendimento Rapido
             if (this.modifiers.levelUpNova) {
                 // Sfrutta l'hazard esistente: fa poco danno (10% del maxDmg) ma respinge molto i nemici
@@ -9917,6 +9952,7 @@ class BossEnemy extends Enemy {
         this.shadowMesh.visible = false; // <-- FIX: Nascondi l'ombra del boss
         AudioEngine.stopBossMusic();
         AudioEngine.playEnemyDeath();
+        Game.pushDebris(this.x, this.y, 450, 800);
         Game.player.gainXp(this.xpValue);
         // OTTIMIZZAZIONE: Richiede meno particelle di base alla morte su Mobile
         let pCount = AppSettings.isLow ? 5 : (isTouchDevice ? 15 : (AppSettings.isUltraPC ? 80 : 35)); 
@@ -10238,7 +10274,9 @@ class Projectile {
         for(let i=0; i<count; i++) Game.getParticle().spawn(this.x, 15, this.y, pMat, 'spark');
         if (this.type === 'fire_shape') Game.getHazard().spawn(this.x, this.y, 45, 8.0, this.damage, 0xff3300, 'enemy_fire');
        if (this.type === 'explosive_arrow') {
-                Game.addTrauma(0.3); let nearby = Game.enemyGrid.findNearby(this, 120);
+                Game.addTrauma(0.3); 
+           Game.pushDebris(this.x, this.y, 160, 350);
+           let nearby = Game.enemyGrid.findNearby(this, 120);
                 for(let i=0, len=nearby.length; i<len; i++) { let e = nearby[i]; if (!e.dead && MathUtils.distanceSq(this, e) < 120*120) e.takeDamage(this.damage * 1.5, Game.player, false, false); }
                 
                 // Sostituiamo i detriti fisici con un'esplosione di particelle per evitare confusione
@@ -10457,7 +10495,7 @@ class Debris {
     }
     
     update(dt) {
-        if (!this.active) return;
+        if (!this.active) return false;
         
         this.life -= dt;
         
@@ -10467,7 +10505,7 @@ class Debris {
             dummy.position.set(0, -1000, 0);
             dummy.updateMatrix();
             Game.debrisMeshes[this.shapeType].setMatrixAt(this.index, dummy.matrix);
-            return;
+            return true; // Riaggiorna la matrice per farlo sparire
         }
 
         if (this.life < 0.5 && !this.isSinking) {
@@ -10476,7 +10514,7 @@ class Debris {
         }
 
         if (this.isSleeping) {
-            if (!Game.player || Game.player.dead || (Game.inputs.left.x === 0 && Game.inputs.left.y === 0 && !Game.player.isDashing)) return;
+            if (!Game.player || Game.player.dead || (Game.inputs.left.x === 0 && Game.inputs.left.y === 0 && !Game.player.isDashing)) return false;
 
             let dx = this.x - Game.player.x;
             let dz = this.z - Game.player.y; 
@@ -10498,8 +10536,9 @@ class Debris {
                 this.rz = MathUtils.randomRange(-15, 15);
                 
                 if (this.life < 1.0) this.life = 1.0; 
+                return true; // Si muove, la GPU deve ricalcolare!
             }
-            return; 
+            return false; // NESSUN MOVIMENTO = COSTO ZERO SU CPU/GPU
         }
 
         if (this.isSinking) {
@@ -10537,9 +10576,8 @@ class Debris {
         dummy.scale.setScalar(this.baseScale); 
         
         dummy.updateMatrix();
-        
-        // Aggiorniamo SOLO la mesh associata a questa forma
         Game.debrisMeshes[this.shapeType].setMatrixAt(this.index, dummy.matrix);
+        return true; 
     }
 }
 class FloatingText {

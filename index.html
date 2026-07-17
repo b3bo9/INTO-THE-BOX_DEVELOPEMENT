@@ -7683,7 +7683,7 @@ class Player extends Entity {
                 
                 let tickHp = Math.floor(this.stats.maxHp * 0.02); 
                 if (tickHp > 0) Game.getFloatingText().spawn(this.x - 15, this.y + 10, `+${tickHp}`, '#00ffaa', 20);
-                Game.getFloatingText().spawn(this.x + 15, this.y + 10, `+2% ULT`, '#00DDFF', 20);
+                Game.getFloatingText().spawn(this.x + 15, this.y + 10, `+2%`, '#00DDFF', 20);
                 Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteBlue, 'spark');
             }
         } else {
@@ -10111,7 +10111,7 @@ class Projectile {
                     
                     // Testi Fluttuanti Distinti (HP verde a sinistra, Ulti blu a destra)
                     Game.getFloatingText().spawn(Game.player.x - 15, Game.player.y + 15, `+${Math.floor(heal)}`, '#00ffaa', 22, true);
-                    Game.getFloatingText().spawn(Game.player.x + 15, Game.player.y + 15, `+5% ULT`, '#00DDFF', 22, true);
+                    Game.getFloatingText().spawn(Game.player.x + 15, Game.player.y + 15, `+5%`, '#00DDFF', 22, true);
                     
                     Game.player.shieldFlashTimer = 0.15; 
                     this.handleHit(null);

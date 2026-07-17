@@ -1622,6 +1622,7 @@ const ScoreManager = {
     scene: null, camera: null, renderer: null, container: null,
     boxGroup: null, orbs: [], particles: [], time: 0, initialized: false, active: false,
     isExploding: false, explosionTime: 0, // <-- NUOVE VARIABILI ESPLOSIONE
+    spinBoost: 0, raycaster: new THREE.Raycaster(), mouse: new THREE.Vector2(), // <-- VARIABILI CLICK CUBO
     
     init() {
         this.container = document.getElementById('title-3d-canvas-container');
@@ -1719,6 +1720,32 @@ const ScoreManager = {
         }
         
         this.scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        
+        // --- INIZIO: GESTIONE CLICK SUL CUBO ---
+        this.container.style.pointerEvents = 'auto'; // Abilita fisicamente il tocco sul canvas 3D
+        this.container.addEventListener('pointerdown', (e) => {
+            if (!this.active || this.isExploding) return;
+            
+            // Calcola le coordinate del tocco rispetto al contenitore
+            let rect = this.container.getBoundingClientRect();
+            this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            // Spara un raggio invisibile dalla telecamera al punto toccato
+            this.raycaster.setFromCamera(this.mouse, this.camera);
+            let intersects = this.raycaster.intersectObjects(this.boxGroup.children);
+            
+            // Se ha colpito il cubo
+            if (intersects.length > 0) {
+                this.spinBoost = 15.0; // Dà una violenta spinta rotazionale
+                this.boxGroup.scale.set(0.85, 0.85, 0.85); // Lo "schiaccia" per il feedback tattile
+                
+                if (typeof AudioEngine !== 'undefined') AudioEngine.playHover();
+                if (typeof Haptics !== 'undefined') Haptics.vibrate(15);
+            }
+        });
+        // --- FINE: GESTIONE CLICK SUL CUBO ---
+
         window.addEventListener('resize', () => this.resize());
         this.initialized = true;
         this.active = true;
@@ -1776,11 +1803,24 @@ const ScoreManager = {
             return;
         }
 
-        this.time += dt;
+       this.time += dt;
+        
+        // Decadimento fluido dell'accelerazione del cubo
+        if (this.spinBoost > 0) {
+            this.spinBoost -= dt * 10;
+            if (this.spinBoost < 0) this.spinBoost = 0;
+        }
         
         if (this.boxGroup) {
-            this.boxGroup.rotation.x += dt * 0.4;
-            this.boxGroup.rotation.y += dt * 0.6;
+            // Aggiungiamo lo spinBoost alla rotazione di base
+            this.boxGroup.rotation.x += dt * (0.4 + this.spinBoost);
+            this.boxGroup.rotation.y += dt * (0.6 + this.spinBoost * 1.5);
+            
+            // Ritorno elastico alla grandezza originale dopo il click/tocco
+            if (this.boxGroup.scale.x < 1.0 && !this.isExploding) {
+                this.boxGroup.scale.addScalar(dt * 1.5);
+                if (this.boxGroup.scale.x > 1.0) this.boxGroup.scale.set(1, 1, 1);
+            }
         }
         
         for(let i=0; i<this.orbs.length; i++) {
@@ -1811,9 +1851,10 @@ const ScoreManager = {
     },
     
     // FIX BUG RIENTRO AL MENU: Ora gli oggetti tornano perfettamente alla posizione di origine
-    reset() {
+   reset() {
         this.isExploding = false;
         this.explosionTime = 0;
+        this.spinBoost = 0; // Azzera lo spin
         
         if (this.explosionLight) this.explosionLight.intensity = 0.0;
         

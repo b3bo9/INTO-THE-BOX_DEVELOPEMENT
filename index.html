@@ -4036,27 +4036,30 @@ this.debris = Array.from({length: maxDynamicDebris}, (_, i) => new Debris(i));
 
 if (!this._dummyDebris) this._dummyDebris = new THREE.Object3D();
 
-// Creiamo UN SOLO materiale e UNA SOLA geometria per tutti i detriti di combattimento
-const debrisGeo = SharedGeo.tetrahedron; 
 const debrisMat = new THREE.MeshStandardMaterial({roughness: 0.8, metalness: 0.2});
+        
+        // Geometrie: 0 = Triangoli, 1 = Cubi, 2 = Sfere (Dodecaedri Low Poly per massime performance)
+        const geos = [SharedGeo.tetrahedron, SharedGeo.box, new THREE.DodecahedronGeometry(0.8, 0)];
+        this.debrisMeshes = [];
+        
+        let hideMat = new THREE.Matrix4().makeTranslation(0, -1000, 0);
+        let defColor = new THREE.Color(0x000000);
 
-this.dynamicDebrisMesh = new THREE.InstancedMesh(debrisGeo, debrisMat, maxDynamicDebris);
-this.dynamicDebrisMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-this.dynamicDebrisMesh.castShadow = false; // Spento per massimizzare gli FPS
-this.dynamicDebrisMesh.receiveShadow = false;
-// OTTIMIZZAZIONE PERFORMANCE: Pre-alloca il buffer dei colori per evitare micro-lag alla primissima esplosione
-this.dynamicDebrisMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(maxDynamicDebris * 3), 3);
-
-// Nascondiamo tutto sotto terra all'avvio
-let hideMat = new THREE.Matrix4().makeTranslation(0, -1000, 0);
-let defColor = new THREE.Color(0x000000);
-
-for(let i = 0; i < maxDynamicDebris; i++) {
-    this.dynamicDebrisMesh.setMatrixAt(i, hideMat);
-    this.dynamicDebrisMesh.setColorAt(i, defColor);
-}
-
-Game.scene.add(this.dynamicDebrisMesh);
+        // Creiamo 3 canali di rendering separati (Costo CPU/GPU: 0)
+        for (let m = 0; m < 3; m++) {
+            let im = new THREE.InstancedMesh(geos[m], debrisMat, maxDynamicDebris);
+            im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+            im.castShadow = false; 
+            im.receiveShadow = false;
+            im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(maxDynamicDebris * 3), 3);
+            
+            for(let i = 0; i < maxDynamicDebris; i++) {
+                im.setMatrixAt(i, hideMat);
+                im.setColorAt(i, defColor);
+            }
+            this.debrisMeshes.push(im);
+            Game.scene.add(im);
+        }
        this.enemyPool = Array.from({length: 80}, () => new Enemy()); // Pre-alloca 80 nemici
         // POOL DEI PROPS
         this.propsCrates = Array.from({length: isTouchDevice ? 25 : 60}, (_, i) => new Prop(i, 'crate'));
@@ -4932,7 +4935,11 @@ startGame(diffMult) {
                 debrisMoved = true;
             }
         }
-        if (debrisMoved && Game.dynamicDebrisMesh) Game.dynamicDebrisMesh.instanceMatrix.needsUpdate = true;
+        if (debrisMoved && Game.debrisMeshes) {
+            Game.debrisMeshes[0].instanceMatrix.needsUpdate = true;
+            Game.debrisMeshes[1].instanceMatrix.needsUpdate = true;
+            Game.debrisMeshes[2].instanceMatrix.needsUpdate = true;
+        }
         for (let i = 0, len = this.particles.length; i < len; i++) if(this.particles[i].active) this.particles[i].update(safeVisualDt);
         for (let i = 0, len = this.floatingTexts.length; i < len; i++) if(this.floatingTexts[i].active) this.floatingTexts[i].update(safeVisualDt);
 
@@ -10331,19 +10338,21 @@ class Particle {
 }
 class Debris {
     constructor(index) {
-        this.index = index; // Lo slot assegnato a questo detrito
+        this.index = index; 
         this.active = false;
-        // RAM purissima: zero mesh create qui dentro!
     }
     
- spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, enemyRadius, isElite = false, forceSpawn = false) {
+    spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, enemyRadius, isElite = false, forceSpawn = false) {
         if (!forceSpawn && Game.debrisThisFrame > (isTouchDevice ? 4 : 15)) return;
         if (!forceSpawn) Game.debrisThisFrame = (Game.debrisThisFrame || 0) + 1;
         
         this.active = true;
         this.isSleeping = false; 
-        this.isSinking = false; // Nuovo stato: Sprofondamento
-        this.life = MathUtils.randomRange(4.5, 6.0); // I detriti vivono per circa 5 secondi
+        this.isSinking = false; 
+        this.life = MathUtils.randomRange(4.5, 6.0); 
+        
+        // Scegli a caso: 0=Triangolo, 1=Cubo, 2=Sfera
+        this.shapeType = Math.floor(Math.random() * 3); 
         
         if (!Game._dummyColor) Game._dummyColor = new THREE.Color();
         if (!Game._eliteMixColor) Game._eliteMixColor = new THREE.Color(0x440000); 
@@ -10351,8 +10360,20 @@ class Debris {
         Game._dummyColor.setHex(colorHex);
         if (isElite) Game._dummyColor.lerp(Game._eliteMixColor, 0.5); 
         
-        Game.dynamicDebrisMesh.setColorAt(this.index, Game._dummyColor);
-        Game.dynamicDebrisMesh.instanceColor.needsUpdate = true;
+        // Colora la forma scelta
+        Game.debrisMeshes[this.shapeType].setColorAt(this.index, Game._dummyColor);
+        Game.debrisMeshes[this.shapeType].instanceColor.needsUpdate = true;
+
+        // Seppellisci immediatamente le altre 2 forme per nasconderle senza distruggerle
+        let hideDummy = Game._dummyDebris;
+        hideDummy.position.set(0, -1000, 0);
+        hideDummy.updateMatrix();
+        for (let m = 0; m < 3; m++) {
+            if (m !== this.shapeType) {
+                Game.debrisMeshes[m].setMatrixAt(this.index, hideDummy.matrix);
+                Game.debrisMeshes[m].instanceMatrix.needsUpdate = true;
+            }
+        }
 
         this.x = worldPos.x;
         this.y = worldPos.y;
@@ -10372,33 +10393,28 @@ class Debris {
         this.ry = MathUtils.randomRange(-15, 15);
         this.rz = MathUtils.randomRange(-15, 15);
 
-        this.update(0); // Forza il disegno immediato
+        this.update(0); 
     }
     
     update(dt) {
         if (!this.active) return;
         
-        // 1. Il timer vitale scorre sempre, anche a costo zero mentre dormono
         this.life -= dt;
         
-        // 2. Morte finale: lo nascondiamo sotto terra e liberiamo lo slot
         if (this.life <= 0) {
             this.active = false;
             let dummy = Game._dummyDebris;
             dummy.position.set(0, -1000, 0);
             dummy.updateMatrix();
-            Game.dynamicDebrisMesh.setMatrixAt(this.index, dummy.matrix);
-            Game.dynamicDebrisMesh.instanceMatrix.needsUpdate = true;
+            Game.debrisMeshes[this.shapeType].setMatrixAt(this.index, dummy.matrix);
             return;
         }
 
-        // 3. Ultimo mezzo secondo di vita: innesca lo sprofondamento!
         if (this.life < 0.5 && !this.isSinking) {
-            this.isSleeping = false; // Lo svegliamo forzatamente per calcolare i frame
+            this.isSleeping = false; 
             this.isSinking = true;
         }
 
-        // --- CALCOLO INTERAZIONE SE A TERRA E NON STA SPROFONDANDO ---
         if (this.isSleeping) {
             if (!Game.player || Game.player.dead || (Game.inputs.left.x === 0 && Game.inputs.left.y === 0 && !Game.player.isDashing)) return;
 
@@ -10409,7 +10425,6 @@ class Debris {
             let kickRadius = Game.player.isDashing ? 35 : 18;
 
             if (distSq < kickRadius * kickRadius) {
-                // IL GIOCATORE LO HA CALCIATO!
                 this.isSleeping = false;
                 let kickForce = Game.player.isDashing ? MathUtils.randomRange(300, 500) : MathUtils.randomRange(100, 250);
                 
@@ -10422,19 +10437,15 @@ class Debris {
                 this.rx = MathUtils.randomRange(-15, 15);
                 this.rz = MathUtils.randomRange(-15, 15);
                 
-                // JUICE: Se lo calci poco prima che sparisca, gli diamo 1 sec extra di vita per farlo volare!
                 if (this.life < 1.0) this.life = 1.0; 
             }
-            return; // Se dorme e non viene toccato, interrompe i calcoli qui (Risparmio CPU assoluto)
+            return; 
         }
 
-        // --- FISICA ---
         if (this.isSinking) {
-            // Animazione di sprofondamento rapido nel terreno
             this.y -= dt * 18;
             this.baseScale = Math.max(0.001, this.baseScale - (dt * this.baseScale * 2));
         } else if (dt > 0) {
-            // Volo standard
             this.vy -= 600 * dt; 
             this.x += this.vx * dt;
             this.y += this.vy * dt;
@@ -10443,7 +10454,6 @@ class Debris {
             this.rotY += this.ry * dt;
             this.rotZ += this.rz * dt;
 
-            // Rimbalzo al suolo
             let floorLimit = this.baseScale * 0.3;
             if (this.y < floorLimit) {
                 this.y = floorLimit;
@@ -10454,7 +10464,6 @@ class Debris {
                 this.ry *= 0.5;
                 this.rz *= 0.5;
 
-                // Addormenta il detrito se l'energia cinetica si azzera
                 if (Math.abs(this.vy) < 15 && Math.abs(this.vx) < 5 && Math.abs(this.vz) < 5) {
                     this.isSleeping = true;
                     this.vy = 0; this.vx = 0; this.vz = 0;
@@ -10462,15 +10471,15 @@ class Debris {
             }
         }
 
-        // --- AGGIORNAMENTO MATRICE ALLA GPU ---
         let dummy = Game._dummyDebris;
         dummy.position.set(this.x, this.y, this.z);
         dummy.rotation.set(this.rotX, this.rotY, this.rotZ);
         dummy.scale.setScalar(this.baseScale); 
         
         dummy.updateMatrix();
-        Game.dynamicDebrisMesh.setMatrixAt(this.index, dummy.matrix);
-        Game.dynamicDebrisMesh.instanceMatrix.needsUpdate = true;
+        
+        // Aggiorniamo SOLO la mesh associata a questa forma
+        Game.debrisMeshes[this.shapeType].setMatrixAt(this.index, dummy.matrix);
     }
 }
 class FloatingText {
@@ -10574,14 +10583,18 @@ function clearScene() {
         Game.pendingDrops = []; // FIX LAG: Svuota la coda al cambio scena
     }
     
-   if (Game.dynamicDebrisMesh) {
-    let hideMat = new THREE.Matrix4().makeTranslation(0, -1000, 0);
-    for(let i = 0, len = Game.debris.length; i < len; i++) { 
-        Game.debris[i].active = false; 
-        Game.dynamicDebrisMesh.setMatrixAt(i, hideMat);
+   if (Game.debrisMeshes) {
+        let hideMat = new THREE.Matrix4().makeTranslation(0, -1000, 0);
+        for(let i = 0, len = Game.debris.length; i < len; i++) { 
+            Game.debris[i].active = false; 
+            Game.debrisMeshes[0].setMatrixAt(i, hideMat);
+            Game.debrisMeshes[1].setMatrixAt(i, hideMat);
+            Game.debrisMeshes[2].setMatrixAt(i, hideMat);
+        }
+        Game.debrisMeshes[0].instanceMatrix.needsUpdate = true;
+        Game.debrisMeshes[1].instanceMatrix.needsUpdate = true;
+        Game.debrisMeshes[2].instanceMatrix.needsUpdate = true;
     }
-    Game.dynamicDebrisMesh.instanceMatrix.needsUpdate = true;
-}
     
   // Pulizia profonda SOLO per i Boss (che sono istanze uniche, fuori dal pool)
     for(let i=0, len=Game.enemies.length; i<len; i++) { 

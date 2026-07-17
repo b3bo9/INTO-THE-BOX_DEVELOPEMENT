@@ -4117,12 +4117,26 @@ Game.scene.add(this.dynamicDebrisMesh);
     getCoin() { let c = this.coinDrops[this._coinIdx]; this._coinIdx = (this._coinIdx + 1) % this.coinDrops.length; return c; },
     getDebris() {
         let startIdx = this._debrisIdx;
+        let oldestSleeping = null;
+        
         do {
             let d = this.debris[this._debrisIdx];
             this._debrisIdx = (this._debrisIdx + 1) % this.debris.length;
+            
+            // 1. Priorità assoluta agli slot vuoti
             if (!d.active) return d; 
+            // 2. Se è attivo ma fermo a terra, memorizzalo come rimpiazzo
+            if (d.isSleeping && !oldestSleeping) oldestSleeping = d;
+            
         } while (this._debrisIdx !== startIdx);
-        return null; 
+        
+        // Se non ci sono slot vuoti, ruba il detrito a terra più vecchio
+        if (oldestSleeping) return oldestSleeping;
+        
+        // Failsafe: se ci sono centinaia di pezzi in volo contemporaneamente, sovrascrivi forzatamente
+        let fallback = this.debris[this._debrisIdx];
+        this._debrisIdx = (this._debrisIdx + 1) % this.debris.length;
+        return fallback; 
     },
    getParticle() { 
         // FIX OVERHEAD: Rimuove i cicli while. Se saturo, sovrascrive a O(1).
@@ -10325,26 +10339,19 @@ class Debris {
  spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, enemyRadius, isElite = false, forceSpawn = false) {
         if (!forceSpawn && Game.debrisThisFrame > (isTouchDevice ? 4 : 15)) return;
         if (!forceSpawn) Game.debrisThisFrame = (Game.debrisThisFrame || 0) + 1;
-        this.active = true;
         
-        /* COMPROMESSO: Un InstancedMesh usa una sola geometria. Il parametro "geometry" 
-        passato dai vari nemici viene ignorato a favore del tetraedro standard. 
-        Nel caos dell'esplosione, il giocatore non noterà la differenza.
-        */
-
-        // 1. Colore dell'istanza (Zero-Allocation Fix Definitivo)
+        this.active = true;
+        this.isSleeping = false; // Il detrito si sveglia!
+        
         if (!Game._dummyColor) Game._dummyColor = new THREE.Color();
-        if (!Game._eliteMixColor) Game._eliteMixColor = new THREE.Color(0x440000); // Istanzia in cache una volta sola!
+        if (!Game._eliteMixColor) Game._eliteMixColor = new THREE.Color(0x440000); 
         
         Game._dummyColor.setHex(colorHex);
-        // Gli InstancedMesh non supportano l'emissivo per-istanza nativamente, 
-        // quindi scuriamo/mischiamo il colore se è un Elite per distinguerlo.
-        if (isElite) Game._dummyColor.lerp(Game._eliteMixColor, 0.5); // Niente più 'new THREE.Color' nel loop
+        if (isElite) Game._dummyColor.lerp(Game._eliteMixColor, 0.5); 
         
         Game.dynamicDebrisMesh.setColorAt(this.index, Game._dummyColor);
         Game.dynamicDebrisMesh.instanceColor.needsUpdate = true;
 
-        // 2. Setup Fisica
         this.x = worldPos.x;
         this.y = worldPos.y;
         this.z = worldPos.z;
@@ -10362,8 +10369,6 @@ class Debris {
         this.rx = MathUtils.randomRange(-15, 15);
         this.ry = MathUtils.randomRange(-15, 15);
         this.rz = MathUtils.randomRange(-15, 15);
-        this.life = MathUtils.randomRange(0.6, 0.9); 
-        this.maxLife = this.life;
 
         this.update(0); // Forza il disegno immediato
     }
@@ -10371,7 +10376,36 @@ class Debris {
     update(dt) {
         if (!this.active) return;
         
-        // Calcolo traiettorie e gravità
+        // --- CALCOLO INTERAZIONE SE A TERRA (COSTO CPU QUASI ZERO) ---
+        if (this.isSleeping) {
+            // Se il giocatore è fermo o morto, saltiamo i calcoli
+            if (!Game.player || Game.player.dead || (Game.inputs.left.x === 0 && Game.inputs.left.y === 0 && !Game.player.isDashing)) return;
+
+            let dx = this.x - Game.player.x;
+            let dz = this.z - Game.player.y; // Asse Z corrisponde alla Y del giocatore (Top-Down)
+            let distSq = dx * dx + dz * dz;
+
+            // Raggio di impatto: più largo se fai uno scatto (Dash)
+            let kickRadius = Game.player.isDashing ? 35 : 18;
+
+            if (distSq < kickRadius * kickRadius) {
+                // SVEGLIA IL DETRITO! CALCIA!
+                this.isSleeping = false;
+                let kickForce = Game.player.isDashing ? MathUtils.randomRange(300, 500) : MathUtils.randomRange(100, 250);
+                
+                let dist = Math.sqrt(distSq);
+                if (dist === 0) { dx = 1; dist = 1; }
+                
+                this.vx = (dx / dist) * kickForce + MathUtils.randomRange(-30, 30);
+                this.vz = (dz / dist) * kickForce + MathUtils.randomRange(-30, 30);
+                this.vy = MathUtils.randomRange(80, 200); // Piccolo balzo verso l'alto
+                this.rx = MathUtils.randomRange(-15, 15);
+                this.rz = MathUtils.randomRange(-15, 15);
+            }
+            return; // Se dorme e non lo tocchi, si ferma qui. Niente calcoli matriciali!
+        }
+
+        // --- FISICA ---
         if (dt > 0) {
             this.vy -= 600 * dt; 
             this.x += this.vx * dt;
@@ -10380,45 +10414,37 @@ class Debris {
             this.rotX += this.rx * dt;
             this.rotY += this.ry * dt;
             this.rotZ += this.rz * dt;
-            this.life -= dt;
         }
 
-        // Rimbalzo sul pavimento
+        // --- RIMBALZO AL SUOLO ED ENTRATA IN "SLEEP" ---
         let floorLimit = this.baseScale * 0.3;
         if (this.y < floorLimit) {
             this.y = floorLimit;
-            this.vy *= -0.3; 
-            this.vx *= 0.5; 
-            this.vz *= 0.5;
+            this.vy *= -0.4; 
+            this.vx *= 0.6; 
+            this.vz *= 0.6;
             this.rx *= 0.5;
             this.ry *= 0.5;
             this.rz *= 0.5;
+
+            // Se l'energia cinetica si spegne, mettiamolo a dormire per non sprecare CPU
+            if (Math.abs(this.vy) < 15 && Math.abs(this.vx) < 5 && Math.abs(this.vz) < 5) {
+                this.isSleeping = true;
+                this.vy = 0; this.vx = 0; this.vz = 0;
+            }
         }
 
-        // Ridimensionamento fluido a fine vita
-        let pct = this.life / this.maxLife;
-        let easeShrink = 1.0; 
-        if (pct < 0.6) easeShrink = Math.pow(pct / 0.6, 1.2); 
-        let finalScale = Math.max(0.001, this.baseScale * easeShrink);
-
-        // 3. AGGIORNAMENTO MATRICE (Nessun .updateMatrixWorld!)
+        // --- AGGIORNAMENTO MATRICE ALLA GPU ---
         let dummy = Game._dummyDebris;
         dummy.position.set(this.x, this.y, this.z);
         dummy.rotation.set(this.rotX, this.rotY, this.rotZ);
-        dummy.scale.setScalar(finalScale);
+        dummy.scale.setScalar(this.baseScale); // Rimane grande uguale!
         
-       // Se il detrito muore IN QUESTO FRAME, lo mandiamo sotto terra e facciamo un ULTIMO update
-        if (this.life <= 0) {
-            this.active = false;
-            dummy.position.set(0, -1000, 0);
-            dummy.updateMatrix();
-            Game.dynamicDebrisMesh.setMatrixAt(this.index, dummy.matrix);
-            // Dopodiché non verrà più calcolato dal loop in Game.update()
-        } else {
-            dummy.updateMatrix();
-            Game.dynamicDebrisMesh.setMatrixAt(this.index, dummy.matrix);
-        }
-
+        dummy.updateMatrix();
+        Game.dynamicDebrisMesh.setMatrixAt(this.index, dummy.matrix);
+        
+        // Segnaliamo la modifica solo se siamo in volo
+        Game.dynamicDebrisMesh.instanceMatrix.needsUpdate = true;
     }
 }
 class FloatingText {

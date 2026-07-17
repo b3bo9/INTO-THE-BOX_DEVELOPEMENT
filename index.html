@@ -4984,7 +4984,7 @@ startGame(diffMult) {
                 let dropX = d.x + Math.cos(angle) * dist;
                 let dropY = d.y + Math.sin(angle) * dist;
                 
-                if (this.map && this.map.isSolid(dropX, dropY)) { dropX = d.x; dropY = d.y; }
+               if (this.map && !this.map.isWalkable(dropX, dropY)) { dropX = d.x; dropY = d.y; }
                 
                if (d.type === 'coin') this.getCoin().spawn(dropX, dropY, d.isVolcano);
                 else if (d.type === 'life') this.getExtraLife().spawn(dropX, dropY);
@@ -5351,7 +5351,54 @@ startGame(diffMult) {
         for(let i=0, len=this.propsUrns.length; i<len; i++) this.propsUrns[i].update(visualDt);
 
         this.updateMouseWorld();   
-        this.player.update(combatDt); 
+       this.player.update(combatDt); 
+        
+        // --- LOGICA CADUTA GIOCATORE NEL VUOTO ---
+        if (this.player.isFalling) {
+            this.player.mesh.position.y -= combatDt * 800;
+            this.player.mesh.rotation.x += combatDt * 10;
+            this.player.mesh.rotation.z += combatDt * 15;
+            this.player.mesh.scale.multiplyScalar(Math.max(0.01, 1.0 - (combatDt * 4.0)));
+            this.player.mesh.updateMatrix();
+            
+            if (this.player.mesh.position.y < -400 && !this.player.dead) {
+                this.player.dead = true;
+                this.lives--;
+                this.lastCoinsLost = this.coins - Math.floor(this.coins / 2);
+                this.coins = Math.floor(this.coins / 2);
+                if(UI.els.coins) UI.els.coins.innerText = this.coins;
+                
+                AudioEngine.stopAllMusic();
+                if (this.lives > 0) AudioEngine.playDeathMusic(); else AudioEngine.playGameOverSound();
+                
+                setTimeout(() => {
+                    if (this.state === 'MENU') return;
+                    this.state = 'DEAD';
+                    document.body.classList.remove('crt-active');
+                    let ds = document.getElementById('deathScreen');
+                    ds.classList.remove('hidden');
+                    if (this.lives > 0) {
+                        ds.style.backgroundImage = "url('bg_morte.png')";
+                        document.getElementById('deathTitle').innerText = "SEI PRECIPITATO"; 
+                        document.getElementById('deathSubtitle').innerText = `Vite rimaste: ${this.lives}`; 
+                        document.getElementById('deathQuote').classList.add('hidden'); document.getElementById('deathMatchStats').classList.add('hidden'); document.getElementById('btn-respawn').classList.remove('hidden'); document.getElementById('btn-restart').classList.add('hidden');
+                    } else {
+                        ds.style.backgroundImage = "url('bg_box.png')";
+                        document.getElementById('deathTitle').innerText = "R I P"; 
+                        document.getElementById('deathSubtitle').innerText = `Precipitato nell'abisso`; 
+                        document.getElementById('deathQuote').classList.remove('hidden');
+                        document.getElementById('deathMatchStats').classList.add('hidden');
+                        document.getElementById('btn-respawn').classList.add('hidden'); document.getElementById('btn-restart').classList.remove('hidden'); document.getElementById('score-save-container').classList.remove('hidden');
+                    }
+                }, 1000);
+            }
+        } else if (!this.player.dead && !this.player.isDashing && this.map.isPit(this.player.x, this.player.y)) {
+            this.player.isFalling = true; // Attiva la caduta!
+            this.player.shieldMesh.visible = false;
+            this.player.glacialShieldMesh.visible = false;
+            AudioEngine.playNoise(0.5, 'high', 0.5);
+        }
+        // --- FINE LOGICA CADUTA ---
         this.updateCamera(visualDt); // La telecamera segue fluida il tempo reale
 
         // --- AGGIORNAMENTO DERIVA DELLA NEBBIA BASSA ---
@@ -5522,7 +5569,35 @@ startGame(diffMult) {
                     e.mesh.matrixAutoUpdate = true;
                 }
 
-                e.update(combatDt); 
+               e.update(combatDt); 
+                
+                // --- LOGICA CADUTA NEMICI NEL VUOTO ---
+                if (e.isFalling) {
+                    e.mesh.position.y -= combatDt * 800; // Sprofonda giù a peso morto!
+                    e.mesh.rotation.x += combatDt * 10;  // Ruzzola su se stesso
+                    e.mesh.rotation.y += combatDt * 15;
+                    e.mesh.scale.multiplyScalar(Math.max(0.01, 1.0 - (combatDt * 4.0))); // Spicca in prospettiva
+                    e.mesh.updateMatrix();
+                    
+                    if (e.mesh.position.y < -400) { // Sparito dal fondo
+                        e.dead = true; 
+                        e.active = false; 
+                        e.mesh.visible = false;
+                        this.enemies[i] = this.enemies[this.enemies.length - 1];
+                        this.enemies.pop();
+                        this.floorKills++; this.totalKills++;
+                        if (!this.isBossFloor && this.floorKills + this.enemies.length < this.floorMaxKills) this.spawnEnemy();
+                        continue;
+                    }
+                } else if (e.state !== 'leaping' && this.map.isPit(e.x, e.y)) {
+                    e.isFalling = true;
+                    e.hideAuras();
+                    AudioEngine.playNoise(0.2, 'high', 0.2); // Ffffshh (Vento da caduta)
+                }
+                
+                if (e.isFalling) continue; // Salta il resto dei calcoli dell'IA se sta precipitando!
+                // --- FINE LOGICA CADUTA ---
+
                 if ((Game.frameCount + e.thinkOffset) % 2 === 0) {
                     this.enemyGrid.updateClient(e); 
                 }
@@ -6239,6 +6314,25 @@ class GameMap {
         if (isBossFloor) {
             let cx = Math.floor(this.width / 2); let cy = Math.floor(this.height / 2);
             for(let x = cx - 8; x <= cx + 8; x++) { for(let y = cy - 8; y <= cy + 8; y++) { if (x > 0 && x < this.width-1 && y > 0 && y < this.height-1) this.grid[x][y] = 2; } }
+        } else {
+            // --- GENERAZIONE VORAGINI ---
+            // Scaviamo da 2 a 5 crateri per livello
+            let numPits = MathUtils.randomInt(2, 6);
+            for(let i=0; i<numPits; i++) {
+                let r = rooms[MathUtils.randomInt(0, rooms.length-1)];
+                // Solo le stanze medio/grandi hanno i burroni
+                if(r.w >= 7 && r.h >= 7) {
+                    let pw = MathUtils.randomInt(3, r.w - 3);
+                    let ph = MathUtils.randomInt(3, r.h - 3);
+                    let px = r.x + Math.floor((r.w - pw)/2);
+                    let py = r.y + Math.floor((r.h - ph)/2);
+                    for(let x=px; x<px+pw; x++) {
+                        for(let y=py; y<py+ph; y++) {
+                            if (this.grid[x][y] !== 3) this.grid[x][y] = 4; // Assegna il valore "Vuoto"
+                        }
+                    }
+                }
+            }
         }
 
         let floorCount = 0, wallCount = 0, pillarCount = 0;
@@ -6677,7 +6771,7 @@ class GameMap {
                             dummy.updateMatrix();
                             meshRock.setMatrixAt(idxRock++, dummy.matrix);
                         }
-                    } else { 
+                    } else if (this.grid[x][y] === 1) { 
                         // Confine Interno Conficcato: DISEGNA I VERI MURI INTERNI
                         dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE*0.75, y * TILE_SIZE + TILE_SIZE / 2);
                         dummy.scale.set(1, 1, 1);
@@ -6887,9 +6981,20 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
         while(attempts < 1000) { let x = MathUtils.randomInt(1, this.width - 2), y = MathUtils.randomInt(1, this.height - 2); if (this.grid[x][y] === 2) return {x, y}; attempts++; }
         return {x: 2, y: 2};
     }
-    isSolid(x, y) {
+    isWalkable(x, y) {
         let gx = Math.floor(x / TILE_SIZE), gy = Math.floor(y / TILE_SIZE);
-        if (gx < 0 || gy < 0 || gx >= this.width || gy >= this.height) return true; return this.grid[gx][gy] === 1 || this.grid[gx][gy] === 3; 
+        if (gx < 0 || gy < 0 || gx >= this.width || gy >= this.height) return false;
+        return this.grid[gx][gy] === 2; // Solo il pavimento vero e proprio
+    }
+    isSolidWall(x, y) {
+        let gx = Math.floor(x / TILE_SIZE), gy = Math.floor(y / TILE_SIZE);
+        if (gx < 0 || gy < 0 || gx >= this.width || gy >= this.height) return true;
+        return this.grid[gx][gy] === 1 || this.grid[gx][gy] === 3; // Muri e Obelischi (i proiettili si schiantano qui)
+    }
+    isPit(x, y) {
+        let gx = Math.floor(x / TILE_SIZE), gy = Math.floor(y / TILE_SIZE);
+        if (gx < 0 || gy < 0 || gx >= this.width || gy >= this.height) return false;
+        return this.grid[gx][gy] === 4; // 4 = Voragine mortale
     }
 }
     class Prop {
@@ -7091,24 +7196,26 @@ class Entity {
         this.shadowMesh.visible = false;
     }
     
-    move(dx, dy, dt) {
+   move(dx, dy, dt) {
         let len = Math.sqrt(dx*dx + dy*dy); if (len > 0) { dx /= len; dy /= len; }
         let totalDist = this.speed * dt; let steps = Math.max(1, Math.ceil(totalDist / 15)); let stepDist = totalDist / steps; const r = this.radius * 0.8; 
         for (let i = 0; i < steps; i++) {
             let newX = this.x + dx * stepDist; let newY = this.y + dy * stepDist;
-            if (dx !== 0) { let testX = dx > 0 ? newX + r : newX - r; if (!Game.map.isSolid(testX, this.y - r) && !Game.map.isSolid(testX, this.y + r)) this.x = newX; }
-            if (dy !== 0) { let testY = dy > 0 ? newY + r : newY - r; if (!Game.map.isSolid(this.x - r, testY) && !Game.map.isSolid(this.x + r, testY)) this.y = newY; }
+            // Usa isWalkable: cammini solo sul terreno solido
+            if (dx !== 0) { let testX = dx > 0 ? newX + r : newX - r; if (Game.map.isWalkable(testX, this.y - r) && Game.map.isWalkable(testX, this.y + r)) this.x = newX; }
+            if (dy !== 0) { let testY = dy > 0 ? newY + r : newY - r; if (Game.map.isWalkable(this.x - r, testY) && Game.map.isWalkable(this.x + r, testY)) this.y = newY; }
         }
         this.mesh.position.set(this.x, this.mesh.position.y, this.y);
         this.mesh.updateMatrix();
     }
     push(nx, ny, dist) {
-        if (this.isPursuer) return; // L'inseguitore non viene mai sbalzato
+        if (this.isPursuer) return; 
         let steps = Math.max(1, Math.ceil(dist / 15)); let stepDist = dist / steps; const r = this.radius * 0.8;
         for (let i = 0; i < steps; i++) {
             let newX = this.x + nx * stepDist; let newY = this.y + ny * stepDist;
-            if (nx !== 0) { let testX = nx > 0 ? newX + r : newX - r; if (!Game.map.isSolid(testX, this.y - r) && !Game.map.isSolid(testX, this.y + r)) this.x = newX; }
-            if (ny !== 0) { let testY = ny > 0 ? newY + r : newY - r; if (!Game.map.isSolid(this.x - r, testY) && !Game.map.isSolid(this.x + r, testY)) this.y = newY; }
+            // Usa isSolidWall: i corpi lanciati in aria volano SOPRA le voragini!
+            if (nx !== 0) { let testX = nx > 0 ? newX + r : newX - r; if (!Game.map.isSolidWall(testX, this.y - r) && !Game.map.isSolidWall(testX, this.y + r)) this.x = newX; }
+            if (ny !== 0) { let testY = ny > 0 ? newY + r : newY - r; if (!Game.map.isSolidWall(this.x - r, testY) && !Game.map.isSolidWall(this.x + r, testY)) this.y = newY; }
         }
         this.mesh.position.set(this.x, this.mesh.position.y, this.y);
         this.mesh.updateMatrix();
@@ -7619,6 +7726,7 @@ class Player extends Entity {
         }
         this.updateFlash(dt);
         if (dt === 0) return; // FIX BETA: Blocca input, attacchi e i-frames se il gioco è in pausa!
+        if (this.isFalling) return;
       // --- HOt: CURA NEL TEMPO CAOS ELEMENTALE ---
         if (this.chaosHoTTimer > 0) {
             this.chaosHoTTimer -= dt;
@@ -8327,7 +8435,7 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
             
             for (let d = step; d <= maxDist; d += step) {
                 let nx = this.x + dx * d; let ny = this.y + dy * d;
-                if (Game.map.isSolid(nx + rCheck, ny + rCheck) || Game.map.isSolid(nx - rCheck, ny - rCheck) || Game.map.isSolid(nx + rCheck, ny - rCheck) || Game.map.isSolid(nx - rCheck, ny + rCheck)) { break; }
+               if (Game.map.isSolidWall(nx + rCheck, ny + rCheck) || Game.map.isSolidWall(nx - rCheck, ny - rCheck) || Game.map.isSolidWall(nx + rCheck, ny - rCheck) || Game.map.isSolidWall(nx - rCheck, ny + rCheck)) { break; }
                 safeDist = d;
             }
             
@@ -10169,7 +10277,7 @@ class Projectile {
         this.group.updateMatrix(); 
 
         if (this.life <= 0) { this.destroy(); return; }
-        if (Game.map.isSolid(this.x, this.y)) { this.destroy(); return; }
+    if (Game.map.isSolidWall(this.x, this.y)) { this.destroy(); return; }
 
         if (this.owner === 'player') {
             let searchRadius = this.radius + 30; 

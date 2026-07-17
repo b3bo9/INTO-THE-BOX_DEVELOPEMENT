@@ -9407,9 +9407,9 @@ Game.scene.add(this.telegraphMesh);
                 child.getWorldQuaternion(_quat);
                 child.getWorldScale(_scale);
                 
-                // Passiamo "this.radius" per bloccare il gigantismo
+                // Passiamo "this.type" invece della geometria per decidere la forma dei pezzi!
                 let debris = Game.getDebris();
-                if (debris) debris.spawn(_pos, _quat, _scale, child.geometry, cHex, this.radius, this.isElite);
+                if (debris) debris.spawn(_pos, _quat, _scale, this.type, cHex, this.radius, this.isElite);
             }
         });
        // --- SPLIT E POZZA DELLO SLIME ---
@@ -10342,7 +10342,7 @@ class Debris {
         this.active = false;
     }
     
-    spawn(worldPos, worldQuat, scaleVec, geometry, colorHex, enemyRadius, isElite = false, forceSpawn = false) {
+    spawn(worldPos, worldQuat, scaleVec, enemyType, colorHex, enemyRadius, isElite = false, forceSpawn = false) {
         if (!forceSpawn && Game.debrisThisFrame > (isTouchDevice ? 4 : 15)) return;
         if (!forceSpawn) Game.debrisThisFrame = (Game.debrisThisFrame || 0) + 1;
         
@@ -10351,8 +10351,27 @@ class Debris {
         this.isSinking = false; 
         this.life = MathUtils.randomRange(4.5, 6.0); 
         
-        // Scegli a caso: 0=Triangolo, 1=Cubo, 2=Sfera
-        this.shapeType = Math.floor(Math.random() * 3); 
+        // --- LOGICA FORME DETRITI ZERO-ALLOCATION ---
+        // Invece di creare Array in RAM, usiamo condizioni dirette (Velocità CPU massima)
+        // Forme: 0 = Triangoli (Spigoli), 1 = Cubi (Blocchi), 2 = Sfere (Curve/Ossa)
+        
+        if (enemyType === 'golem' || enemyType === 'orc') {
+            this.shapeType = 1; // Solo Cubi (Rocciosi/Massicci)
+        } else if (enemyType === 'slime' || enemyType === 'slime_mini') {
+            this.shapeType = 2; // Solo Sfere (Gelatinosi)
+        } else if (enemyType === 'goblin' || enemyType === 'pyromancer' || enemyType === 'crystal') {
+            this.shapeType = 0; // Solo Triangoli (Spigolosi)
+        } else if (enemyType === 'skeleton_archer') {
+            this.shapeType = Math.random() > 0.5 ? 1 : 2; // Cubi e Sfere (Ossa e teschi)
+        } else if (enemyType === 'fire_demon') {
+            this.shapeType = Math.random() > 0.5 ? 0 : 1; // Triangoli e Cubi (Corna e Torso)
+        } else if (enemyType === 'boss') {
+            let r = Math.random();
+            this.shapeType = r < 0.33 ? 0 : (r < 0.66 ? 1 : 2); // Tutte le forme (Esplosione caotica)
+        } else {
+            // Default (Mage, Dark Prophet, Leaper, ecc.)
+            this.shapeType = Math.random() > 0.5 ? 0 : 2; // Triangoli e Sfere
+        }
         
         if (!Game._dummyColor) Game._dummyColor = new THREE.Color();
         if (!Game._eliteMixColor) Game._eliteMixColor = new THREE.Color(0x440000); 
@@ -10364,7 +10383,7 @@ class Debris {
         Game.debrisMeshes[this.shapeType].setColorAt(this.index, Game._dummyColor);
         Game.debrisMeshes[this.shapeType].instanceColor.needsUpdate = true;
 
-        // Seppellisci immediatamente le altre 2 forme per nasconderle senza distruggerle
+        // Seppellisci immediatamente le altre 2 forme per nasconderle
         let hideDummy = Game._dummyDebris;
         hideDummy.position.set(0, -1000, 0);
         hideDummy.updateMatrix();

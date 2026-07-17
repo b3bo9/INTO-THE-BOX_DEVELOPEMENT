@@ -10341,7 +10341,9 @@ class Debris {
         if (!forceSpawn) Game.debrisThisFrame = (Game.debrisThisFrame || 0) + 1;
         
         this.active = true;
-        this.isSleeping = false; // Il detrito si sveglia!
+        this.isSleeping = false; 
+        this.isSinking = false; // Nuovo stato: Sprofondamento
+        this.life = MathUtils.randomRange(4.5, 6.0); // I detriti vivono per circa 5 secondi
         
         if (!Game._dummyColor) Game._dummyColor = new THREE.Color();
         if (!Game._eliteMixColor) Game._eliteMixColor = new THREE.Color(0x440000); 
@@ -10376,20 +10378,38 @@ class Debris {
     update(dt) {
         if (!this.active) return;
         
-        // --- CALCOLO INTERAZIONE SE A TERRA (COSTO CPU QUASI ZERO) ---
+        // 1. Il timer vitale scorre sempre, anche a costo zero mentre dormono
+        this.life -= dt;
+        
+        // 2. Morte finale: lo nascondiamo sotto terra e liberiamo lo slot
+        if (this.life <= 0) {
+            this.active = false;
+            let dummy = Game._dummyDebris;
+            dummy.position.set(0, -1000, 0);
+            dummy.updateMatrix();
+            Game.dynamicDebrisMesh.setMatrixAt(this.index, dummy.matrix);
+            Game.dynamicDebrisMesh.instanceMatrix.needsUpdate = true;
+            return;
+        }
+
+        // 3. Ultimo mezzo secondo di vita: innesca lo sprofondamento!
+        if (this.life < 0.5 && !this.isSinking) {
+            this.isSleeping = false; // Lo svegliamo forzatamente per calcolare i frame
+            this.isSinking = true;
+        }
+
+        // --- CALCOLO INTERAZIONE SE A TERRA E NON STA SPROFONDANDO ---
         if (this.isSleeping) {
-            // Se il giocatore è fermo o morto, saltiamo i calcoli
             if (!Game.player || Game.player.dead || (Game.inputs.left.x === 0 && Game.inputs.left.y === 0 && !Game.player.isDashing)) return;
 
             let dx = this.x - Game.player.x;
-            let dz = this.z - Game.player.y; // Asse Z corrisponde alla Y del giocatore (Top-Down)
+            let dz = this.z - Game.player.y; 
             let distSq = dx * dx + dz * dz;
 
-            // Raggio di impatto: più largo se fai uno scatto (Dash)
             let kickRadius = Game.player.isDashing ? 35 : 18;
 
             if (distSq < kickRadius * kickRadius) {
-                // SVEGLIA IL DETRITO! CALCIA!
+                // IL GIOCATORE LO HA CALCIATO!
                 this.isSleeping = false;
                 let kickForce = Game.player.isDashing ? MathUtils.randomRange(300, 500) : MathUtils.randomRange(100, 250);
                 
@@ -10398,15 +10418,23 @@ class Debris {
                 
                 this.vx = (dx / dist) * kickForce + MathUtils.randomRange(-30, 30);
                 this.vz = (dz / dist) * kickForce + MathUtils.randomRange(-30, 30);
-                this.vy = MathUtils.randomRange(80, 200); // Piccolo balzo verso l'alto
+                this.vy = MathUtils.randomRange(80, 200);
                 this.rx = MathUtils.randomRange(-15, 15);
                 this.rz = MathUtils.randomRange(-15, 15);
+                
+                // JUICE: Se lo calci poco prima che sparisca, gli diamo 1 sec extra di vita per farlo volare!
+                if (this.life < 1.0) this.life = 1.0; 
             }
-            return; // Se dorme e non lo tocchi, si ferma qui. Niente calcoli matriciali!
+            return; // Se dorme e non viene toccato, interrompe i calcoli qui (Risparmio CPU assoluto)
         }
 
         // --- FISICA ---
-        if (dt > 0) {
+        if (this.isSinking) {
+            // Animazione di sprofondamento rapido nel terreno
+            this.y -= dt * 18;
+            this.baseScale = Math.max(0.001, this.baseScale - (dt * this.baseScale * 2));
+        } else if (dt > 0) {
+            // Volo standard
             this.vy -= 600 * dt; 
             this.x += this.vx * dt;
             this.y += this.vy * dt;
@@ -10414,23 +10442,23 @@ class Debris {
             this.rotX += this.rx * dt;
             this.rotY += this.ry * dt;
             this.rotZ += this.rz * dt;
-        }
 
-        // --- RIMBALZO AL SUOLO ED ENTRATA IN "SLEEP" ---
-        let floorLimit = this.baseScale * 0.3;
-        if (this.y < floorLimit) {
-            this.y = floorLimit;
-            this.vy *= -0.4; 
-            this.vx *= 0.6; 
-            this.vz *= 0.6;
-            this.rx *= 0.5;
-            this.ry *= 0.5;
-            this.rz *= 0.5;
+            // Rimbalzo al suolo
+            let floorLimit = this.baseScale * 0.3;
+            if (this.y < floorLimit) {
+                this.y = floorLimit;
+                this.vy *= -0.4; 
+                this.vx *= 0.6; 
+                this.vz *= 0.6;
+                this.rx *= 0.5;
+                this.ry *= 0.5;
+                this.rz *= 0.5;
 
-            // Se l'energia cinetica si spegne, mettiamolo a dormire per non sprecare CPU
-            if (Math.abs(this.vy) < 15 && Math.abs(this.vx) < 5 && Math.abs(this.vz) < 5) {
-                this.isSleeping = true;
-                this.vy = 0; this.vx = 0; this.vz = 0;
+                // Addormenta il detrito se l'energia cinetica si azzera
+                if (Math.abs(this.vy) < 15 && Math.abs(this.vx) < 5 && Math.abs(this.vz) < 5) {
+                    this.isSleeping = true;
+                    this.vy = 0; this.vx = 0; this.vz = 0;
+                }
             }
         }
 
@@ -10438,12 +10466,10 @@ class Debris {
         let dummy = Game._dummyDebris;
         dummy.position.set(this.x, this.y, this.z);
         dummy.rotation.set(this.rotX, this.rotY, this.rotZ);
-        dummy.scale.setScalar(this.baseScale); // Rimane grande uguale!
+        dummy.scale.setScalar(this.baseScale); 
         
         dummy.updateMatrix();
         Game.dynamicDebrisMesh.setMatrixAt(this.index, dummy.matrix);
-        
-        // Segnaliamo la modifica solo se siamo in volo
         Game.dynamicDebrisMesh.instanceMatrix.needsUpdate = true;
     }
 }

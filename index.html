@@ -4897,9 +4897,15 @@ startGame(diffMult) {
                 
                 if (this.map && this.map.isSolid(dropX, dropY)) { dropX = d.x; dropY = d.y; }
                 
-                if (d.type === 'coin') this.getCoin().spawn(dropX, dropY, d.isVolcano);
+               if (d.type === 'coin') this.getCoin().spawn(dropX, dropY, d.isVolcano);
                 else if (d.type === 'life') this.getExtraLife().spawn(dropX, dropY);
-                else if (d.type === 'essence') this.getEssence().spawn(dropX, dropY, ESSENCE_TYPES[Math.floor(Math.random() * ESSENCE_TYPES.length)]);
+                else if (d.type === 'essence') {
+                    // 0: Foresta (green), 1: Lava (red), 2: Ghiaccio (blue)
+                    let prefColor = Game.currentThemeIndex === 0 ? 'green' : (Game.currentThemeIndex === 1 ? 'red' : 'blue');
+                    // Aggiungiamo il colore preferito al pool (50% tema attuale, 25% e 25% gli altri)
+                    let dropChoices = [ESSENCE_TYPES[0], ESSENCE_TYPES[1], ESSENCE_TYPES[2], prefColor];
+                    this.getEssence().spawn(dropX, dropY, dropChoices[Math.floor(Math.random() * dropChoices.length)]);
+                }
             }
         }
         // -------------------------------------------------------------------------

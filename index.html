@@ -5156,7 +5156,7 @@ startGame(diffMult) {
                             for(let c=0; c<MathUtils.randomInt(4, 8); c++) itemsToSpawn.push('coin');
                             itemsToSpawn.push('essence');
                             if (Math.random() < 0.6) itemsToSpawn.push('essence'); 
-                            if (Math.random() < 0.02) dropsRelic = true;
+                            if (Math.random() < 0.005) dropsRelic = true;
                         }
                         
                         let minRadius = 45; 
@@ -9568,7 +9568,7 @@ Game.scene.add(this.telegraphMesh);
         }
         
        // Base fissa per l'unica difficoltà del gioco
-        let baseLifeChance = 0.008; 
+        let baseLifeChance = 0.006; 
         
         let floorDecay = Math.max(0.50, 1.0 - (Game.floor * 0.025));
         let lifeChance = baseLifeChance * floorDecay * Game.player.modifiers.healDropMult;
@@ -9641,8 +9641,8 @@ Game.scene.add(this.telegraphMesh);
             }
             
           // --- NUOVO: DROP RELIQUIA A SORPRESA DAGLI ELITE ---
-            // 5% di probabilità di ottenere una reliquia diretta
-            if (Math.random() < 0.05) { 
+            // 4% di probabilità di ottenere una reliquia diretta
+            if (Math.random() < 0.04) { 
                 // Genera una singola reliquia (solo se ne sono rimaste!)
                 let choices = RelicSystem.getChoices();
                 if (choices.length > 0) {

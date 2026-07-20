@@ -2727,7 +2727,17 @@ const GLOBAL_ALPHA_TEX = createOrganicAlphaMap();
     iconTime: new THREE.SpriteMaterial({map: createAuraIcon('blue'), color: 0xa8a8a8, transparent: true, depthWrite: false}),
     iconMountain: new THREE.SpriteMaterial({map: createAuraIcon('green'), color: 0xa8a8a8, transparent: true, depthWrite: false}),
     iconHysteria: new THREE.SpriteMaterial({map: createAuraIcon('red'), color: 0xa8a8a8, transparent: true, depthWrite: false}),
-    deadObelisk: new THREE.MeshStandardMaterial({color: 0x050505, roughness: 1.0, metalness: 0.0}),
+    
+    // Obelisco distrutto: Coerente con la versione viva, ma completamente spento
+    deadObelisk: new THREE.MeshStandardMaterial({
+        color: 0x111115, 
+        roughness: 0.9, 
+        metalness: 0.1,
+        map: CHAR_GRUNGE_TEX,
+        bumpMap: isTouchDevice ? null : CHAR_GRUNGE_TEX,
+        bumpScale: 0.15
+    }),
+    
     scorchMark: new THREE.MeshBasicMaterial({ map: BLOB_SHADOW_TEX, color: 0x000000, transparent: true, opacity: 0.85, depthWrite: false })
 };
 SharedMat.coin = new THREE.MeshStandardMaterial({color: 0xffd700, emissive: 0xaa6600, metalness: 1.0, roughness: 0.2});
@@ -6509,13 +6519,16 @@ let imRunes = new THREE.InstancedMesh(window.GLOBAL_RUNE_GEO, runeMat, pillarCou
         let obColor = aType === 'blue' ? 0x0044aa : (aType === 'green' ? 0x11aa11 : (aType === 'red' ? 0xaa0000 : 0x4400aa));
         let obEmissive = aType === 'blue' ? 0x0088ff : (aType === 'green' ? 0x33ff00 : (aType === 'red' ? 0xff3300 : 0xcc33ff));
         
-       // FORZATURA ASSOLUTA: MeshStandardMaterial rifiuta categoricamente la trasparenza
+      // MATERIALE OBELISCO: Ora usa la texture materica per un look di pietra antica
         this.obeliskMat = new THREE.MeshStandardMaterial({
-            color: 0x050505, // Nero roccia vulcanica
+            color: 0x222225, // Grigio scuro per far risaltare il bump e i graffi della texture
             emissive: obEmissive, 
-            emissiveIntensity: 0.8, 
-            roughness: 0.8, // Opaco e ruvido
-            metalness: 0.2, // Leggero riflesso metallico
+            emissiveIntensity: 0.25, // Abbassato da 0.8 a 0.25 per non bruciare le ombre e i volumi 3D
+            roughness: 0.85, 
+            metalness: 0.4, // Aumentato per dare un leggero riflesso monolitico sui bordi
+            map: CHAR_GRUNGE_TEX, // Usa i graffi universali dei personaggi per usurare la roccia
+            bumpMap: isTouchDevice ? null : CHAR_GRUNGE_TEX, // Dà profondità 3D ai graffi su PC
+            bumpScale: 0.15,
             transparent: false, 
             depthWrite: true,
             depthTest: true

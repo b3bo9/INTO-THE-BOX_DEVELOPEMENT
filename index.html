@@ -10225,64 +10225,76 @@ class Projectile {
         this.active = true; this.group.visible = true; this.x = x; this.y = y; this.angle = angle; this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
         this.damage = damage; this.owner = owner; this.type = type; this.piercing = piercing; this.bounceCount = (type === 'chain_lightning') ? 2 : 0;
         this.isCrit = isCrit;
-        this.element = element; // <-- Salva la Polarità
+        this.element = element; // <-- SALVATAGGIO POLARITÀ
         this.hitEnemies.clear(); this.target = null; this.canInfect = true;
         
         this.life = owner === 'player' ? (700 / Math.max(1, speed)) : Math.min(3.0, 600 / Math.max(1, speed));
         this.radius = 6; let mat = SharedMat.arrow; let geo = SharedGeo.sphere;
 
+        // --- ASSEGNAZIONE VISIVA POLARITÀ E INGRANDIMENTO (BUFF DIMENSIONALE) ---
         if (owner === 'enemy' && this.element) {
-            if (this.element === 'red') { mat = SharedMat.enemyProjRed; this.radius = type === 'enemy_fireball' ? 25 : 16; geo = SharedGeo.icosahedron; }
-            if (this.element === 'blue') { mat = SharedMat.enemyProjBlue; this.radius = 16; geo = SharedGeo.icosahedron; }
-            if (this.element === 'green') { mat = SharedMat.enemyProjGreen; this.radius = type === 'homing_arrow' ? 8 : 16; geo = type === 'homing_arrow' ? SharedGeo.cone : SharedGeo.icosahedron; }
+            // Ingrandiamo le sfere nemiche polarizzate per renderle più minacciose
+            if (this.element === 'red') { mat = SharedMat.enemyProjRed; this.radius = (type === 'enemy_fireball' || type === 'fire_shape') ? 28 : 20; geo = SharedGeo.icosahedron; }
+            if (this.element === 'blue') { mat = SharedMat.enemyProjBlue; this.radius = 20; geo = SharedGeo.icosahedron; }
+            if (this.element === 'green') { mat = SharedMat.enemyProjGreen; this.radius = type === 'homing_arrow' ? 12 : 20; geo = type === 'homing_arrow' ? SharedGeo.cone : SharedGeo.icosahedron; }
         } else {
+            // Materiali di Base (Giocatore e nemici non polarizzati)
             if (type === 'arrow') { mat = SharedMat.arrow; geo = SharedGeo.cone; } 
             if (type === 'player_arrow') { mat = SharedMat.playerArrow; geo = SharedGeo.icosahedron; this.radius = 6; } 
             if (type === 'explosive_arrow') { mat = SharedMat.explosiveArrow; this.radius = 16; geo = SharedGeo.icosahedron; }
             if (type === 'chain_lightning') { mat = SharedMat.chainLightning; this.radius = 10; geo = SharedGeo.icosahedron; }
-            if (type === 'homing_arrow') { mat = SharedMat.homingArrow; this.radius = 8; geo = SharedGeo.cone; }
-            if (type === 'enemy_fireball') { mat = SharedMat.enemyFireball; this.radius = 25; geo = SharedGeo.icosahedron; } 
-            if (type === 'enemy_bolt') { mat = SharedMat.enemyBolt; this.radius = 16; geo = SharedGeo.icosahedron; }
-            if (type === 'fire_shape') { mat = SharedMat.fireShape; this.radius = 20; geo = SharedGeo.icosahedron; }
+            if (type === 'homing_arrow') { mat = SharedMat.homingArrow; this.radius = 12; geo = SharedGeo.cone; } // Ingandito da 8 a 12
+            if (type === 'enemy_fireball') { mat = SharedMat.enemyFireball; this.radius = 28; geo = SharedGeo.icosahedron; } // Ingrandito da 25 a 28
+            if (type === 'enemy_bolt') { mat = SharedMat.enemyBolt; this.radius = 20; geo = SharedGeo.icosahedron; } // Ingrandito da 16 a 20
+            if (type === 'fire_shape') { mat = SharedMat.fireShape; this.radius = 22; geo = SharedGeo.icosahedron; } // Ingrandito da 20 a 22
         }
 
         this.mesh.geometry = geo; this.mesh.material = mat; this.group.position.set(x, 15, y);
-        if (type === 'arrow' || (type === 'homing_arrow' && owner === 'player') || (this.element === 'green' && type === 'homing_arrow')) { 
-            this.mesh.scale.set(4, 20, 4); this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; 
-        } else { this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); }
         
-       this.mesh.updateMatrix(); this.group.updateMatrix(); 
+        // Applica Rotazione per i Coni, Scala Sferica per l'icosaedro
+        if ((!this.element && type === 'arrow') || (type === 'homing_arrow' && owner === 'player') || (this.element === 'green' && type === 'homing_arrow')) { 
+            let thick = this.radius * 0.6; // Spessore proporzionale
+            this.mesh.scale.set(thick, this.radius * 3, thick); 
+            this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; 
+        } else { 
+            this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); 
+        }
         
-        // --- INIZIO EFFETTO RIFLESSO (GLOW) A TERRA ---
-        if (type !== 'arrow') { 
+        this.mesh.updateMatrix(); this.group.updateMatrix(); 
+        
+        // --- EFFETTO RIFLESSO A TERRA COERENTE (GLOW) ---
+        // Attiviamo l'alone per tutti tranne per le frecce non magiche degli scheletri
+        if (type !== 'arrow' || this.element) { 
             let colorHex = 0xffffff;
-            // Raddoppiamo le dimensioni dell'alone per farlo espandere bene sul terreno
-            let glowSize = 50; 
+            // Scala l'alone in base al raggio del proiettile (più è grosso il proiettile, più luce fa a terra)
+            let glowSize = this.radius * 3.5; 
 
             if (type === 'player_arrow') { colorHex = 0xffff00; glowSize = 45; }
-            if (type === 'explosive_arrow') { colorHex = 0xff3300; glowSize = 85; }
-            if (type === 'chain_lightning') { colorHex = 0x00aaff; glowSize = 65; }
-            if (type === 'homing_arrow') { colorHex = 0x33ff00; glowSize = 65; }
-            if (type === 'enemy_fireball' || type === 'fire_shape') { colorHex = 0xff3300; glowSize = 85; }
-            if (type === 'enemy_bolt') { colorHex = 0x00aaff; glowSize = 60; }
+            else if (type === 'explosive_arrow') { colorHex = 0xff3300; glowSize = 85; }
+            else if (type === 'chain_lightning') { colorHex = 0x00aaff; glowSize = 65; }
+            else if (type === 'homing_arrow' && owner === 'player') { colorHex = 0x33ff00; glowSize = 65; }
+            
+            // Polarità nemica: La luce a terra assume il colore perfetto!
+            if (owner === 'enemy' && this.element) {
+                if (this.element === 'red') colorHex = 0xff3300;
+                if (this.element === 'blue') colorHex = 0x00aaff;
+                if (this.element === 'green') colorHex = 0x33ff00;
+            } else if (owner === 'enemy') {
+                if (type === 'enemy_fireball' || type === 'fire_shape') colorHex = 0xff3300;
+                if (type === 'enemy_bolt') colorHex = 0x00aaff;
+            }
 
             this.groundGlow.material.color.setHex(colorHex);
             this.groundGlow.scale.set(glowSize, glowSize, 1);
-            
-            // SOLUZIONE BUG: Alziamo l'alone a y = 1.5 per evitare che sprofondi sotto sassi ed erba
             this.groundGlow.position.set(x, 1.5, y);
             this.groundGlow.rotation.z = 0; 
-            
             this.groundGlow.visible = true;
         } else {
             this.groundGlow.visible = false;
         }
-        // --- FINE EFFETTO RIFLESSO ---
 
-        // --- VARIABILI VENTO RESETTATE ALLO SPAWN ---
-        this.windX = x;
-        this.windZ = y;
-        this.windIntensity = 1.0;
+        // Variabili vento resettate
+        this.windX = x; this.windZ = y; this.windIntensity = 1.0;
     }
     update(dt) {
         if (dt === 0) return; // FIX BETA: Impedisce ai proiettili di infliggere micro-danni infiniti ad ogni frame in pausa!
@@ -10325,14 +10337,21 @@ class Projectile {
         // FIX THERMAL THROTTLING: Calcola le trasparenze del bagliore SOLO se il proiettile è nell'inquadratura.
         let isVisibleToCam = Math.abs(this.x - Game.camera.position.x) < 800 && Math.abs(this.y - Game.camera.position.z) < 1200;
 
-        if (this.type !== 'arrow' && isVisibleToCam) {
+        // Assicurati che l'alone si muova se è un proiettile polarizzato o una palla magica
+        if ((this.type !== 'arrow' || this.element) && isVisibleToCam) {
             this.groundGlow.visible = true;
             this.groundGlow.position.set(this.x, 1.5, this.y);
+            
             // FAKE DYNAMIC LIGHT: Pulsazione caotica
             let flicker = (Math.sin(this.life * 30) * 0.1) + (Math.cos(this.life * 45) * 0.1);
             this.groundGlow.material.opacity = Math.max(0.2, Math.min(1.0, 0.8 + flicker));
-            let baseScale = (this.type === 'explosive_arrow' || this.type === 'enemy_fireball' || this.type === 'fire_shape') ? 85 : 
-                            (this.type === 'chain_lightning' || this.type === 'homing_arrow' || this.type === 'enemy_bolt') ? 65 : 50; 
+            
+            // La base ora scala matematicamente dal vero raggio 3D del proiettile!
+            let baseScale = this.radius * 3.5;
+            if (this.type === 'player_arrow') baseScale = 45;
+            if (this.type === 'explosive_arrow') baseScale = 85;
+            if (this.type === 'chain_lightning') baseScale = 65;
+            
             this.groundGlow.scale.setScalar(baseScale + (flicker * 15));
         } else {
             // Spegne il piano invisibile per salvare fill-rate
@@ -10471,11 +10490,21 @@ class Projectile {
     }
     destroy() {
         this.groundGlow.visible = false;
-        this.active = false; this.group.visible = false; let pMat = SharedMat.spriteWhite;
-        if (this.type === 'player_arrow') pMat = SharedMat.spriteYellow;
-        if (this.type === 'explosive_arrow' || this.type === 'enemy_fireball' || this.type === 'fire_shape') pMat = SharedMat.spriteRed;
-        if (this.type === 'chain_lightning' || this.type === 'enemy_bolt') pMat = SharedMat.spriteBlue;
-        if (this.type === 'homing_arrow') pMat = SharedMat.spriteGreen;
+        this.active = false; this.group.visible = false; 
+        
+        let pMat = SharedMat.spriteWhite;
+        
+        // Rispetta rigorosamente l'elemento se presente (Polarità)
+        if (this.owner === 'enemy' && this.element) {
+            if (this.element === 'red') pMat = SharedMat.spriteRed;
+            if (this.element === 'blue') pMat = SharedMat.spriteBlue;
+            if (this.element === 'green') pMat = SharedMat.spriteGreen;
+        } else {
+            if (this.type === 'player_arrow') pMat = SharedMat.spriteYellow;
+            if (this.type === 'explosive_arrow' || this.type === 'enemy_fireball' || this.type === 'fire_shape') pMat = SharedMat.spriteRed;
+            if (this.type === 'chain_lightning' || this.type === 'enemy_bolt') pMat = SharedMat.spriteBlue;
+            if (this.type === 'homing_arrow') pMat = SharedMat.spriteGreen;
+        }
         let count = AppSettings.isLow ? 1 : (isTouchDevice ? 2 : (AppSettings.isUltraPC ? 12 : 6));
         for(let i=0; i<count; i++) Game.getParticle().spawn(this.x, 15, this.y, pMat, 'spark');
         if (this.type === 'fire_shape') Game.getHazard().spawn(this.x, this.y, 45, 8.0, this.damage, 0xff3300, 'enemy_fire');

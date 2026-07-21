@@ -10231,15 +10231,25 @@ class Projectile {
         this.life = owner === 'player' ? (700 / Math.max(1, speed)) : Math.min(3.0, 600 / Math.max(1, speed));
         this.radius = 6; let mat = SharedMat.arrow; let geo = SharedGeo.sphere;
 
-        // 1. ASSEGNAZIONE FORMA E DIMENSIONI (Mantiene l'estetica originale)
-        if (type === 'arrow') { mat = SharedMat.arrow; geo = SharedGeo.cone; this.radius = 12; } // Ingrandito da 6 a 12
+        // 1. ASSEGNAZIONE FORMA E DIMENSIONI (Dimensioni differenziate!)
         if (type === 'player_arrow') { mat = SharedMat.playerArrow; geo = SharedGeo.icosahedron; this.radius = 6; } 
-        if (type === 'explosive_arrow') { mat = SharedMat.explosiveArrow; this.radius = 16; geo = SharedGeo.icosahedron; }
-        if (type === 'chain_lightning') { mat = SharedMat.chainLightning; this.radius = 10; geo = SharedGeo.icosahedron; }
-        if (type === 'homing_arrow') { mat = SharedMat.homingArrow; this.radius = 12; geo = SharedGeo.cone; } // Ingrandito da 8 a 12
-        if (type === 'enemy_fireball') { mat = SharedMat.enemyFireball; this.radius = 28; geo = SharedGeo.icosahedron; } // Ingrandito da 25 a 28
-        if (type === 'enemy_bolt') { mat = SharedMat.enemyBolt; this.radius = 20; geo = SharedGeo.icosahedron; } // Ingrandito da 16 a 20
-        if (type === 'fire_shape') { mat = SharedMat.fireShape; this.radius = 22; geo = SharedGeo.icosahedron; } // Ingrandito da 20 a 22
+        else if (type === 'explosive_arrow') { mat = SharedMat.explosiveArrow; this.radius = 16; geo = SharedGeo.icosahedron; }
+        else if (type === 'chain_lightning') { mat = SharedMat.chainLightning; this.radius = 10; geo = SharedGeo.icosahedron; }
+        else if (type === 'enemy_fireball') { mat = SharedMat.enemyFireball; this.radius = 28; geo = SharedGeo.icosahedron; } 
+        else if (type === 'enemy_bolt') { mat = SharedMat.enemyBolt; this.radius = 20; geo = SharedGeo.icosahedron; } 
+        else if (type === 'fire_shape') { mat = SharedMat.fireShape; this.radius = 22; geo = SharedGeo.icosahedron; } 
+        else if (type === 'homing_arrow') { 
+            // Ripristinata la piccola dimensione originale per il giocatore
+            mat = SharedMat.homingArrow; 
+            this.radius = 8; 
+            // Se è del giocatore, usa il cono appuntito. Se è nemica, usa la sfera appiattita.
+            geo = owner === 'player' ? SharedGeo.cone : SharedGeo.sphere; 
+        } 
+        else if (type === 'arrow') { 
+            mat = SharedMat.arrow; 
+            geo = SharedGeo.sphere; // Cambiato da cono a sfera
+            this.radius = 8; // Raggio contenuto per lo spessore
+        }
 
         // 2. SOVRASCRITTURA MATERIALE PER LA POLARITÀ
         if (owner === 'enemy' && this.element) {
@@ -10250,12 +10260,18 @@ class Projectile {
 
         this.mesh.geometry = geo; this.mesh.material = mat; this.group.position.set(x, 15, y);
         
-        // 3. APPLICAZIONE ROTAZIONE E SCALA ALLUNGATA
-        if (type === 'arrow' || type === 'homing_arrow') { 
-            let thick = this.radius * 0.6; // Spessore proporzionale
-            this.mesh.scale.set(thick, this.radius * 3.5, thick); // Forma allungata
+        // 3. APPLICAZIONE ROTAZIONE E SCALA ALLUNGATA (Pill Shape)
+        if (type === 'arrow' || (type === 'homing_arrow' && owner === 'enemy')) { 
+            // Sfere "appiattite" e allungate per i nemici (Laser/Goccia d'energia)
+            this.mesh.scale.set(this.radius * 0.8, this.radius * 3.5, this.radius * 0.8); 
             this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; 
+        } else if (type === 'homing_arrow' && owner === 'player') {
+            // Cono originale e sottile per il giocatore verde
+            let thick = this.radius * 0.6; 
+            this.mesh.scale.set(thick, this.radius * 3.0, thick); 
+            this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0;
         } else { 
+            // Sfere standard perfette
             this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); 
         }
         
@@ -10264,7 +10280,7 @@ class Projectile {
         // 4. EFFETTO RIFLESSO A TERRA COERENTE (GLOW)
         if (type !== 'arrow' || this.element) { 
             let colorHex = 0xffffff;
-            let glowSize = this.radius * 3.5; // Scala proporzionale alla grandezza del proiettile
+            let glowSize = this.radius * 3.5; 
 
             if (type === 'player_arrow') { colorHex = 0xffff00; glowSize = 45; }
             else if (type === 'explosive_arrow') { colorHex = 0xff3300; glowSize = 85; }

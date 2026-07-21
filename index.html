@@ -10231,30 +10231,29 @@ class Projectile {
         this.life = owner === 'player' ? (700 / Math.max(1, speed)) : Math.min(3.0, 600 / Math.max(1, speed));
         this.radius = 6; let mat = SharedMat.arrow; let geo = SharedGeo.sphere;
 
-        // --- ASSEGNAZIONE VISIVA POLARITÀ E INGRANDIMENTO (BUFF DIMENSIONALE) ---
+        // 1. ASSEGNAZIONE FORMA E DIMENSIONI (Mantiene l'estetica originale)
+        if (type === 'arrow') { mat = SharedMat.arrow; geo = SharedGeo.cone; this.radius = 12; } // Ingrandito da 6 a 12
+        if (type === 'player_arrow') { mat = SharedMat.playerArrow; geo = SharedGeo.icosahedron; this.radius = 6; } 
+        if (type === 'explosive_arrow') { mat = SharedMat.explosiveArrow; this.radius = 16; geo = SharedGeo.icosahedron; }
+        if (type === 'chain_lightning') { mat = SharedMat.chainLightning; this.radius = 10; geo = SharedGeo.icosahedron; }
+        if (type === 'homing_arrow') { mat = SharedMat.homingArrow; this.radius = 12; geo = SharedGeo.cone; } // Ingrandito da 8 a 12
+        if (type === 'enemy_fireball') { mat = SharedMat.enemyFireball; this.radius = 28; geo = SharedGeo.icosahedron; } // Ingrandito da 25 a 28
+        if (type === 'enemy_bolt') { mat = SharedMat.enemyBolt; this.radius = 20; geo = SharedGeo.icosahedron; } // Ingrandito da 16 a 20
+        if (type === 'fire_shape') { mat = SharedMat.fireShape; this.radius = 22; geo = SharedGeo.icosahedron; } // Ingrandito da 20 a 22
+
+        // 2. SOVRASCRITTURA MATERIALE PER LA POLARITÀ
         if (owner === 'enemy' && this.element) {
-            // Ingrandiamo le sfere nemiche polarizzate per renderle più minacciose
-            if (this.element === 'red') { mat = SharedMat.enemyProjRed; this.radius = (type === 'enemy_fireball' || type === 'fire_shape') ? 28 : 20; geo = SharedGeo.icosahedron; }
-            if (this.element === 'blue') { mat = SharedMat.enemyProjBlue; this.radius = 20; geo = SharedGeo.icosahedron; }
-            if (this.element === 'green') { mat = SharedMat.enemyProjGreen; this.radius = type === 'homing_arrow' ? 12 : 20; geo = type === 'homing_arrow' ? SharedGeo.cone : SharedGeo.icosahedron; }
-        } else {
-            // Materiali di Base (Giocatore e nemici non polarizzati)
-            if (type === 'arrow') { mat = SharedMat.arrow; geo = SharedGeo.cone; } 
-            if (type === 'player_arrow') { mat = SharedMat.playerArrow; geo = SharedGeo.icosahedron; this.radius = 6; } 
-            if (type === 'explosive_arrow') { mat = SharedMat.explosiveArrow; this.radius = 16; geo = SharedGeo.icosahedron; }
-            if (type === 'chain_lightning') { mat = SharedMat.chainLightning; this.radius = 10; geo = SharedGeo.icosahedron; }
-            if (type === 'homing_arrow') { mat = SharedMat.homingArrow; this.radius = 12; geo = SharedGeo.cone; } // Ingandito da 8 a 12
-            if (type === 'enemy_fireball') { mat = SharedMat.enemyFireball; this.radius = 28; geo = SharedGeo.icosahedron; } // Ingrandito da 25 a 28
-            if (type === 'enemy_bolt') { mat = SharedMat.enemyBolt; this.radius = 20; geo = SharedGeo.icosahedron; } // Ingrandito da 16 a 20
-            if (type === 'fire_shape') { mat = SharedMat.fireShape; this.radius = 22; geo = SharedGeo.icosahedron; } // Ingrandito da 20 a 22
+            if (this.element === 'red') mat = SharedMat.enemyProjRed;
+            if (this.element === 'blue') mat = SharedMat.enemyProjBlue;
+            if (this.element === 'green') mat = SharedMat.enemyProjGreen;
         }
 
         this.mesh.geometry = geo; this.mesh.material = mat; this.group.position.set(x, 15, y);
         
-        // Applica Rotazione per i Coni, Scala Sferica per l'icosaedro
-        if ((!this.element && type === 'arrow') || (type === 'homing_arrow' && owner === 'player') || (this.element === 'green' && type === 'homing_arrow')) { 
+        // 3. APPLICAZIONE ROTAZIONE E SCALA ALLUNGATA
+        if (type === 'arrow' || type === 'homing_arrow') { 
             let thick = this.radius * 0.6; // Spessore proporzionale
-            this.mesh.scale.set(thick, this.radius * 3, thick); 
+            this.mesh.scale.set(thick, this.radius * 3.5, thick); // Forma allungata
             this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; 
         } else { 
             this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); 
@@ -10262,12 +10261,10 @@ class Projectile {
         
         this.mesh.updateMatrix(); this.group.updateMatrix(); 
         
-        // --- EFFETTO RIFLESSO A TERRA COERENTE (GLOW) ---
-        // Attiviamo l'alone per tutti tranne per le frecce non magiche degli scheletri
+        // 4. EFFETTO RIFLESSO A TERRA COERENTE (GLOW)
         if (type !== 'arrow' || this.element) { 
             let colorHex = 0xffffff;
-            // Scala l'alone in base al raggio del proiettile (più è grosso il proiettile, più luce fa a terra)
-            let glowSize = this.radius * 3.5; 
+            let glowSize = this.radius * 3.5; // Scala proporzionale alla grandezza del proiettile
 
             if (type === 'player_arrow') { colorHex = 0xffff00; glowSize = 45; }
             else if (type === 'explosive_arrow') { colorHex = 0xff3300; glowSize = 85; }
@@ -10293,7 +10290,6 @@ class Projectile {
             this.groundGlow.visible = false;
         }
 
-        // Variabili vento resettate
         this.windX = x; this.windZ = y; this.windIntensity = 1.0;
     }
     update(dt) {

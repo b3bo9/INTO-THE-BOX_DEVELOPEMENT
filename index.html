@@ -2670,12 +2670,7 @@ const GLOBAL_ALPHA_TEX = createOrganicAlphaMap();
     const enemyDmgColor = isTouchDevice ? { color: 0xff3300 } : { color: 0x220000, emissive: 0xff3300, emissiveIntensity: 2.0 };
     const boltColor = isTouchDevice ? { color: 0xaa00ff } : { color: 0x220022, emissive: 0xaa00ff, emissiveIntensity: 2.0 };
 
-   const SharedMat = {
-        // Materiali per i proiettili Ranged polarizzati
-        enemyProjRed: new ProjMatClass(isTouchDevice ? { color: 0xff3300 } : { color: 0x220000, emissive: 0xff3300, emissiveIntensity: 2.0 }),
-        enemyProjBlue: new ProjMatClass(isTouchDevice ? { color: 0x00aaff } : { color: 0x001133, emissive: 0x00aaff, emissiveIntensity: 2.0 }),
-        enemyProjGreen: new ProjMatClass(isTouchDevice ? { color: 0x33ff00 } : { color: 0x002200, emissive: 0x33ff00, emissiveIntensity: 2.0 }),
-
+    const SharedMat = {
         hazardNovaRing: new THREE.MeshBasicMaterial({color: 0x99ff00, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending}),
         blood: new THREE.MeshStandardMaterial({map: BLOOD_TEX, transparent: true, opacity: 0.85, depthWrite: false, roughness: 0.8}),
         spriteLevel: new THREE.SpriteMaterial({color: 0xffffff, map: GLOW_TEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}),
@@ -7472,25 +7467,10 @@ class Player extends Entity {
     }
     collectEssence(type) {
         if (this.overdrive) { 
-            if (this.essence === type) {
-                // STESSO COLORE: Prolunga l'effetto (Aggiunge 5 secondi o resetta al massimo)
-                this.essenceTimer += 5.0 * this.modifiers.essenceDurationMult;
-                
-                let colorHex = '#' + ESSENCE_COLORS[this.essence].toString(16).padStart(6, '0');
-                Game.getFloatingText().spawn(this.x, this.y + 25, "PROLUNGATO!", colorHex, 25, true);
-                AudioEngine.playCollect();
-                return; // Esci e mantieni l'overdrive intatto!
-            } else {
-                // COLORE DIVERSO: L'effetto finisce subito!
-                let kept = this.modifiers.keepEssenceOnCombo ? this.essence : null;
-                this.overdrive = false; 
-                this.essenceList.length = 0; 
-                if (kept) this.essenceList.push(kept);
-                Game.getFloatingText().spawn(this.x, this.y + 25, "INTERROTTO!", '#ff0000', 25, true);
-                Game.addTrauma(0.5); // Leggero shake di penalità
-            }
+            let kept = this.modifiers.keepEssenceOnCombo ? this.essence : null;
+            this.overdrive = false; this.essenceList.length = 0; // FIX MEMORIA: Svuota array senza distruggerlo
+            if (kept) this.essenceList.push(kept);
         }
-        
         // NUOVO: Accumulo velocità per Magnete delle Anime
         if (this.modifiers.essenceSpeedStacks) {
             if (this.essenceSpeedBonus === undefined) this.essenceSpeedBonus = 0;
@@ -7874,28 +7854,12 @@ class Player extends Entity {
             this.shieldMesh.visible = false;
         }
 
-      // Gestione unica ed esclusiva dello Scudo Glaciale (Temp HP) E Flash di Assorbimento Polarità
-        if (this.absorbFlashTimer > 0) {
-            this.absorbFlashTimer -= dt;
-            this.glacialShieldMesh.visible = true;
-            
-            // Animazione "Pop": si allarga e sfuma in 0.3 secondi
-            let pulse = Math.max(0, this.absorbFlashTimer / 0.3); // Va da 1 a 0
-            this.glacialShieldMesh.material.opacity = pulse * 0.7;
-            this.glacialShieldMesh.rotation.y += dt * 8; // Gira molto velocemente
-            this.glacialShieldMesh.rotation.z += dt * 5;
-            
-            let currentScale = 30 + ((1.0 - pulse) * 12); // Si espande da 30 a 42
-            this.glacialShieldMesh.scale.set(currentScale, currentScale, currentScale);
-
-        } else if (this.tempHp > 0) {
+       // Gestione unica ed esclusiva dello Scudo Glaciale (Temp HP)
+        if (this.tempHp > 0) {
             // Nasconde lo scudo solo se stiamo "lampeggiando" per l'invincibilità
             let isBlinking = this.invincibilityTimer > 0 && Math.floor(this.invincibilityTimer * 15) % 2 !== 0;
             this.glacialShieldMesh.visible = !isBlinking;
             
-            // Assicura che i valori base dello scudo glaciale vengano ripristinati dopo il flash
-            this.glacialShieldMesh.material.color.setHex(0x00ffaa);
-            this.glacialShieldMesh.scale.setScalar(30);
             this.glacialShieldMesh.material.opacity = 0.3 + Math.sin(Game.playTime * 3) * 0.1;
             this.glacialShieldMesh.rotation.y -= dt * 2; 
             this.glacialShieldMesh.rotation.z -= dt * 1.5;
@@ -8828,24 +8792,20 @@ Game.scene.add(this.telegraphMesh);
         
         let hpMod = 1, dmgMod = 1, spdMod = 1, color = 0x666666, size = 12;
         
-        let isRanged = (type === 'skeleton_archer' || type === 'mage' || type === 'pyromancer' || type === 'fire_demon');
-        if (isRanged) this.element = ['red', 'blue', 'green'][Math.floor(Math.random() * 3)];
-        else this.element = null;
-
         // Fazioni e Statistiche
         if (type === 'goblin') { color = 0x99dd22; size = 10; spdMod = 1.8; hpMod = 0.5; dmgMod = 1.2; this.aggroRange = 500; this.attackRange = 40; }
         else if (type === 'orc') { color = 0x5c4033; size = 18; spdMod = 0.8; hpMod = 1.6; dmgMod = 2.5; this.aggroRange = 450; this.attackRange = 55; } 
-        else if (type === 'skeleton_archer') { color = this.element==='red'?0xff3300:this.element==='blue'?0x00aaff:0x33ff00; size = 14; spdMod = 1.1; hpMod = 0.4; dmgMod = 1.5; this.aggroRange = 700; this.attackRange = 400; } 
+        else if (type === 'skeleton_archer') { color = 0x888888; size = 14; spdMod = 1.1; hpMod = 0.4; dmgMod = 1.5; this.aggroRange = 700; this.attackRange = 400; } 
         else if (type === 'slime') { color = 0xaa00ff; size = 15; spdMod = 0.9; hpMod = 0.9; dmgMod = 1.0; this.aggroRange = 500; this.attackRange = 40; } 
         else if (type === 'slime_mini') { color = 0xcc33ff; size = 8; spdMod = 1.5; hpMod = 0.3; dmgMod = 0.5; this.aggroRange = 600; this.attackRange = 30; } 
         else if (type === 'leaper') { color = 0xaa00ff; size = 12; spdMod = 0.7; hpMod = 1.0; dmgMod = 2.2; this.aggroRange = 600; this.attackRange = 250; this.leapCooldown = 0; this.state = 'walk'; } 
         else if (type === 'crystal') { color = 0xff00ff; size = 12; this.aggroRange = 0; this.speed = 0; hpMod = 0.001; }
-        else if (type === 'pyromancer') { color = this.element==='red'?0xff3300:this.element==='blue'?0x00aaff:0x33ff00; size = 12; spdMod = 0.6; hpMod = 0.8; dmgMod = 2.2; this.aggroRange = 650; this.attackRange = 450; }
-        else if (type === 'fire_demon') { color = this.element==='red'?0xff3300:this.element==='blue'?0x00aaff:0x33ff00; size = 14; spdMod = 1.0; hpMod = 1.1; dmgMod = 3.0; this.aggroRange = 800; this.attackRange = 600; } 
-        else if (type === 'mage') { color = this.element==='red'?0xff3300:this.element==='blue'?0x00aaff:0x33ff00; size = 12; spdMod = 0.6; hpMod = 0.7; dmgMod = 2.8; this.aggroRange = 700; this.attackRange = 450; }
+        else if (type === 'pyromancer') { color = 0xff3300; size = 12; spdMod = 0.6; hpMod = 0.8; dmgMod = 2.2; this.aggroRange = 650; this.attackRange = 450; }
+        else if (type === 'fire_demon') { color = 0xff4400; size = 14; spdMod = 1.0; hpMod = 1.1; dmgMod = 3.0; this.aggroRange = 800; this.attackRange = 600; } 
+        else if (type === 'mage') { color = 0x00aaff; size = 12; spdMod = 0.6; hpMod = 0.7; dmgMod = 2.8; this.aggroRange = 700; this.attackRange = 450; }
         else if (type === 'golem') { color = 0x00aaff; size = 20; spdMod = 0.4; hpMod = 4.0; dmgMod = 2.0; this.aggroRange = 600; this.attackRange = 60; }
         else if (type === 'dark_prophet') { color = 0xff5500; size = 12; spdMod = 0.3; hpMod = 1.5; dmgMod = 0; this.aggroRange = 800; this.attackRange = 0; }
-        else if (type === 'boss') { this.element = this.bossElement; color = this.element==='red'?0x550000:this.element==='blue'?0x002255:0x004400; size = 35; }
+        else if (type === 'boss') { color = 0x550000; size = 35; }
         
         // Reset dei buff ricevuti o dati
         this.isProphetBuffed = false;
@@ -9469,22 +9429,22 @@ Game.scene.add(this.telegraphMesh);
         let actualDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * buffDmgMult;
         if (aura === 'red') actualDmg *= 1.4; // Danno Raddoppiato perché crittano al 100%!
         
- if (this.type === 'skeleton_archer') {
-            Game.getProjectile().spawn(this.x, this.y, this.angle, 250 * spdMult, actualDmg, 'enemy', 'arrow', false, false, this.element); 
+        if (this.type === 'skeleton_archer') {
+            Game.getProjectile().spawn(this.x, this.y, this.angle, 250 * spdMult, actualDmg, 'enemy', 'arrow'); 
             this.attackCooldown = 1.0 * cdMult; 
         } 
         else if (this.type === 'mage') { 
-            Game.getProjectile().spawn(this.x, this.y, this.angle, 180 * spdMult, actualDmg * 1.5, 'enemy', 'enemy_bolt', false, false, this.element); 
+            Game.getProjectile().spawn(this.x, this.y, this.angle, 180 * spdMult, actualDmg * 1.5, 'enemy', 'enemy_bolt'); 
             this.attackCooldown = 1.2 * cdMult; 
         } 
         else if (this.type === 'fire_demon') { 
-            Game.getProjectile().spawn(this.x, this.y, this.angle, 100 * spdMult, actualDmg * 3.0, 'enemy', 'enemy_fireball', false, false, this.element); 
+            Game.getProjectile().spawn(this.x, this.y, this.angle, 100 * spdMult, actualDmg * 3.0, 'enemy', 'enemy_fireball'); 
             this.attackCooldown = 2.5 * cdMult; 
         } 
         else if (this.type === 'pyromancer') { 
-            Game.getProjectile().spawn(this.x, this.y, this.angle, 130 * spdMult, actualDmg * 1.5, 'enemy', 'enemy_fireball', false, false, this.element); 
+            Game.getProjectile().spawn(this.x, this.y, this.angle, 130 * spdMult, actualDmg * 1.5, 'enemy', 'fire_shape'); 
             this.attackCooldown = 2.0 * cdMult; 
-        }
+        } 
         else if (this.type !== 'leaper' && this.type !== 'dark_prophet') { 
             let dmg = this.isPursuer ? (Game.player.stats.maxHp * 0.3) : actualDmg;
             Game.player.takeDamage(dmg, this); 
@@ -10221,92 +10181,62 @@ class Projectile {
         this.windIntensity = 0;
     }
     
-    spawn(x, y, angle, speed, damage, owner, type, piercing=false, isCrit=false, element=null) {
+    spawn(x, y, angle, speed, damage, owner, type, piercing=false, isCrit=false) {
         this.active = true; this.group.visible = true; this.x = x; this.y = y; this.angle = angle; this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
         this.damage = damage; this.owner = owner; this.type = type; this.piercing = piercing; this.bounceCount = (type === 'chain_lightning') ? 2 : 0;
         this.isCrit = isCrit;
-        this.element = element; // <-- SALVATAGGIO POLARITÀ
         this.hitEnemies.clear(); this.target = null; this.canInfect = true;
         
         this.life = owner === 'player' ? (700 / Math.max(1, speed)) : Math.min(3.0, 600 / Math.max(1, speed));
         this.radius = 6; let mat = SharedMat.arrow; let geo = SharedGeo.sphere;
 
-        // 1. ASSEGNAZIONE FORMA E DIMENSIONI (Dimensioni differenziate!)
+        if (type === 'arrow') { mat = SharedMat.arrow; geo = SharedGeo.cone; } 
+        // Modificato: Ora usa l'icosaedro (sfera) e un raggio piccolo
         if (type === 'player_arrow') { mat = SharedMat.playerArrow; geo = SharedGeo.icosahedron; this.radius = 6; } 
-        else if (type === 'explosive_arrow') { mat = SharedMat.explosiveArrow; this.radius = 16; geo = SharedGeo.icosahedron; }
-        else if (type === 'chain_lightning') { mat = SharedMat.chainLightning; this.radius = 10; geo = SharedGeo.icosahedron; }
-        else if (type === 'enemy_fireball') { mat = SharedMat.enemyFireball; this.radius = 28; geo = SharedGeo.icosahedron; } 
-        else if (type === 'enemy_bolt') { mat = SharedMat.enemyBolt; this.radius = 20; geo = SharedGeo.icosahedron; } 
-        else if (type === 'fire_shape') { mat = SharedMat.fireShape; this.radius = 22; geo = SharedGeo.icosahedron; } 
-        else if (type === 'homing_arrow') { 
-            // Ripristinata la piccola dimensione originale per il giocatore
-            mat = SharedMat.homingArrow; 
-            this.radius = 8; 
-            // Se è del giocatore, usa il cono appuntito. Se è nemica, usa la sfera appiattita.
-            geo = owner === 'player' ? SharedGeo.cone : SharedGeo.sphere; 
-        } 
-        else if (type === 'arrow') { 
-            mat = SharedMat.arrow; 
-            geo = SharedGeo.sphere; // Cambiato da cono a sfera
-            this.radius = 8; // Raggio contenuto per lo spessore
-        }
-
-        // 2. SOVRASCRITTURA MATERIALE PER LA POLARITÀ
-        if (owner === 'enemy' && this.element) {
-            if (this.element === 'red') mat = SharedMat.enemyProjRed;
-            if (this.element === 'blue') mat = SharedMat.enemyProjBlue;
-            if (this.element === 'green') mat = SharedMat.enemyProjGreen;
-        }
+        if (type === 'explosive_arrow') { mat = SharedMat.explosiveArrow; this.radius = 16; geo = SharedGeo.icosahedron; }
+        if (type === 'chain_lightning') { mat = SharedMat.chainLightning; this.radius = 10; geo = SharedGeo.icosahedron; }
+        if (type === 'homing_arrow') { mat = SharedMat.homingArrow; this.radius = 8; geo = SharedGeo.cone; }
+        if (type === 'enemy_fireball') { mat = SharedMat.enemyFireball; this.radius = 25; geo = SharedGeo.icosahedron; } 
+        if (type === 'enemy_bolt') { mat = SharedMat.enemyBolt; this.radius = 16; geo = SharedGeo.icosahedron; }
+        if (type === 'fire_shape') { mat = SharedMat.fireShape; this.radius = 20; geo = SharedGeo.icosahedron; }
 
         this.mesh.geometry = geo; this.mesh.material = mat; this.group.position.set(x, 15, y);
+        // Modificato: Rimosso 'player_arrow' da questo IF per permettergli di scalare come sfera
+        if (type === 'arrow' || type === 'homing_arrow') { this.mesh.scale.set(4, 20, 4); this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; }
+        else { this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); }
         
-        // 3. APPLICAZIONE ROTAZIONE E SCALA ALLUNGATA (Pill Shape)
-        if (type === 'arrow' || (type === 'homing_arrow' && owner === 'enemy')) { 
-            // Sfere "appiattite" e allungate per i nemici (Laser/Goccia d'energia)
-            this.mesh.scale.set(this.radius * 0.8, this.radius * 3.5, this.radius * 0.8); 
-            this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; 
-        } else if (type === 'homing_arrow' && owner === 'player') {
-            // Cono originale e sottile per il giocatore verde
-            let thick = this.radius * 0.6; 
-            this.mesh.scale.set(thick, this.radius * 3.0, thick); 
-            this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0;
-        } else { 
-            // Sfere standard perfette
-            this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); 
-        }
+       this.mesh.updateMatrix(); this.group.updateMatrix(); 
         
-        this.mesh.updateMatrix(); this.group.updateMatrix(); 
-        
-        // 4. EFFETTO RIFLESSO A TERRA COERENTE (GLOW)
-        if (type !== 'arrow' || this.element) { 
+        // --- INIZIO EFFETTO RIFLESSO (GLOW) A TERRA ---
+        if (type !== 'arrow') { 
             let colorHex = 0xffffff;
-            let glowSize = this.radius * 3.5; 
+            // Raddoppiamo le dimensioni dell'alone per farlo espandere bene sul terreno
+            let glowSize = 50; 
 
             if (type === 'player_arrow') { colorHex = 0xffff00; glowSize = 45; }
-            else if (type === 'explosive_arrow') { colorHex = 0xff3300; glowSize = 85; }
-            else if (type === 'chain_lightning') { colorHex = 0x00aaff; glowSize = 65; }
-            else if (type === 'homing_arrow' && owner === 'player') { colorHex = 0x33ff00; glowSize = 65; }
-            
-            // Polarità nemica: La luce a terra assume il colore perfetto!
-            if (owner === 'enemy' && this.element) {
-                if (this.element === 'red') colorHex = 0xff3300;
-                if (this.element === 'blue') colorHex = 0x00aaff;
-                if (this.element === 'green') colorHex = 0x33ff00;
-            } else if (owner === 'enemy') {
-                if (type === 'enemy_fireball' || type === 'fire_shape') colorHex = 0xff3300;
-                if (type === 'enemy_bolt') colorHex = 0x00aaff;
-            }
+            if (type === 'explosive_arrow') { colorHex = 0xff3300; glowSize = 85; }
+            if (type === 'chain_lightning') { colorHex = 0x00aaff; glowSize = 65; }
+            if (type === 'homing_arrow') { colorHex = 0x33ff00; glowSize = 65; }
+            if (type === 'enemy_fireball' || type === 'fire_shape') { colorHex = 0xff3300; glowSize = 85; }
+            if (type === 'enemy_bolt') { colorHex = 0x00aaff; glowSize = 60; }
 
             this.groundGlow.material.color.setHex(colorHex);
             this.groundGlow.scale.set(glowSize, glowSize, 1);
+            
+            // SOLUZIONE BUG: Alziamo l'alone a y = 1.5 per evitare che sprofondi sotto sassi ed erba
             this.groundGlow.position.set(x, 1.5, y);
             this.groundGlow.rotation.z = 0; 
+            
             this.groundGlow.visible = true;
         } else {
             this.groundGlow.visible = false;
         }
+        // --- FINE EFFETTO RIFLESSO ---
 
-        this.windX = x; this.windZ = y; this.windIntensity = 1.0;
+        // --- VARIABILI VENTO RESETTATE ALLO SPAWN ---
+        this.windX = x;
+        this.windZ = y;
+        this.windIntensity = 1.0;
     }
     update(dt) {
         if (dt === 0) return; // FIX BETA: Impedisce ai proiettili di infliggere micro-danni infiniti ad ogni frame in pausa!
@@ -10349,21 +10279,14 @@ class Projectile {
         // FIX THERMAL THROTTLING: Calcola le trasparenze del bagliore SOLO se il proiettile è nell'inquadratura.
         let isVisibleToCam = Math.abs(this.x - Game.camera.position.x) < 800 && Math.abs(this.y - Game.camera.position.z) < 1200;
 
-        // Assicurati che l'alone si muova se è un proiettile polarizzato o una palla magica
-        if ((this.type !== 'arrow' || this.element) && isVisibleToCam) {
+        if (this.type !== 'arrow' && isVisibleToCam) {
             this.groundGlow.visible = true;
             this.groundGlow.position.set(this.x, 1.5, this.y);
-            
             // FAKE DYNAMIC LIGHT: Pulsazione caotica
             let flicker = (Math.sin(this.life * 30) * 0.1) + (Math.cos(this.life * 45) * 0.1);
             this.groundGlow.material.opacity = Math.max(0.2, Math.min(1.0, 0.8 + flicker));
-            
-            // La base ora scala matematicamente dal vero raggio 3D del proiettile!
-            let baseScale = this.radius * 3.5;
-            if (this.type === 'player_arrow') baseScale = 45;
-            if (this.type === 'explosive_arrow') baseScale = 85;
-            if (this.type === 'chain_lightning') baseScale = 65;
-            
+            let baseScale = (this.type === 'explosive_arrow' || this.type === 'enemy_fireball' || this.type === 'fire_shape') ? 85 : 
+                            (this.type === 'chain_lightning' || this.type === 'homing_arrow' || this.type === 'enemy_bolt') ? 65 : 50; 
             this.groundGlow.scale.setScalar(baseScale + (flicker * 15));
         } else {
             // Spegne il piano invisibile per salvare fill-rate
@@ -10412,53 +10335,25 @@ class Projectile {
             let dy = Game.player.y - this.y;
             
            if ((dx * dx) + (dy * dy) < pRadCheck) {
-                // Lo scudo assorbe SEMPRE tutto (funzionamento invariato)
                 if (Game.player.activeShieldTimer > 0 && this.type !== 'fire_shape') {
                     Game.player.shieldAbsorbed++;
                     Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteBlue, 'spark');
                     AudioEngine.playCollect(); 
                     
+                    // RECUPERO FLAT: +5% HP e +5% Ultimate Istantanei ad ogni proiettile assorbito
                     let heal = Game.player.stats.maxHp * 0.05; 
                     Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + heal);
                     Game.addUltimateCharge(5.0); 
                     
+                    // Testi Fluttuanti Distinti (HP verde a sinistra, Ulti blu a destra)
                     Game.getFloatingText().spawn(Game.player.x - 15, Game.player.y + 15, `+${Math.floor(heal)}`, '#00ffaa', 22, true);
                     Game.getFloatingText().spawn(Game.player.x + 15, Game.player.y + 15, `+5%`, '#00DDFF', 22, true);
                     
                     Game.player.shieldFlashTimer = 0.15; 
                     this.handleHit(null);
                 } else {
-                    // --- GESTIONE POLARITÀ ---
-                    if (this.element && Game.player.essence) {
-                       if (Game.player.essence === this.element) {
-                            // COLORE UGUALE: Assorbi, cura del danno del proiettile
-                            let healAmount = this.damage;
-                            Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + healAmount);
-                            
-                            let colorHex = this.element === 'red' ? '#ff3300' : (this.element === 'blue' ? '#00aaff' : '#33ff00');
-                            Game.getFloatingText().spawn(Game.player.x, Game.player.y + 20, "ASSORBITO!", colorHex, 25, true);
-                            
-                            // --- INNESCO SCUDO SFERICO ---
-                            Game.player.absorbFlashTimer = 0.3; // Dura 0.3 secondi
-                            let hexVal = this.element === 'red' ? 0xff3300 : (this.element === 'blue' ? 0x00aaff : 0x33ff00);
-                            Game.player.glacialShieldMesh.material.color.setHex(hexVal);
-                            
-                            let sparkMat = this.element === 'red' ? SharedMat.spriteRed : (this.element === 'blue' ? SharedMat.spriteBlue : SharedMat.spriteGreen);
-                            Game.getParticle().spawn(this.x, 15, this.y, sparkMat, 'spark');
-                            AudioEngine.playCollect();
-                            
-                            this.handleHit(null);
-                        } else {
-                            // COLORE DIVERSO: Prendi 1.5x Danno
-                            if (this.type !== 'fire_shape') Game.player.takeDamage(this.damage * 1.5, null);
-                            Game.getFloatingText().spawn(Game.player.x, Game.player.y - 20, "VULNERABILE!", '#ff0000', 25, true);
-                            this.handleHit(null);
-                        }
-                    } else {
-                        // COMPORTAMENTO STANDARD (Nessun colore attivo o proiettile neutro)
-                        if (this.type !== 'fire_shape') Game.player.takeDamage(this.damage, null); 
-                        this.handleHit(null); 
-                    }
+                    if (this.type !== 'fire_shape') Game.player.takeDamage(this.damage, null); 
+                    this.handleHit(null); 
                 }
             }
         }
@@ -10502,21 +10397,11 @@ class Projectile {
     }
     destroy() {
         this.groundGlow.visible = false;
-        this.active = false; this.group.visible = false; 
-        
-        let pMat = SharedMat.spriteWhite;
-        
-        // Rispetta rigorosamente l'elemento se presente (Polarità)
-        if (this.owner === 'enemy' && this.element) {
-            if (this.element === 'red') pMat = SharedMat.spriteRed;
-            if (this.element === 'blue') pMat = SharedMat.spriteBlue;
-            if (this.element === 'green') pMat = SharedMat.spriteGreen;
-        } else {
-            if (this.type === 'player_arrow') pMat = SharedMat.spriteYellow;
-            if (this.type === 'explosive_arrow' || this.type === 'enemy_fireball' || this.type === 'fire_shape') pMat = SharedMat.spriteRed;
-            if (this.type === 'chain_lightning' || this.type === 'enemy_bolt') pMat = SharedMat.spriteBlue;
-            if (this.type === 'homing_arrow') pMat = SharedMat.spriteGreen;
-        }
+        this.active = false; this.group.visible = false; let pMat = SharedMat.spriteWhite;
+        if (this.type === 'player_arrow') pMat = SharedMat.spriteYellow;
+        if (this.type === 'explosive_arrow' || this.type === 'enemy_fireball' || this.type === 'fire_shape') pMat = SharedMat.spriteRed;
+        if (this.type === 'chain_lightning' || this.type === 'enemy_bolt') pMat = SharedMat.spriteBlue;
+        if (this.type === 'homing_arrow') pMat = SharedMat.spriteGreen;
         let count = AppSettings.isLow ? 1 : (isTouchDevice ? 2 : (AppSettings.isUltraPC ? 12 : 6));
         for(let i=0; i<count; i++) Game.getParticle().spawn(this.x, 15, this.y, pMat, 'spark');
         if (this.type === 'fire_shape') Game.getHazard().spawn(this.x, this.y, 45, 8.0, this.damage, 0xff3300, 'enemy_fire');

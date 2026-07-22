@@ -4045,9 +4045,31 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
             plane2.position.y = 65; 
 
             this.mistSystem.add(plane1);
-            this.mistSystem.add(plane2);
+           this.mistSystem.add(plane2);
             this.scene.add(this.mistSystem);
         }
+        
+        // --- INIZIO SISTEMA ABISSO VISIVO ---
+        if (!window.GLOBAL_ABYSS_GEO) {
+            window.GLOBAL_ABYSS_GEO = new THREE.PlaneGeometry(15000, 15000);
+            window.GLOBAL_ABYSS_GEO.rotateX(-Math.PI / 2);
+        }
+        
+        // Ricicliamo la texture del fumo ma la ripetiamo 30 volte per farla sembrare un oceano astrale
+        let abyssTex = (typeof Preloader !== 'undefined' && Preloader.textures.smoke) ? Preloader.textures.smoke.clone() : GLOW_TEX.clone();
+        abyssTex.wrapS = THREE.RepeatWrapping;
+        abyssTex.wrapT = THREE.RepeatWrapping;
+        abyssTex.repeat.set(30, 30);
+
+        this.abyssMat = new THREE.MeshBasicMaterial({
+            map: abyssTex, color: 0x050a1a, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending
+        });
+        
+        this.abyssMesh = new THREE.Mesh(window.GLOBAL_ABYSS_GEO, this.abyssMat);
+        this.abyssMesh.position.y = -200; // Sprofondato sotto l'arena
+        this.scene.add(this.abyssMesh);
+        // --- FINE SISTEMA ABISSO VISIVO ---
+
         // ^^^ INCOLLA SOPRA QUESTA RIGA ^^^
         this.prewarmShaders(); this.setupInputs(); this.initPools();
         this.prewarmShaders(); this.setupInputs(); this.initPools(); this._boundLoop = this.loop.bind(this); requestAnimationFrame(this._boundLoop);
@@ -5391,6 +5413,26 @@ startGame(diffMult) {
         this.player.update(combatDt); 
         this.updateCamera(visualDt); // La telecamera segue fluida il tempo reale
 
+       // --- SCROLLING DELL'ABISSO VISIVO ---
+        if (this.abyssMat && this.abyssMat.map) {
+            this.abyssMat.map.offset.x -= safeVisualDt * 0.015;
+            this.abyssMat.map.offset.y += safeVisualDt * 0.010;
+            // Aggancia il mega-piano al giocatore così sembra infinito
+            this.abyssMesh.position.x = this.player.x; 
+            this.abyssMesh.position.z = this.player.y;
+            
+            // Colore dinamico basato sul piano corrente
+            if (this.isCorrupted && this.corruptedType === 'darkness') {
+                this.abyssMat.color.setHex(0x000000);
+            } else if (this.currentThemeIndex === 1) { // Lava
+                this.abyssMat.color.setHex(0x3a0500);
+            } else if (this.currentThemeIndex === 2) { // Ghiaccio
+                this.abyssMat.color.setHex(0x051a3a);
+            } else { // Foresta
+                this.abyssMat.color.setHex(0x052211);
+            }
+        }
+
         // --- AGGIORNAMENTO DERIVA DELLA NEBBIA BASSA ---
         if (this.map && this.map.fogMesh && this.map.fogData.length > 0) {
             if (AppSettings.isUltraPC || Game.frameCount % 2 === 0) {
@@ -6287,7 +6329,7 @@ class GameMap {
                 if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
                     if(this.grid[x][y] === 2) floorCount++; else if (this.grid[x][y] === 3) { floorCount++; pillarCount++; } else wallCount++;
                 } else {
-                    wallCount++;
+                    // Non contiamo più i muri perimetrali! L'arena leviterà nel vuoto.
                 }
             }
         }
@@ -6774,13 +6816,9 @@ class GameMap {
                         dummy.updateMatrix();
                         wallMesh.setMatrixAt(wIdx++, dummy.matrix);
                     }
-                } else {
-                    // Confine Esterno Mappa (PADDING): DISEGNA I MURI PERIMETRALI
-                    dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE*0.75, y * TILE_SIZE + TILE_SIZE / 2);
-                    dummy.scale.set(1, 1, 1);
-                    dummy.rotation.set(0, 0, 0);
-                    dummy.updateMatrix();
-                    wallMesh.setMatrixAt(wIdx++, dummy.matrix);
+               } else {
+                    // Confine Esterno Mappa: Niente rendering. L'abisso è ora visibile.
+                    // Le collisioni di isSolid() impediranno comunque al player di cadere.
                 }
 
                // Strutture interattive (Colonne e Cristalli nel Labirinto)
@@ -10727,10 +10765,15 @@ class Debris {
             this.rotY += this.ry * dt;
             this.rotZ += this.rz * dt;
 
-            let floorLimit = this.baseScale * 0.3;
+           // Se il detrito vola fuori dalla griglia della mappa (64 = TILE_SIZE)
+            let isOutsideMap = (this.x < 0 || this.x > Game.map.width * 64 || this.z < 0 || this.z > Game.map.height * 64);
+            let floorLimit = isOutsideMap ? -500 : this.baseScale * 0.3; // Cade nel vuoto se fuori
+
             if (this.y < floorLimit) {
                 this.y = floorLimit;
-                this.vy *= -0.4; 
+                // Se è fuori dalla mappa e tocca il fondo letale, fallo dormire istantaneamente
+                if (isOutsideMap) { this.isSleeping = true; this.vy = 0; this.vx = 0; this.vz = 0; }
+                else { this.vy *= -0.4; } 
                 this.vx *= 0.6; 
                 this.vz *= 0.6;
                 this.rx *= 0.5;

@@ -9177,28 +9177,70 @@ Game.scene.add(this.telegraphMesh);
                     this.moveX = -this.moveX; this.moveY = -this.moveY; 
                 }
             }
-            // --- FINE AI PROFETA ---
+          // --- FINE AI PROFETA ---
             
-            // Logica di Separazione (evita che si compenetrino)
-            if (this.distToTargetSq > this.attackRangeSq && this.distToTargetSq < this.aggroRangeSq) {
-                let nearby = Game.enemyGrid.findNearby(this, 35); 
-                let sx = 0, sy = 0, c = 0;
-                for(let i=0; i<nearby.length; i++) {
-                    let o = nearby[i]; if(o.dead || o.type === 'crystal') continue;
-                    let difX = this.x - o.x, difY = this.y - o.y, dSq = difX*difX + difY*difY;
-                    if(dSq > 0 && dSq < 1225) { 
-                        let d = Math.sqrt(dSq); sx += difX/d; sy += difY/d; c++; 
-                    }
-                }
-                if(c > 0) { 
-                    this.moveX = this.moveX*0.6 + (sx/c)*0.8; 
-                    this.moveY = this.moveY*0.6 + (sy/c)*0.8; 
-                    let mag = Math.sqrt(this.moveX*this.moveX + this.moveY*this.moveY); 
-                    this.moveX /= mag; this.moveY /= mag; 
+            // 1. BOIDS SEPARATION (Flocking Dinamico)
+            // Evita compenetrazioni creando una forza repulsiva fluida
+            let sepX = 0, sepY = 0;
+            let checkRadius = this.radius * 2.5; // Raggio di fastidio
+            let nearby = Game.enemyGrid.findNearby(this, checkRadius);
+            
+            for(let i=0; i<nearby.length; i++) {
+                let o = nearby[i]; 
+                if(o.dead || o.type === 'crystal') continue;
+                let difX = this.x - o.x, difY = this.y - o.y;
+                let dSq = difX*difX + difY*difY;
+                
+                if(dSq > 0.01 && dSq < checkRadius * checkRadius) { 
+                    let dist = Math.sqrt(dSq);
+                    // Forza inversamente proporzionale: vicinissimi = spinta enorme
+                    let pushForce = (checkRadius - dist) / checkRadius; 
+                    sepX += (difX / dist) * pushForce; 
+                    sepY += (difY / dist) * pushForce; 
                 }
             }
+
+            // 2. OBSTACLE AVOIDANCE (Whiskers Steering)
+            // Scivolamento fluido sui muri
+            let avoidX = 0, avoidY = 0;
+            let lookAhead = this.radius * 2.0; // Quanto in là "guarda" il nemico
+            
+            // Se la via frontale è bloccata da un muro...
+            if (Game.map.isSolid(this.x + this.moveX * lookAhead, this.y + this.moveY * lookAhead)) {
+                let currentDirAngle = Math.atan2(this.moveY, this.moveX);
+                
+                // Tasta il terreno a 45 gradi a sinistra e a destra
+                let leftClear = !Game.map.isSolid(this.x + Math.cos(currentDirAngle - 0.8) * lookAhead, this.y + Math.sin(currentDirAngle - 0.8) * lookAhead);
+                let rightClear = !Game.map.isSolid(this.x + Math.cos(currentDirAngle + 0.8) * lookAhead, this.y + Math.sin(currentDirAngle + 0.8) * lookAhead);
+
+                if (leftClear && !rightClear) {
+                    avoidX = Math.cos(currentDirAngle - 1.2); avoidY = Math.sin(currentDirAngle - 1.2);
+                } else if (rightClear && !leftClear) {
+                    avoidX = Math.cos(currentDirAngle + 1.2); avoidY = Math.sin(currentDirAngle + 1.2);
+                } else if (!leftClear && !rightClear) {
+                    // Muro totale: arretra o scivola lateralmente di emergenza
+                    avoidX = -this.moveX; avoidY = -this.moveY; 
+                }
+            }
+
+            // 3. BLENDING DEI VETTORI (Miscela delle intelligenze)
+            // Se non c'è motivo di separarsi o evitare ostacoli, questi vettori valgono 0
+            this.moveX = (this.moveX * 1.0) + (sepX * 1.8) + (avoidX * 3.5);
+            this.moveY = (this.moveY * 1.0) + (sepY * 1.8) + (avoidY * 3.5);
+
+            // Normalizzazione finale
+            let mag = Math.sqrt(this.moveX * this.moveX + this.moveY * this.moveY); 
+            if (mag > 0) { 
+                this.moveX /= mag; 
+                this.moveY /= mag; 
+            }
+            
+            // Aggiorna l'angolo visivo del modello per guardare nella direzione in cui si muove davvero
+            if (this.distToTargetSq > this.attackRangeSq) {
+                this.angle = Math.atan2(this.moveY, this.moveX);
+            }
         }
-       // --- FINE AI STAGGERING ---
+        // --- FINE AI STAGGERING ---
 
        
     // OTTIMIZZAZIONE CPU (ENEMY):

@@ -4061,8 +4061,8 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
         abyssTex.wrapT = THREE.RepeatWrapping;
         abyssTex.repeat.set(30, 30);
 
-        this.abyssMat = new THREE.MeshBasicMaterial({
-            map: abyssTex, color: 0x050a1a, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending
+       this.abyssMat = new THREE.MeshBasicMaterial({
+            map: abyssTex, color: 0x050a1a, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending, fog: false
         });
         
         this.abyssMesh = new THREE.Mesh(window.GLOBAL_ABYSS_GEO, this.abyssMat);
@@ -6323,11 +6323,13 @@ class GameMap {
         let floorCount = 0, wallCount = 0, pillarCount = 0;
         const PADDING = 8;
         
-        // 1. CONTIAMO I BLOCCHI PRIMA DI ALLOCARE LA MEMORIA
+       // 1. CONTIAMO I BLOCCHI PRIMA DI ALLOCARE LA MEMORIA
         for(let x = -PADDING; x < this.width + PADDING; x++) {
             for(let y = -PADDING; y < this.height + PADDING; y++) {
                 if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
-                    if(this.grid[x][y] === 2) floorCount++; else if (this.grid[x][y] === 3) { floorCount++; pillarCount++; } else wallCount++;
+                    if (this.grid[x][y] === 2) floorCount++; 
+                    else if (this.grid[x][y] === 3) { floorCount++; pillarCount++; } 
+                    else if (this.grid[x][y] === 1 && this.isAdjacentToFloor(x, y)) wallCount++; // <--- CULLING DEL VUOTO
                 } else {
                     // Non contiamo più i muri perimetrali! L'arena leviterà nel vuoto.
                 }
@@ -6810,11 +6812,14 @@ class GameMap {
                         }
                     } else { 
                         // Confine Interno Conficcato: DISEGNA I VERI MURI INTERNI
-                        dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE*0.75, y * TILE_SIZE + TILE_SIZE / 2);
-                        dummy.scale.set(1, 1, 1);
-                        dummy.rotation.set(0, 0, 0);
-                        dummy.updateMatrix();
-                        wallMesh.setMatrixAt(wIdx++, dummy.matrix);
+                        // Disegna il muro SOLO se tocca un pavimento. Il resto è VUOTO (Abisso)!
+                        if (this.grid[x][y] === 1 && this.isAdjacentToFloor(x, y)) {
+                            dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE*0.75, y * TILE_SIZE + TILE_SIZE / 2);
+                            dummy.scale.set(1, 1, 1);
+                            dummy.rotation.set(0, 0, 0);
+                            dummy.updateMatrix();
+                            wallMesh.setMatrixAt(wIdx++, dummy.matrix);
+                        }
                     }
                } else {
                     // Confine Esterno Mappa: Niente rendering. L'abisso è ora visibile.
@@ -7035,8 +7040,9 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
     }
     
     isAdjacentToFloor(x,y) {
-        if(x>0 && this.grid[x-1][y]===2) return true; if(x<this.width-1 && this.grid[x+1][y]===2) return true;
-        if(y>0 && this.grid[x][y-1]===2) return true; if(y<this.height-1 && this.grid[x][y+1]===2) return true; return false;
+        // Ora controlla > 1 (quindi accetta sia i pavimenti "2" che gli obelischi "3")
+        if(x>0 && this.grid[x-1][y]>1) return true; if(x<this.width-1 && this.grid[x+1][y]>1) return true;
+        if(y>0 && this.grid[x][y-1]>1) return true; if(y<this.height-1 && this.grid[x][y+1]>1) return true; return false;
     }
     carveCorridor(x1, y1, x2, y2) {
         let x = x1, y = y1;

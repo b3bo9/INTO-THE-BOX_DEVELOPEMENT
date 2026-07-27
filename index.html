@@ -6522,15 +6522,12 @@ class GameMap {
     window.GLOBAL_TELEGRAPH_GEO.rotateX(-Math.PI / 2);
 }
       const wallMesh = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, this.wallMat, wallCount);
-       // --- PREPARAZIONE VERI OBELISCHI ---
+      // --- PREPARAZIONE VERI OBELISCHI ---
         if (!window.GLOBAL_OBELISK_GEO) window.GLOBAL_OBELISK_GEO = createObeliskGeometry();
         
-        let aType = Game.currentThemeIndex === 2 ? 'blue' : (Game.currentThemeIndex === 1 ? 'red' : 'green');
-        // 5% di probabilità che l'obelisco sia Corrotto
-        if (Math.random() < 0.05) aType = 'corrupted';
-
-        let obColor = aType === 'blue' ? 0x0044aa : (aType === 'green' ? 0x11aa11 : (aType === 'red' ? 0xaa0000 : 0x4400aa));
-        let obEmissive = aType === 'blue' ? 0x0088ff : (aType === 'green' ? 0x33ff00 : (aType === 'red' ? 0xff3300 : 0xcc33ff));
+        // Determiniamo solo il colore base del tema per il materiale fisico della roccia
+        let baseThemeAura = Game.currentThemeIndex === 2 ? 'blue' : (Game.currentThemeIndex === 1 ? 'red' : 'green');
+        let obEmissive = baseThemeAura === 'blue' ? 0x0088ff : (baseThemeAura === 'green' ? 0x33ff00 : 0xff3300);
         
       // MATERIALE OBELISCO: Ora usa la texture materica per un look di pietra antica
         this.obeliskMat = new THREE.MeshStandardMaterial({
@@ -6786,13 +6783,16 @@ class GameMap {
 
                // Strutture interattive (Colonne e Cristalli nel Labirinto)
                 if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
-                    if (this.grid[x][y] === 3) {
-                        let px = x * TILE_SIZE + TILE_SIZE / 2; let pz = y * TILE_SIZE + TILE_SIZE / 2;
-                        let isBroken = Math.random() < 0.15; 
-                        
-                      // --- SPAWN AUREE E OBELISCHI ---
-                        let auraRadius = 240; 
-                        let colorIdx = aType === 'blue' ? cBlue : (aType === 'green' ? cGreen : (aType === 'red' ? cRed : cCorrupted));
+                   if (this.grid[x][y] === 3) {
+                            let px = x * TILE_SIZE + TILE_SIZE / 2; let pz = y * TILE_SIZE + TILE_SIZE / 2;
+                            
+                            // FIX CORRUZIONE: La probabilità del 5% si applica ad ogni singolo obelisco indipendentemente
+                            let aType = Game.currentThemeIndex === 2 ? 'blue' : (Game.currentThemeIndex === 1 ? 'red' : 'green');
+                            if (Math.random() < 0.05) aType = 'corrupted';
+
+                          // --- SPAWN AUREE E OBELISCHI ---
+                            let auraRadius = 240; 
+                            let colorIdx = aType === 'blue' ? cBlue : (aType === 'green' ? cGreen : (aType === 'red' ? cRed : cCorrupted));
                         
                         // Cupole e Anelli
                         dummy.position.set(px, 0, pz); dummy.scale.set(auraRadius, auraRadius, auraRadius); dummy.rotation.set(0, 0, 0); dummy.updateMatrix();
@@ -6920,11 +6920,12 @@ class GameMap {
         if (idxRay > 0) { imRays.instanceMatrix.needsUpdate = true; this.mapGroup.add(imRays); }
         if (idxFGlow > 0) { imFloorGlows.instanceMatrix.needsUpdate = true; this.mapGroup.add(imFloorGlows); }
         
-        imBlueDome.count = cBlue; imBlueRing.count = cBlue;
+       imBlueDome.count = cBlue; imBlueRing.count = cBlue;
         imGreenDome.count = cGreen; imGreenRing.count = cGreen;
         imRedDome.count = cRed; imRedRing.count = cRed;
+        imCorruptedDome.count = cCorrupted; imCorruptedRing.count = cCorrupted; // FIX: Aggiorna count anche per i corrotti!
         
-        if (cBlue > 0) { 
+        if (cBlue > 0) {
             this.mapGroup.add(imBlueDome, imBlueRing); 
             imBlueDome.instanceMatrix.needsUpdate = true; 
             imBlueRing.instanceMatrix.needsUpdate = true; 

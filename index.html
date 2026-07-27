@@ -3745,10 +3745,11 @@ const UI = {
    let hpRatio = Game.player.stats.hp / Game.player.stats.maxHp;
 
      // ATTIVAZIONE SCHERMO CRT & VIGNETTA SANGUE (Sotto il 30% HP)
-        let isLowHp = hpRatio < 0.30 && !Game.player.dead;
+        // FIX: Includiamo lo stato WARP direttamente nella variabile per invalidare la cache
+        let isLowHp = hpRatio < 0.30 && !Game.player.dead && Game.state !== 'WARPING_OUT' && Game.state !== 'WARPING_IN';
         
         if (this.cache.isLowHp !== isLowHp) {
-            if (isLowHp && Game.state !== 'WARPING_OUT' && Game.state !== 'WARPING_IN') {
+            if (isLowHp) {
                 this.els.bloodVignette.classList.add('vignette-low-hp-active');
                 document.body.classList.add('crt-active');
             } else {

@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no">
     <title>Into the Box - Definitive</title>
    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -38,8 +38,18 @@
 }
        
        
-      * { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+     * { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
         input { -webkit-user-select: auto; user-select: auto; }
+        
+        /* FIX SAFE AREA (Notch/Bordi Curvi su Android) */
+        #hud {
+            padding-top: env(safe-area-inset-top);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        #joy-left-zone { margin-left: env(safe-area-inset-left); margin-bottom: env(safe-area-inset-bottom); }
+        #joy-right-zone { margin-right: env(safe-area-inset-right); margin-bottom: env(safe-area-inset-bottom); }
         
        /* --- DESIGN SYSTEM: ARCADE BRUTALISM --- */
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #050508; font-family: 'JetBrains Mono', monospace; }
@@ -1123,14 +1133,21 @@ const AudioEngine = {
         if (this.initialized) return; window.AudioContext = window.AudioContext || window.webkitAudioContext;
         this.ctx = new AudioContext(); this.initialized = true; 
         
-        // LIMITER/COMPRESSOR GLOBALE: Previene distorsione (clipping) e crash dell'audio thread
+        // LIMITER/COMPRESSOR GLOBALE
         this.masterCompressor = this.ctx.createDynamicsCompressor();
-        this.masterCompressor.threshold.setValueAtTime(-15, this.ctx.currentTime); // Inizia a comprimere a -15dB
+        this.masterCompressor.threshold.setValueAtTime(-15, this.ctx.currentTime);
         this.masterCompressor.knee.setValueAtTime(10, this.ctx.currentTime);
-        this.masterCompressor.ratio.setValueAtTime(12, this.ctx.currentTime); // Compressione forte
-        this.masterCompressor.attack.setValueAtTime(0.003, this.ctx.currentTime); // Istantaneo
+        this.masterCompressor.ratio.setValueAtTime(12, this.ctx.currentTime);
+        this.masterCompressor.attack.setValueAtTime(0.003, this.ctx.currentTime);
         this.masterCompressor.release.setValueAtTime(0.25, this.ctx.currentTime);
         this.masterCompressor.connect(this.ctx.destination);
+        
+        // FIX LATENZA ANDROID: Forza il caricamento in RAM delle musiche base
+        if (isTouchDevice) {
+            this.gameBGM.load();
+            this.bossBGM.load();
+            this.transitionSFX.load();
+        }
         
         this.createNoiseBuffer();
         this.playMenuMusic();
@@ -4049,9 +4066,34 @@ this.dirLight = new THREE.DirectionalLight(0x335577, 1.4);
             this.mistSystem.add(plane2);
             this.scene.add(this.mistSystem);
         }
-        // ^^^ INCOLLA SOPRA QUESTA RIGA ^^^
-        this.prewarmShaders(); this.setupInputs(); this.initPools();
-        this.prewarmShaders(); this.setupInputs(); this.initPools(); this._boundLoop = this.loop.bind(this); requestAnimationFrame(this._boundLoop);
+       // ^^^ INCOLLA SOPRA QUESTA RIGA ^^^
+        this.prewarmShaders(); this.setupInputs(); this.initPools(); 
+        
+        // --- FIX ANDROID: GESTIONE BACKGROUND E CRASH WEBGL ---
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden) {
+                // Gioco in background: Pausa forzata e muto audio
+                if (this.state === 'PLAYING') UIManager.togglePause();
+                if (AudioEngine.ctx && AudioEngine.ctx.state === 'running') AudioEngine.ctx.suspend();
+            } else {
+                // Ritorno in gioco: Riattiva audio e resetta il tempo per evitare salti fisici
+                if (AudioEngine.ctx && AudioEngine.ctx.state === 'suspended' && !AudioEngine.musicMuted) AudioEngine.ctx.resume();
+                this.lastTime = performance.now(); 
+                this.lastDrawTime = performance.now();
+            }
+        });
+
+        this.renderer.domElement.addEventListener('webglcontextlost', (e) => {
+            e.preventDefault(); // Previene il crash nativo
+            if (this.state === 'PLAYING') UIManager.togglePause();
+        }, false);
+
+        this.renderer.domElement.addEventListener('webglcontextrestored', () => {
+            this.prewarmShaders(); // Ricompila i materiali distrutti da Android
+        }, false);
+        // -----------------------------------------------------
+
+        this._boundLoop = this.loop.bind(this); requestAnimationFrame(this._boundLoop);
     },
 prewarmShaders() {
    
@@ -4521,7 +4563,7 @@ loop(timestamp) {
         let currentMaxTimeStep = (this.state === 'WARPING_OUT' || this.state === 'WARPING_IN') ? 0.03 : MAX_TIME_STEP;
         if (frameTime > currentMaxTimeStep) frameTime = currentMaxTimeStep;
 
-    // --- CALCOLO FPS ---
+    // --- CALCOLO FPS E THERMAL THROTTLING ---
         this.fpsFrames++;
         if (timestamp > this.fpsLastTime + 1000) {
             let fps = Math.round((this.fpsFrames * 1000) / (timestamp - this.fpsLastTime));
@@ -4532,6 +4574,22 @@ loop(timestamp) {
                 else if (fps >= 30) fpsEl.className = "text-yellow-400 ml-1";
                 else fpsEl.className = "text-red-500 animate-pulse ml-1";
             }
+            
+            // AUTO-DEGRADE: Se Android strozza la CPU per il calore (< 25 FPS medi)
+            if (isTouchDevice && fps < 25 && this.state === 'PLAYING') {
+                this.lowFpsCounter = (this.lowFpsCounter || 0) + 1;
+                // Se lagga per 4 secondi consecutivi e la grafica non è già al minimo
+                if (this.lowFpsCounter > 4 && AppSettings.mode > 0) {
+                    AppSettings.mode = 0; 
+                    AppSettings.toggleGraphics(); 
+                    if(typeof UIManager !== 'undefined') UIManager.updateOptionsUI();
+                    Game.getFloatingText().spawn(this.player.x, this.player.y, "RISPARMIO BATTERIA ATTIVATO", '#ffaa00', 40, true);
+                    this.lowFpsCounter = -999; // Disattiva il check per non spammare il messaggio
+                }
+            } else if (this.lowFpsCounter > 0) {
+                this.lowFpsCounter = 0;
+            }
+
             this.fpsLastTime = timestamp;
             this.fpsFrames = 0;
         }
@@ -11406,6 +11464,31 @@ window.nextFloor = function(corrupted = false) {
 
    // (Logica delle difficoltà multiple rimossa: il gioco ha un'unica difficoltà bilanciata)ment.getElementById('difficultyText').innerText = DifficultySettings.levels[DifficultySettings.index].label;
 
+    // --- FIX ANDROID: GESTIONE TASTO INDIETRO (Hardware/Gesture) ---
+window.addEventListener('popstate', function (event) {
+    // Spingiamo un nuovo stato per evitare che il browser chiuda l'app
+    history.pushState(null, null, document.URL);
+    
+    // Controlliamo in quale schermata ci troviamo
+    if (Game.state === 'PLAYING') {
+        UIManager.togglePause(); // Apre la pausa
+    } 
+    else if (!document.getElementById('pauseModal').classList.contains('hidden')) {
+        UIManager.togglePause(); // Chiude la pausa e riprende
+    } 
+    else if (!document.getElementById('optionsModal').classList.contains('hidden')) {
+        UIManager.hideModal('optionsModal'); // Chiude le opzioni
+    }
+    else if (!document.getElementById('infoModal').classList.contains('hidden')) {
+        UIManager.hideModal('infoModal'); // Chiude le info
+    }
+    else if (!document.getElementById('collectedRelicsModal').classList.contains('hidden')) {
+        UIManager.hideModal('collectedRelicsModal'); // Chiude l'inventario reliquie in game
+    }
+});
+// Inizializza l'history stack per intrappolare l'utente
+history.pushState(null, null, document.URL);
+// ---------------------------------------------------------------
     window.onload = () => {
     AppSettings.init();
     Preloader.init(); // Avvia il LoadingManager globale

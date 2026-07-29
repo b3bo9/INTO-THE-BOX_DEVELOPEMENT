@@ -7899,15 +7899,6 @@ class Player extends Entity {
                 this.shieldMesh.scale.set(28, 28, 28); // <-- Reset alla nuova grandezza
             }
 
-           // --- SCUDO VERDE: Rilascia scia tossica ---
-            if (this.essence === 'green') {
-                if (this.greenShieldTrailTimer === undefined) this.greenShieldTrailTimer = 0;
-                this.greenShieldTrailTimer += dt;
-                if (this.greenShieldTrailTimer >= 0.25) { 
-                    Game.getHazard().spawn(this.x, this.y, 35, 3.0, this.stats.maxDmg * 0.4, ESSENCE_COLORS.green, 'poison');
-                    this.greenShieldTrailTimer = 0;
-                }
-            }
 
             if (this.activeShieldTimer <= 0) {
                 this.shieldMesh.visible = false;
@@ -8158,8 +8149,15 @@ class Player extends Entity {
                 Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'dust');
             }
         }
-       let buffMovMult = this.shortBuffs.movSpeed > 0 ? 1.10 : 1.0; // +10% Speed
-        let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult * shockSpdMult * dashSpdMult * miserSpdBonus * (1.0 + (this.essenceSpeedBonus || 0)) * auraSpdMult * buffMovMult;
+      // --- GESTIONE TIMER VELOCITÀ SCUDO VERDE ---
+        if (this.greenSpeedTimer > 0) {
+            this.greenSpeedTimer -= dt;
+            if (this.greenSpeedTimer <= 0) this.greenSpeedStacks = 0;
+        }
+        let greenSpdMult = 1.0 + ((this.greenSpeedStacks || 0) * 0.05);
+
+        let buffMovMult = this.shortBuffs.movSpeed > 0 ? 1.10 : 1.0; // +10% Speed
+        let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult * shockSpdMult * dashSpdMult * miserSpdBonus * (1.0 + (this.essenceSpeedBonus || 0)) * auraSpdMult * buffMovMult * greenSpdMult;
         if (Game.ultimateActive) currentSpeed *= 1.5; currentSpeed = Math.min(currentSpeed, Game.ultimateActive ? 750 : 550);
         
         if (Game.ultimateActive && Game.frameCount % (isTouchDevice ? 8 : 3) === 0) Game.getParticle().spawn(this.x + MathUtils.randomRange(-15, 15), 15, this.y + MathUtils.randomRange(-15, 15), SharedMat.spriteBlue, 'trail');
@@ -8605,6 +8603,13 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
                 source.frozenTimer = 1.5;
                 Game.getParticle().spawn(source.x, 20, source.y, SharedMat.spriteBlue, 'nova');
                 AudioEngine.playShoot('chain_lightning');
+            }
+            // --- SCUDO VERDE: Accumula Velocità anche parando in mischia ---
+            else if (this.essence === 'green') {
+                this.greenSpeedTimer = 3.0;
+                this.greenSpeedStacks = Math.min(4, (this.greenSpeedStacks || 0) + 1);
+                Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteGreen, 'spark');
+                Game.getFloatingText().spawn(this.x, this.y - 15, `VEL +${this.greenSpeedStacks * 5}%`, '#33ff00', 20, true);
             }
         }
         
@@ -10492,8 +10497,9 @@ class Projectile {
                     Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteBlue, 'spark');
                     AudioEngine.playCollect(); 
                     
-                    // RECUPERO FLAT: +5% HP e +5% Ultimate Istantanei ad ogni proiettile assorbito
-                    let heal = Game.player.stats.maxHp * 0.05; 
+                   // RECUPERO: 10% per il Verde, 5% per tutti gli altri. +5% Ultimate.
+                    let healPct = Game.player.essence === 'green' ? 0.10 : 0.05;
+                    let heal = Game.player.stats.maxHp * healPct; 
                     Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + heal);
                     Game.addUltimateCharge(5.0); 
                     
@@ -10515,13 +10521,20 @@ class Projectile {
                         p.canInfect = false;
                         AudioEngine.playShoot('flame');
                     }
-                  // --- SCUDO BLU: Stordisce il tiratore a distanza ---
+                    // --- SCUDO BLU: Stordisce il tiratore a distanza ---
                     else if (Game.player.essence === 'blue') {
                         if (this.sourceEntity && !this.sourceEntity.dead && this.sourceEntity.frozenTimer !== undefined) {
                             this.sourceEntity.frozenTimer = 1.5;
                             Game.getParticle().spawn(this.sourceEntity.x, 20, this.sourceEntity.y, SharedMat.spriteBlue, 'nova');
                             AudioEngine.playShoot('chain_lightning');
                         }
+                    }
+                    // --- SCUDO VERDE: Accumula Velocità per 3s (Cap 4 Stacks = +20%) ---
+                    else if (Game.player.essence === 'green') {
+                        Game.player.greenSpeedTimer = 3.0;
+                        Game.player.greenSpeedStacks = Math.min(4, (Game.player.greenSpeedStacks || 0) + 1);
+                        Game.getParticle().spawn(Game.player.x, 20, Game.player.y, SharedMat.spriteGreen, 'spark');
+                        Game.getFloatingText().spawn(Game.player.x, Game.player.y - 15, `VEL +${Game.player.greenSpeedStacks * 5}%`, '#33ff00', 20, true);
                     }
                     this.handleHit(null);
                 } else {

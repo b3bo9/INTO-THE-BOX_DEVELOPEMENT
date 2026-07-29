@@ -9587,7 +9587,10 @@ Game.scene.add(this.telegraphMesh);
         let cdMult = Math.max(0.4, 1.0 / Game.difficultyMult); 
         let spdMult = 0.75 + (Game.difficultyMult * 0.25);     
         
-       if (this.isElite && (this.type === 'mage' || this.type === 'skeleton_archer')) cdMult *= 0.7; // Elite ranged attaccano il 30% più veloci
+        let buffDmgMult = this.isProphetBuffed ? 2.5 : 1.0; 
+        if (this.isProphetBuffed) cdMult *= 0.3;
+        
+        if (this.isElite && (this.type === 'mage' || this.type === 'skeleton_archer')) cdMult *= 0.7; // Elite ranged attaccano il 30% più veloci
         
         let aura = Game.getAuraAt(this.x, this.y); 
         if (aura === 'blue') cdMult /= 0.6; 

@@ -6672,13 +6672,24 @@ class GameMap {
         this.mapGroup.add(meshPitFloor);
         let pFloorIdx = 0;
 
-       // --- PREPARAZIONE ROCCE ORGANICHE PER I BORDI DELLA FOSSA ---
-        // Raggio base ridotto drasticamente (da 22 a 14)
+       // --- PREPARAZIONE PARETI INTERNE DELLA FOSSA ---
+        // Un materiale "Basic" ignora la luce: niente ombre sballate o luccichii sui muri verticali profondi.
+        const pitWallMat = new THREE.MeshBasicMaterial({ color: 0x050508 }); // Colore del vuoto
+        const meshPitWalls = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, pitWallMat, pitFloorCount);
+        this.mapGroup.add(meshPitWalls);
+        let pWallIdx = 0;
+
+        // --- PREPARAZIONE ROCCE ORGANICHE PER I BORDI DELLA FOSSA ---
         if (!window.GLOBAL_PIT_BORDER_GEO) window.GLOBAL_PIT_BORDER_GEO = new THREE.DodecahedronGeometry(14, 1);
         
-        // Allochiamo 12 rocce per blocco per fare una cornice più fitta. 
-        // FIX FONDAMENTALE: Usiamo floorMat, così i bordi avranno lo stesso identico colore del terreno!
-        const meshPitBorders = new THREE.InstancedMesh(window.GLOBAL_PIT_BORDER_GEO, this.floorMat, pitFloorCount * 12);
+        // FIX LUCCICHII: Creiamo un materiale "Lambert" che prende texture e colore del pavimento, 
+        // ma ignora i rilievi (Bump Map). Niente più sfarfallii neri o bianchi sui sassi schiacciati!
+        const borderMat = new THREE.MeshLambertMaterial({
+            color: activeMats.dirt.color,
+            map: activeMats.dirt.map
+        });
+
+        const meshPitBorders = new THREE.InstancedMesh(window.GLOBAL_PIT_BORDER_GEO, borderMat, pitFloorCount * 12);
         meshPitBorders.receiveShadow = true;
         meshPitBorders.castShadow = AppSettings.shadowsEnabled;
         this.mapGroup.add(meshPitBorders);
@@ -6930,12 +6941,13 @@ class GameMap {
                         let px = x * TILE_SIZE + TILE_SIZE / 2;
                         let pz = y * TILE_SIZE + TILE_SIZE / 2;
 
-                        // MURO SPROFONDATO (Fondo della voragine scura)
+                        // MURO SPROFONDATO (Pareti della voragine)
+                        // Usiamo meshPitWalls invece di wallMesh: abisso scuro e senza riflessi!
                         dummy.position.set(px, -66, pz);
                         dummy.scale.set(1, 1, 1);
                         dummy.rotation.set(0, 0, 0);
                         dummy.updateMatrix();
-                        wallMesh.setMatrixAt(wIdx++, dummy.matrix);
+                        meshPitWalls.setMatrixAt(pWallIdx++, dummy.matrix);
                         
                         // LIQUIDO: Lo scaliamo a 1.25 così entra "dentro" le pareti rocciose, nascondendo gli spigoli netti
                         dummy.position.set(px, -17.5, pz);
@@ -7095,7 +7107,8 @@ class GameMap {
         meshRock.count = idxRock;
         interactiveGrassMesh.count = idxInteractiveGrass;
         meshDebris.count = idxDebris;
-        meshPitBorders.count = pBorderIdx;
+        meshPitBorders.count = pBorderIdx; 
+        meshPitWalls.count = pWallIdx; // Assicura che le pareti interne non creino glitch
         meshDebris.instanceMatrix.needsUpdate = true;
        meshTrees.count = idxTree; 
         meshTrees.instanceMatrix.needsUpdate = true; 

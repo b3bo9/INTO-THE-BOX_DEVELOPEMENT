@@ -7430,6 +7430,7 @@ class Entity {
         this.angle = 0; this.dead = false; this.mesh = new THREE.Group(); this.stats = { hp: 100, maxHp: 100, minDmg: 5, maxDmg: 10 };
         this.mesh.matrixAutoUpdate = false; // OTTIMIZZAZIONE GPU MASSICCIA: Disabilita il calcolo matriciale automatico
         this.flashTimer = 0; this.flashMats = []; 
+        this.isFlying = false; // Proprietà per identificare chi vola (es. Goblin)
      // --- INIZIO FAKE SHADOW ---
         // FIX BOTTLENECK GPU: Condivisione della geometria dell'ombra invece di istanziarne 80 nuove!
         if (!window.GLOBAL_TELEGRAPH_GEO) {
@@ -7467,8 +7468,8 @@ class Entity {
         let totalDist = this.speed * dt; let steps = Math.max(1, Math.ceil(totalDist / 15)); let stepDist = totalDist / steps; const r = this.radius * 0.8; 
         for (let i = 0; i < steps; i++) {
             let newX = this.x + dx * stepDist; let newY = this.y + dy * stepDist;
-            if (dx !== 0) { let testX = dx > 0 ? newX + r : newX - r; if (!Game.map.isSolid(testX, this.y - r) && !Game.map.isSolid(testX, this.y + r)) this.x = newX; }
-            if (dy !== 0) { let testY = dy > 0 ? newY + r : newY - r; if (!Game.map.isSolid(this.x - r, testY) && !Game.map.isSolid(this.x + r, testY)) this.y = newY; }
+            if (dx !== 0) { let testX = dx > 0 ? newX + r : newX - r; if (!Game.map.isSolid(testX, this.y - r, this.isFlying) && !Game.map.isSolid(testX, this.y + r, this.isFlying)) this.x = newX; }
+            if (dy !== 0) { let testY = dy > 0 ? newY + r : newY - r; if (!Game.map.isSolid(this.x - r, testY, this.isFlying) && !Game.map.isSolid(this.x + r, testY, this.isFlying)) this.y = newY; }
         }
         this.mesh.position.set(this.x, this.mesh.position.y, this.y);
         this.mesh.updateMatrix();
@@ -7478,8 +7479,8 @@ class Entity {
         let steps = Math.max(1, Math.ceil(dist / 15)); let stepDist = dist / steps; const r = this.radius * 0.8;
         for (let i = 0; i < steps; i++) {
             let newX = this.x + nx * stepDist; let newY = this.y + ny * stepDist;
-            if (nx !== 0) { let testX = nx > 0 ? newX + r : newX - r; if (!Game.map.isSolid(testX, this.y - r) && !Game.map.isSolid(testX, this.y + r)) this.x = newX; }
-            if (ny !== 0) { let testY = ny > 0 ? newY + r : newY - r; if (!Game.map.isSolid(this.x - r, testY) && !Game.map.isSolid(this.x + r, testY)) this.y = newY; }
+            if (nx !== 0) { let testX = nx > 0 ? newX + r : newX - r; if (!Game.map.isSolid(testX, this.y - r, this.isFlying) && !Game.map.isSolid(testX, this.y + r, this.isFlying)) this.x = newX; }
+            if (ny !== 0) { let testY = ny > 0 ? newY + r : newY - r; if (!Game.map.isSolid(this.x - r, testY, this.isFlying) && !Game.map.isSolid(this.x + r, testY, this.isFlying)) this.y = newY; }
         }
         this.mesh.position.set(this.x, this.mesh.position.y, this.y);
         this.mesh.updateMatrix();
@@ -9087,11 +9088,12 @@ Game.scene.add(this.telegraphMesh);
         this.slowedTimer = 0;
         this.infected = false;
         
-        let hpMod = 1, dmgMod = 1, spdMod = 1, color = 0x666666, size = 12;
+       let hpMod = 1, dmgMod = 1, spdMod = 1, color = 0x666666, size = 12;
+        this.isFlying = false; // Reset di base
         
         // Fazioni e Statistiche
-        if (type === 'goblin') { color = 0x99dd22; size = 10; spdMod = 1.8; hpMod = 0.5; dmgMod = 1.2; this.aggroRange = 500; this.attackRange = 40; }
-        else if (type === 'orc') { color = 0x5c4033; size = 18; spdMod = 0.8; hpMod = 1.6; dmgMod = 2.5; this.aggroRange = 450; this.attackRange = 55; } 
+        if (type === 'goblin') { color = 0x99dd22; size = 10; spdMod = 1.8; hpMod = 0.5; dmgMod = 1.2; this.aggroRange = 500; this.attackRange = 40; this.isFlying = true; } // I Goblin VOLANO sopra le fosse!
+        else if (type === 'orc') { color = 0x5c4033; size = 18; spdMod = 0.8; hpMod = 1.6; dmgMod = 2.5; this.aggroRange = 450; this.attackRange = 55; }
         else if (type === 'skeleton_archer') { color = 0x888888; size = 14; spdMod = 1.1; hpMod = 0.4; dmgMod = 1.5; this.aggroRange = 700; this.attackRange = 400; } 
         else if (type === 'slime') { color = 0xaa00ff; size = 15; spdMod = 0.9; hpMod = 0.9; dmgMod = 1.0; this.aggroRange = 500; this.attackRange = 40; } 
         else if (type === 'slime_mini') { color = 0xcc33ff; size = 8; spdMod = 1.5; hpMod = 0.3; dmgMod = 0.5; this.aggroRange = 600; this.attackRange = 30; } 
@@ -9512,12 +9514,12 @@ Game.scene.add(this.telegraphMesh);
             let lookAhead = this.radius * 2.0; // Quanto in là "guarda" il nemico
             
             // Se la via frontale è bloccata da un muro...
-            if (Game.map.isSolid(this.x + this.moveX * lookAhead, this.y + this.moveY * lookAhead)) {
+            if (Game.map.isSolid(this.x + this.moveX * lookAhead, this.y + this.moveY * lookAhead, this.isFlying)) {
                 let currentDirAngle = Math.atan2(this.moveY, this.moveX);
                 
-                // Tasta il terreno a 45 gradi a sinistra e a destra
-                let leftClear = !Game.map.isSolid(this.x + Math.cos(currentDirAngle - 0.8) * lookAhead, this.y + Math.sin(currentDirAngle - 0.8) * lookAhead);
-                let rightClear = !Game.map.isSolid(this.x + Math.cos(currentDirAngle + 0.8) * lookAhead, this.y + Math.sin(currentDirAngle + 0.8) * lookAhead);
+                // Tasta il terreno a 45 gradi a sinistra e a destra (passando il flag volo per scivolare sopra i baratri)
+                let leftClear = !Game.map.isSolid(this.x + Math.cos(currentDirAngle - 0.8) * lookAhead, this.y + Math.sin(currentDirAngle - 0.8) * lookAhead, this.isFlying);
+                let rightClear = !Game.map.isSolid(this.x + Math.cos(currentDirAngle + 0.8) * lookAhead, this.y + Math.sin(currentDirAngle + 0.8) * lookAhead, this.isFlying);
 
                 if (leftClear && !rightClear) {
                     avoidX = Math.cos(currentDirAngle - 1.2); avoidY = Math.sin(currentDirAngle - 1.2);

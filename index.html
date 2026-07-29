@@ -5275,7 +5275,7 @@ startGame(diffMult) {
                             this.queueDrop(type, dropX, dropY, 0, false);
                         }
                         
-                        if (dropsRelic) {
+                      if (dropsRelic) {
                                     let choices = RelicSystem.getChoices();
                                     if (choices.length > 0) {
                                         let dropRelic = choices[0]; 
@@ -5287,25 +5287,25 @@ startGame(diffMult) {
                                         for(let c=0; c<15; c++) this.queueDrop('coin', a.x, a.y, 40, true);
                                     }
                                 }
-                            }
-                            this.getFloatingText().spawn(a.x, a.y + 40, "OBELISCO PROSCIUGATO!", '#00DDFF', 40, true);
+                                
+                                this.getFloatingText().spawn(a.x, a.y + 40, "OBELISCO PROSCIUGATO!", '#00DDFF', 40, true);
 
-                            // --- MODIFICA: CURA E CARICA ULTIMATE DEL 15% ---
-                            let healAmount = Game.player.stats.maxHp * 0.15;
-                            Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + healAmount);
-                            Game.addUltimateCharge(15);
-                            
-                            // Feedback visivi sul giocatore
-                            Game.getFloatingText().spawn(Game.player.x - 15, Game.player.y + 20, `+${Math.floor(healAmount)} HP`, '#33ff00', 25, true);
-                            Game.getFloatingText().spawn(Game.player.x + 15, Game.player.y + 20, `+15% ULT`, '#00DDFF', 25, true);
-                            Game.getParticle().spawn(Game.player.x, 20, Game.player.y, SharedMat.spriteGreen, 'spark');
-                            Game.getParticle().spawn(Game.player.x, 20, Game.player.y, SharedMat.spriteBlue, 'spark');
-                            // -------------------------------------------------
+                                // --- MODIFICA: CURA E CARICA ULTIMATE DEL 15% ---
+                                let healAmount = Game.player.stats.maxHp * 0.15;
+                                Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + healAmount);
+                                Game.addUltimateCharge(15);
+                                
+                                // Feedback visivi sul giocatore
+                                Game.getFloatingText().spawn(Game.player.x - 15, Game.player.y + 20, `+${Math.floor(healAmount)} HP`, '#33ff00', 25, true);
+                                Game.getFloatingText().spawn(Game.player.x + 15, Game.player.y + 20, `+15% ULT`, '#00DDFF', 25, true);
+                                Game.getParticle().spawn(Game.player.x, 20, Game.player.y, SharedMat.spriteGreen, 'spark');
+                                Game.getParticle().spawn(Game.player.x, 20, Game.player.y, SharedMat.spriteBlue, 'spark');
+                                // -------------------------------------------------
+                            }
                         }
                     }
-                }
             
-           // FIX GPU: Aggiornamento inviato UNA SOLA VOLTA per layer
+            // FIX GPU: Aggiornamento inviato UNA SOLA VOLTA per layer
             if (updateFlags.blue) { this.auraMeshes.blue.dome.instanceMatrix.needsUpdate = true; this.auraMeshes.blue.ring.instanceMatrix.needsUpdate = true; }
             if (updateFlags.green) { this.auraMeshes.green.dome.instanceMatrix.needsUpdate = true; this.auraMeshes.green.ring.instanceMatrix.needsUpdate = true; }
             if (updateFlags.red) { this.auraMeshes.red.dome.instanceMatrix.needsUpdate = true; this.auraMeshes.red.ring.instanceMatrix.needsUpdate = true; }

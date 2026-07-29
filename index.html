@@ -5180,8 +5180,8 @@ startGame(diffMult) {
                             Game.getParticle().spawn(a.x, 65, a.y, SharedMat.spriteYellow, 'spark');
                         }
                         
-                        let meshes = this.map.auraMeshes[a.type];
-                    let dummy = this._dummyFog; 
+                        let meshes = this.auraMeshes[a.type];
+                    let dummy = this._dummyFog;
                     
                     // FIX MATEMATICO: Costruiamo la matrice da zero senza decompose()
                     // 1. Rimpicciolisci la Cupola
@@ -5209,9 +5209,9 @@ startGame(diffMult) {
                         meshes.ring.setMatrixAt(a.colorIdx, dummy.matrix);
                         if (a.icon) a.icon.visible = false;
                         
-                        this.map.auraMeshes.obelisks.getMatrixAt(a.obeliskIdx, dummy.matrix);
+                       this.auraMeshes.obelisks.getMatrixAt(a.obeliskIdx, dummy.matrix);
                         dummy.position.y = -1000; dummy.updateMatrix(); // Rimosso decompose
-                        this.map.auraMeshes.obelisks.setMatrixAt(a.obeliskIdx, dummy.matrix);
+                        this.auraMeshes.obelisks.setMatrixAt(a.obeliskIdx, dummy.matrix);
                         
                         updateFlags.obelisks = true; // Segna aggiornamento obelischi
                         
@@ -5305,12 +5305,12 @@ startGame(diffMult) {
                     }
                 }
             
-            // FIX GPU: Aggiornamento inviato UNA SOLA VOLTA per layer
-            if (updateFlags.blue) { this.map.auraMeshes.blue.dome.instanceMatrix.needsUpdate = true; this.map.auraMeshes.blue.ring.instanceMatrix.needsUpdate = true; }
-            if (updateFlags.green) { this.map.auraMeshes.green.dome.instanceMatrix.needsUpdate = true; this.map.auraMeshes.green.ring.instanceMatrix.needsUpdate = true; }
-            if (updateFlags.red) { this.map.auraMeshes.red.dome.instanceMatrix.needsUpdate = true; this.map.auraMeshes.red.ring.instanceMatrix.needsUpdate = true; }
-            if (updateFlags.corrupted) { this.map.auraMeshes.corrupted.dome.instanceMatrix.needsUpdate = true; this.map.auraMeshes.corrupted.ring.instanceMatrix.needsUpdate = true; }
-            if (updateFlags.obelisks) this.map.auraMeshes.obelisks.instanceMatrix.needsUpdate = true;
+           // FIX GPU: Aggiornamento inviato UNA SOLA VOLTA per layer
+            if (updateFlags.blue) { this.auraMeshes.blue.dome.instanceMatrix.needsUpdate = true; this.auraMeshes.blue.ring.instanceMatrix.needsUpdate = true; }
+            if (updateFlags.green) { this.auraMeshes.green.dome.instanceMatrix.needsUpdate = true; this.auraMeshes.green.ring.instanceMatrix.needsUpdate = true; }
+            if (updateFlags.red) { this.auraMeshes.red.dome.instanceMatrix.needsUpdate = true; this.auraMeshes.red.ring.instanceMatrix.needsUpdate = true; }
+            if (updateFlags.corrupted) { this.auraMeshes.corrupted.dome.instanceMatrix.needsUpdate = true; this.auraMeshes.corrupted.ring.instanceMatrix.needsUpdate = true; }
+            if (updateFlags.obelisks) this.auraMeshes.obelisks.instanceMatrix.needsUpdate = true;
         }
       // --- AGGIORNAMENTO SHADER ERBA INTERATTIVA ---
         InteractiveGrassSystem.uniforms.uTime.value = this.visualTime;

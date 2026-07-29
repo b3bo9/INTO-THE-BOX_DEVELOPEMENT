@@ -7774,6 +7774,15 @@ class Player extends Entity {
             this.light.distance = isTouchDevice ? 800 : 1200; 
         }
 
+       // --- AGGIORNAMENTO COLORE SCUDO CINETICO ---
+        if (this.shieldMesh.visible) {
+            let sColor = 0x00DDFF; // Ciano default
+            if (this.essence === 'red') sColor = ESSENCE_COLORS.red;
+            else if (this.essence === 'blue') sColor = ESSENCE_COLORS.blue;
+            else if (this.essence === 'green') sColor = ESSENCE_COLORS.green;
+            this.shieldMesh.material.color.setHex(sColor);
+        }
+
         let pAura = this._lastAuraType;
         if (pAura) {
             let ringColor = pAura === 'blue' ? 0x00aaff : (pAura === 'green' ? 0x66ff33 : (pAura === 'red' ? 0xff3333 : 0xcc33ff));
@@ -7890,16 +7899,15 @@ class Player extends Entity {
                 this.shieldMesh.scale.set(28, 28, 28); // <-- Reset alla nuova grandezza
             }
 
-            // --- MODIFICA SCUDO VERDE: Rilascia pozze di veleno ---
+           // --- SCUDO VERDE: Rilascia scia tossica ---
             if (this.essence === 'green') {
                 if (this.greenShieldTrailTimer === undefined) this.greenShieldTrailTimer = 0;
                 this.greenShieldTrailTimer += dt;
-                if (this.greenShieldTrailTimer >= 0.2) { // Lascia una pozza ogni 0.2s
-                    Game.getHazard().spawn(this.x, this.y, 25, 3.0, this.stats.maxDmg * 0.4, ESSENCE_COLORS.green, 'poison');
+                if (this.greenShieldTrailTimer >= 0.25) { 
+                    Game.getHazard().spawn(this.x, this.y, 35, 3.0, this.stats.maxDmg * 0.4, ESSENCE_COLORS.green, 'poison');
                     this.greenShieldTrailTimer = 0;
                 }
             }
-            // ------------------------------------------------------
 
             if (this.activeShieldTimer <= 0) {
                 this.shieldMesh.visible = false;
@@ -7960,9 +7968,9 @@ class Player extends Entity {
                 this.modifiers.autoShieldTimer = 0;
                 this.activeShieldTimer = 3.0 + this.modifiers.shieldDurationAdd;
                 this.shieldAbsorbed = 0;
-                this.shieldMesh.visible = true;
-                this.shieldMesh.material.color.setHex(0x00DDFF);
-                this.shieldMesh.material.opacity = 0.6;
+               this.shieldMesh.visible = true;
+               this.updateAppearance(); // Colora lo scudo dinamicamente
+               this.shieldMesh.material.opacity = 0.6;
                 this.autoShieldActive = true;
                 AudioEngine.playCollect();
                 if (this.modifiers.seismicShield) {
@@ -8587,16 +8595,17 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         
        // REWORK: Riduzione base 50% (Aumenta a 80% se ha Batteria a Ioni)
         if (this.activeShieldTimer > 0) {
-            let shieldReduction = this.modifiers.ionBattery ? 0.20 : 0.50; // Prende solo il 20% o 50% del danno
+            let shieldReduction = this.modifiers.ionBattery ? 0.20 : 0.50; 
             amount *= shieldReduction;
             
-            // --- MODIFICA SCUDO BLU: Stordisce chi ti colpisce in mischia ---
-            if (this.essence === 'blue' && source && source.frozenTimer !== undefined) {
-                source.frozenTimer = 1.5; // Stordito 1.5 sec
-                Game.getParticle().spawn(source.x, 20, source.y, SharedMat.spriteBlue, 'nova'); // Esplosione blu sul nemico
-                AudioEngine.playShoot('chain_lightning'); // Suono scossa
+            this.shieldAbsorbed++; // Carica la reliquia "Aegis del Guardiano" anche con i colpi in mischia!
+            
+            // --- SCUDO BLU: Stordisce chi attacca in mischia ---
+            if (this.essence === 'blue' && source && source.frozenTimer !== undefined && !source.dead) {
+                source.frozenTimer = 1.5;
+                Game.getParticle().spawn(source.x, 20, source.y, SharedMat.spriteBlue, 'nova');
+                AudioEngine.playShoot('chain_lightning');
             }
-            // ----------------------------------------------------------------
         }
         
         // NUOVO: Riduzione del 20% dai Calzari di Mercurio
@@ -9571,22 +9580,22 @@ Game.scene.add(this.telegraphMesh);
         let actualDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * buffDmgMult;
         if (aura === 'red') actualDmg *= 1.4; // Danno Raddoppiato perché crittano al 100%!
         
-        if (this.type === 'skeleton_archer') {
-            Game.getProjectile().spawn(this.x, this.y, this.angle, 250 * spdMult, actualDmg, 'enemy', 'arrow'); 
+       if (this.type === 'skeleton_archer') {
+            Game.getProjectile().spawn(this.x, this.y, this.angle, 250 * spdMult, actualDmg, 'enemy', 'arrow', false, false, this); 
             this.attackCooldown = 1.0 * cdMult; 
         } 
         else if (this.type === 'mage') { 
-            Game.getProjectile().spawn(this.x, this.y, this.angle, 180 * spdMult, actualDmg * 1.5, 'enemy', 'enemy_bolt'); 
+            Game.getProjectile().spawn(this.x, this.y, this.angle, 180 * spdMult, actualDmg * 1.5, 'enemy', 'enemy_bolt', false, false, this); 
             this.attackCooldown = 1.2 * cdMult; 
         } 
         else if (this.type === 'fire_demon') { 
-            Game.getProjectile().spawn(this.x, this.y, this.angle, 100 * spdMult, actualDmg * 3.0, 'enemy', 'enemy_fireball'); 
+            Game.getProjectile().spawn(this.x, this.y, this.angle, 100 * spdMult, actualDmg * 3.0, 'enemy', 'enemy_fireball', false, false, this); 
             this.attackCooldown = 2.5 * cdMult; 
         } 
         else if (this.type === 'pyromancer') { 
-            Game.getProjectile().spawn(this.x, this.y, this.angle, 130 * spdMult, actualDmg * 1.5, 'enemy', 'fire_shape'); 
+            Game.getProjectile().spawn(this.x, this.y, this.angle, 130 * spdMult, actualDmg * 1.5, 'enemy', 'fire_shape', false, false, this); 
             this.attackCooldown = 2.0 * cdMult; 
-        } 
+        }
         else if (this.type !== 'leaper' && this.type !== 'dark_prophet') { 
             let dmg = this.isPursuer ? (Game.player.stats.maxHp * 0.3) : actualDmg;
             Game.player.takeDamage(dmg, this); 
@@ -9940,7 +9949,7 @@ Game.scene.add(this.telegraphMesh);
             for (let i = 0; i < projCount; i++) {
                 let a = (Math.PI * 2 / projCount) * i;
                 // Usiamo 'enemy_bolt' (sfere viola) per un look pulito che non ingombra troppo lo schermo
-                Game.getProjectile().spawn(this.x, this.y, a, speed, dmg, 'enemy', 'enemy_bolt');
+                Game.getProjectile().spawn(this.x, this.y, a, speed, dmg, 'enemy', 'enemy_bolt', false, false, this);
             }
         }
     }
@@ -10089,9 +10098,9 @@ class BossEnemy extends Enemy {
                 
                 // Attacchi secondari alla fine del salto
                 if (this.bossElement === 'red') {
-                    for(let i=0; i<12; i++) { let a = (Math.PI*2/12) * i; Game.getProjectile().spawn(this.x, this.y, a, 220, this.stats.maxDmg * 0.8, 'enemy', 'enemy_fireball'); }
+                    for(let i=0; i<12; i++) { let a = (Math.PI*2/12) * i; Game.getProjectile().spawn(this.x, this.y, a, 220, this.stats.maxDmg * 0.8, 'enemy', 'enemy_fireball', false, false, this); }
                 } else if (this.bossElement === 'blue') {
-                    for(let i=0; i<8; i++) { let a = (Math.PI*2/8) * i; Game.getProjectile().spawn(this.x, this.y, a, 400, this.stats.maxDmg * 0.5, 'enemy', 'enemy_bolt'); }
+                    for(let i=0; i<8; i++) { let a = (Math.PI*2/8) * i; Game.getProjectile().spawn(this.x, this.y, a, 400, this.stats.maxDmg * 0.5, 'enemy', 'enemy_bolt', false, false, this); }
                 }
             } else { 
                 if (this.bossElement === 'blue') {
@@ -10158,7 +10167,7 @@ class BossEnemy extends Enemy {
             let projCount = this.level >= 10 ? (this.isEnraged ? 16 : 12) : 10;
             for(let i=0; i<projCount; i++) { 
                 let a = this.angle + (Math.PI*2/projCount) * i; 
-                Game.getProjectile().spawn(this.x, this.y, a, speed, this.stats.maxDmg, 'enemy', 'enemy_fireball'); 
+                Game.getProjectile().spawn(this.x, this.y, a, speed, this.stats.maxDmg, 'enemy', 'enemy_fireball', false, false, this); 
             }
             if (this.level >= 10) {
                 setTimeout(() => {
@@ -10166,7 +10175,7 @@ class BossEnemy extends Enemy {
                     AudioEngine.playShoot('enemy_fireball');
                     for(let i=0; i<projCount; i++) { 
                         let a = this.angle + (Math.PI*2/projCount) * i + (Math.PI/projCount); 
-                        Game.getProjectile().spawn(this.x, this.y, a, speed * 1.2, this.stats.maxDmg, 'enemy', 'enemy_fireball'); 
+                        Game.getProjectile().spawn(this.x, this.y, a, speed * 1.2, this.stats.maxDmg, 'enemy', 'enemy_fireball', false, false, this); 
                     }
                 }, 600); 
             }
@@ -10177,7 +10186,7 @@ class BossEnemy extends Enemy {
             let coneSpread = Math.PI / 2;
             for(let i=0; i<8; i++) {
                 let a = this.angle - (coneSpread/2) + (coneSpread/8) * i;
-                Game.getProjectile().spawn(this.x, this.y, a, speed * 2.2, this.stats.maxDmg * 0.8, 'enemy', 'enemy_bolt');
+                Game.getProjectile().spawn(this.x, this.y, a, speed * 2.2, this.stats.maxDmg * 0.8, 'enemy', 'enemy_bolt', false, false, this);
             }
         } 
         else if (this.bossElement === 'green') {
@@ -10185,7 +10194,7 @@ class BossEnemy extends Enemy {
             AudioEngine.playShoot('homing_arrow'); 
             for(let i=0; i<8; i++) {
                 let a = this.angle + (Math.PI*2/8) * i;
-                Game.getProjectile().spawn(this.x, this.y, a, speed * 0.9, this.stats.maxDmg * 0.7, 'enemy', 'homing_arrow');
+                Game.getProjectile().spawn(this.x, this.y, a, speed * 0.9, this.stats.maxDmg * 0.7, 'enemy', 'homing_arrow', false, false, this);
             }
         }
     }
@@ -10323,11 +10332,12 @@ class Projectile {
         this.windIntensity = 0;
     }
     
-    spawn(x, y, angle, speed, damage, owner, type, piercing=false, isCrit=false) {
+    spawn(x, y, angle, speed, damage, owner, type, piercing=false, isCrit=false, sourceEntity=null) {
         this.active = true; this.group.visible = true; this.x = x; this.y = y; this.angle = angle; this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
         this.damage = damage; this.owner = owner; this.type = type; this.piercing = piercing; this.bounceCount = (type === 'chain_lightning') ? 2 : 0;
         this.isCrit = isCrit;
         this.hitEnemies.clear(); this.target = null; this.canInfect = true;
+        this.sourceEntity = sourceEntity; // Salva chi ha sparato!
         
         this.life = owner === 'player' ? (700 / Math.max(1, speed)) : Math.min(3.0, 600 / Math.max(1, speed));
         this.radius = 6; let mat = SharedMat.arrow; let geo = SharedGeo.sphere;
@@ -10493,17 +10503,26 @@ class Projectile {
                     
                     Game.player.shieldFlashTimer = 0.15; 
 
-                    // --- MODIFICA SCUDO ROSSO: Riflette il proiettile ---
+                    // --- SCUDO ROSSO: Riflette il proiettile ---
                     if (Game.player.essence === 'red') {
-                        let returnAngle = this.angle + Math.PI; // Torna indietro esattamente da dove è venuto
+                        let returnAngle = this.angle + Math.PI; 
+                        if (this.sourceEntity && !this.sourceEntity.dead) {
+                            returnAngle = Math.atan2(this.sourceEntity.y - this.y, this.sourceEntity.x - this.x);
+                        }
                         let p = Game.getProjectile(); 
-                        // Spara un dardo esplosivo molto potente verso il nemico
-                        p.spawn(this.x, this.y, returnAngle, 600, Game.player.stats.maxDmg * 1.5, 'player', 'explosive_arrow'); 
+                        p.spawn(this.x, this.y, returnAngle, 800, Game.player.stats.maxDmg * 1.5, 'player', 'explosive_arrow'); 
+                        p.radius = 8; p.mesh.scale.setScalar(8); // Mini palla!
                         p.canInfect = false;
-                        AudioEngine.playShoot('explosive_arrow');
+                        AudioEngine.playShoot('flame');
                     }
-                    // ----------------------------------------------------
-
+                  // --- SCUDO BLU: Stordisce il tiratore a distanza ---
+                    else if (Game.player.essence === 'blue') {
+                        if (this.sourceEntity && !this.sourceEntity.dead && this.sourceEntity.frozenTimer !== undefined) {
+                            this.sourceEntity.frozenTimer = 1.5;
+                            Game.getParticle().spawn(this.sourceEntity.x, 20, this.sourceEntity.y, SharedMat.spriteBlue, 'nova');
+                            AudioEngine.playShoot('chain_lightning');
+                        }
+                    }
                     this.handleHit(null);
                 } else {
                     if (this.type !== 'fire_shape') Game.player.takeDamage(this.damage, null);

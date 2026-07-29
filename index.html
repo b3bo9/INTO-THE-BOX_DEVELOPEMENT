@@ -5121,9 +5121,16 @@ startGame(diffMult) {
             }
         }
 
-// --- SCROLLING UV OBELISCO MAGICO ---
-        if (this.map && this.map.obeliskMat && this.map.obeliskMat.emissiveMap) {
-            this.map.obeliskMat.emissiveMap.offset.y -= safeVisualDt * 0.3; 
+// --- SCROLLING UV OBELISCHI E LIQUIDI ---
+        if (this.map) {
+            if (this.map.obeliskMat && this.map.obeliskMat.emissiveMap) {
+                this.map.obeliskMat.emissiveMap.offset.y -= safeVisualDt * 0.3; 
+            }
+            if (this.map.pitMat && this.map.pitMat.map) {
+                // Il fluido scorre in diagonale lentamente per dare un effetto fiume/colata lavica
+                this.map.pitMat.map.offset.y -= safeVisualDt * 0.15; 
+                this.map.pitMat.map.offset.x -= safeVisualDt * 0.05; 
+            }
         }
 
      // --- GESTIONE "KING OF THE HILL" DEGLI OBELISCHI ---
@@ -6349,22 +6356,39 @@ class GameMap {
             for(let x = cx - 8; x <= cx + 8; x++) { for(let y = cy - 8; y <= cy + 8; y++) { if (x > 0 && x < this.width-1 && y > 0 && y < this.height-1) this.grid[x][y] = 2; } }
         }
 
-        // --- NUOVO: GENERAZIONE FOSSE (PITS) ---
+       // --- NUOVO: GENERAZIONE FOSSE ORGANICHE (PITS) ---
         if (!isBossFloor) {
+            // Mappiamo le posizioni degli obelischi per creare una safety zone
+            let obelisks = [];
+            for(let x=0; x<this.width; x++) {
+                for(let y=0; y<this.height; y++) {
+                    if (this.grid[x][y] === 3) obelisks.push({x: x, y: y});
+                }
+            }
+
             for(let i=0; i<rooms.length; i++) {
                 let r = rooms[i];
-                // 30% di probabilità di avere un crepaccio al centro di una stanza grande (almeno 5x5)
-                if (r.w >= 5 && r.h >= 5 && Math.random() < 0.3) {
-                    let pw = MathUtils.randomInt(2, r.w - 3); // Larghezza fossa
-                    let ph = MathUtils.randomInt(2, r.h - 3); // Altezza fossa
-                    let px = r.x + Math.floor((r.w - pw) / 2);
-                    let py = r.y + Math.floor((r.h - ph) / 2);
+                // 30% di probabilità in stanze di almeno 6x6
+                if (r.w >= 6 && r.h >= 6 && Math.random() < 0.3) {
+                    let cx = r.x + Math.floor(r.w / 2);
+                    let cy = r.y + Math.floor(r.h / 2);
+                    let radius = MathUtils.randomRange(1.8, Math.min(r.w, r.h) / 2.2);
                     
-                    for (let x = px; x < px + pw; x++) {
-                        for (let y = py; y < py + ph; y++) {
-                            // Non sovrascrivere muri o obelischi
-                            if (this.grid[x][y] === 2) {
-                                this.grid[x][y] = 5; // 5 = Fossa
+                    for (let x = r.x + 1; x < r.x + r.w - 1; x++) {
+                        for (let y = r.y + 1; y < r.y + r.h - 1; y++) {
+                            let dx = x - cx; let dy = y - cy;
+                            let dist = Math.sqrt(dx*dx + dy*dy);
+                            
+                            // Aggiunge rumore con onde sinusoidali per creare forme irregolari (Pozze/Crepacci)
+                            let noise = (Math.sin(x * 1.5) + Math.cos(y * 1.5)) * 0.8; 
+                            
+                            if (dist + noise < radius && this.grid[x][y] === 2) {
+                                // SAFETY ZONE: Non scava se è entro 2 tile da un obelisco (area di rispetto 5x5)
+                                let isSafe = true;
+                                for(let o of obelisks) {
+                                    if (Math.abs(x - o.x) <= 2 && Math.abs(y - o.y) <= 2) { isSafe = false; break; }
+                                }
+                                if (isSafe) this.grid[x][y] = 5; 
                             }
                         }
                     }
@@ -6372,7 +6396,7 @@ class GameMap {
             }
         }
 
-        let floorCount = 0, wallCount = 0, pillarCount = 0;
+        let floorCount = 0, wallCount = 0, pillarCount = 0, pitFloorCount = 0;
         const PADDING = 8;
         
         // 1. CONTIAMO I BLOCCHI PRIMA DI ALLOCARE LA MEMORIA
@@ -6381,7 +6405,7 @@ class GameMap {
                 if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
                     if(this.grid[x][y] === 2) floorCount++; 
                     else if (this.grid[x][y] === 3) { floorCount++; pillarCount++; } 
-                    else if (this.grid[x][y] === 5) wallCount++; // La fossa viene contata come muro per rubarne l'instanza 3D!
+                    else if (this.grid[x][y] === 5) { wallCount++; pitFloorCount++; } // Conta sia per il bordo roccioso che per il liquido!
                     else wallCount++;
                 } else {
                     wallCount++;
@@ -6618,6 +6642,35 @@ class GameMap {
     window.GLOBAL_TELEGRAPH_GEO.rotateX(-Math.PI / 2);
 }
       const wallMesh = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, this.wallMat, wallCount);
+     // --- PREPARAZIONE PAVIMENTI LIQUIDI (FOSSE TEMA-DIPENDENTI) ---
+        let pitColor, pitEmissive, pitOpacity, pitRoughness, pitMetalness;
+        
+        if (Game.currentThemeIndex === 0) { // Foresta -> Acqua profonda
+            pitColor = 0x004488; pitEmissive = 0x002244; pitOpacity = 0.85; pitRoughness = 0.1; pitMetalness = 0.9;
+        } else if (Game.currentThemeIndex === 1) { // Lava -> Lava incandescente
+            pitColor = 0xffaa00; pitEmissive = 0xff2200; pitOpacity = 1.0; pitRoughness = 0.3; pitMetalness = 0.1;
+        } else { // Ghiaccio -> Ghiaccio roccioso spesso
+            pitColor = 0xaaddff; pitEmissive = 0x002244; pitOpacity = 0.95; pitRoughness = 0.05; pitMetalness = 0.9;
+        }
+
+        // Cloniamo la mappa base per renderla indipendente dallo scorrimento degli obelischi
+        let liquidTex = CHAR_GRUNGE_TEX.clone();
+        liquidTex.needsUpdate = true;
+        
+        this.pitMat = new THREE.MeshStandardMaterial({
+            color: pitColor, emissive: pitEmissive,
+            emissiveIntensity: Game.currentThemeIndex === 1 ? 1.5 : 0.6,
+            roughness: pitRoughness, metalness: pitMetalness,
+            map: liquidTex,
+            transparent: pitOpacity < 1.0, opacity: pitOpacity,
+            depthWrite: false
+        });
+        
+        const meshPitFloor = new THREE.InstancedMesh(floorGeo, this.pitMat, pitFloorCount);
+        meshPitFloor.receiveShadow = true;
+        this.mapGroup.add(meshPitFloor);
+        let pFloorIdx = 0;
+
       // --- PREPARAZIONE VERI OBELISCHI ---
         if (!window.GLOBAL_OBELISK_GEO) window.GLOBAL_OBELISK_GEO = createObeliskGeometry();
         
@@ -6860,14 +6913,21 @@ class GameMap {
                             dummy.updateMatrix();
                             meshRock.setMatrixAt(idxRock++, dummy.matrix);
                         }
-                    } else if (this.grid[x][y] === 5) {
-                        // FOSSA: Disegna il muro spostandolo verso il BASSO per creare i bordi tridimensionali del baratro
+                   } else if (this.grid[x][y] === 5) {
+                        // FOSSA: Bordo Roccioso Sprofondato
                         dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, -TILE_SIZE*0.6, y * TILE_SIZE + TILE_SIZE / 2);
                         dummy.scale.set(1, 1, 1);
                         dummy.rotation.set(0, 0, 0);
                         dummy.updateMatrix();
                         wallMesh.setMatrixAt(wIdx++, dummy.matrix);
-                    } else { 
+                        
+                        // FOSSA: Pavimento Liquido / Ghiacciato
+                        dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, -TILE_SIZE*0.25, y * TILE_SIZE + TILE_SIZE / 2);
+                        dummy.scale.set(1, 1, 1);
+                        // Il floorGeo è già ruotato a terra, non serve rotazione aggiuntiva
+                        dummy.updateMatrix();
+                        meshPitFloor.setMatrixAt(pFloorIdx++, dummy.matrix);
+                    } else {
                         // Confine Interno Conficcato: DISEGNA I VERI MURI INTERNI
                         dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE*0.75, y * TILE_SIZE + TILE_SIZE / 2);
                         dummy.scale.set(1, 1, 1);

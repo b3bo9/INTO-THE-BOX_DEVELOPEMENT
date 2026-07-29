@@ -7880,7 +7880,7 @@ class Player extends Entity {
             this.shieldMesh.rotation.y += dt * 5;
             this.shieldMesh.rotation.z += dt * 3;
             
-           if (this.shieldFlashTimer > 0) {
+          if (this.shieldFlashTimer > 0) {
                 this.shieldFlashTimer -= dt;
                 let pulse = this.shieldFlashTimer / 0.15;
                 this.shieldMesh.material.opacity = 0.6 + (0.4 * pulse);
@@ -7889,6 +7889,18 @@ class Player extends Entity {
                 this.shieldMesh.material.opacity = 0.6;
                 this.shieldMesh.scale.set(28, 28, 28); // <-- Reset alla nuova grandezza
             }
+
+            // --- MODIFICA SCUDO VERDE: Rilascia pozze di veleno ---
+            if (this.essence === 'green') {
+                if (this.greenShieldTrailTimer === undefined) this.greenShieldTrailTimer = 0;
+                this.greenShieldTrailTimer += dt;
+                if (this.greenShieldTrailTimer >= 0.2) { // Lascia una pozza ogni 0.2s
+                    Game.getHazard().spawn(this.x, this.y, 25, 3.0, this.stats.maxDmg * 0.4, ESSENCE_COLORS.green, 'poison');
+                    this.greenShieldTrailTimer = 0;
+                }
+            }
+            // ------------------------------------------------------
+
             if (this.activeShieldTimer <= 0) {
                 this.shieldMesh.visible = false;
                 if (!this.autoShieldActive) {
@@ -8573,10 +8585,18 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         if (aura === 'green') amount *= 0.6; 
         if (aura === 'corrupted') amount *= 1.2; // +20% Danni subiti
         
-        // REWORK: Riduzione base 50% (Aumenta a 80% se ha Batteria a Ioni)
+       // REWORK: Riduzione base 50% (Aumenta a 80% se ha Batteria a Ioni)
         if (this.activeShieldTimer > 0) {
             let shieldReduction = this.modifiers.ionBattery ? 0.20 : 0.50; // Prende solo il 20% o 50% del danno
             amount *= shieldReduction;
+            
+            // --- MODIFICA SCUDO BLU: Stordisce chi ti colpisce in mischia ---
+            if (this.essence === 'blue' && source && source.frozenTimer !== undefined) {
+                source.frozenTimer = 1.5; // Stordito 1.5 sec
+                Game.getParticle().spawn(source.x, 20, source.y, SharedMat.spriteBlue, 'nova'); // Esplosione blu sul nemico
+                AudioEngine.playShoot('chain_lightning'); // Suono scossa
+            }
+            // ----------------------------------------------------------------
         }
         
         // NUOVO: Riduzione del 20% dai Calzari di Mercurio
@@ -8816,9 +8836,17 @@ if (this.modifiers.flowMastery && !wasDead) {
             }
             this.shieldAbsorbed = 0;
             this.shieldMesh.visible = true;
-            this.shieldMesh.material.color.setHex(0x00DDFF); // Forza il ciano originale
+            
+            // --- MODIFICA: COLORE SCUDO IN BASE ALL'ESSENZA ---
+            let shieldColor = 0x00DDFF; // Ciano di default
+            if (this.essence === 'red') shieldColor = ESSENCE_COLORS.red;
+            else if (this.essence === 'blue') shieldColor = ESSENCE_COLORS.blue;
+            else if (this.essence === 'green') shieldColor = ESSENCE_COLORS.green;
+            this.shieldMesh.material.color.setHex(shieldColor);
+            // --------------------------------------------------
+            
             this.shieldMesh.material.opacity = 0.6;
-            AudioEngine.playCollect(); 
+            AudioEngine.playCollect();
         }
     }
 }
@@ -10459,14 +10487,26 @@ class Projectile {
                     Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + heal);
                     Game.addUltimateCharge(5.0); 
                     
-                    // Testi Fluttuanti Distinti (HP verde a sinistra, Ulti blu a destra)
+                   // Testi Fluttuanti Distinti (HP verde a sinistra, Ulti blu a destra)
                     Game.getFloatingText().spawn(Game.player.x - 15, Game.player.y + 15, `+${Math.floor(heal)}`, '#00ffaa', 22, true);
                     Game.getFloatingText().spawn(Game.player.x + 15, Game.player.y + 15, `+5%`, '#00DDFF', 22, true);
                     
                     Game.player.shieldFlashTimer = 0.15; 
+
+                    // --- MODIFICA SCUDO ROSSO: Riflette il proiettile ---
+                    if (Game.player.essence === 'red') {
+                        let returnAngle = this.angle + Math.PI; // Torna indietro esattamente da dove è venuto
+                        let p = Game.getProjectile(); 
+                        // Spara un dardo esplosivo molto potente verso il nemico
+                        p.spawn(this.x, this.y, returnAngle, 600, Game.player.stats.maxDmg * 1.5, 'player', 'explosive_arrow'); 
+                        p.canInfect = false;
+                        AudioEngine.playShoot('explosive_arrow');
+                    }
+                    // ----------------------------------------------------
+
                     this.handleHit(null);
                 } else {
-                    if (this.type !== 'fire_shape') Game.player.takeDamage(this.damage, null); 
+                    if (this.type !== 'fire_shape') Game.player.takeDamage(this.damage, null);
                     this.handleHit(null); 
                 }
             }

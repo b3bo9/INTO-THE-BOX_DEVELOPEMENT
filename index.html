@@ -6672,12 +6672,13 @@ class GameMap {
         this.mapGroup.add(meshPitFloor);
         let pFloorIdx = 0;
 
-        // --- PREPARAZIONE ROCCE ORGANICHE PER I BORDI DELLA FOSSA ---
-        // Usiamo un Dodecaedro con dettaglio 1 (perfetto per sembrare una roccia irregolare low-poly)
-        if (!window.GLOBAL_PIT_BORDER_GEO) window.GLOBAL_PIT_BORDER_GEO = new THREE.DodecahedronGeometry(22, 1);
+       // --- PREPARAZIONE ROCCE ORGANICHE PER I BORDI DELLA FOSSA ---
+        // Raggio base ridotto drasticamente (da 22 a 14)
+        if (!window.GLOBAL_PIT_BORDER_GEO) window.GLOBAL_PIT_BORDER_GEO = new THREE.DodecahedronGeometry(14, 1);
         
-        // Allochiamo abbastanza rocce (max 8 per ogni blocco di fossa per coprire bene i bordi)
-        const meshPitBorders = new THREE.InstancedMesh(window.GLOBAL_PIT_BORDER_GEO, this.wallMat, pitFloorCount * 8);
+        // Allochiamo 12 rocce per blocco per fare una cornice più fitta. 
+        // FIX FONDAMENTALE: Usiamo floorMat, così i bordi avranno lo stesso identico colore del terreno!
+        const meshPitBorders = new THREE.InstancedMesh(window.GLOBAL_PIT_BORDER_GEO, this.floorMat, pitFloorCount * 12);
         meshPitBorders.receiveShadow = true;
         meshPitBorders.castShadow = AppSettings.shadowsEnabled;
         this.mapGroup.add(meshPitBorders);
@@ -6943,46 +6944,49 @@ class GameMap {
                         dummy.updateMatrix();
                         meshPitFloor.setMatrixAt(pFloorIdx++, dummy.matrix);
 
-                        // --- EDGE MASKING: ROCCE ORGANICHE SUI BORDI ---
-                        // Controlliamo i 4 lati. Se c'è pavimento (2), generiamo rocce frastagliate lungo quella linea.
+                       // --- EDGE MASKING: SCAGLIE E LASTRE SUI BORDI ---
                         let edgeOffsets = [];
-                        let half = TILE_SIZE / 2;
+                        let half = TILE_SIZE / 2; // 32
 
-                        // Se confina col pavimento a Sinistra
+                        // Aggiungiamo 3 sassi per lato invece di 2, creando un bordo più continuo ma sottile
                         if (x > 0 && this.grid[x-1][y] === 2) {
-                            edgeOffsets.push({x: -half, z: -15}, {x: -half, z: 15});
+                            edgeOffsets.push({x: -half, z: -16}, {x: -half, z: 0}, {x: -half, z: 16});
                         }
-                        // Se confina col pavimento a Destra
                         if (x < this.width-1 && this.grid[x+1][y] === 2) {
-                            edgeOffsets.push({x: half, z: -15}, {x: half, z: 15});
+                            edgeOffsets.push({x: half, z: -16}, {x: half, z: 0}, {x: half, z: 16});
                         }
-                        // Se confina col pavimento in Alto
                         if (y > 0 && this.grid[x][y-1] === 2) {
-                            edgeOffsets.push({x: -15, z: -half}, {x: 15, z: -half});
+                            edgeOffsets.push({x: -16, z: -half}, {x: 0, z: -half}, {x: 16, z: -half});
                         }
-                        // Se confina col pavimento in Basso
                         if (y < this.height-1 && this.grid[x][y+1] === 2) {
-                            edgeOffsets.push({x: -15, z: half}, {x: 15, z: half});
+                            edgeOffsets.push({x: -16, z: half}, {x: 0, z: half}, {x: 16, z: half});
                         }
 
-                        // Piazziamo fisicamente le rocce calcolate
                         for (let k = 0; k < edgeOffsets.length; k++) {
                             let off = edgeOffsets[k];
-                            // Aggiungiamo rumore casuale alla posizione, altezza, scala e rotazione
+                            
                             dummy.position.set(
-                                px + off.x + MathUtils.randomRange(-8, 8),
-                                MathUtils.randomRange(-14, -6), // Leggermente affondate, "scendono" nel cratere
-                                pz + off.z + MathUtils.randomRange(-8, 8)
+                                px + off.x + MathUtils.randomRange(-4, 4), // Meno dispersione laterale per non invadere la fossa
+                                MathUtils.randomRange(-6, -2), // Alzati leggermente per prendere bene la luce
+                                pz + off.z + MathUtils.randomRange(-4, 4)
                             );
                             
-                            let rScale = MathUtils.randomRange(0.6, 1.3);
-                            // Le schiacciamo/allunghiamo a caso per renderle sempre uniche
-                            dummy.scale.set(rScale, rScale * MathUtils.randomRange(0.7, 1.4), rScale);
+                            // Scalati in piccolo (0.4 - 0.9)
+                            let rScale = MathUtils.randomRange(0.4, 0.9);
                             
+                            // FIX SCHIACCIAMENTO: Abbassiamo l'asse Y per trasformarli in lastroni di pietra spaccati!
+                            dummy.scale.set(
+                                rScale * MathUtils.randomRange(1.0, 1.5), // Larghi
+                                rScale * MathUtils.randomRange(0.3, 0.6), // PIATTI
+                                rScale * MathUtils.randomRange(1.0, 1.5)  // Profondi
+                            );
+                            
+                            // FIX LUCE ("Palle Nere"): Li ruotiamo a caso sull'asse Y, ma li teniamo quasi piatti su X e Z.
+                            // In questo modo la loro faccia superiore guarderà sempre la "Luna" e verranno illuminati!
                             dummy.rotation.set(
+                                MathUtils.randomRange(-0.2, 0.2), 
                                 Math.random() * Math.PI, 
-                                Math.random() * Math.PI, 
-                                Math.random() * Math.PI
+                                MathUtils.randomRange(-0.2, 0.2)
                             );
                             
                             dummy.updateMatrix();

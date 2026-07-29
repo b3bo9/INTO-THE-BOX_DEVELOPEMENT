@@ -2081,7 +2081,7 @@ const RelicSystem = {
         { id: 'e8', name: "Patto dell'Avaro", desc: "Le monete non scompaiono col tempo. Ogni moneta raccolta aumenta velocità di attacco e movimento per 3 sec.", rarity: "epic", image: "icona_patto_avaro.png", icon: "fa-sack-dollar", apply: (p) => { p.modifiers.miserPact = true; } },
 
         // LEGGENDARIE: Cambiano drasticamente le regole (Trade-offs e Potere)
-        { id: 'l1', name: "Follia Omicida", desc: "Danni critici estremi (2.5x), ma la tua Velocità d'Attacco è ridotta del 20%.", rarity: "legendary", image: "icona_follia_omicida.png", icon: "fa-skull", apply: (p) => { p.modifiers.critDmgMult = 2.5; p.modifiers.atkSpeedPenalty = 0.80; } },
+       { id: 'l1', name: "Follia Omicida", desc: "Danni critici letali (2.0x), ma la tua Velocità d'Attacco è ridotta del 15%.", rarity: "legendary", image: "icona_follia_omicida.png", icon: "fa-skull", apply: (p) => { p.modifiers.critDmgMult = 2.0; p.modifiers.atkSpeedPenalty = 0.85; } },
         { id: 'l2', name: "Lama del Giudizio", desc: "Infliggi il DOPPIO dei danni se il nemico ha Meno del 30% di Salute (Esecuzione).", rarity: "legendary", image: "icona_lama_del_giudizio.png", icon: "fa-gavel", apply: (p) => p.modifiers.executioner = true },
         { id: 'l3', name: "Patto Ascetico", desc: "La Ultimate si ricarica passivamente da sola, ma la sua durata è ridotta del 40%.", rarity: "legendary", image: "icona_patto_ascetico.png", icon: "fa-link", apply: (p) => { p.modifiers.passiveUltCharge = true; p.modifiers.ultDurationPenalty = 0.60; } },
         { id: 'l4', name: "Sete di Sangue Eterna", desc: "Ogni nemico ucciso ti cura dell'1% HP. Tuttavia, sanguini perdendo lo 0.5% HP al secondo (emorragia disattivata contro i Boss).", rarity: "legendary", image: "icona_sete_di_sangue_eterna.png", icon: "fa-droplet", apply: (p) => { p.modifiers.bloodthirst = true; } },
@@ -5016,8 +5016,8 @@ startGame(diffMult) {
         document.getElementById('mainMenu').classList.add('hidden'); document.getElementById('hud').classList.remove('hidden');
         if (isTouchDevice) document.getElementById('mobile-controls').classList.remove('hidden');
         
-        // Difficoltà fissa e unica per tutto il gioco
-        this.baseDifficultyMult = 0.6;
+        // Difficoltà fissa e unica per tutto il gioco (scalata per un inizio più dolce)
+        this.baseDifficultyMult = 0.5;
         this.difficultyMult = this.baseDifficultyMult;
         this.floor = 1; this.totalKills = 0; this.lives = 3; this.playTime = 0; this.coins = 0; this.lastRelicCount = 0;
         this.matchStats = { dmgDealt: 0, dmgTaken: 0, essencesUsed: { red: 0, blue: 0, green: 0 } };
@@ -7911,7 +7911,7 @@ class Player extends Entity {
                 if (this.modifiers.explosiveShield) {
                     let baseDmg = this.stats.maxDmg * 2.0;
                     // +50% di danno per ogni proiettile assorbito
-                    let bonusDmg = this.shieldAbsorbed * (this.stats.maxDmg * 0.5); 
+                   let bonusDmg = Math.min(this.shieldAbsorbed, 15) * (this.stats.maxDmg * 0.5); // Cap massimo 15 stack
                     let totalDmg = (baseDmg + bonusDmg) * this.modifiers.dmgMult;
                     
                     let baseRadius = 150;
@@ -8593,7 +8593,7 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         
        // REWORK: Riduzione base 50% (Aumenta a 80% se ha Batteria a Ioni)
         if (this.activeShieldTimer > 0) {
-            let shieldReduction = this.modifiers.ionBattery ? 0.20 : 0.50; 
+            let shieldReduction = this.modifiers.ionBattery ? 0.35 : 0.50; // Passa da -80% danni a -65% danni
             amount *= shieldReduction;
             
             this.shieldAbsorbed++; // Carica la reliquia "Aegis del Guardiano" anche con i colpi in mischia!
@@ -8963,10 +8963,19 @@ Game.scene.add(this.telegraphMesh);
         }
 
         this.radius = size;
-        this.stats.maxHp = type === 'crystal' ? 1 : Math.floor(32 * hpMod * (1 + level * 0.3) * Game.difficultyMult); 
+        
+        // SCALING IBRIDO: Lineare ai primi piani, esponenziale lento in late-game
+        let expoCurve = Math.pow(1.04, Game.floor); 
+        this.stats.maxHp = type === 'crystal' ? 1 : Math.floor(28 * hpMod * (1 + level * 0.15) * expoCurve * Game.difficultyMult); 
         this.stats.hp = this.stats.maxHp;
-        this.stats.minDmg = Math.floor(12 * dmgMod * (1 + level * 0.15) * Game.difficultyMult); 
-        this.stats.maxDmg = Math.floor(22 * dmgMod * (1 + level * 0.15) * Game.difficultyMult);
+        
+        // ANTI-ONESHOT: Il danno nemico viene cappato al 40% della vita max del giocatore
+        let rawMinDmg = 8 * dmgMod * (1 + level * 0.1) * expoCurve * Game.difficultyMult;
+        let rawMaxDmg = 16 * dmgMod * (1 + level * 0.1) * expoCurve * Game.difficultyMult;
+        let dmgCap = Game.player ? (Game.player.stats.maxHp * 0.40) : 999;
+        
+        this.stats.minDmg = Math.floor(Math.min(rawMinDmg, dmgCap * 0.7)); 
+        this.stats.maxDmg = Math.floor(Math.min(rawMaxDmg, dmgCap));
         
       let diffSpeedMod = 0.8; // Modificatore base per la velocità dei nemici
         this.baseSpeed = 100 * spdMod * Math.min(3.2, 1 + (level * 0.05)) * diffSpeedMod;
@@ -9546,8 +9555,19 @@ Game.scene.add(this.telegraphMesh);
                 if (!Game.player || Game.player.dead) return; 
                 
                 if (this.type === 'leaper' && this.leapCooldown <= 0) { 
-                    this.state = 'leaping'; this.leapTimer = 0; this.leapDuration = 0.5; this.leapAngle = this.angle; this.leapCooldown = 2.0; 
-                } 
+                    this.state = 'leaping'; this.leapTimer = 0; this.leapDuration = 0.5; 
+                    
+                    // ANTI-KITING: Calcola dove starà il giocatore tra 0.5 secondi
+                    let predX = Game.player.x; let predY = Game.player.y;
+                    if (Game.inputs.left.active || Game.player.isDashing) {
+                        let pDirX = Game.player.isDashing ? Math.cos(Game.player.dashAngle) : Game.inputs.left.x;
+                        let pDirY = Game.player.isDashing ? Math.sin(Game.player.dashAngle) : Game.inputs.left.y;
+                        predX += pDirX * Game.player.speed * 0.5;
+                        predY += pDirY * Game.player.speed * 0.5;
+                    }
+                    this.leapAngle = Math.atan2(predY - this.y, predX - this.x); 
+                    this.leapCooldown = 2.0; 
+                }
                 else if (this.attackCooldown <= 0 && this.isTargetingPlayer) { this.attack(); }
             }
         }
@@ -9567,8 +9587,7 @@ Game.scene.add(this.telegraphMesh);
         let cdMult = Math.max(0.4, 1.0 / Game.difficultyMult); 
         let spdMult = 0.75 + (Game.difficultyMult * 0.25);     
         
-       let buffDmgMult = this.isProphetBuffed ? 2.5 : 1.0; 
-        if (this.isProphetBuffed) cdMult *= 0.3;
+       if (this.isElite && (this.type === 'mage' || this.type === 'skeleton_archer')) cdMult *= 0.7; // Elite ranged attaccano il 30% più veloci
         
         let aura = Game.getAuraAt(this.x, this.y); 
         if (aura === 'blue') cdMult /= 0.6; 
@@ -9622,7 +9641,7 @@ Game.scene.add(this.telegraphMesh);
         if (aura === 'green') amount *= 0.6;
 
         // 1. Calcola PRIMA i modificatori di danno del Giocatore (Esecuzione, Danni Opener, ecc.)
-        if (source === Game.player && Game.player.modifiers.executioner && (this.stats.hp / this.stats.maxHp) < 0.3) amount *= 2.0;
+        if (source === Game.player && Game.player.modifiers.executioner && (this.stats.hp / this.stats.maxHp) < 0.3 && !this.isBoss) amount *= 2.0;
         if (source === Game.player && Game.player.modifiers.openerDmg && (this.stats.hp / this.stats.maxHp) >= 0.8) amount *= 1.2;
         
         // 2. APPLICA LO SCUDO DEL PROFETA (Riduce del 95% e impedisce i critici)
@@ -9846,12 +9865,15 @@ Game.scene.add(this.telegraphMesh);
             Game.getHazard().spawn(this.x, this.y, 40, 3.0, Game.player.stats.maxDmg * Game.player.modifiers.dmgMult, ESSENCE_COLORS.green, 'poison');
         }
         
-       // Base fissa per l'unica difficoltà del gioco
-        let baseLifeChance = 0.006; 
+       // SMART DROP: Analizza lo stato vitale del giocatore
+        let hpRatio = Game.player.stats.hp / Game.player.stats.maxHp;
+        let baseLifeChance = 0.005; // Base standard
+        if (hpRatio > 0.8) baseLifeChance = 0.001; // Giocatore quasi full -> Quasi impossibile droppare vita
+        else if (hpRatio < 0.3) baseLifeChance = 0.025; // Giocatore in fin di vita -> Drop fortemente aumentato!
         
         let floorDecay = Math.max(0.50, 1.0 - (Game.floor * 0.025));
         let lifeChance = baseLifeChance * floorDecay * Game.player.modifiers.healDropMult;
-        if (this.isElite) lifeChance *= 2.0; 
+        if (this.isElite) lifeChance *= 3.0; // Gli Elite premiano di più
         if (Game.lives > 3) lifeChance = lifeChance / (1 + (Game.lives - 3) * 0.5);
         if (Game.player.modifiers.noHealDrops) lifeChance = 0;
         
@@ -9994,8 +10016,11 @@ class BossEnemy extends Enemy {
     update(dt) {
         if (this.dead) return;
         
-       // FASE ENRAGED (Sotto il 50% HP)
-        if (!this.isEnraged && this.stats.hp <= this.stats.maxHp * 0.5) {
+      if (this.fightTimer === undefined) this.fightTimer = 0;
+       this.fightTimer += dt;
+       
+       // FASE ENRAGED (Sotto il 50% HP oppure dopo 45 secondi di combattimento - DPS Check)
+        if (!this.isEnraged && (this.stats.hp <= this.stats.maxHp * 0.5 || this.fightTimer > 45.0)) {
             this.isEnraged = true;
             this.baseSpeed *= 1.35; 
             this.speed = this.baseSpeed;
@@ -10498,7 +10523,7 @@ class Projectile {
                     AudioEngine.playCollect(); 
                     
                    // RECUPERO: 10% per il Verde, 5% per tutti gli altri. +5% Ultimate.
-                    let healPct = Game.player.essence === 'green' ? 0.10 : 0.05;
+                    let healPct = Game.player.essence === 'green' ? 0.08 : 0.04;
                     let heal = Game.player.stats.maxHp * healPct; 
                     Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + heal);
                     Game.addUltimateCharge(5.0); 
@@ -11403,7 +11428,7 @@ const Preloader = {
             Game.coins -= cost;
             AudioEngine.playCoin();
 
-            this.costs[type] += 3; // Rincaro lineare ++
+            this.costs[type] = Math.floor(this.costs[type] * 1.3); // Rincaro esponenziale per forzare build ragionate
 
             if (type === 'hp') { 
                 Game.player.stats.maxHp += 15; Game.player.baseStats.maxHp += 15; Game.player.stats.hp += 15; this.bonus.hp += 15; 
@@ -11451,7 +11476,8 @@ window.prepareFloorScreen = function() {
     let nextIsBoss = ((Game.floor + 1) % 5 === 0);
     let btnNext = document.getElementById('btn-next-floor');
 
-    window.nextIsCorrupted = !nextIsBoss && Math.random() < 0.20;
+    // I piani corrotti compaiono SOLO a partire dal Piano 4
+    window.nextIsCorrupted = !nextIsBoss && Game.floor >= 3 && Math.random() < 0.20;
 
    let baseBtnClass = "btn-cyber glass-panel box-glow-purple w-full py-4 sm:py-5 text-xl sm:text-2xl font-display text-purple-400 border-purple-500/30 flex-col leading-none";
 

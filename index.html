@@ -2658,15 +2658,15 @@ function createBlobShadowTexture() {
 }
     function createEdgeShadowTexture() {
     const canvas = document.createElement('canvas'); 
-    canvas.width = 16; canvas.height = 128;
+    canvas.width = 16; canvas.height = 256; // Più risoluzione per sfumature morbide
     const ctx = canvas.getContext('2d');
-    const grad = ctx.createLinearGradient(0, 0, 0, 128);
-    // FIX MULTIPLY: Il nero scurisce, il bianco diventa invisibile al 100%. Niente più bordi!
-    grad.addColorStop(0, '#050508'); // Muro scuro
-    grad.addColorStop(0.3, '#333333'); // Penombra
-    grad.addColorStop(1, '#ffffff'); // Luce totale (Invisibile)
+    const grad = ctx.createLinearGradient(0, 0, 0, 256);
+    // FIX QUADRATONI: Passiamo all'Alpha. Colore solido che sfuma in trasparenza totale.
+    grad.addColorStop(0, 'rgba(5, 5, 8, 0.95)'); // Bordo scuro
+    grad.addColorStop(0.5, 'rgba(5, 5, 8, 0.3)'); // Transizione morbidissima
+    grad.addColorStop(1, 'rgba(5, 5, 8, 0)'); // Trasparenza assoluta
     ctx.fillStyle = grad; 
-    ctx.fillRect(0, 0, 16, 128);
+    ctx.fillRect(0, 0, 16, 256);
     const tex = new THREE.CanvasTexture(canvas);
     return tex;
 }
@@ -6722,9 +6722,9 @@ class GameMap {
         let pitColor, pitEmissive, pitOpacity, pitRoughness, pitMetalness, baseTexImage;
         
         if (Game.currentThemeIndex === 0) { // Foresta -> Acqua Jpeg
-            pitColor = 0x55aaff; 
-            pitEmissive = 0x002255; // FIX: L'acqua torna a brillare di una flebile luce azzurra per non sembrare morta!
-            pitOpacity = 0.85; pitRoughness = 0.05; pitMetalness = 0.95;
+            pitColor = 0x00ddff; // Colore azzurro molto più saturo e cristallino
+            pitEmissive = 0x0055aa; // Emissivo più forte per farla risaltare al buio
+            pitOpacity = 0.95; pitRoughness = 0.0; pitMetalness = 1.0; // Effetto specchio perfetto
             baseTexImage = Preloader.textures.water;
         } else if (Game.currentThemeIndex === 1) { // Lava -> Lava Jpeg
             pitColor = 0xffffff; pitEmissive = 0xffffff; 
@@ -6803,10 +6803,11 @@ class GameMap {
             window.GLOBAL_EDGE_SHADOW_GEO.translate(0, 0, (TILE_SIZE * 1.5) / 2); 
         }
         const edgeShadowMat = new THREE.MeshBasicMaterial({ 
-            color: 0xffffff, // Deve essere bianco per il Multiply
+            color: 0xffffff, 
             map: window.GLOBAL_EDGE_SHADOW_TEX, 
             transparent: true, 
-            blending: THREE.MultiplyBlending, // FIX GRIGLIA: Il bianco scompare, le ombre si sovrappongono in modo perfetto fondendosi senza creare linee quadrate!
+            opacity: 0.85,
+            blending: THREE.NormalBlending, // Usiamo l'alpha nativo per sfumature perfette senza "quadratoni"
             depthWrite: false
         });
         

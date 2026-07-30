@@ -6732,7 +6732,7 @@ class GameMap {
             depthWrite: false
         });
 
-        // CREIAMO UN SOLO PIANO GIGANTE INVECE DI 100 BLOCCHETTI
+       // CREIAMO UN SOLO PIANO GIGANTE INVECE DI 100 BLOCCHETTI
         let giantGeo = new THREE.PlaneGeometry(mapRealWidth, mapRealHeight);
         giantGeo.rotateX(-Math.PI / 2);
         
@@ -6740,6 +6740,7 @@ class GameMap {
         // Lo centriamo perfettamente sotto la mappa a profondità -17.5
         this.meshPitFloor.position.set((this.width * TILE_SIZE) / 2, -17.5, (this.height * TILE_SIZE) / 2);
         this.meshPitFloor.receiveShadow = true;
+        this.meshPitFloor.renderOrder = 1; // FIX LAMPEGGIAMENTO: Costringe la GPU a disegnare sempre il liquido per primo
         this.mapGroup.add(this.meshPitFloor);
         
         // SETUP LASTRA DI GHIACCIO SUPERIORE (Stessa tecnica gigante)
@@ -6764,6 +6765,7 @@ class GameMap {
             // La lastra è posizionata a -14.5, sospesa sopra l'acqua!
             this.meshIceFloor.position.set((this.width * TILE_SIZE) / 2, -14.5, (this.height * TILE_SIZE) / 2);
             this.meshIceFloor.receiveShadow = true;
+            this.meshIceFloor.renderOrder = 3; // FIX LAMPEGGIAMENTO: Costringe la GPU a disegnare il ghiaccio per ultimo
             this.mapGroup.add(this.meshIceFloor);
         }
 
@@ -6773,7 +6775,7 @@ class GameMap {
         this.mapGroup.add(meshPitWalls);
         let pWallIdx = 0;
 
-     // --- NUOVA VIGNETTATURA SOTTERRANEA GLOBALE (Effetto Profondità 3D Bevel) ---
+     // --- NUOVA VIGNETTATURA SOTTERRANEA GLOBALE (Effetto Profondità Morbido) ---
         if (!window.GLOBAL_PIT_SHADOW_CANVAS) {
             window.GLOBAL_PIT_SHADOW_CANVAS = document.createElement('canvas');
             window.GLOBAL_PIT_SHADOW_TEX = new THREE.CanvasTexture(window.GLOBAL_PIT_SHADOW_CANVAS);
@@ -6786,7 +6788,8 @@ class GameMap {
         }
         
         const sCanvas = window.GLOBAL_PIT_SHADOW_CANVAS;
-        const res = 16; 
+        // FIX SPIGOLOSITÀ: Risoluzione raddoppiata (32px per tile) per gradienti e curve perfettamente setose
+        const res = 32; 
         sCanvas.width = (this.width + 16) * res;
         sCanvas.height = (this.height + 16) * res;
         const sCtx = sCanvas.getContext('2d');
@@ -6795,39 +6798,38 @@ class GameMap {
         sCtx.globalCompositeOperation = 'source-over';
         sCtx.fillStyle = '#030305'; 
         
-        // PASSAGGIO 1: L'Abisso (Sfumatura larga e morbida per l'oscurità generale)
-        sCtx.shadowColor = 'rgba(0, 0, 0, 0.65)'; 
-        sCtx.shadowBlur = 35; 
+        // PASSAGGIO 1: L'Abisso (Sfumatura larga e morbida)
+        sCtx.shadowColor = 'rgba(0, 0, 0, 0.7)'; 
+        sCtx.shadowBlur = 60; // Proporzionato alla nuova alta risoluzione
         
         for(let gx = -8; gx < this.width + 8; gx++) {
             for(let gy = -8; gy < this.height + 8; gy++) {
                 let isPit = (gx >= 0 && gx < this.width && gy >= 0 && gy < this.height && this.grid[gx][gy] === 5);
                 if (!isPit) {
-                    sCtx.fillRect((gx + 8) * res, (gy + 8) * res, res, res);
+                    sCtx.fillRect((gx + 8) * res - 0.5, (gy + 8) * res - 0.5, res + 1, res + 1);
                 }
             }
         }
 
-        // PASSAGGIO 2: La Parete Sommersa (Sfumatura dura e stretta)
-        // Espandiamo il muro di "3 pixel" verso l'interno della fossa.
-        // Questo crea un gradino visivo netto prima del liquido, dando un volume reale al buco.
+        // PASSAGGIO 2: La Parete Sommersa (Bordo densissimo e scuro ma NON spigoloso)
+        // Rimosso lo "spostamento" in avanti dei mattoni che creava gli spigoli a scaletta
         sCtx.shadowColor = 'rgba(0, 0, 0, 1.0)'; 
-        sCtx.shadowBlur = 8; 
+        sCtx.shadowBlur = 15; 
         
         for(let gx = -8; gx < this.width + 8; gx++) {
             for(let gy = -8; gy < this.height + 8; gy++) {
                 let isPit = (gx >= 0 && gx < this.width && gy >= 0 && gy < this.height && this.grid[gx][gy] === 5);
                 if (!isPit) {
-                    // Il -3 e +6 spingono il muro solido "dentro" il lago
-                    sCtx.fillRect((gx + 8) * res - 3, (gy + 8) * res - 3, res + 6, res + 6);
+                    sCtx.fillRect((gx + 8) * res - 0.5, (gy + 8) * res - 0.5, res + 1, res + 1);
                 }
             }
         }
         
         window.GLOBAL_PIT_SHADOW_TEX.needsUpdate = true;
         const meshDepthShadows = new THREE.Mesh(giantGeo, window.GLOBAL_PIT_SHADOW_MAT);
-        // Posizionata a -17.0: SOPRA l'acqua (-17.5) ma SOTTO il pavimento (0)
+        // Posizionata a -17.0: SOPRA l'acqua (-17.5) ma SOTTO il ghiaccio e il pavimento
         meshDepthShadows.position.set((this.width * TILE_SIZE) / 2, -17.0, (this.height * TILE_SIZE) / 2);
+        meshDepthShadows.renderOrder = 2; // FIX LAMPEGGIAMENTO: Si disegna sempre e solo IN MEZZO tra l'acqua e il ghiaccio
         this.mapGroup.add(meshDepthShadows);
 
         // --- PREPARAZIONE ROCCE ORGANICHE PER I BORDI DELLA FOSSA ---

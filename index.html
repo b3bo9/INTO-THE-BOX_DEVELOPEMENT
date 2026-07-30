@@ -6647,7 +6647,7 @@ class GameMap {
     window.GLOBAL_TELEGRAPH_GEO.rotateX(-Math.PI / 2);
 }
       const wallMesh = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, this.wallMat, wallCount);
-    // --- PREPARAZIONE PAVIMENTI LIQUIDI JEPG CON EFFETTO DOPPIO STRATO ---
+        // --- PREPARAZIONE PAVIMENTI LIQUIDI ---
         let pitColor, pitEmissive, pitOpacity, pitRoughness, pitMetalness, baseTexImage;
         
         if (Game.currentThemeIndex === 0) { // Foresta -> Acqua Jpeg
@@ -6656,14 +6656,13 @@ class GameMap {
         } else if (Game.currentThemeIndex === 1) { // Lava -> Lava Jpeg
             pitColor = 0xffffff; pitEmissive = 0xffffff; pitOpacity = 1.0; pitRoughness = 0.4; pitMetalness = 0.1;
             baseTexImage = Preloader.textures.waterLava;
-        } else { // Ghiaccio -> Acqua Jpeg (che scorrerà sotto la lastra di ghiaccio)
+        } else { // Ghiaccio -> Acqua Jpeg
             pitColor = 0x3388cc; pitEmissive = 0xffffff; pitOpacity = 0.9; pitRoughness = 0.1; pitMetalness = 0.9;
             baseTexImage = Preloader.textures.water;
         }
 
-        // Essendo ora un CanvasTexture, POSSIAMO usare .clone() in modo totalmente sicuro!
-        // Questo ci permette di far scorrere la grafica senza buggare le altre zone.
-        let liquidTex = baseTexImage ? baseTexImage.clone() : CHAR_GRUNGE_TEX.clone();
+        // NON usiamo clone() per evitare che le texture in caricamento rimangano nere
+        let liquidTex = baseTexImage || CHAR_GRUNGE_TEX;
         liquidTex.wrapS = THREE.RepeatWrapping; liquidTex.wrapT = THREE.RepeatWrapping;
         liquidTex.repeat.set(0.35, 0.35); 
         liquidTex.encoding = THREE.sRGBEncoding;
@@ -6685,7 +6684,7 @@ class GameMap {
         // SETUP LASTRA DI GHIACCIO SUPERIORE
         let meshIceFloor = null;
         if (Game.currentThemeIndex === 2) {
-            let iceTex = Preloader.textures.iceCrust ? Preloader.textures.iceCrust.clone() : CHAR_GRUNGE_TEX.clone();
+            let iceTex = Preloader.textures.iceCrust || CHAR_GRUNGE_TEX;
             iceTex.wrapS = THREE.RepeatWrapping; iceTex.wrapT = THREE.RepeatWrapping;
             iceTex.repeat.set(0.8, 0.8); 
             iceTex.encoding = THREE.sRGBEncoding;
@@ -6705,9 +6704,8 @@ class GameMap {
         
         let pFloorIdx = 0;
 
-       // --- PREPARAZIONE PARETI INTERNE DELLA FOSSA ---
-        // Un materiale "Basic" ignora la luce: niente ombre sballate o luccichii sui muri verticali profondi.
-        const pitWallMat = new THREE.MeshBasicMaterial({ color: 0x050508 }); // Colore del vuoto
+        // --- PREPARAZIONE PARETI INTERNE DELLA FOSSA ---
+        const pitWallMat = new THREE.MeshBasicMaterial({ color: 0x050508 }); 
         const meshPitWalls = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, pitWallMat, pitFloorCount);
         this.mapGroup.add(meshPitWalls);
         let pWallIdx = 0;
@@ -6970,12 +6968,12 @@ class GameMap {
                             dummy.updateMatrix();
                             meshRock.setMatrixAt(idxRock++, dummy.matrix);
                         }
-                   } else if (this.grid[x][y] === 5) {
+                  } else if (this.grid[x][y] === 5) {
                         let px = x * TILE_SIZE + TILE_SIZE / 2;
                         let pz = y * TILE_SIZE + TILE_SIZE / 2;
 
-                        // MURO SPROFONDATO (Pareti della voragine)
-                        // Usiamo meshPitWalls invece di wallMesh: abisso scuro e senza riflessi!
+                        // MURO SPROFONDATO (Pareti della voragine scura)
+                        // Il tetto di questo cubo nero si ferma a y = -18
                         dummy.position.set(px, -66, pz);
                         dummy.scale.set(1, 1, 1);
                         dummy.rotation.set(0, 0, 0);
@@ -6983,8 +6981,8 @@ class GameMap {
                         meshPitWalls.setMatrixAt(pWallIdx++, dummy.matrix);
                         
                         // LIQUIDO (Acqua / Lava)
-                        dummy.position.set(px, -18.5, pz);
-                        // FIX Z-FIGHTING: Scala riportata a 1. Prima era 1.25, le texture si compenetravano e "sfarfallavano" (aspetto sovrapposto)
+                        // FIX: Deve stare a -17.5 per potersi poggiare "SOPRA" il tetto nero, senza venirne sepolto!
+                        dummy.position.set(px, -17.5, pz);
                         dummy.scale.set(1, 1, 1); 
                         dummy.rotation.set(0, 0, 0);
                         dummy.updateMatrix();
@@ -6993,14 +6991,13 @@ class GameMap {
                         
                         // EVENTUALE LASTRA DI GHIACCIO
                         if (meshIceFloor) {
-                            dummy.position.set(px, -15.5, pz);
-                            // Manteniamo scala a 1 anche per il ghiaccio
+                            dummy.position.set(px, -14.5, pz); // Rialzata leggermente
                             dummy.scale.set(1, 1, 1);
                             dummy.updateMatrix();
                             meshIceFloor.setMatrixAt(pFloorIdx, dummy.matrix);
                         }
                         
-                        pFloorIdx++; // Ora incrementiamo per il prossimo blocco
+                        pFloorIdx++;
 
                        // --- EDGE MASKING: SCAGLIE E LASTRE SUI BORDI ---
                         let edgeOffsets = [];
@@ -11569,30 +11566,10 @@ const Preloader = {
         const texLoader = new THREE.TextureLoader(this.manager);
         this.textures.smoke = texLoader.load('smoke.png');
         
-        // --- FIX WEBGL: FORZATURA TEXTURE A 512x512 (Power of Two) ---
-        // Le immagini libere (non 512x512) vengono bloccate dalla GPU in WebGL.
-        // Questa funzione intercetta i JPEG e li disegna su un Canvas matematicamente perfetto
-        // garantendo che l'animazione scorra sempre in modo fluido senza schermate nere!
-        const imgLoader = new THREE.ImageLoader(this.manager);
-        const loadPOT = (url) => {
-            const canvas = document.createElement('canvas');
-            canvas.width = 512; canvas.height = 512;
-            const tex = new THREE.CanvasTexture(canvas);
-            tex.wrapS = THREE.RepeatWrapping; 
-            tex.wrapT = THREE.RepeatWrapping;
-            tex.encoding = THREE.sRGBEncoding;
-            
-            imgLoader.load(url, (img) => {
-                canvas.getContext('2d').drawImage(img, 0, 0, 512, 512);
-                tex.needsUpdate = true; // Sblocca e anima la texture non appena l'immagine è scaricata
-            }, undefined, () => console.warn("Errore caricamento texture: " + url));
-            return tex;
-        };
-
-        // Carichiamo l'acqua, la lava e il ghiaccio forzando la compatibilità WebGL
-        this.textures.water = loadPOT('water.jpg');
-        this.textures.waterLava = loadPOT('water_lava.jpg');
-        this.textures.iceCrust = loadPOT('rock_ice.jpg');
+        // --- NUOVE TEXTURE LIQUIDI ---
+        this.textures.water = texLoader.load('water.jpg');
+        this.textures.waterLava = texLoader.load('water_lava.jpg');
+        this.textures.iceCrust = texLoader.load('rock_ice.jpg');
         
         // Carichiamo dinamicamente tutte le varianti
         const variants = ['', '_lava', '_ice'];

@@ -6773,7 +6773,7 @@ class GameMap {
         this.mapGroup.add(meshPitWalls);
         let pWallIdx = 0;
 
-       // --- NUOVA VIGNETTATURA SOTTERRANEA GLOBALE (Zero Tiling, Basso Impatto) ---
+      // --- NUOVA VIGNETTATURA SOTTERRANEA GLOBALE (Inner Shadow Perfetto) ---
         if (!window.GLOBAL_PIT_SHADOW_CANVAS) {
             window.GLOBAL_PIT_SHADOW_CANVAS = document.createElement('canvas');
             window.GLOBAL_PIT_SHADOW_TEX = new THREE.CanvasTexture(window.GLOBAL_PIT_SHADOW_CANVAS);
@@ -6781,38 +6781,45 @@ class GameMap {
             window.GLOBAL_PIT_SHADOW_TEX.magFilter = THREE.LinearFilter;
             window.GLOBAL_PIT_SHADOW_MAT = new THREE.MeshBasicMaterial({ 
                 map: window.GLOBAL_PIT_SHADOW_TEX, 
-                transparent: true, depthWrite: false 
+                transparent: true, depthWrite: false, opacity: 0.95
             });
         }
         
         const sCanvas = window.GLOBAL_PIT_SHADOW_CANVAS;
-        const res = 8; // Risoluzione bilanciata per avere un'ombra morbida senza pesare in RAM
+        const res = 16; // Risoluzione raddoppiata per gradienti setosi
         sCanvas.width = (this.width + 16) * res;
         sCanvas.height = (this.height + 16) * res;
         const sCtx = sCanvas.getContext('2d');
         
-        // Sfondo base: Ombra densa
-        sCtx.fillStyle = 'rgba(5, 5, 8, 0.98)';
-        sCtx.fillRect(0, 0, sCanvas.width, sCanvas.height);
+        // 1. Svuotiamo la tela (ora è 100% trasparente)
+        sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
+        sCtx.globalCompositeOperation = 'source-over';
         
-        // Scaviamo dinamicamente i buchi della fossa con una forte sfocatura (Ambient Occlusion)
-        sCtx.globalCompositeOperation = 'destination-out';
-        sCtx.fillStyle = '#000';
-        sCtx.shadowColor = '#000';
-        sCtx.shadowBlur = 24; // Raggio generoso per fondere morbidamente le pareti
+        // 2. Impostiamo colore e ombra scurissimi
+        sCtx.fillStyle = '#030305'; 
+        sCtx.shadowColor = '#030305';
+        sCtx.shadowBlur = 45; // Blur enorme per simulare la profondità
         
-        for(let gx = 0; gx < this.width; gx++) {
-            for(let gy = 0; gy < this.height; gy++) {
-                if (this.grid[gx][gy] === 5) {
-                    // +8 è il padding. Allarghiamo il rettangolo di 2px per coprire perfettamente le fughe
-                    sCtx.fillRect((gx + 8) * res - 1, (gy + 8) * res - 1, res + 2, res + 2);
+        // 3. Disegniamo I MURI. Essendo la tela trasparente sulle fosse, 
+        // l'ombra dei muri "strariperà" nel vuoto creando la vignettatura interna!
+        for (let pass = 0; pass < 2; pass++) { // Doppio ciclo per infittire l'ombra ai bordi
+            for(let gx = -8; gx < this.width + 8; gx++) {
+                for(let gy = -8; gy < this.height + 8; gy++) {
+                    let isPit = false;
+                    if (gx >= 0 && gx < this.width && gy >= 0 && gy < this.height) {
+                        if (this.grid[gx][gy] === 5) isPit = true;
+                    }
+                    
+                    if (!isPit) {
+                        sCtx.fillRect((gx + 8) * res, (gy + 8) * res, res, res);
+                    }
                 }
             }
         }
         
         window.GLOBAL_PIT_SHADOW_TEX.needsUpdate = true;
         const meshDepthShadows = new THREE.Mesh(giantGeo, window.GLOBAL_PIT_SHADOW_MAT);
-        // Posizionata a -17.0: SOPRA l'acqua (-17.5), ma SOTTO l'eventuale ghiaccio (-14.5)
+        // Posizionata a -17.0: SOPRA l'acqua (-17.5) ma SOTTO il pavimento (0)
         meshDepthShadows.position.set((this.width * TILE_SIZE) / 2, -17.0, (this.height * TILE_SIZE) / 2);
         this.mapGroup.add(meshDepthShadows);
 

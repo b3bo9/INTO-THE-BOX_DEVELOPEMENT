@@ -6647,37 +6647,30 @@ class GameMap {
     window.GLOBAL_TELEGRAPH_GEO.rotateX(-Math.PI / 2);
 }
       const wallMesh = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, this.wallMat, wallCount);
-     // --- PREPARAZIONE PAVIMENTI LIQUIDI JEPG CON EFFETTO DOPPIO STRATO ---
+    // --- PREPARAZIONE PAVIMENTI LIQUIDI JEPG CON EFFETTO DOPPIO STRATO ---
         let pitColor, pitEmissive, pitOpacity, pitRoughness, pitMetalness, baseTexImage;
         
         if (Game.currentThemeIndex === 0) { // Foresta -> Acqua Jpeg
-            pitColor = 0x55aaff; 
-            pitEmissive = 0xffffff; // FIX: Deve essere BIANCO per rivelare i colori del JPEG!
-            pitOpacity = 0.85; pitRoughness = 0.05; pitMetalness = 0.95;
+            pitColor = 0x55aaff; pitEmissive = 0xffffff; pitOpacity = 0.85; pitRoughness = 0.05; pitMetalness = 0.95;
             baseTexImage = Preloader.textures.water;
         } else if (Game.currentThemeIndex === 1) { // Lava -> Lava Jpeg
-            pitColor = 0xffffff; 
-            pitEmissive = 0xffffff; // FIX: Deve essere BIANCO per rivelare il rosso reale della foto!
-            pitOpacity = 1.0; pitRoughness = 0.4; pitMetalness = 0.1;
+            pitColor = 0xffffff; pitEmissive = 0xffffff; pitOpacity = 1.0; pitRoughness = 0.4; pitMetalness = 0.1;
             baseTexImage = Preloader.textures.waterLava;
         } else { // Ghiaccio -> Acqua Jpeg (che scorrerà sotto la lastra di ghiaccio)
-            pitColor = 0x3388cc; 
-            pitEmissive = 0xffffff; // FIX: BIANCO!
-            pitOpacity = 0.9; pitRoughness = 0.1; pitMetalness = 0.9;
+            pitColor = 0x3388cc; pitEmissive = 0xffffff; pitOpacity = 0.9; pitRoughness = 0.1; pitMetalness = 0.9;
             baseTexImage = Preloader.textures.water;
         }
 
-        // Cloniamo per permettere lo scorrimento indipendente
-        let liquidTex = baseTexImage ? baseTexImage.clone() : CHAR_GRUNGE_TEX.clone();
+        // FIX CRITICO THREE.JS: NON usare mai .clone() su texture in fase di caricamento!
+        // Utilizziamo il riferimento diretto. La texture si aggiornerà automaticamente appena il Jpeg verrà scaricato.
+        let liquidTex = baseTexImage || CHAR_GRUNGE_TEX;
         liquidTex.wrapS = THREE.RepeatWrapping; liquidTex.wrapT = THREE.RepeatWrapping;
-        // INGRANDIAMO LA TEXTURE: Un valore minore di 1 fa "zoom" sull'immagine
         liquidTex.repeat.set(0.35, 0.35); 
         liquidTex.encoding = THREE.sRGBEncoding;
         liquidTex.needsUpdate = true;
         
         this.pitMat = new THREE.MeshStandardMaterial({
             color: pitColor, emissive: pitEmissive,
-            // FIX: Alziamo leggermente la luminosità dell'acqua da 0.6 a 1.0 per farla spiccare nel buio
             emissiveIntensity: Game.currentThemeIndex === 1 ? 1.5 : 1.0,
             roughness: pitRoughness, metalness: pitMetalness,
             map: liquidTex, emissiveMap: liquidTex, 
@@ -6692,17 +6685,18 @@ class GameMap {
         // SETUP LASTRA DI GHIACCIO SUPERIORE
         let meshIceFloor = null;
         if (Game.currentThemeIndex === 2) {
-            // Usiamo la texture rocciosa del ghiaccio (rock_ice.jpg) caricata dal preloader
-            let iceTex = Preloader.textures['rock_ice'] ? Preloader.textures['rock_ice'].clone() : CHAR_GRUNGE_TEX;
+            // FIX: Usiamo l'istanza dedicata e indipendente caricata dal preloader!
+            let iceTex = Preloader.textures.iceCrust || CHAR_GRUNGE_TEX;
             iceTex.wrapS = THREE.RepeatWrapping; iceTex.wrapT = THREE.RepeatWrapping;
-            iceTex.repeat.set(0.8, 0.8); // Ghiaccio più fitto e solido
+            iceTex.repeat.set(0.8, 0.8); 
             iceTex.encoding = THREE.sRGBEncoding;
+            iceTex.needsUpdate = true;
             
             this.iceMat = new THREE.MeshStandardMaterial({
                 color: 0xaaddff, emissive: 0x002244,
                 roughness: 0.1, metalness: 0.9,
                 map: iceTex,
-                transparent: true, opacity: 0.75, // Lascia intravedere l'acqua che scorre sotto!
+                transparent: true, opacity: 0.75, 
                 depthWrite: false
             });
             meshIceFloor = new THREE.InstancedMesh(floorGeo, this.iceMat, pitFloorCount);
@@ -11577,6 +11571,7 @@ const Preloader = {
         // --- NUOVE TEXTURE LIQUIDI ---
         this.textures.water = texLoader.load('water.jpg');
         this.textures.waterLava = texLoader.load('water_lava.jpg');
+        this.textures.iceCrust = texLoader.load('rock_ice.jpg'); // FIX: Istanza separata per animare il ghiaccio!
         
         // Carichiamo dinamicamente tutte le varianti
         const variants = ['', '_lava', '_ice'];

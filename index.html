@@ -6743,7 +6743,7 @@ class GameMap {
         this.meshPitFloor.renderOrder = 1; // FIX LAMPEGGIAMENTO: Costringe la GPU a disegnare sempre il liquido per primo
         this.mapGroup.add(this.meshPitFloor);
         
-        // SETUP LASTRA DI GHIACCIO SUPERIORE (Stessa tecnica gigante)
+       // SETUP LASTRA DI GHIACCIO SUPERIORE (Stessa tecnica gigante)
         if (Game.currentThemeIndex === 2) {
             let iceTex = Preloader.textures.iceCrust || CHAR_GRUNGE_TEX;
             iceTex.wrapS = THREE.RepeatWrapping; 
@@ -6754,10 +6754,10 @@ class GameMap {
             
             this.iceMat = new THREE.MeshStandardMaterial({
                 color: 0xffffff, emissive: 0xffffff,
-                emissiveIntensity: 0.6,
+                emissiveIntensity: 0.35, // MODIFICA: Abbassato per non "bruciare" il blu dell'acqua sotto
                 roughness: 0.05, metalness: 0.8,
                 map: iceTex, emissiveMap: iceTex,
-                transparent: true, opacity: 0.80, 
+                transparent: true, opacity: 0.55, // MODIFICA: Più trasparente per vedere lo scorrimento dell'acqua
                 depthWrite: false
             });
 
@@ -6765,7 +6765,7 @@ class GameMap {
             // La lastra è posizionata a -14.5, sospesa sopra l'acqua!
             this.meshIceFloor.position.set((this.width * TILE_SIZE) / 2, -14.5, (this.height * TILE_SIZE) / 2);
             this.meshIceFloor.receiveShadow = true;
-            this.meshIceFloor.renderOrder = 3; // FIX LAMPEGGIAMENTO: Costringe la GPU a disegnare il ghiaccio per ultimo
+            this.meshIceFloor.renderOrder = 2; // MODIFICA: Disegna per secondo (dopo l'acqua)
             this.mapGroup.add(this.meshIceFloor);
         }
 
@@ -6827,19 +6827,27 @@ class GameMap {
         
         window.GLOBAL_PIT_SHADOW_TEX.needsUpdate = true;
         const meshDepthShadows = new THREE.Mesh(giantGeo, window.GLOBAL_PIT_SHADOW_MAT);
-        // Posizionata a -17.0: SOPRA l'acqua (-17.5) ma SOTTO il ghiaccio e il pavimento
-        meshDepthShadows.position.set((this.width * TILE_SIZE) / 2, -17.0, (this.height * TILE_SIZE) / 2);
-        meshDepthShadows.renderOrder = 2; // FIX LAMPEGGIAMENTO: Si disegna sempre e solo IN MEZZO tra l'acqua e il ghiaccio
+        // MODIFICA: Alziamo l'ombra a -2.0 (appena sotto i bordi rocciosi). 
+        // In questo modo oscura DALL'ALTO sia l'acqua che il ghiaccio, unificando l'effetto in tutti i temi!
+        meshDepthShadows.position.set((this.width * TILE_SIZE) / 2, -2.0, (this.height * TILE_SIZE) / 2);
+        meshDepthShadows.renderOrder = 3; // MODIFICA: Si disegna sempre per ultima, sopra a tutti i liquidi
         this.mapGroup.add(meshDepthShadows);
 
         // --- PREPARAZIONE ROCCE ORGANICHE PER I BORDI DELLA FOSSA ---
         if (!window.GLOBAL_PIT_BORDER_GEO) window.GLOBAL_PIT_BORDER_GEO = new THREE.DodecahedronGeometry(14, 1);
         
-        // FIX LUCCICHII: Creiamo un materiale "Lambert" che prende texture e colore del pavimento, 
-        // ma ignora i rilievi (Bump Map). Niente più sfarfallii neri o bianchi sui sassi schiacciati!
+        // MODIFICA: Aggiungiamo un colore emissivo di base dipendente dal tema per evitare 
+        // che nella Foresta (dove la luce ambientale è bassissima) i sassi diventino troppo scuri.
+        let borderEmissive = 0x000000;
+        if (Game.currentThemeIndex === 0) borderEmissive = 0x0c1a12; // Foresta: bagliore verde scurissimo
+        else if (Game.currentThemeIndex === 1) borderEmissive = 0x220505; // Lava: bagliore rossastro
+        else if (Game.currentThemeIndex === 2) borderEmissive = 0x050a15; // Ghiaccio: bagliore bluastro
+
+        // FIX LUCCICHII e COLORI: Creiamo un materiale "Lambert" che prende texture e colore del pavimento.
         const borderMat = new THREE.MeshLambertMaterial({
             color: activeMats.dirt.color,
-            map: activeMats.dirt.map
+            map: activeMats.dirt.map,
+            emissive: borderEmissive // Schiarisce le zone in ombra
         });
 
         const meshPitBorders = new THREE.InstancedMesh(window.GLOBAL_PIT_BORDER_GEO, borderMat, pitFloorCount * 12);

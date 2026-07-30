@@ -2791,7 +2791,7 @@ const ModelFactory = {
     setupShadows(mesh) { mesh.traverse(c => { if(c.isMesh) { c.castShadow = true; c.receiveShadow = true; } }); },
     buildPlayer(mat, gemMat) {
         let group = new THREE.Group();
-        let body = new THREE.Mesh(SharedGeo.cone, mat); body.scale.set(16, 24, 16); body.position.y = 12;
+        let body = new THREE.Mesh(SharedGeo.cone, mat); body.scale.set(16, 36, 16); body.position.y = 18;
         // Aggiunta Texture Materica per dare identità alla corazza, sciarpa e legni
         let head = new THREE.Mesh(SharedGeo.sphere, new THREE.MeshStandardMaterial({color: 0xdddddd, emissive: 0x222222, map: CHAR_GRUNGE_TEX})); head.scale.set(6, 6, 6); head.position.y = 28;
         let scarf = new THREE.Mesh(SharedGeo.torus, new THREE.MeshStandardMaterial({color: 0x880000, roughness: 0.9, map: CHAR_GRUNGE_TEX, bumpMap: isTouchDevice ? null : CHAR_GRUNGE_TEX, bumpScale: 0.05})); scarf.scale.set(6, 6, 2); scarf.position.y = 24; scarf.rotation.x = Math.PI/2;
@@ -2862,7 +2862,7 @@ const ModelFactory = {
             let bow = new THREE.Mesh(SharedGeo.torus, darkMat); bow.scale.set(size*1.2, size*1.2, size*0.2); bow.position.set(size, size*1.5, size); bow.rotation.y = Math.PI/2;
             group.add(spine); group.add(ribs); group.add(skull); group.add(bow);
         } else if (type === 'mage' || type === 'pyromancer' || type === 'dark_prophet') {
-            let robe = new THREE.Mesh(SharedGeo.cone, darkMat); robe.scale.set(size*1.2, size*2.5, size*1.2); robe.position.y = size*1.2;
+           let robe = new THREE.Mesh(SharedGeo.cone, darkMat); robe.scale.set(size*1.2, size*3.6, size*1.2); robe.position.y = size*1.8;
             let hood = new THREE.Mesh(SharedGeo.sphere, mat); hood.scale.set(size*0.8, size*0.8, size*0.8); hood.position.y = size*2.8;
             let crystals = new THREE.Group(); crystals.position.y = size*1.5;
             
@@ -2907,14 +2907,14 @@ const ModelFactory = {
             group.add(robe); group.add(hood); group.add(crystals); parts.crystals = crystals;
         } else if (type === 'leaper') {
             let body = new THREE.Mesh(SharedGeo.sphere, mat); body.scale.set(size*1.2, size*1.2, size*1.2); body.position.y = size*1.2;
-            let teeth = new THREE.Mesh(SharedGeo.cone, SharedMat.leaperTeeth); teeth.scale.set(size*0.8, size*1.5, size*0.8); teeth.position.set(0, size*1.2, size); teeth.rotation.x = Math.PI/2;
+            let teeth = new THREE.Mesh(SharedGeo.cone, SharedMat.leaperTeeth); teeth.scale.set(size*0.8, size*3.0, size*0.8); teeth.position.set(0, size*1.2, size); teeth.rotation.x = Math.PI/2;
             group.add(body); group.add(teeth);
         } else if (type === 'fire_demon') {
             let torso = new THREE.Mesh(SharedGeo.box, darkMat); torso.scale.set(size*1.5, size*1.5, size*1.5); torso.position.y = size*1.5;
             let core = new THREE.Mesh(SharedGeo.icosahedron, mat); core.scale.set(size, size, size); core.position.set(0, size*1.5, size*0.2);
             let head = new THREE.Mesh(SharedGeo.box, darkMat); head.scale.set(size*0.6, size*0.6, size*0.6); head.position.set(0, size*2.8, 0);
-            let hornL = new THREE.Mesh(SharedGeo.cone, mat); hornL.scale.set(size*0.3, size, size*0.3); hornL.position.set(-size*0.4, size*3.2, 0); hornL.rotation.z = Math.PI/4;
-            let hornR = new THREE.Mesh(SharedGeo.cone, mat); hornR.scale.set(size*0.3, size, size*0.3); hornR.position.set(size*0.4, size*3.2, 0); hornR.rotation.z = -Math.PI/4;
+            let hornL = new THREE.Mesh(SharedGeo.cone, mat); hornL.scale.set(size*0.3, size*2.0, size*0.3); hornL.position.set(-size*0.4, size*3.2, 0); hornL.rotation.z = Math.PI/4;
+let hornR = new THREE.Mesh(SharedGeo.cone, mat); hornR.scale.set(size*0.3, size*2.0, size*0.3); hornR.position.set(size*0.4, size*3.2, 0); hornR.rotation.z = -Math.PI/4;
             group.add(torso); group.add(core); group.add(head); group.add(hornL); group.add(hornR);
         } else if (type === 'crystal') {
             let base = new THREE.Mesh(SharedGeo.cylinder, darkMat); base.scale.set(size, size*0.5, size); base.position.y = size*0.25;
@@ -7850,7 +7850,7 @@ class Player extends Entity {
         this.updateAppearance();
         
         // --- PRE-ALLOCAZIONE SMEMBRAMENTO GIOCATORE (Zero-Allocation Death) ---
-        if (!window.GLOBAL_DEAD_BODY_GEO) window.GLOBAL_DEAD_BODY_GEO = new THREE.CylinderGeometry(0.35, 1, 2, 8);
+       if (!window.GLOBAL_DEAD_BODY_GEO) window.GLOBAL_DEAD_BODY_GEO = new THREE.CylinderGeometry(0.35, 1, 1, 8);
         this.deadBody = new THREE.Mesh(window.GLOBAL_DEAD_BODY_GEO, this.mesh.children[0].material);
         this.deadBody.matrixAutoUpdate = false;
         let pScarf = this.mesh.children[2].clone();
@@ -10792,7 +10792,7 @@ class Projectile {
 
         this.mesh.geometry = geo; this.mesh.material = mat; this.group.position.set(x, 15, y);
         // Modificato: Rimosso 'player_arrow' da questo IF per permettergli di scalare come sfera
-        if (type === 'arrow' || type === 'homing_arrow') { this.mesh.scale.set(4, 20, 4); this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; }
+        if (type === 'arrow' || type === 'homing_arrow') { this.mesh.scale.set(4, 40, 4); this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; }
         else { this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); }
         
        this.mesh.updateMatrix(); this.group.updateMatrix(); 

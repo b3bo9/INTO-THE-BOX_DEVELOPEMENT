@@ -6720,22 +6720,29 @@ class GameMap {
             baseTexImage = Preloader.textures.water;
         }
 
-        let liquidTex = baseTexImage || CHAR_GRUNGE_TEX;
+       let liquidTex = baseTexImage || CHAR_GRUNGE_TEX;
         liquidTex.wrapS = THREE.RepeatWrapping; 
         liquidTex.wrapT = THREE.RepeatWrapping;
         liquidTex.encoding = THREE.sRGBEncoding;
         
-        // Calcoliamo la reale larghezza della mappa in unità 3D
         let mapRealWidth = (this.width + 16) * TILE_SIZE; 
         let mapRealHeight = (this.height + 16) * TILE_SIZE;
         
-        // Diciamo alla texture di ripetersi proporzionalmente per mantenere l'alta definizione
         liquidTex.repeat.set(mapRealWidth / 250, mapRealHeight / 250);
         liquidTex.needsUpdate = true;
         
+        // FIX OMBRE & VIGNETTATURA: Togliendo l'emissive l'acqua diventerà oscurata automaticamente 
+        // dall'Ambient Occlusion e dalle ombre direzionali dei muri neri della fossa!
+        // (La lava mantiene una propria luce interna minima per spiccare)
+        let actualEmissive = Game.currentThemeIndex === 1 ? pitEmissive : 0x000000;
+        let actualIntensity = Game.currentThemeIndex === 1 ? 0.6 : 0.0;
+        
+        // Inoltre schiariamo il colore base di acqua e ghiaccio per compensare la mancanza di luce emissiva
+        let actualColor = Game.currentThemeIndex === 0 ? 0xaaccff : (Game.currentThemeIndex === 2 ? 0x88ccff : pitColor);
+
         this.pitMat = new THREE.MeshStandardMaterial({
-            color: pitColor, emissive: pitEmissive,
-            emissiveIntensity: Game.currentThemeIndex === 1 ? 1.5 : 1.0,
+            color: actualColor, emissive: actualEmissive,
+            emissiveIntensity: actualIntensity,
             roughness: pitRoughness, metalness: pitMetalness,
             map: liquidTex, emissiveMap: liquidTex, 
             transparent: true, opacity: pitOpacity,
@@ -6784,18 +6791,6 @@ class GameMap {
         const meshPitWalls = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, pitWallMat, pitFloorCount);
         this.mapGroup.add(meshPitWalls);
         let pWallIdx = 0;
-
-        // --- PREPARAZIONE NEBBIA DI PROFONDITÀ (VIGNETTATURA SOTTERRANEA) ---
-        if (!window.GLOBAL_DEPTH_SHADOW_TEX) window.GLOBAL_DEPTH_SHADOW_TEX = createDepthShadowTexture();
-        const depthShadowMat = new THREE.MeshBasicMaterial({ 
-            map: window.GLOBAL_DEPTH_SHADOW_TEX, 
-            transparent: true, opacity: 0.95, 
-            depthWrite: false 
-        });
-        const meshDepthShadows = new THREE.InstancedMesh(floorGeo, depthShadowMat, pitFloorCount);
-        meshDepthShadows.renderOrder = -14; // FIX: Si interpone esattamente tra l'acqua (-15) e il ghiaccio (-13)!
-        this.mapGroup.add(meshDepthShadows);
-        let pShadowIdx = 0;
 
         // --- PREPARAZIONE ROCCE ORGANICHE PER I BORDI DELLA FOSSA ---
         if (!window.GLOBAL_PIT_BORDER_GEO) window.GLOBAL_PIT_BORDER_GEO = new THREE.DodecahedronGeometry(14, 1);
@@ -7066,14 +7061,7 @@ class GameMap {
                         dummy.updateMatrix();
                         meshPitWalls.setMatrixAt(pWallIdx++, dummy.matrix);
                         
-                        // NEBBIA DI PROFONDITÀ (Ombra sfumata)
-                        dummy.position.set(px, -17.0, pz);
-                        // FIX: L'oggetto è ruotato a pancia in giù, quindi la profondità Z è in realtà la Y!
-                        // Scaliamo X e Z per allargare il bordo sfumato e farlo aderire ai muri neri!
-                        dummy.scale.set(1.08, 1, 1.08); 
-                        dummy.rotation.set(0, 0, 0);
-                        dummy.updateMatrix();
-                        meshDepthShadows.setMatrixAt(pShadowIdx++, dummy.matrix);
+                        // (La "Nebbia di profondità" è stata rimossa per sfruttare le ombre globali del motore)
 
                         // --- EDGE MASKING: SCAGLIE E LASTRE SUI BORDI ---
                         let edgeOffsets = [];
@@ -7234,7 +7222,6 @@ class GameMap {
         meshTreeShadows.count = idxTree;
         meshTreeShadows.instanceMatrix.needsUpdate = true;
         meshTreeShadows.visible = !AppSettings.shadowsEnabled; // Setta la visibilità di base
-        meshDepthShadows.count = pShadowIdx;
         
         if (idxTree > 0) {
             this.mapGroup.add(meshTrees);

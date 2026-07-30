@@ -8158,7 +8158,13 @@ class Player extends Entity {
         }
         this.updateFlash(dt);
         if (dt === 0) return; // FIX BETA: Blocca input, attacchi e i-frames se il gioco è in pausa!
-      // --- HOt: CURA NEL TEMPO CAOS ELEMENTALE ---
+        
+        // FIX CRASH: Calcoliamo SE siamo nella fossa all'inizio del frame, così tutti possono leggerlo!
+        let tileX = Math.floor(this.x / TILE_SIZE);
+        let tileY = Math.floor(this.y / TILE_SIZE);
+        let inPit = (Game.map && Game.map.grid[tileX] && Game.map.grid[tileX][tileY] === 5);
+
+        // --- HOt: CURA NEL TEMPO CAOS ELEMENTALE ---
         if (this.chaosHoTTimer > 0) {
             this.chaosHoTTimer -= dt;
             let healChunk = (this.chaosHoTAmount / 4.0) * dt; // Cura spalmata per frame
@@ -8503,10 +8509,6 @@ class Player extends Entity {
         let isShooting = Game.mouse.leftDown || Game.inputs.right.active;
         if (this.overdrive && this.essence === 'red' && isShooting && !this.isDashing) this.flamethrower(dt);
         
-        // Rileva se il giocatore è dentro una fossa
-        let tileX = Math.floor(this.x / TILE_SIZE);
-        let tileY = Math.floor(this.y / TILE_SIZE);
-        let inPit = (Game.map && Game.map.grid[tileX] && Game.map.grid[tileX][tileY] === 5);
 
         // ---> BLOCCO DI MOVIMENTO, FISICA E PENDOLO
         if (!this.isDashing) {

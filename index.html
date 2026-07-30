@@ -2498,7 +2498,7 @@ function createObeliskGeometry() {
 const SharedGeo = {
     auraDome: new THREE.SphereGeometry(1, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), auraRing: new THREE.TorusGeometry(1, 0.03, 8, 32),
     box: new THREE.BoxGeometry(1, 1, 1), sphere: new THREE.SphereGeometry(1, 8, 8), cylinder: new THREE.CylinderGeometry(1, 1, 1, 8), 
-    cone: new THREE.ConeGeometry(1, 2, 8), icosahedron: new THREE.IcosahedronGeometry(1, 0), torus: new THREE.TorusGeometry(1, 0.1, 8, 24),
+    cone: new THREE.ConeGeometry(1, 1, 8), icosahedron: new THREE.IcosahedronGeometry(1, 0), torus: new THREE.TorusGeometry(1, 0.1, 8, 24),
     tetrahedron: new THREE.TetrahedronGeometry(1, 0), bloodPlane: new THREE.PlaneGeometry(40, 40), rockDebris: new THREE.DodecahedronGeometry(1.5, 0),
     heart: (function(){ const shape = new THREE.Shape(); shape.moveTo(0, 1.5); shape.bezierCurveTo(2, 3.5, 4, 1.5, 0, -2.5); shape.bezierCurveTo(-4, 1.5, -2, 3.5, 0, 1.5); const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.5, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.2, bevelThickness: 0.2 }); geo.center(); return geo; })(),
     coin: new THREE.CylinderGeometry(10, 10, 2, 16)

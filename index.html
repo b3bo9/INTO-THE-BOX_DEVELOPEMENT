@@ -8559,10 +8559,10 @@ class Player extends Entity {
                 }
             }
             
-            // 4. SPROFONDAMENTO E DANNI (LAVA)
-            let targetY = 0;
+           // 4. SPROFONDAMENTO E DANNI (LAVA)
+            let targetDepth = 0; // Rinomina per evitare conflitti con la lanterna
             if (inPit && !isIce) {
-                targetY = -12; // Il giocatore sprofonda visivamente fino alla vita
+                targetDepth = -12; // Il giocatore sprofonda visivamente fino alla vita
                 
                 if (Game.currentThemeIndex === 1) { // TEMA LAVA
                     if (this.lavaTimer === undefined) this.lavaTimer = 0;
@@ -8578,7 +8578,7 @@ class Player extends Entity {
             }
 
             // Interpolazione morbida dell'altezza (effetto tuffo/emersione fluido)
-            this.mesh.position.y += ((targetY + Game.animBounce * 0.75) - this.mesh.position.y) * dt * 10;
+            this.mesh.position.y += ((targetDepth + Game.animBounce * 0.75) - this.mesh.position.y) * dt * 10;
             
             // --- PENDOLO FISICO E FLUIDO DELLA LANTERNA ---
             // Inizializziamo le variabili di fase se non esistono

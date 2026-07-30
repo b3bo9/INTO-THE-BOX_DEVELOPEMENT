@@ -2656,28 +2656,10 @@ function createBlobShadowTexture() {
     tex.encoding = THREE.sRGBEncoding; // <--- MANCAVA QUESTO
     return tex;
 }
-  function createDepthShadowTexture() {
-    const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 128; const ctx = canvas.getContext('2d');
-    // Riempiamo tutto di nero (il colore del vuoto della fossa)
-    ctx.fillStyle = '#050508'; ctx.fillRect(0, 0, 128, 128);
-    // Usiamo 'destination-out' per CANCELLARE il centro creando un buco sfumato
-    ctx.globalCompositeOperation = 'destination-out';
-    
-    // MODIFICA: Raggi e stop del gradiente ricalcolati per una sfumatura morbidissima
-    const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-    grad.addColorStop(0, 'rgba(0,0,0,1)');       // Centro completamente trasparente (si vede l'acqua)
-    grad.addColorStop(0.35, 'rgba(0,0,0,0.95)'); // Mantiene l'area centrale visibile
-    grad.addColorStop(0.75, 'rgba(0,0,0,0.3)');  // Gradiente molto dolce verso i bordi
-    grad.addColorStop(1, 'rgba(0,0,0,0)');       // Bordo esterno 100% nero (si fonde col muro)
-    
-    ctx.fillStyle = grad; ctx.fillRect(0, 0, 128, 128);
-    const tex = new THREE.CanvasTexture(canvas);
-    
-    // MODIFICA: Aggiunti filtri lineari per ammorbidire i pixel del gradiente
-    tex.minFilter = THREE.LinearFilter;
-    tex.magFilter = THREE.LinearFilter;
-    return tex;
-}
+ function createDepthShadowTexture() {
+        /* Obsoleta: Sostituita dalla vignettatura organica globale */
+        return null;
+    }
 function createRuneTexture() {
     const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256; const ctx = canvas.getContext('2d');
     
@@ -6791,16 +6773,48 @@ class GameMap {
         this.mapGroup.add(meshPitWalls);
         let pWallIdx = 0;
 
-        // --- PREPARAZIONE NEBBIA DI PROFONDITÀ (VIGNETTATURA SOTTERRANEA) ---
-        if (!window.GLOBAL_DEPTH_SHADOW_TEX) window.GLOBAL_DEPTH_SHADOW_TEX = createDepthShadowTexture();
-        const depthShadowMat = new THREE.MeshBasicMaterial({ 
-            map: window.GLOBAL_DEPTH_SHADOW_TEX, 
-            transparent: true, opacity: 0.95, 
-            depthWrite: false 
-        });
-        const meshDepthShadows = new THREE.InstancedMesh(floorGeo, depthShadowMat, pitFloorCount);
+       // --- NUOVA VIGNETTATURA SOTTERRANEA GLOBALE (Zero Tiling, Basso Impatto) ---
+        if (!window.GLOBAL_PIT_SHADOW_CANVAS) {
+            window.GLOBAL_PIT_SHADOW_CANVAS = document.createElement('canvas');
+            window.GLOBAL_PIT_SHADOW_TEX = new THREE.CanvasTexture(window.GLOBAL_PIT_SHADOW_CANVAS);
+            window.GLOBAL_PIT_SHADOW_TEX.minFilter = THREE.LinearFilter;
+            window.GLOBAL_PIT_SHADOW_TEX.magFilter = THREE.LinearFilter;
+            window.GLOBAL_PIT_SHADOW_MAT = new THREE.MeshBasicMaterial({ 
+                map: window.GLOBAL_PIT_SHADOW_TEX, 
+                transparent: true, depthWrite: false 
+            });
+        }
+        
+        const sCanvas = window.GLOBAL_PIT_SHADOW_CANVAS;
+        const res = 8; // Risoluzione bilanciata per avere un'ombra morbida senza pesare in RAM
+        sCanvas.width = (this.width + 16) * res;
+        sCanvas.height = (this.height + 16) * res;
+        const sCtx = sCanvas.getContext('2d');
+        
+        // Sfondo base: Ombra densa
+        sCtx.fillStyle = 'rgba(5, 5, 8, 0.98)';
+        sCtx.fillRect(0, 0, sCanvas.width, sCanvas.height);
+        
+        // Scaviamo dinamicamente i buchi della fossa con una forte sfocatura (Ambient Occlusion)
+        sCtx.globalCompositeOperation = 'destination-out';
+        sCtx.fillStyle = '#000';
+        sCtx.shadowColor = '#000';
+        sCtx.shadowBlur = 24; // Raggio generoso per fondere morbidamente le pareti
+        
+        for(let gx = 0; gx < this.width; gx++) {
+            for(let gy = 0; gy < this.height; gy++) {
+                if (this.grid[gx][gy] === 5) {
+                    // +8 è il padding. Allarghiamo il rettangolo di 2px per coprire perfettamente le fughe
+                    sCtx.fillRect((gx + 8) * res - 1, (gy + 8) * res - 1, res + 2, res + 2);
+                }
+            }
+        }
+        
+        window.GLOBAL_PIT_SHADOW_TEX.needsUpdate = true;
+        const meshDepthShadows = new THREE.Mesh(giantGeo, window.GLOBAL_PIT_SHADOW_MAT);
+        // Posizionata a -17.0: SOPRA l'acqua (-17.5), ma SOTTO l'eventuale ghiaccio (-14.5)
+        meshDepthShadows.position.set((this.width * TILE_SIZE) / 2, -17.0, (this.height * TILE_SIZE) / 2);
         this.mapGroup.add(meshDepthShadows);
-        let pShadowIdx = 0;
 
         // --- PREPARAZIONE ROCCE ORGANICHE PER I BORDI DELLA FOSSA ---
         if (!window.GLOBAL_PIT_BORDER_GEO) window.GLOBAL_PIT_BORDER_GEO = new THREE.DodecahedronGeometry(14, 1);
@@ -7071,13 +7085,7 @@ class GameMap {
                         dummy.updateMatrix();
                         meshPitWalls.setMatrixAt(pWallIdx++, dummy.matrix);
                         
-                        // NEBBIA DI PROFONDITÀ (Ombra sfumata)
-                        // Posizionata a -17.0: SOPRA l'acqua (-17.5), ma SOTTO l'eventuale ghiaccio (-14.5)
-                        dummy.position.set(px, -17.0, pz);
-                        dummy.scale.set(1.15, 1.15, 1); // MODIFICA: Sovrapposizione estesa per fondere perfettamente le ombre adiacenti
-                        dummy.rotation.set(0, 0, 0);
-                        dummy.updateMatrix();
-                        meshDepthShadows.setMatrixAt(pShadowIdx++, dummy.matrix);
+                       // (La Nebbia di profondità ora è gestita globalmente in modo organico)
 
                         // --- EDGE MASKING: SCAGLIE E LASTRE SUI BORDI ---
                         let edgeOffsets = [];
@@ -7237,8 +7245,7 @@ class GameMap {
         meshTrees.instanceMatrix.needsUpdate = true; 
         meshTreeShadows.count = idxTree;
         meshTreeShadows.instanceMatrix.needsUpdate = true;
-        meshTreeShadows.visible = !AppSettings.shadowsEnabled; // Setta la visibilità di base
-        meshDepthShadows.count = pShadowIdx;
+       meshTreeShadows.visible = !AppSettings.shadowsEnabled; // Setta la visibilità di base
         
         if (idxTree > 0) {
             this.mapGroup.add(meshTrees);

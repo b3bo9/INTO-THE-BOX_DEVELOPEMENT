@@ -2661,10 +2661,10 @@ function createBlobShadowTexture() {
     canvas.width = 16; canvas.height = 128;
     const ctx = canvas.getContext('2d');
     const grad = ctx.createLinearGradient(0, 0, 0, 128);
-    // Colore esatto del muro della fossa che sfuma verso la trasparenza
-    grad.addColorStop(0, 'rgba(5,5,8,1.0)'); 
-    grad.addColorStop(0.3, 'rgba(5,5,8,0.8)');
-    grad.addColorStop(1, 'rgba(5,5,8,0)');
+    // FIX MULTIPLY: Il nero scurisce, il bianco diventa invisibile al 100%. Niente più bordi!
+    grad.addColorStop(0, '#050508'); // Muro scuro
+    grad.addColorStop(0.3, '#333333'); // Penombra
+    grad.addColorStop(1, '#ffffff'); // Luce totale (Invisibile)
     ctx.fillStyle = grad; 
     ctx.fillRect(0, 0, 16, 128);
     const tex = new THREE.CanvasTexture(canvas);
@@ -6718,7 +6718,7 @@ class GameMap {
     window.GLOBAL_TELEGRAPH_GEO.rotateX(-Math.PI / 2);
 }
       const wallMesh = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, this.wallMat, wallCount);
-     // --- PREPARAZIONE PAVIMENTI LIQUIDI (PIANO GIGANTE SOTTERRANEO) ---
+    // --- PREPARAZIONE PAVIMENTI LIQUIDI (PIANO GIGANTE SOTTERRANEO) ---
         let pitColor, pitEmissive, pitOpacity, pitRoughness, pitMetalness, baseTexImage;
         
         if (Game.currentThemeIndex === 0) { // Foresta -> Acqua Jpeg
@@ -6748,9 +6748,11 @@ class GameMap {
         liquidTex.repeat.set(mapRealWidth / 250, mapRealHeight / 250);
         liquidTex.needsUpdate = true;
         
+      // FIX ACQUA E LAVA
         this.pitMat = new THREE.MeshStandardMaterial({
-            color: pitColor, emissive: pitEmissive,
-            emissiveIntensity: Game.currentThemeIndex === 1 ? 1.5 : 1.0,
+            color: pitColor, 
+            emissive: pitEmissive, 
+            emissiveIntensity: Game.currentThemeIndex === 1 ? 1.5 : 0.6, // RIPRISTINATA LAVA A 1.5
             roughness: pitRoughness, metalness: pitMetalness,
             map: liquidTex, emissiveMap: liquidTex, 
             transparent: true, opacity: pitOpacity,
@@ -6775,7 +6777,8 @@ class GameMap {
             iceTex.encoding = THREE.sRGBEncoding;
             iceTex.needsUpdate = true;
             
-            this.iceMat = new MeshStandardMaterial({
+            // FIX CRASH: THREE.
+            this.iceMat = new THREE.MeshStandardMaterial({
                 color: 0xffffff, emissive: 0xffffff,
                 emissiveIntensity: 0.6,
                 roughness: 0.05, metalness: 0.8,
@@ -6791,18 +6794,20 @@ class GameMap {
             this.mapGroup.add(this.meshIceFloor);
         }
 
-        // --- PREPARAZIONE OMBRE DIREZIONALI (VIGNETTING FISICO) ---
+      // --- PREPARAZIONE OMBRE DIREZIONALI (VIGNETTING FISICO) ---
         if (!window.GLOBAL_EDGE_SHADOW_TEX) window.GLOBAL_EDGE_SHADOW_TEX = createEdgeShadowTexture();
         if (!window.GLOBAL_EDGE_SHADOW_GEO) {
-            // Geometria spostata in avanti in modo che il bordo in alto combaci perfettamente col muro
-            window.GLOBAL_EDGE_SHADOW_GEO = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE * 1.5);
+            // Allarghiamo leggermente la geometria per far sovrapporre i bordi (1.05)
+            window.GLOBAL_EDGE_SHADOW_GEO = new THREE.PlaneGeometry(TILE_SIZE * 1.05, TILE_SIZE * 1.5);
             window.GLOBAL_EDGE_SHADOW_GEO.rotateX(-Math.PI / 2);
             window.GLOBAL_EDGE_SHADOW_GEO.translate(0, 0, (TILE_SIZE * 1.5) / 2); 
         }
         const edgeShadowMat = new THREE.MeshBasicMaterial({ 
+            color: 0xffffff, // Deve essere bianco per il Multiply
             map: window.GLOBAL_EDGE_SHADOW_TEX, 
-            transparent: true, opacity: 0.95, 
-            depthWrite: false // FONDAMENTALE: impedisce lo sfarfallio (Z-Fighting) negli angoli!
+            transparent: true, 
+            blending: THREE.MultiplyBlending, // FIX GRIGLIA: Il bianco scompare, le ombre si sovrappongono in modo perfetto fondendosi senza creare linee quadrate!
+            depthWrite: false
         });
         
         // Allochiamo memoria sufficiente per i 4 possibili lati di ogni blocco fossa
@@ -7075,7 +7080,7 @@ class GameMap {
                             dummy.updateMatrix();
                             meshRock.setMatrixAt(idxRock++, dummy.matrix);
                         }
-              } else if (this.grid[x][y] === 5) {
+             } else if (this.grid[x][y] === 5) {
                         let px = x * TILE_SIZE + TILE_SIZE / 2;
                         let pz = y * TILE_SIZE + TILE_SIZE / 2;
 
@@ -7090,28 +7095,27 @@ class GameMap {
                         let half = TILE_SIZE / 2;
 
                         // --- VIGNETTATURA SUI BORDI (OMBRE DIREZIONALI FAKE AO) ---
-                        // Controllo i 4 lati: se c'è pavimento, attacca un'ombra al muro puntandola verso il centro
-                        if (x > 0 && this.grid[x-1][y] === 2) { // Muro a Sinistra
+                        if (x > 0 && this.grid[x-1][y] === 2) { 
                             dummy.position.set(px - half, -17.0, pz);
-                            dummy.rotation.set(0, Math.PI / 2, 0); // Punta verso destra
+                            dummy.rotation.set(0, Math.PI / 2, 0); 
                             dummy.scale.set(1.02, 1, 1); dummy.updateMatrix();
                             meshEdgeShadows.setMatrixAt(eShadowIdx++, dummy.matrix);
                         }
-                        if (x < this.width-1 && this.grid[x+1][y] === 2) { // Muro a Destra
+                        if (x < this.width-1 && this.grid[x+1][y] === 2) { 
                             dummy.position.set(px + half, -17.0, pz);
-                            dummy.rotation.set(0, -Math.PI / 2, 0); // Punta verso sinistra
+                            dummy.rotation.set(0, -Math.PI / 2, 0); 
                             dummy.scale.set(1.02, 1, 1); dummy.updateMatrix();
                             meshEdgeShadows.setMatrixAt(eShadowIdx++, dummy.matrix);
                         }
-                        if (y > 0 && this.grid[x][y-1] === 2) { // Muro in Alto
+                        if (y > 0 && this.grid[x][y-1] === 2) { 
                             dummy.position.set(px, -17.0, pz - half);
-                            dummy.rotation.set(0, 0, 0); // Punta verso il basso
+                            dummy.rotation.set(0, 0, 0); 
                             dummy.scale.set(1.02, 1, 1); dummy.updateMatrix();
                             meshEdgeShadows.setMatrixAt(eShadowIdx++, dummy.matrix);
                         }
-                        if (y < this.height-1 && this.grid[x][y+1] === 2) { // Muro in Basso
+                        if (y < this.height-1 && this.grid[x][y+1] === 2) { 
                             dummy.position.set(px, -17.0, pz + half);
-                            dummy.rotation.set(0, Math.PI, 0); // Punta verso l'alto
+                            dummy.rotation.set(0, Math.PI, 0); 
                             dummy.scale.set(1.02, 1, 1); dummy.updateMatrix();
                             meshEdgeShadows.setMatrixAt(eShadowIdx++, dummy.matrix);
                         }
@@ -7135,30 +7139,31 @@ class GameMap {
                         for (let k = 0; k < edgeOffsets.length; k++) {
                             let off = edgeOffsets[k];
                             
+                            // FIX CRITICO: Usa Math.random() normale invece di MathUtils (non ancora definito qui)
                             dummy.position.set(
-                                px + off.x + MathUtils.randomRange(-4, 4), 
-                                MathUtils.randomRange(-6, -2), 
-                                pz + off.z + MathUtils.randomRange(-4, 4)
+                                px + off.x + (Math.random() * 8 - 4), 
+                                (Math.random() * 4) - 6, 
+                                pz + off.z + (Math.random() * 8 - 4)
                             );
                             
-                            let rScale = MathUtils.randomRange(0.4, 0.9);
+                            let rScale = (Math.random() * 0.5) + 0.4; // tra 0.4 e 0.9
                             
                             dummy.scale.set(
-                                rScale * MathUtils.randomRange(1.0, 1.5), 
-                                rScale * MathUtils.randomRange(0.3, 0.6), 
-                                rScale * MathUtils.randomRange(1.0, 1.5)  
+                                rScale * ((Math.random() * 0.5) + 1.0), 
+                                rScale * ((Math.random() * 0.3) + 0.3), 
+                                rScale * ((Math.random() * 0.5) + 1.0)  
                             );
                             
                             dummy.rotation.set(
-                                MathUtils.randomRange(-0.2, 0.2), 
+                                (Math.random() * 0.4) - 0.2, 
                                 Math.random() * Math.PI, 
-                                MathUtils.randomRange(-0.2, 0.2)
+                                (Math.random() * 0.4) - 0.2
                             );
                             
                             dummy.updateMatrix();
                             meshPitBorders.setMatrixAt(pBorderIdx++, dummy.matrix);
                         }
-                    } else { 
+                    } else {
                         // Confine Interno Conficcato: DISEGNA I VERI MURI INTERNI
                         dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE*0.75, y * TILE_SIZE + TILE_SIZE / 2);
                         dummy.scale.set(1, 1, 1);

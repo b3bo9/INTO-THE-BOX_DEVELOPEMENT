@@ -6651,13 +6651,19 @@ class GameMap {
         let pitColor, pitEmissive, pitOpacity, pitRoughness, pitMetalness, baseTexImage;
         
         if (Game.currentThemeIndex === 0) { // Foresta -> Acqua Jpeg
-            pitColor = 0x55aaff; pitEmissive = 0x002255; pitOpacity = 0.85; pitRoughness = 0.05; pitMetalness = 0.95;
+            pitColor = 0x55aaff; 
+            pitEmissive = 0xffffff; // FIX: Deve essere BIANCO per rivelare i colori del JPEG!
+            pitOpacity = 0.85; pitRoughness = 0.05; pitMetalness = 0.95;
             baseTexImage = Preloader.textures.water;
         } else if (Game.currentThemeIndex === 1) { // Lava -> Lava Jpeg
-            pitColor = 0xffffff; pitEmissive = 0xff3300; pitOpacity = 1.0; pitRoughness = 0.4; pitMetalness = 0.1;
+            pitColor = 0xffffff; 
+            pitEmissive = 0xffffff; // FIX: Deve essere BIANCO per rivelare il rosso reale della foto!
+            pitOpacity = 1.0; pitRoughness = 0.4; pitMetalness = 0.1;
             baseTexImage = Preloader.textures.waterLava;
         } else { // Ghiaccio -> Acqua Jpeg (che scorrerà sotto la lastra di ghiaccio)
-            pitColor = 0x3388cc; pitEmissive = 0x001133; pitOpacity = 0.9; pitRoughness = 0.1; pitMetalness = 0.9;
+            pitColor = 0x3388cc; 
+            pitEmissive = 0xffffff; // FIX: BIANCO!
+            pitOpacity = 0.9; pitRoughness = 0.1; pitMetalness = 0.9;
             baseTexImage = Preloader.textures.water;
         }
 
@@ -6671,7 +6677,8 @@ class GameMap {
         
         this.pitMat = new THREE.MeshStandardMaterial({
             color: pitColor, emissive: pitEmissive,
-            emissiveIntensity: Game.currentThemeIndex === 1 ? 1.5 : 0.6,
+            // FIX: Alziamo leggermente la luminosità dell'acqua da 0.6 a 1.0 per farla spiccare nel buio
+            emissiveIntensity: Game.currentThemeIndex === 1 ? 1.5 : 1.0,
             roughness: pitRoughness, metalness: pitMetalness,
             map: liquidTex, emissiveMap: liquidTex, 
             transparent: pitOpacity < 1.0, opacity: pitOpacity,

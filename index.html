@@ -8209,10 +8209,14 @@ class Player extends Entity {
         }
         this.modelParts.halo.rotation.z += dt; this.modelParts.staffGem.rotation.y += dt;
         if (this.activeShieldCooldown > 0) this.activeShieldCooldown -= dt;
-       if (this.shadowMesh.visible && this.mesh.visible) {
-                this.shadowMesh.position.set(this.x, 0.2, this.y);
-                this.shadowMesh.updateMatrix();
-            }
+      if (this.shadowMesh.visible && this.mesh.visible) {
+            // MODIFICA: Abbassa l'ombra finta a pelo dell'acqua se il giocatore è sprofondato
+            let isIceTheme = (Game.currentThemeIndex === 2);
+            let shadowY = (inPit && !isIceTheme) ? -17.4 : 0.2;
+            
+            this.shadowMesh.position.set(this.x, shadowY, this.y);
+            this.shadowMesh.updateMatrix();
+        }
 
        // Gestione Scudo Cinetico (Shift)
     
@@ -8559,10 +8563,13 @@ class Player extends Entity {
                 }
             }
             
-           // 4. SPROFONDAMENTO E DANNI (LAVA)
-            let targetDepth = 0; // Rinomina per evitare conflitti con la lanterna
+           // 4. SPROFONDAMENTO E DANNI (LAVA E ACQUA)
+            let targetDepth = 0; 
             if (inPit && !isIce) {
-                targetDepth = -12; // Il giocatore sprofonda visivamente fino alla vita
+                // MODIFICA: Il liquido è a -17.5. Spingendo la base del giocatore a -30, 
+                // la metà inferiore del corpo finirà SOTTO il piano dell'acqua/lava, 
+                // venendo tagliata e coperta magicamente dal motore grafico 3D!
+                targetDepth = -30; 
                 
                 if (Game.currentThemeIndex === 1) { // TEMA LAVA
                     if (this.lavaTimer === undefined) this.lavaTimer = 0;

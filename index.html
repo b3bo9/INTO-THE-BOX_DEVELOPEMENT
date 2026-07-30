@@ -5121,15 +5121,20 @@ startGame(diffMult) {
             }
         }
 
-// --- SCROLLING UV OBELISCHI E LIQUIDI ---
+// --- SCROLLING UV OBELISCHI, LIQUIDI E GHIACCIO ---
         if (this.map) {
             if (this.map.obeliskMat && this.map.obeliskMat.emissiveMap) {
                 this.map.obeliskMat.emissiveMap.offset.y -= safeVisualDt * 0.3; 
             }
             if (this.map.pitMat && this.map.pitMat.map) {
-                // Il fluido scorre in diagonale lentamente per dare un effetto fiume/colata lavica
+                // L'acqua o lava scorre velocemente in diagonale
                 this.map.pitMat.map.offset.y -= safeVisualDt * 0.15; 
-                this.map.pitMat.map.offset.x -= safeVisualDt * 0.05; 
+                this.map.pitMat.map.offset.x -= safeVisualDt * 0.08; 
+            }
+            if (this.map.iceMat && this.map.iceMat.map) {
+                // La lastra di ghiaccio si sposta impercettibilmente, creando lo stacco di parallasse!
+                this.map.iceMat.map.offset.y -= safeVisualDt * 0.01; 
+                this.map.iceMat.map.offset.x -= safeVisualDt * 0.005; 
             }
         }
 
@@ -6642,34 +6647,62 @@ class GameMap {
     window.GLOBAL_TELEGRAPH_GEO.rotateX(-Math.PI / 2);
 }
       const wallMesh = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, this.wallMat, wallCount);
-     // --- PREPARAZIONE PAVIMENTI LIQUIDI (FOSSE TEMA-DIPENDENTI) ---
-        let pitColor, pitEmissive, pitOpacity, pitRoughness, pitMetalness;
+     // --- PREPARAZIONE PAVIMENTI LIQUIDI JEPG CON EFFETTO DOPPIO STRATO ---
+        let pitColor, pitEmissive, pitOpacity, pitRoughness, pitMetalness, baseTexImage;
         
-        if (Game.currentThemeIndex === 0) { // Foresta -> Acqua profonda
-            pitColor = 0x004488; pitEmissive = 0x002244; pitOpacity = 0.85; pitRoughness = 0.1; pitMetalness = 0.9;
-        } else if (Game.currentThemeIndex === 1) { // Lava -> Lava incandescente
-            pitColor = 0xffaa00; pitEmissive = 0xff2200; pitOpacity = 1.0; pitRoughness = 0.3; pitMetalness = 0.1;
-        } else { // Ghiaccio -> Ghiaccio roccioso spesso
-            pitColor = 0xaaddff; pitEmissive = 0x002244; pitOpacity = 0.95; pitRoughness = 0.05; pitMetalness = 0.9;
+        if (Game.currentThemeIndex === 0) { // Foresta -> Acqua Jpeg
+            pitColor = 0x55aaff; pitEmissive = 0x002255; pitOpacity = 0.85; pitRoughness = 0.05; pitMetalness = 0.95;
+            baseTexImage = Preloader.textures.water;
+        } else if (Game.currentThemeIndex === 1) { // Lava -> Lava Jpeg
+            pitColor = 0xffffff; pitEmissive = 0xff3300; pitOpacity = 1.0; pitRoughness = 0.4; pitMetalness = 0.1;
+            baseTexImage = Preloader.textures.waterLava;
+        } else { // Ghiaccio -> Acqua Jpeg (che scorrerà sotto la lastra di ghiaccio)
+            pitColor = 0x3388cc; pitEmissive = 0x001133; pitOpacity = 0.9; pitRoughness = 0.1; pitMetalness = 0.9;
+            baseTexImage = Preloader.textures.water;
         }
 
-       // Cloniamo la mappa base per renderla indipendente dallo scorrimento degli obelischi
-        let liquidTex = CHAR_GRUNGE_TEX.clone();
+        // Cloniamo per permettere lo scorrimento indipendente
+        let liquidTex = baseTexImage ? baseTexImage.clone() : CHAR_GRUNGE_TEX.clone();
+        liquidTex.wrapS = THREE.RepeatWrapping; liquidTex.wrapT = THREE.RepeatWrapping;
+        // INGRANDIAMO LA TEXTURE: Un valore minore di 1 fa "zoom" sull'immagine
+        liquidTex.repeat.set(0.35, 0.35); 
+        liquidTex.encoding = THREE.sRGBEncoding;
         liquidTex.needsUpdate = true;
         
         this.pitMat = new THREE.MeshStandardMaterial({
             color: pitColor, emissive: pitEmissive,
             emissiveIntensity: Game.currentThemeIndex === 1 ? 1.5 : 0.6,
             roughness: pitRoughness, metalness: pitMetalness,
-            map: liquidTex,
-            emissiveMap: liquidTex, // <-- FIX: Ora le onde/crepe brilleranno rivelando lo scorrimento!
+            map: liquidTex, emissiveMap: liquidTex, 
             transparent: pitOpacity < 1.0, opacity: pitOpacity,
             depthWrite: false
         });
         
-      const meshPitFloor = new THREE.InstancedMesh(floorGeo, this.pitMat, pitFloorCount);
+        const meshPitFloor = new THREE.InstancedMesh(floorGeo, this.pitMat, pitFloorCount);
         meshPitFloor.receiveShadow = true;
         this.mapGroup.add(meshPitFloor);
+        
+        // SETUP LASTRA DI GHIACCIO SUPERIORE
+        let meshIceFloor = null;
+        if (Game.currentThemeIndex === 2) {
+            // Usiamo la texture rocciosa del ghiaccio (rock_ice.jpg) caricata dal preloader
+            let iceTex = Preloader.textures['rock_ice'] ? Preloader.textures['rock_ice'].clone() : CHAR_GRUNGE_TEX;
+            iceTex.wrapS = THREE.RepeatWrapping; iceTex.wrapT = THREE.RepeatWrapping;
+            iceTex.repeat.set(0.8, 0.8); // Ghiaccio più fitto e solido
+            iceTex.encoding = THREE.sRGBEncoding;
+            
+            this.iceMat = new THREE.MeshStandardMaterial({
+                color: 0xaaddff, emissive: 0x002244,
+                roughness: 0.1, metalness: 0.9,
+                map: iceTex,
+                transparent: true, opacity: 0.75, // Lascia intravedere l'acqua che scorre sotto!
+                depthWrite: false
+            });
+            meshIceFloor = new THREE.InstancedMesh(floorGeo, this.iceMat, pitFloorCount);
+            meshIceFloor.receiveShadow = true;
+            this.mapGroup.add(meshIceFloor);
+        }
+        
         let pFloorIdx = 0;
 
        // --- PREPARAZIONE PARETI INTERNE DELLA FOSSA ---
@@ -6949,12 +6982,23 @@ class GameMap {
                         dummy.updateMatrix();
                         meshPitWalls.setMatrixAt(pWallIdx++, dummy.matrix);
                         
-                        // LIQUIDO: Lo scaliamo a 1.25 così entra "dentro" le pareti rocciose, nascondendo gli spigoli netti
-                        dummy.position.set(px, -17.5, pz);
+                        // LIQUIDO (Acqua / Lava)
+                        dummy.position.set(px, -18.5, pz);
                         dummy.scale.set(1.25, 1.25, 1); 
                         dummy.rotation.set(0, 0, 0);
                         dummy.updateMatrix();
-                        meshPitFloor.setMatrixAt(pFloorIdx++, dummy.matrix);
+                        
+                        // NOTA: Togliamo il "++" perché l'indice ci serve uguale per lo strato di ghiaccio
+                        meshPitFloor.setMatrixAt(pFloorIdx, dummy.matrix);
+                        
+                        // EVENTUALE LASTRA DI GHIACCIO
+                        if (meshIceFloor) {
+                            dummy.position.set(px, -15.5, pz); // 3 unità più in alto dell'acqua!
+                            dummy.updateMatrix();
+                            meshIceFloor.setMatrixAt(pFloorIdx, dummy.matrix);
+                        }
+                        
+                        pFloorIdx++; // Ora incrementiamo per il prossimo blocco
 
                        // --- EDGE MASKING: SCAGLIE E LASTRE SUI BORDI ---
                         let edgeOffsets = [];
@@ -7109,6 +7153,7 @@ class GameMap {
         meshDebris.count = idxDebris;
         meshPitBorders.count = pBorderIdx; 
         meshPitWalls.count = pWallIdx; // Assicura che le pareti interne non creino glitch
+       if (meshIceFloor) meshIceFloor.count = pFloorIdx;
         meshDebris.instanceMatrix.needsUpdate = true;
        meshTrees.count = idxTree; 
         meshTrees.instanceMatrix.needsUpdate = true; 
@@ -11522,6 +11567,10 @@ const Preloader = {
         const texLoader = new THREE.TextureLoader(this.manager);
         this.textures.smoke = texLoader.load('smoke.png');
         
+        // --- NUOVE TEXTURE LIQUIDI ---
+        this.textures.water = texLoader.load('water.jpg');
+        this.textures.waterLava = texLoader.load('water_lava.jpg');
+        
         // Carichiamo dinamicamente tutte le varianti
         const variants = ['', '_lava', '_ice'];
         variants.forEach(v => {
@@ -11531,7 +11580,7 @@ const Preloader = {
             this.textures['wall' + v] = texLoader.load('wall' + v + '.jpg');
         });
 
-        const imagesToLoad = ['bg.png', 'bg_morte.png', 'bg_box.png', 'bg_piano.png', 'smoke.png'];
+        const imagesToLoad = ['bg.png', 'bg_morte.png', 'bg_box.png', 'bg_piano.png', 'smoke.png', 'water.jpg', 'water_lava.jpg'];
         variants.forEach(v => {
             imagesToLoad.push('dirt' + v + '.jpg', 'grass' + v + '.jpg', 'rock' + v + '.jpg', 'wall' + v + '.jpg');
         });

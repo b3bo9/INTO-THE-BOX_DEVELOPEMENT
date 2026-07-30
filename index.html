@@ -6781,12 +6781,12 @@ class GameMap {
             window.GLOBAL_PIT_SHADOW_TEX.magFilter = THREE.LinearFilter;
             window.GLOBAL_PIT_SHADOW_MAT = new THREE.MeshBasicMaterial({ 
                 map: window.GLOBAL_PIT_SHADOW_TEX, 
-                transparent: true, depthWrite: false, opacity: 0.95
+                transparent: true, depthWrite: false, opacity: 0.8 // <-- Opacità globale ridotta
             });
         }
         
         const sCanvas = window.GLOBAL_PIT_SHADOW_CANVAS;
-        const res = 16; // Risoluzione raddoppiata per gradienti setosi
+        const res = 16; 
         sCanvas.width = (this.width + 16) * res;
         sCanvas.height = (this.height + 16) * res;
         const sCtx = sCanvas.getContext('2d');
@@ -6795,24 +6795,22 @@ class GameMap {
         sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
         sCtx.globalCompositeOperation = 'source-over';
         
-        // 2. Impostiamo colore e ombra scurissimi
+        // 2. Impostiamo colore e ombra
         sCtx.fillStyle = '#030305'; 
-        sCtx.shadowColor = '#030305';
-        sCtx.shadowBlur = 45; // Blur enorme per simulare la profondità
+        sCtx.shadowColor = 'rgba(3, 3, 5, 0.85)'; // <-- Ombra leggermente trasparente e più morbida
+        sCtx.shadowBlur = 18; // <-- Raggio ridotto (18px sfumano solo per circa 1 casella)
         
-        // 3. Disegniamo I MURI. Essendo la tela trasparente sulle fosse, 
-        // l'ombra dei muri "strariperà" nel vuoto creando la vignettatura interna!
-        for (let pass = 0; pass < 2; pass++) { // Doppio ciclo per infittire l'ombra ai bordi
-            for(let gx = -8; gx < this.width + 8; gx++) {
-                for(let gy = -8; gy < this.height + 8; gy++) {
-                    let isPit = false;
-                    if (gx >= 0 && gx < this.width && gy >= 0 && gy < this.height) {
-                        if (this.grid[gx][gy] === 5) isPit = true;
-                    }
-                    
-                    if (!isPit) {
-                        sCtx.fillRect((gx + 8) * res, (gy + 8) * res, res, res);
-                    }
+        // 3. Disegniamo I MURI una sola volta (rimosso il doppio ciclo)
+        for(let gx = -8; gx < this.width + 8; gx++) {
+            for(let gy = -8; gy < this.height + 8; gy++) {
+                let isPit = false;
+                if (gx >= 0 && gx < this.width && gy >= 0 && gy < this.height) {
+                    if (this.grid[gx][gy] === 5) isPit = true;
+                }
+                
+                if (!isPit) {
+                    // Aggiungiamo 1px per sovrapporre perfettamente le pareti ed evitare micro-fessure
+                    sCtx.fillRect((gx + 8) * res - 0.5, (gy + 8) * res - 0.5, res + 1, res + 1);
                 }
             }
         }

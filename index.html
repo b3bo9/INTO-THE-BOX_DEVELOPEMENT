@@ -6750,6 +6750,7 @@ class GameMap {
         // Lo centriamo perfettamente sotto la mappa a profondità -17.5
         this.meshPitFloor.position.set((this.width * TILE_SIZE) / 2, -17.5, (this.height * TILE_SIZE) / 2);
         this.meshPitFloor.receiveShadow = true;
+        this.meshPitFloor.renderOrder = -15; // FIX: Forza l'acqua a stare sul fondo assoluto
         this.mapGroup.add(this.meshPitFloor);
         
         // SETUP LASTRA DI GHIACCIO SUPERIORE (Stessa tecnica gigante)
@@ -6774,6 +6775,7 @@ class GameMap {
             // La lastra è posizionata a -14.5, sospesa sopra l'acqua!
             this.meshIceFloor.position.set((this.width * TILE_SIZE) / 2, -14.5, (this.height * TILE_SIZE) / 2);
             this.meshIceFloor.receiveShadow = true;
+            this.meshIceFloor.renderOrder = -13; // FIX: Forza il ghiaccio a stare sopra tutto
             this.mapGroup.add(this.meshIceFloor);
         }
 
@@ -6791,6 +6793,7 @@ class GameMap {
             depthWrite: false 
         });
         const meshDepthShadows = new THREE.InstancedMesh(floorGeo, depthShadowMat, pitFloorCount);
+        meshDepthShadows.renderOrder = -14; // FIX: Si interpone esattamente tra l'acqua (-15) e il ghiaccio (-13)!
         this.mapGroup.add(meshDepthShadows);
         let pShadowIdx = 0;
 
@@ -7052,7 +7055,7 @@ class GameMap {
                             dummy.updateMatrix();
                             meshRock.setMatrixAt(idxRock++, dummy.matrix);
                         }
-                 } else if (this.grid[x][y] === 5) {
+                } else if (this.grid[x][y] === 5) {
                         let px = x * TILE_SIZE + TILE_SIZE / 2;
                         let pz = y * TILE_SIZE + TILE_SIZE / 2;
 
@@ -7064,9 +7067,10 @@ class GameMap {
                         meshPitWalls.setMatrixAt(pWallIdx++, dummy.matrix);
                         
                         // NEBBIA DI PROFONDITÀ (Ombra sfumata)
-                        // Posizionata a -17.0: SOPRA l'acqua (-17.5), ma SOTTO l'eventuale ghiaccio (-14.5)
                         dummy.position.set(px, -17.0, pz);
-                        dummy.scale.set(1.05, 1.05, 1); // Sovrapposizione leggera per non lasciare buchi tra i tile
+                        // FIX: L'oggetto è ruotato a pancia in giù, quindi la profondità Z è in realtà la Y!
+                        // Scaliamo X e Z per allargare il bordo sfumato e farlo aderire ai muri neri!
+                        dummy.scale.set(1.08, 1, 1.08); 
                         dummy.rotation.set(0, 0, 0);
                         dummy.updateMatrix();
                         meshDepthShadows.setMatrixAt(pShadowIdx++, dummy.matrix);

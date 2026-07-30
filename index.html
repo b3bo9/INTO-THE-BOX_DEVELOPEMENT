@@ -6773,7 +6773,7 @@ class GameMap {
         this.mapGroup.add(meshPitWalls);
         let pWallIdx = 0;
 
-      // --- NUOVA VIGNETTATURA SOTTERRANEA GLOBALE (Inner Shadow Perfetto) ---
+      // --- NUOVA VIGNETTATURA SOTTERRANEA GLOBALE (Compromesso Ideale) ---
         if (!window.GLOBAL_PIT_SHADOW_CANVAS) {
             window.GLOBAL_PIT_SHADOW_CANVAS = document.createElement('canvas');
             window.GLOBAL_PIT_SHADOW_TEX = new THREE.CanvasTexture(window.GLOBAL_PIT_SHADOW_CANVAS);
@@ -6781,36 +6781,39 @@ class GameMap {
             window.GLOBAL_PIT_SHADOW_TEX.magFilter = THREE.LinearFilter;
             window.GLOBAL_PIT_SHADOW_MAT = new THREE.MeshBasicMaterial({ 
                 map: window.GLOBAL_PIT_SHADOW_TEX, 
-                transparent: true, depthWrite: false, opacity: 0.8 // <-- Opacità globale ridotta
+                transparent: true, depthWrite: false, opacity: 0.95 // Opacità base alta
             });
         }
         
         const sCanvas = window.GLOBAL_PIT_SHADOW_CANVAS;
-        const res = 16; 
+        const res = 16; // 1 casella = 16 pixel nel canvas
         sCanvas.width = (this.width + 16) * res;
         sCanvas.height = (this.height + 16) * res;
         const sCtx = sCanvas.getContext('2d');
         
-        // 1. Svuotiamo la tela (ora è 100% trasparente)
+        // 1. Svuotiamo la tela (100% trasparente sulle fosse)
         sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
         sCtx.globalCompositeOperation = 'source-over';
         
-        // 2. Impostiamo colore e ombra
-        sCtx.fillStyle = '#030305'; 
-        sCtx.shadowColor = 'rgba(3, 3, 5, 0.85)'; // <-- Ombra leggermente trasparente e più morbida
-        sCtx.shadowBlur = 18; // <-- Raggio ridotto (18px sfumano solo per circa 1 casella)
+        // 2. Ombra corta ma di un nero purissimo
+        sCtx.fillStyle = '#050508'; 
+        sCtx.shadowColor = '#000000'; // Nero puro per il massimo contrasto
+        sCtx.shadowBlur = 24; // Raggio limitato a ~1.5 caselle (il centro rimarrà pulito)
         
-        // 3. Disegniamo I MURI una sola volta (rimosso il doppio ciclo)
-        for(let gx = -8; gx < this.width + 8; gx++) {
-            for(let gy = -8; gy < this.height + 8; gy++) {
-                let isPit = false;
-                if (gx >= 0 && gx < this.width && gy >= 0 && gy < this.height) {
-                    if (this.grid[gx][gy] === 5) isPit = true;
-                }
-                
-                if (!isPit) {
-                    // Aggiungiamo 1px per sovrapporre perfettamente le pareti ed evitare micro-fessure
-                    sCtx.fillRect((gx + 8) * res - 0.5, (gy + 8) * res - 0.5, res + 1, res + 1);
+        // 3. Disegniamo i muri in DUE passaggi. 
+        // Questo moltiplica l'opacità dell'ombra attaccata alla parete rendendola ben visibile,
+        // ma non ne allunga la distanza, salvando il fondale della fossa.
+        for (let pass = 0; pass < 2; pass++) {
+            for(let gx = -8; gx < this.width + 8; gx++) {
+                for(let gy = -8; gy < this.height + 8; gy++) {
+                    let isPit = false;
+                    if (gx >= 0 && gx < this.width && gy >= 0 && gy < this.height) {
+                        if (this.grid[gx][gy] === 5) isPit = true;
+                    }
+                    
+                    if (!isPit) {
+                        sCtx.fillRect((gx + 8) * res - 0.5, (gy + 8) * res - 0.5, res + 1, res + 1);
+                    }
                 }
             }
         }

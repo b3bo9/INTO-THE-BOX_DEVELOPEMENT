@@ -6661,9 +6661,9 @@ class GameMap {
             baseTexImage = Preloader.textures.water;
         }
 
-        // FIX CRITICO THREE.JS: NON usare mai .clone() su texture in fase di caricamento!
-        // Utilizziamo il riferimento diretto. La texture si aggiornerà automaticamente appena il Jpeg verrà scaricato.
-        let liquidTex = baseTexImage || CHAR_GRUNGE_TEX;
+        // Essendo ora un CanvasTexture, POSSIAMO usare .clone() in modo totalmente sicuro!
+        // Questo ci permette di far scorrere la grafica senza buggare le altre zone.
+        let liquidTex = baseTexImage ? baseTexImage.clone() : CHAR_GRUNGE_TEX.clone();
         liquidTex.wrapS = THREE.RepeatWrapping; liquidTex.wrapT = THREE.RepeatWrapping;
         liquidTex.repeat.set(0.35, 0.35); 
         liquidTex.encoding = THREE.sRGBEncoding;
@@ -6685,8 +6685,7 @@ class GameMap {
         // SETUP LASTRA DI GHIACCIO SUPERIORE
         let meshIceFloor = null;
         if (Game.currentThemeIndex === 2) {
-            // FIX: Usiamo l'istanza dedicata e indipendente caricata dal preloader!
-            let iceTex = Preloader.textures.iceCrust || CHAR_GRUNGE_TEX;
+            let iceTex = Preloader.textures.iceCrust ? Preloader.textures.iceCrust.clone() : CHAR_GRUNGE_TEX.clone();
             iceTex.wrapS = THREE.RepeatWrapping; iceTex.wrapT = THREE.RepeatWrapping;
             iceTex.repeat.set(0.8, 0.8); 
             iceTex.encoding = THREE.sRGBEncoding;
@@ -6985,16 +6984,18 @@ class GameMap {
                         
                         // LIQUIDO (Acqua / Lava)
                         dummy.position.set(px, -18.5, pz);
-                        dummy.scale.set(1.25, 1.25, 1); 
+                        // FIX Z-FIGHTING: Scala riportata a 1. Prima era 1.25, le texture si compenetravano e "sfarfallavano" (aspetto sovrapposto)
+                        dummy.scale.set(1, 1, 1); 
                         dummy.rotation.set(0, 0, 0);
                         dummy.updateMatrix();
                         
-                        // NOTA: Togliamo il "++" perché l'indice ci serve uguale per lo strato di ghiaccio
                         meshPitFloor.setMatrixAt(pFloorIdx, dummy.matrix);
                         
                         // EVENTUALE LASTRA DI GHIACCIO
                         if (meshIceFloor) {
-                            dummy.position.set(px, -15.5, pz); // 3 unità più in alto dell'acqua!
+                            dummy.position.set(px, -15.5, pz);
+                            // Manteniamo scala a 1 anche per il ghiaccio
+                            dummy.scale.set(1, 1, 1);
                             dummy.updateMatrix();
                             meshIceFloor.setMatrixAt(pFloorIdx, dummy.matrix);
                         }
@@ -11568,10 +11569,30 @@ const Preloader = {
         const texLoader = new THREE.TextureLoader(this.manager);
         this.textures.smoke = texLoader.load('smoke.png');
         
-        // --- NUOVE TEXTURE LIQUIDI ---
-        this.textures.water = texLoader.load('water.jpg');
-        this.textures.waterLava = texLoader.load('water_lava.jpg');
-        this.textures.iceCrust = texLoader.load('rock_ice.jpg'); // FIX: Istanza separata per animare il ghiaccio!
+        // --- FIX WEBGL: FORZATURA TEXTURE A 512x512 (Power of Two) ---
+        // Le immagini libere (non 512x512) vengono bloccate dalla GPU in WebGL.
+        // Questa funzione intercetta i JPEG e li disegna su un Canvas matematicamente perfetto
+        // garantendo che l'animazione scorra sempre in modo fluido senza schermate nere!
+        const imgLoader = new THREE.ImageLoader(this.manager);
+        const loadPOT = (url) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; 
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.encoding = THREE.sRGBEncoding;
+            
+            imgLoader.load(url, (img) => {
+                canvas.getContext('2d').drawImage(img, 0, 0, 512, 512);
+                tex.needsUpdate = true; // Sblocca e anima la texture non appena l'immagine è scaricata
+            }, undefined, () => console.warn("Errore caricamento texture: " + url));
+            return tex;
+        };
+
+        // Carichiamo l'acqua, la lava e il ghiaccio forzando la compatibilità WebGL
+        this.textures.water = loadPOT('water.jpg');
+        this.textures.waterLava = loadPOT('water_lava.jpg');
+        this.textures.iceCrust = loadPOT('rock_ice.jpg');
         
         // Carichiamo dinamicamente tutte le varianti
         const variants = ['', '_lava', '_ice'];

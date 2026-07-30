@@ -2791,7 +2791,7 @@ const ModelFactory = {
     setupShadows(mesh) { mesh.traverse(c => { if(c.isMesh) { c.castShadow = true; c.receiveShadow = true; } }); },
     buildPlayer(mat, gemMat) {
         let group = new THREE.Group();
-        let body = new THREE.Mesh(SharedGeo.cone, mat); body.scale.set(16, 36, 16); body.position.y = 18;
+        let body = new THREE.Mesh(SharedGeo.cone, mat); body.scale.set(12, 36, 12); body.position.y = 18;
         // Aggiunta Texture Materica per dare identità alla corazza, sciarpa e legni
         let head = new THREE.Mesh(SharedGeo.sphere, new THREE.MeshStandardMaterial({color: 0xdddddd, emissive: 0x222222, map: CHAR_GRUNGE_TEX})); head.scale.set(6, 6, 6); head.position.y = 28;
         let scarf = new THREE.Mesh(SharedGeo.torus, new THREE.MeshStandardMaterial({color: 0x880000, roughness: 0.9, map: CHAR_GRUNGE_TEX, bumpMap: isTouchDevice ? null : CHAR_GRUNGE_TEX, bumpScale: 0.05})); scarf.scale.set(6, 6, 2); scarf.position.y = 24; scarf.rotation.x = Math.PI/2;
@@ -5230,11 +5230,12 @@ startGame(diffMult) {
                         
                         updateFlags.obelisks = true; // Segna aggiornamento obelischi
                         
-                        // --- Scurisci la runa sotto l'obelisco trasformandola in cenere ---
-                        if (this.map.runesMesh) {
-                            this.map.runesMesh.setColorAt(a.runeIdx, new THREE.Color(0x111111)); // Grigio scurissimo
-                            this.map.runesMesh.instanceColor.needsUpdate = true;
-                        }
+                        // --- Fai scomparire il Ray of Light (God Ray) ---
+if (a.rayIdx !== undefined && a.rayIdx >= 0 && this.map.raysMesh) {
+    dummy.position.y = -2000; dummy.updateMatrix();
+    this.map.raysMesh.setMatrixAt(a.rayIdx, dummy.matrix);
+    this.map.raysMesh.instanceMatrix.needsUpdate = true;
+}
 
                         // Spawna il Cadavere Oscuro (usando materiali condivisi per evitare Memory Leak)
                         let deadObelisk = new THREE.Mesh(window.GLOBAL_OBELISK_GEO, SharedMat.deadObelisk);
@@ -6621,7 +6622,9 @@ class GameMap {
         let floorGlowMat = new THREE.MeshBasicMaterial({map: GLOW_TEX, color: runeColor, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false});
 
         let imRunes = new THREE.InstancedMesh(window.GLOBAL_RUNE_GEO, runeMat, pillarCount + 1); 
-        this.runesMesh = imRunes; // Salviamo il riferimento per scurirle dopo
+this.runesMesh = imRunes; // Salviamo il riferimento per scurirle dopo
+let imRays = new THREE.InstancedMesh(window.GLOBAL_GODRAY_GEO, rayMat, pillarCount + 1);
+this.raysMesh = imRays; // Salviamo il riferimento per spegnerli dopo
         
         // Inizializziamo i colori individuali per ogni runa a bianco (1.0) così da non alterare il colore di base
         let runeColorArray = new Float32Array((pillarCount + 1) * 3).fill(1.0);
@@ -7222,32 +7225,33 @@ class GameMap {
                         let currentRuneIdx = idxRune; // Salviamo l'indice di questa specifica runa
                         imRunes.setMatrixAt(idxRune++, dummy.matrix);
 
-                        // --- FAKE LIGHTING: GOD RAY SULL'OBELISCO ---
-                        if (!AppSettings.isLow) {
-                            dummy.position.set(px, 0, pz);
-                            dummy.rotation.set(0, 0, 0); // Nessuna inclinazione, scende a piombo
-                            dummy.scale.setScalar(1.4); // Avvolge in larghezza l'obelisco
-                            dummy.updateMatrix();
-                            imRays.setMatrixAt(idxRay++, dummy.matrix);
-                        }
+                      let currentRayIdx = -1;
+// --- FAKE LIGHTING: GOD RAY SULL'OBELISCO ---
+if (!AppSettings.isLow) {
+    dummy.position.set(px, 0, pz);
+    dummy.rotation.set(0, 0, 0); // Nessuna inclinazione, scende a piombo
+    dummy.scale.setScalar(1.4); // Avvolge in larghezza l'obelisco
+    dummy.updateMatrix();
+    currentRayIdx = idxRay;
+    imRays.setMatrixAt(idxRay++, dummy.matrix);
+}
 
-                        // Icona Fluttuante
-                        let iconMat = aType === 'blue' ? SharedMat.iconTime : (aType === 'green' ? SharedMat.iconMountain : SharedMat.iconHysteria);
-                        let iconSprite = new THREE.Sprite(iconMat);
-                        iconSprite.position.set(px, 95, pz);
-                        iconSprite.scale.set(20, 20, 1);
-                        this.mapGroup.add(iconSprite);
-                        Game.auraIcons.push(iconSprite);
-                        
+// Icona Fluttuante
+let iconMat = aType === 'blue' ? SharedMat.iconTime : (aType === 'green' ? SharedMat.iconMountain : SharedMat.iconHysteria);
+let iconSprite = new THREE.Sprite(iconMat);
+iconSprite.position.set(px, 95, pz);
+iconSprite.scale.set(20, 20, 1);
+this.mapGroup.add(iconSprite);
+Game.auraIcons.push(iconSprite);
 
-                        // SALVATAGGIO DEI DATI COMPLETI NELL'ARRAY
-                        Game.auras.push({ 
-                            x: px, y: pz, type: aType, 
-                            radius: auraRadius, radiusSq: auraRadius * auraRadius, 
-                            active: true, colorIdx: colorIdx, obeliskIdx: (pIdx - 1), icon: iconSprite,
-                            runeIdx: currentRuneIdx // Passiamo l'indice all'aura per poter scurire la runa in seguito
-                        });
-                        // -------------------------
+// SALVATAGGIO DEI DATI COMPLETI NELL'ARRAY
+Game.auras.push({ 
+    x: px, y: pz, type: aType, 
+    radius: auraRadius, radiusSq: auraRadius * auraRadius, 
+    active: true, colorIdx: colorIdx, obeliskIdx: (pIdx - 1), icon: iconSprite,
+    runeIdx: currentRuneIdx, // Passiamo l'indice all'aura per poter scurire la runa in seguito
+    rayIdx: currentRayIdx // Passiamo l'indice per far scomparire il raggio
+});
                     } else if (!isBossFloor && Math.random() < 0.015 && this.grid[x][y] !== 1) {
                         let crystal = Game.getEnemy();
                         crystal.spawn(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 'crystal', 1);
@@ -8574,14 +8578,34 @@ class Player extends Entity {
                 targetDepth = -30; 
                 
                 if (Game.currentThemeIndex === 1) { // TEMA LAVA
-                    if (this.lavaTimer === undefined) this.lavaTimer = 0;
-                    this.lavaTimer += dt;
-                    if (this.lavaTimer >= 1.0) { // Un tick di danno ogni secondo
-                        this.takeDamage(this.stats.maxHp * 0.10, 'hazard', false, false); // -10% HP!
-                        this.lavaTimer = 0;
-                        Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteRed, 'flame'); // Fiammata dal corpo
-                    }
-                }
+    if (this.lavaTimer === undefined) this.lavaTimer = 0;
+    this.lavaTimer += dt;
+    if (this.lavaTimer >= 1.0) { // Un tick di danno ogni secondo
+        this.takeDamage(this.stats.maxHp * 0.10, 'hazard', false, false); // -10% HP!
+        this.lavaTimer = 0;
+        
+        // --- EFFETTO FUOCHERELLO ---
+        AudioEngine.playShoot('flame');
+        for(let i=0; i<6; i++) {
+            let p = Game.getParticle();
+            p.spawn(this.x + MathUtils.randomRange(-6, 6), 10, this.y + MathUtils.randomRange(-6, 6), SharedMat.spriteRed, 'flame');
+            p.baseSize = MathUtils.randomRange(25, 40);
+            p.vy = MathUtils.randomRange(60, 150);
+        }
+        for(let i=0; i<3; i++) {
+            let p = Game.getParticle();
+            p.spawn(this.x + MathUtils.randomRange(-4, 4), 12, this.y + MathUtils.randomRange(-4, 4), SharedMat.spriteYellow, 'flame');
+            p.baseSize = MathUtils.randomRange(15, 25);
+            p.vy = MathUtils.randomRange(80, 180);
+        }
+        if (!AppSettings.isLow) {
+            let smoke = Game.getParticle();
+            smoke.spawn(this.x, 25, this.y, SharedMat.spriteDust, 'dust');
+            smoke.baseSize = 45;
+            smoke.vy = 80;
+        }
+    }
+}
             } else {
                 this.lavaTimer = 0; // Azzera il timer se esce
             }

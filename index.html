@@ -5126,13 +5126,14 @@ startGame(diffMult) {
             if (this.map.obeliskMat && this.map.obeliskMat.emissiveMap) {
                 this.map.obeliskMat.emissiveMap.offset.y -= safeVisualDt * 0.3; 
             }
-            
-            // Aggiorniamo i nostri Shaders World-Space (Iniezione Diretta in GPU)
-            if (this.map.pitMat && this.map.pitMat.userData && this.map.pitMat.userData.shader) {
-                this.map.pitMat.userData.shader.uniforms.uTime.value = this.visualTime;
+            // Scorrimento diretto, naturale e senza cuciture!
+            if (this.map.pitMat && this.map.pitMat.map) {
+                this.map.pitMat.map.offset.y -= safeVisualDt * 0.15; 
+                this.map.pitMat.map.offset.x -= safeVisualDt * 0.08; 
             }
-            if (this.map.iceMat && this.map.iceMat.userData && this.map.iceMat.userData.shader) {
-                this.map.iceMat.userData.shader.uniforms.uTime.value = this.visualTime;
+            if (this.map.iceMat && this.map.iceMat.map) {
+                this.map.iceMat.map.offset.y -= safeVisualDt * 0.01; 
+                this.map.iceMat.map.offset.x -= safeVisualDt * 0.005; 
             }
         }
 
@@ -6645,7 +6646,7 @@ class GameMap {
     window.GLOBAL_TELEGRAPH_GEO.rotateX(-Math.PI / 2);
 }
       const wallMesh = new THREE.InstancedMesh(window.GLOBAL_WALL_GEO, this.wallMat, wallCount);
-       // --- PREPARAZIONE PAVIMENTI LIQUIDI (SHADERS CUSTOM) ---
+        // --- PREPARAZIONE PAVIMENTI LIQUIDI (PIANO GIGANTE SOTTERRANEO) ---
         let pitColor, pitEmissive, pitOpacity, pitRoughness, pitMetalness, baseTexImage;
         
         if (Game.currentThemeIndex === 0) { // Foresta -> Acqua Jpeg
@@ -6653,17 +6654,26 @@ class GameMap {
             baseTexImage = Preloader.textures.water;
         } else if (Game.currentThemeIndex === 1) { // Lava -> Lava Jpeg
             pitColor = 0xffffff; pitEmissive = 0xffffff; 
-            pitOpacity = 0.99; // FIX BUG LAVA: Opacità a 0.99 forza "transparent:true" impedendo ai muri di coprirla!
+            pitOpacity = 0.99; // Forza la trasparenza per evitare conflitti Z-Index coi muri neri
             pitRoughness = 0.4; pitMetalness = 0.1;
             baseTexImage = Preloader.textures.waterLava;
-        } else { // Ghiaccio -> Acqua Jpeg (Livello base sotto la crosta)
+        } else { // Ghiaccio -> Acqua Jpeg (sotto la crosta)
             pitColor = 0x3388cc; pitEmissive = 0xffffff; pitOpacity = 0.9; pitRoughness = 0.1; pitMetalness = 0.9;
             baseTexImage = Preloader.textures.water;
         }
 
         let liquidTex = baseTexImage || CHAR_GRUNGE_TEX;
-        liquidTex.wrapS = THREE.RepeatWrapping; liquidTex.wrapT = THREE.RepeatWrapping;
+        liquidTex.wrapS = THREE.RepeatWrapping; 
+        liquidTex.wrapT = THREE.RepeatWrapping;
         liquidTex.encoding = THREE.sRGBEncoding;
+        
+        // Calcoliamo la reale larghezza della mappa in unità 3D
+        let mapRealWidth = (this.width + 16) * TILE_SIZE; 
+        let mapRealHeight = (this.height + 16) * TILE_SIZE;
+        
+        // Diciamo alla texture di ripetersi proporzionalmente per mantenere l'alta definizione
+        liquidTex.repeat.set(mapRealWidth / 250, mapRealHeight / 250);
+        liquidTex.needsUpdate = true;
         
         this.pitMat = new THREE.MeshStandardMaterial({
             color: pitColor, emissive: pitEmissive,
@@ -6674,79 +6684,40 @@ class GameMap {
             depthWrite: false
         });
 
-        // --- SHADER CUSTOM: WORLD SPACE UV MAPPING ---
-        // Questo elimina per sempre le "cuciture" squadrate tra i blocchi d'acqua calcolandola globalmente!
-        this.pitMat.onBeforeCompile = (shader) => {
-            shader.uniforms.uTime = { value: 0 };
-            this.pitMat.userData.shader = shader; // Salviamo lo shader per animarlo
-            shader.vertexShader = `varying vec2 vWorldUV;\n` + shader.vertexShader;
-            shader.vertexShader = shader.vertexShader.replace(
-                '#include <worldpos_vertex>',
-                `#include <worldpos_vertex>\n vWorldUV = worldPosition.xz / 200.0;`
-            );
-            shader.fragmentShader = `varying vec2 vWorldUV;\n uniform float uTime;\n` + shader.fragmentShader;
-            shader.fragmentShader = shader.fragmentShader.replace(
-                '#include <map_fragment>',
-                `vec2 animatedUV = vWorldUV; animatedUV.x -= uTime * 0.08; animatedUV.y -= uTime * 0.15;
-                 vec4 sampledDiffuseColor = texture2D( map, animatedUV );
-                 diffuseColor *= sampledDiffuseColor;`
-            );
-            shader.fragmentShader = shader.fragmentShader.replace(
-                '#include <emissivemap_fragment>',
-                `vec4 emissiveColor = texture2D( emissiveMap, animatedUV );
-                 totalEmissiveRadiance *= emissiveColor.rgb;`
-            );
-        };
+        // CREIAMO UN SOLO PIANO GIGANTE INVECE DI 100 BLOCCHETTI
+        let giantGeo = new THREE.PlaneGeometry(mapRealWidth, mapRealHeight);
+        giantGeo.rotateX(-Math.PI / 2);
         
-        const meshPitFloor = new THREE.InstancedMesh(floorGeo, this.pitMat, pitFloorCount);
-        meshPitFloor.receiveShadow = true;
-        this.mapGroup.add(meshPitFloor);
+        this.meshPitFloor = new THREE.Mesh(giantGeo, this.pitMat);
+        // Lo centriamo perfettamente sotto la mappa a profondità -17.5
+        this.meshPitFloor.position.set((this.width * TILE_SIZE) / 2, -17.5, (this.height * TILE_SIZE) / 2);
+        this.meshPitFloor.receiveShadow = true;
+        this.mapGroup.add(this.meshPitFloor);
         
-        // SETUP LASTRA DI GHIACCIO SUPERIORE
-        let meshIceFloor = null;
+        // SETUP LASTRA DI GHIACCIO SUPERIORE (Stessa tecnica gigante)
         if (Game.currentThemeIndex === 2) {
             let iceTex = Preloader.textures.iceCrust || CHAR_GRUNGE_TEX;
-            iceTex.wrapS = THREE.RepeatWrapping; iceTex.wrapT = THREE.RepeatWrapping;
+            iceTex.wrapS = THREE.RepeatWrapping; 
+            iceTex.wrapT = THREE.RepeatWrapping;
+            iceTex.repeat.set(mapRealWidth / 200, mapRealHeight / 200); 
             iceTex.encoding = THREE.sRGBEncoding;
+            iceTex.needsUpdate = true;
             
             this.iceMat = new THREE.MeshStandardMaterial({
-                color: 0xffffff, emissive: 0xffffff, // FIX: Bianco brillantissimo e glaciale!
+                color: 0xffffff, emissive: 0xffffff,
                 emissiveIntensity: 0.6,
                 roughness: 0.05, metalness: 0.8,
-                map: iceTex, emissiveMap: iceTex, // Crepe di ghiaccio luminose
-                transparent: true, opacity: 0.80, // Meno trasparente, più "solido"
+                map: iceTex, emissiveMap: iceTex,
+                transparent: true, opacity: 0.80, 
                 depthWrite: false
             });
 
-            // Shader World-Space anche per il ghiaccio!
-            this.iceMat.onBeforeCompile = (shader) => {
-                shader.uniforms.uTime = { value: 0 };
-                this.iceMat.userData.shader = shader;
-                shader.vertexShader = `varying vec2 vWorldUV;\n` + shader.vertexShader;
-                shader.vertexShader = shader.vertexShader.replace(
-                    '#include <worldpos_vertex>',
-                    `#include <worldpos_vertex>\n vWorldUV = worldPosition.xz / 150.0;`
-                );
-                shader.fragmentShader = `varying vec2 vWorldUV;\n uniform float uTime;\n` + shader.fragmentShader;
-                shader.fragmentShader = shader.fragmentShader.replace(
-                    '#include <map_fragment>',
-                    `vec2 animatedUV = vWorldUV; animatedUV.x -= uTime * 0.005; animatedUV.y -= uTime * 0.01;
-                     vec4 sampledDiffuseColor = texture2D( map, animatedUV );
-                     diffuseColor *= sampledDiffuseColor;`
-                );
-                shader.fragmentShader = shader.fragmentShader.replace(
-                    '#include <emissivemap_fragment>',
-                    `vec4 emissiveColor = texture2D( emissiveMap, animatedUV );
-                     totalEmissiveRadiance *= emissiveColor.rgb;`
-                );
-            };
-
-            meshIceFloor = new THREE.InstancedMesh(floorGeo, this.iceMat, pitFloorCount);
-            meshIceFloor.receiveShadow = true;
-            this.mapGroup.add(meshIceFloor);
+            this.meshIceFloor = new THREE.Mesh(giantGeo, this.iceMat);
+            // La lastra è posizionata a -14.5, sospesa sopra l'acqua!
+            this.meshIceFloor.position.set((this.width * TILE_SIZE) / 2, -14.5, (this.height * TILE_SIZE) / 2);
+            this.meshIceFloor.receiveShadow = true;
+            this.mapGroup.add(this.meshIceFloor);
         }
-        
-        let pFloorIdx = 0;
 
         // --- PREPARAZIONE PARETI INTERNE DELLA FOSSA ---
         const pitWallMat = new THREE.MeshBasicMaterial({ color: 0x050508 }); 
@@ -7017,33 +6988,16 @@ class GameMap {
                         let pz = y * TILE_SIZE + TILE_SIZE / 2;
 
                         // MURO SPROFONDATO (Pareti della voragine scura)
-                        // Il tetto di questo cubo nero si ferma a y = -18
                         dummy.position.set(px, -66, pz);
                         dummy.scale.set(1, 1, 1);
                         dummy.rotation.set(0, 0, 0);
                         dummy.updateMatrix();
                         meshPitWalls.setMatrixAt(pWallIdx++, dummy.matrix);
                         
-                        // LIQUIDO (Acqua / Lava)
-                        // FIX: Deve stare a -17.5 per potersi poggiare "SOPRA" il tetto nero, senza venirne sepolto!
-                        dummy.position.set(px, -17.5, pz);
-                        dummy.scale.set(1, 1, 1); 
-                        dummy.rotation.set(0, 0, 0);
-                        dummy.updateMatrix();
-                        
-                        meshPitFloor.setMatrixAt(pFloorIdx, dummy.matrix);
-                        
-                        // EVENTUALE LASTRA DI GHIACCIO
-                        if (meshIceFloor) {
-                            dummy.position.set(px, -14.5, pz); // Rialzata leggermente
-                            dummy.scale.set(1, 1, 1);
-                            dummy.updateMatrix();
-                            meshIceFloor.setMatrixAt(pFloorIdx, dummy.matrix);
-                        }
-                        
-                        pFloorIdx++;
+                        // NOTA: Abbiamo rimosso la generazione blocco per blocco dei liquidi
+                        // perché l'enorme piano sotterraneo copre automaticamente tutte le fosse!
 
-                       // --- EDGE MASKING: SCAGLIE E LASTRE SUI BORDI ---
+                        // --- EDGE MASKING: SCAGLIE E LASTRE SUI BORDI ---
                         let edgeOffsets = [];
                         let half = TILE_SIZE / 2; // 32
 
@@ -7196,7 +7150,6 @@ class GameMap {
         meshDebris.count = idxDebris;
         meshPitBorders.count = pBorderIdx; 
         meshPitWalls.count = pWallIdx; // Assicura che le pareti interne non creino glitch
-       if (meshIceFloor) meshIceFloor.count = pFloorIdx;
         meshDebris.instanceMatrix.needsUpdate = true;
        meshTrees.count = idxTree; 
         meshTrees.instanceMatrix.needsUpdate = true; 

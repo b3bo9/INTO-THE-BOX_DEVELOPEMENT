@@ -2656,6 +2656,20 @@ function createBlobShadowTexture() {
     tex.encoding = THREE.sRGBEncoding; // <--- MANCAVA QUESTO
     return tex;
 }
+    function createDepthShadowTexture() {
+    const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 128; const ctx = canvas.getContext('2d');
+    // Riempiamo tutto di nero (il colore del vuoto della fossa)
+    ctx.fillStyle = '#050508'; ctx.fillRect(0, 0, 128, 128);
+    // Usiamo 'destination-out' per CANCELLARE il centro creando un buco sfumato
+    ctx.globalCompositeOperation = 'destination-out';
+    const grad = ctx.createRadialGradient(64, 64, 10, 64, 64, 60);
+    grad.addColorStop(0, 'rgba(0,0,0,1)');   // Centro: cancella tutto (trasparente)
+    grad.addColorStop(0.5, 'rgba(0,0,0,0.8)'); // Metà: cancella molto
+    grad.addColorStop(1, 'rgba(0,0,0,0)');     // Bordi: non cancella nulla (rimane nero!)
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, 128, 128);
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+}
 function createRuneTexture() {
     const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256; const ctx = canvas.getContext('2d');
     
@@ -5126,14 +5140,14 @@ startGame(diffMult) {
             if (this.map.obeliskMat && this.map.obeliskMat.emissiveMap) {
                 this.map.obeliskMat.emissiveMap.offset.y -= safeVisualDt * 0.3; 
             }
-            // Scorrimento diretto, naturale e senza cuciture!
+            // Scorrimento rallentato per dare un senso di vastità e liquidi densi
             if (this.map.pitMat && this.map.pitMat.map) {
-                this.map.pitMat.map.offset.y -= safeVisualDt * 0.15; 
-                this.map.pitMat.map.offset.x -= safeVisualDt * 0.08; 
+                this.map.pitMat.map.offset.y -= safeVisualDt * 0.08; 
+                this.map.pitMat.map.offset.x -= safeVisualDt * 0.04; 
             }
             if (this.map.iceMat && this.map.iceMat.map) {
-                this.map.iceMat.map.offset.y -= safeVisualDt * 0.01; 
-                this.map.iceMat.map.offset.x -= safeVisualDt * 0.005; 
+                this.map.iceMat.map.offset.y -= safeVisualDt * 0.005; 
+                this.map.iceMat.map.offset.x -= safeVisualDt * 0.002; 
             }
         }
 
@@ -5499,8 +5513,52 @@ startGame(diffMult) {
                 this.map.fogMesh.instanceMatrix.needsUpdate = true;
             }
         }
-        
-// --- SPAWN PARTICELLE AMBIENTALI TEMA-DIPENDENTI ---
+     // --- EMANAZIONI PARTICOLARI DALLE FOSSE ---
+        // La CPU controlla solo una piccola griglia 5x5 attorno al giocatore ogni tot frame!
+        if (this.map && Game.frameCount % (isTouchDevice ? 5 : 3) === 0 && this.player && !this.player.dead) {
+            let px = Math.floor(this.player.x / TILE_SIZE);
+            let py = Math.floor(this.player.y / TILE_SIZE);
+            
+            for (let ox = -2; ox <= 2; ox++) {
+                for (let oy = -2; oy <= 2; oy++) {
+                    let cx = px + ox; 
+                    let cy = py + oy;
+                    
+                    if (cx >= 0 && cx < this.map.width && cy >= 0 && cy < this.map.height) {
+                        // Se è una fossa, abbiamo un 20% di probabilità di emettere un particellare
+                        if (this.map.grid[cx][cy] === 5 && Math.random() < 0.20) {
+                            let spawnX = (cx * TILE_SIZE) + MathUtils.randomRange(8, 56);
+                            let spawnZ = (cy * TILE_SIZE) + MathUtils.randomRange(8, 56);
+                            let p = Game.getParticle();
+                            
+                            if (Game.currentThemeIndex === 1) { 
+                                // TEMA LAVA: Lapilli infuocati o fumo nero
+                                let isSmoke = Math.random() > 0.4;
+                                p.spawn(spawnX, -10, spawnZ, isSmoke ? SharedMat.spriteDust : SharedMat.spriteRed, isSmoke ? 'dust' : 'spark');
+                                p.vy = MathUtils.randomRange(25, 90);
+                                p.baseSize = isSmoke ? MathUtils.randomRange(25, 45) : MathUtils.randomRange(8, 14);
+                                if (!isSmoke) p.life = MathUtils.randomRange(0.4, 0.8);
+                            } else if (Game.currentThemeIndex === 0) { 
+                                // TEMA FORESTA: Nebbia magica ciano/smeraldo
+                                p.spawn(spawnX, -10, spawnZ, Math.random() > 0.5 ? SharedMat.spriteBlue : SharedMat.spriteGreen, 'ambient');
+                                p.vy = MathUtils.randomRange(15, 35);
+                                p.vx = MathUtils.randomRange(-10, 10);
+                                p.baseSize = MathUtils.randomRange(5, 10);
+                                p.life = MathUtils.randomRange(1.5, 3.0); // Sale molto lentamente
+                            } else { 
+                                // TEMA GHIACCIO: Polvere gelida bianca (Bruma)
+                                p.spawn(spawnX, -10, spawnZ, SharedMat.spriteWhite, 'ambient');
+                                p.vy = MathUtils.randomRange(5, 20); // Pesantissima, striscia lungo i bordi
+                                p.vx = MathUtils.randomRange(-5, 5);
+                                p.baseSize = MathUtils.randomRange(8, 16);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+// --- SPAWN PARTICELLE AMBIENTALI TEMA-DIPENDENTI ---   
         // OTTIMIZZAZIONE ZERO-COST: Se è il tema ghiaccio, dimezziamo i tempi di attesa
         // e raddoppiamo i fiocchi riciclando le particelle dal pool per simulare la nevicata.
         let isIceTheme = this.currentThemeIndex === 2;
@@ -6725,6 +6783,17 @@ class GameMap {
         this.mapGroup.add(meshPitWalls);
         let pWallIdx = 0;
 
+        // --- PREPARAZIONE NEBBIA DI PROFONDITÀ (VIGNETTATURA SOTTERRANEA) ---
+        if (!window.GLOBAL_DEPTH_SHADOW_TEX) window.GLOBAL_DEPTH_SHADOW_TEX = createDepthShadowTexture();
+        const depthShadowMat = new THREE.MeshBasicMaterial({ 
+            map: window.GLOBAL_DEPTH_SHADOW_TEX, 
+            transparent: true, opacity: 0.95, 
+            depthWrite: false 
+        });
+        const meshDepthShadows = new THREE.InstancedMesh(floorGeo, depthShadowMat, pitFloorCount);
+        this.mapGroup.add(meshDepthShadows);
+        let pShadowIdx = 0;
+
         // --- PREPARAZIONE ROCCE ORGANICHE PER I BORDI DELLA FOSSA ---
         if (!window.GLOBAL_PIT_BORDER_GEO) window.GLOBAL_PIT_BORDER_GEO = new THREE.DodecahedronGeometry(14, 1);
         
@@ -6983,7 +7052,7 @@ class GameMap {
                             dummy.updateMatrix();
                             meshRock.setMatrixAt(idxRock++, dummy.matrix);
                         }
-                  } else if (this.grid[x][y] === 5) {
+                 } else if (this.grid[x][y] === 5) {
                         let px = x * TILE_SIZE + TILE_SIZE / 2;
                         let pz = y * TILE_SIZE + TILE_SIZE / 2;
 
@@ -6994,8 +7063,13 @@ class GameMap {
                         dummy.updateMatrix();
                         meshPitWalls.setMatrixAt(pWallIdx++, dummy.matrix);
                         
-                        // NOTA: Abbiamo rimosso la generazione blocco per blocco dei liquidi
-                        // perché l'enorme piano sotterraneo copre automaticamente tutte le fosse!
+                        // NEBBIA DI PROFONDITÀ (Ombra sfumata)
+                        // Posizionata a -17.0: SOPRA l'acqua (-17.5), ma SOTTO l'eventuale ghiaccio (-14.5)
+                        dummy.position.set(px, -17.0, pz);
+                        dummy.scale.set(1.05, 1.05, 1); // Sovrapposizione leggera per non lasciare buchi tra i tile
+                        dummy.rotation.set(0, 0, 0);
+                        dummy.updateMatrix();
+                        meshDepthShadows.setMatrixAt(pShadowIdx++, dummy.matrix);
 
                         // --- EDGE MASKING: SCAGLIE E LASTRE SUI BORDI ---
                         let edgeOffsets = [];
@@ -7156,6 +7230,7 @@ class GameMap {
         meshTreeShadows.count = idxTree;
         meshTreeShadows.instanceMatrix.needsUpdate = true;
         meshTreeShadows.visible = !AppSettings.shadowsEnabled; // Setta la visibilità di base
+        meshDepthShadows.count = pShadowIdx;
         
         if (idxTree > 0) {
             this.mapGroup.add(meshTrees);

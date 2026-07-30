@@ -6620,18 +6620,13 @@ class GameMap {
         let runeMat = new THREE.MeshBasicMaterial({map: RUNE_TEX, color: runeColor, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending, depthWrite: false});
         let rayMat = new THREE.MeshBasicMaterial({color: rayColor, transparent: true, opacity: 0.03, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide});
         let floorGlowMat = new THREE.MeshBasicMaterial({map: GLOW_TEX, color: runeColor, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false});
-
         let imRunes = new THREE.InstancedMesh(window.GLOBAL_RUNE_GEO, runeMat, pillarCount + 1); 
-this.runesMesh = imRunes; // Salviamo il riferimento per scurirle dopo
-let imRays = new THREE.InstancedMesh(window.GLOBAL_GODRAY_GEO, rayMat, pillarCount + 1);
-this.raysMesh = imRays; // Salviamo il riferimento per spegnerli dopo
+        this.runesMesh = imRunes; // Salviamo il riferimento per scurirle dopo
         
-        // Inizializziamo i colori individuali per ogni runa a bianco (1.0) così da non alterare il colore di base
-        let runeColorArray = new Float32Array((pillarCount + 1) * 3).fill(1.0);
-        imRunes.instanceColor = new THREE.InstancedBufferAttribute(runeColorArray, 3);
-
         // FIX: Raggi limitati esattamete al numero di obelischi + il boss (risparmio RAM massiccio)
         let imRays = new THREE.InstancedMesh(window.GLOBAL_GODRAY_GEO, rayMat, pillarCount + 1);
+        this.raysMesh = imRays; // Salviamo il riferimento per spegnerli dopo
+        
         let imFloorGlows = new THREE.InstancedMesh(window.GLOBAL_FLOORGLOW_GEO, floorGlowMat, pillarCount + 10);
         let idxRune = 0, idxRay = 0, idxFGlow = 0;
 

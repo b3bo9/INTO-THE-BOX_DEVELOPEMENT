@@ -7409,12 +7409,13 @@ this.fogMesh.renderOrder = -1; // Assicura che venga disegnato DOPO il terreno (
         while(attempts < 1000) { let x = MathUtils.randomInt(1, this.width - 2), y = MathUtils.randomInt(1, this.height - 2); if (this.grid[x][y] === 2) return {x, y}; attempts++; }
         return {x: 2, y: 2};
     }
-    isSolid(x, y, isFlying = false) {
+    isSolid(x, y, isFlying = false, isPlayer = false) {
         let gx = Math.floor(x / TILE_SIZE), gy = Math.floor(y / TILE_SIZE);
         if (gx < 0 || gy < 0 || gx >= this.width || gy >= this.height) return true; 
         let tile = this.grid[gx][gy];
         if (tile === 1 || tile === 3) return true; // I muri e gli obelischi fermano TUTTO
-        if (tile === 5 && !isFlying) return true;  // Le Fosse (5) bloccano chi cammina, ma i proiettili volano oltre!
+        // NOVITÀ: Le Fosse (5) bloccano i nemici, ma il giocatore (e i proiettili volanti) passano!
+        if (tile === 5 && !isFlying && !isPlayer) return true;  
         return false; 
     }
 }
@@ -7619,23 +7620,25 @@ class Entity {
     }
     
     move(dx, dy, dt) {
+        let isP = (this === Game.player);
         let len = Math.sqrt(dx*dx + dy*dy); if (len > 0) { dx /= len; dy /= len; }
         let totalDist = this.speed * dt; let steps = Math.max(1, Math.ceil(totalDist / 15)); let stepDist = totalDist / steps; const r = this.radius * 0.8; 
         for (let i = 0; i < steps; i++) {
             let newX = this.x + dx * stepDist; let newY = this.y + dy * stepDist;
-            if (dx !== 0) { let testX = dx > 0 ? newX + r : newX - r; if (!Game.map.isSolid(testX, this.y - r, this.isFlying) && !Game.map.isSolid(testX, this.y + r, this.isFlying)) this.x = newX; }
-            if (dy !== 0) { let testY = dy > 0 ? newY + r : newY - r; if (!Game.map.isSolid(this.x - r, testY, this.isFlying) && !Game.map.isSolid(this.x + r, testY, this.isFlying)) this.y = newY; }
+            if (dx !== 0) { let testX = dx > 0 ? newX + r : newX - r; if (!Game.map.isSolid(testX, this.y - r, this.isFlying, isP) && !Game.map.isSolid(testX, this.y + r, this.isFlying, isP)) this.x = newX; }
+            if (dy !== 0) { let testY = dy > 0 ? newY + r : newY - r; if (!Game.map.isSolid(this.x - r, testY, this.isFlying, isP) && !Game.map.isSolid(this.x + r, testY, this.isFlying, isP)) this.y = newY; }
         }
         this.mesh.position.set(this.x, this.mesh.position.y, this.y);
         this.mesh.updateMatrix();
     }
     push(nx, ny, dist) {
         if (this.isPursuer) return; // L'inseguitore non viene mai sbalzato
+        let isP = (this === Game.player);
         let steps = Math.max(1, Math.ceil(dist / 15)); let stepDist = dist / steps; const r = this.radius * 0.8;
         for (let i = 0; i < steps; i++) {
             let newX = this.x + nx * stepDist; let newY = this.y + ny * stepDist;
-            if (nx !== 0) { let testX = nx > 0 ? newX + r : newX - r; if (!Game.map.isSolid(testX, this.y - r, this.isFlying) && !Game.map.isSolid(testX, this.y + r, this.isFlying)) this.x = newX; }
-            if (ny !== 0) { let testY = ny > 0 ? newY + r : newY - r; if (!Game.map.isSolid(this.x - r, testY, this.isFlying) && !Game.map.isSolid(this.x + r, testY, this.isFlying)) this.y = newY; }
+            if (nx !== 0) { let testX = nx > 0 ? newX + r : newX - r; if (!Game.map.isSolid(testX, this.y - r, this.isFlying, isP) && !Game.map.isSolid(testX, this.y + r, this.isFlying, isP)) this.x = newX; }
+            if (ny !== 0) { let testY = ny > 0 ? newY + r : newY - r; if (!Game.map.isSolid(this.x - r, testY, this.isFlying, isP) && !Game.map.isSolid(this.x + r, testY, this.isFlying, isP)) this.y = newY; }
         }
         this.mesh.position.set(this.x, this.mesh.position.y, this.y);
         this.mesh.updateMatrix();
@@ -8496,37 +8499,88 @@ class Player extends Entity {
         let isShooting = Game.mouse.leftDown || Game.inputs.right.active;
         if (this.overdrive && this.essence === 'red' && isShooting && !this.isDashing) this.flamethrower(dt);
         
-        // ---> BLOCCO DI MOVIMENTO, POLVERE E PENDOLO
+        // Rileva se il giocatore è dentro una fossa
+        let tileX = Math.floor(this.x / TILE_SIZE);
+        let tileY = Math.floor(this.y / TILE_SIZE);
+        let inPit = (Game.map && Game.map.grid[tileX] && Game.map.grid[tileX][tileY] === 5);
+
+        // ---> BLOCCO DI MOVIMENTO, FISICA E PENDOLO
         if (!this.isDashing) {
             let dx = 0, dy = 0;
             if (Game.keys['w']) dy -= 1; if (Game.keys['s']) dy += 1; if (Game.keys['a']) dx -= 1; if (Game.keys['d']) dx += 1;
             if (Game.inputs.left.active) { dx = Game.inputs.left.x; dy = Game.inputs.left.y; }
             
-           let isMoving = (dx !== 0 || dy !== 0);
+            // 1. Normalizzazione input
+            let inputDx = dx, inputDy = dy;
+            let inputLen = Math.sqrt(inputDx*inputDx + inputDy*inputDy);
+            if (inputLen > 0) { inputDx /= inputLen; inputDy /= inputLen; }
+
+            let isIce = (Game.currentThemeIndex === 2);
             
-            if (Game.isCorrupted && Game.corruptedType === 'unstable') {
-                if (isMoving && !this.isDashing) {
-                    if (!this.snakeTrailTimer) this.snakeTrailTimer = 0;
-                    this.snakeTrailTimer += dt;
-                    if (this.snakeTrailTimer >= 0.2) {
-                        // FIX: Colore aggiornato al viola (0xaa00ff) per coerenza visiva
-                        Game.getHazard().spawn(this.x, this.y, 22, 4.0, this.stats.maxDmg * 0.4, 0xaa00ff, 'snake_fire');
-                        this.snakeTrailTimer = 0;
-                    }
-                }
+            // 2. FISICA DEL GHIACCIO: Inerzia e Scivolamento
+            if (inPit && isIce) {
+                if (this.slideDx === undefined) { this.slideDx = 0; this.slideDy = 0; }
+                // Inerzia: accelera e frena molto lentamente (effetto scivoloso)
+                this.slideDx += (inputDx - this.slideDx) * dt * 1.5;
+                this.slideDy += (inputDy - this.slideDy) * dt * 1.5;
+                dx = this.slideDx;
+                dy = this.slideDy;
+                
+                // La velocità scala in base allo slancio accumulato
+                let slideSpeed = Math.sqrt(dx*dx + dy*dy);
+                currentSpeed *= Math.max(0.15, slideSpeed); 
+            } else {
+                this.slideDx = inputDx;
+                this.slideDy = inputDy;
+                dx = inputDx;
+                dy = inputDy;
+            }
+
+            let isMoving = (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05);
+
+            // 3. FISICA ACQUA/LAVA: Rallentamento drastico
+            if (inPit && !isIce) {
+                currentSpeed *= 0.35; // Riduce la velocità del 65%
             }
 
             if (isMoving) {
                 this.speed = currentSpeed; 
                 this.move(dx, dy, dt); 
-                this.mesh.position.y = Game.animBounce * 0.75; 
                 
-          // --- NUOVO: Sbuffo di polvere al suolo (ogni 6 frame se cammina)
+                // --- EFFETTI VISIVI CAMMINATA ---
                 if (Game.frameCount % 6 === 0) {
-                    Game.getParticle().spawn(this.x, 2, this.y, SharedMat.spriteDust, 'dust');
+                    if (inPit) {
+                        if (Game.currentThemeIndex === 0) Game.getParticle().spawn(this.x, 2, this.y, SharedMat.spriteBlue, 'dust'); // Schizzi acqua
+                        else if (Game.currentThemeIndex === 1) Game.getParticle().spawn(this.x, 2, this.y, SharedMat.spriteRed, 'spark'); // Lapilli lava
+                        else Game.getParticle().spawn(this.x, 2, this.y, SharedMat.spriteWhite, 'dust'); // Polvere di ghiaccio
+                    } else {
+                        Game.getParticle().spawn(this.x, 2, this.y, SharedMat.spriteDust, 'dust'); // Terra normale
+                    }
                 }
             }
-           // --- PENDOLO FISICO E FLUIDO DELLA LANTERNA ---
+            
+            // 4. SPROFONDAMENTO E DANNI (LAVA)
+            let targetY = 0;
+            if (inPit && !isIce) {
+                targetY = -12; // Il giocatore sprofonda visivamente fino alla vita
+                
+                if (Game.currentThemeIndex === 1) { // TEMA LAVA
+                    if (this.lavaTimer === undefined) this.lavaTimer = 0;
+                    this.lavaTimer += dt;
+                    if (this.lavaTimer >= 1.0) { // Un tick di danno ogni secondo
+                        this.takeDamage(this.stats.maxHp * 0.10, 'hazard', false, false); // -10% HP!
+                        this.lavaTimer = 0;
+                        Game.getParticle().spawn(this.x, 15, this.y, SharedMat.spriteRed, 'flame'); // Fiammata dal corpo
+                    }
+                }
+            } else {
+                this.lavaTimer = 0; // Azzera il timer se esce
+            }
+
+            // Interpolazione morbida dell'altezza (effetto tuffo/emersione fluido)
+            this.mesh.position.y += ((targetY + Game.animBounce * 0.75) - this.mesh.position.y) * dt * 10;
+            
+            // --- PENDOLO FISICO E FLUIDO DELLA LANTERNA ---
             // Inizializziamo le variabili di fase se non esistono
             if (this.swingPhase === undefined) { this.swingPhase = 0; this.currentSwingSpd = 3; }
             
@@ -8588,6 +8642,9 @@ class Player extends Entity {
             this.mesh.scale.set(1, 1, 1); 
         } else {
             this.dashTimer -= dt;
+            
+            // NOVITÀ: Riporta fluidamente il personaggio in superficie se scatta dall'acqua
+            this.mesh.position.y += (0 - this.mesh.position.y) * dt * 15;
             
             // --- INIZIO SQUASH & STRETCH ---
             // 0.25 è la durata totale fissa dello scatto che hai impostato in dash()
@@ -8874,11 +8931,10 @@ if (isCrit) baseDmg *= this.modifiers.critDmgMult;
                 let nx = this.x + dx * d; let ny = this.y + dy * d;
                 
                 // 1. La traiettoria DELLO SCATTO vola sopra i crepacci (isFlying = true)
-                if (Game.map.isSolid(nx + rCheck, ny + rCheck, true) || Game.map.isSolid(nx - rCheck, ny - rCheck, true) || Game.map.isSolid(nx + rCheck, ny - rCheck, true) || Game.map.isSolid(nx - rCheck, ny + rCheck, true)) { break; }
+                if (Game.map.isSolid(nx + rCheck, ny + rCheck, true, true) || Game.map.isSolid(nx - rCheck, ny - rCheck, true, true) || Game.map.isSolid(nx + rCheck, ny - rCheck, true, true) || Game.map.isSolid(nx - rCheck, ny + rCheck, true, true)) { break; }
                 
-                // 2. MA il punto finale di atterraggio (safeDist) DEVE essere sul pavimento solido (isFlying = false)!
-                // Se c'è una fossa, continua a scattare per oltrepassarla. Se si ferma SOPRA la fossa, atterra all'ultimo punto calpestabile valido prima di essa.
-                if (!Game.map.isSolid(nx, ny, false)) {
+                // 2. MA il punto finale di atterraggio (safeDist) DEVE essere sul pavimento (o in una fossa)!
+                if (!Game.map.isSolid(nx, ny, false, true)) {
                     safeDist = d;
                 }
             }

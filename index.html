@@ -8718,12 +8718,14 @@ if (Game.ultimateActive) currentSpeed *= 1.5; currentSpeed = Math.min(currentSpe
         }
     }
 }
-            } else {
+           } else {
                 this.lavaTimer = 0; // Azzera il timer se esce
             }
 
-            // Interpolazione morbida dell'altezza (effetto tuffo/emersione fluido)
-            this.mesh.position.y += ((targetDepth + Game.animBounce * 0.75) - this.mesh.position.y) * dt * 10;
+            // Interpolazione morbida dell'altezza: 
+            // Se in movimento usa il rimbalzo accentuato (corsa), altrimenti usa un respiro leggero (idle)
+            let activeBounce = isMoving ? (Game.animBounce * 0.75) : (Math.sin(Game.playTime * 3.0) * 0.4);
+            this.mesh.position.y += ((targetDepth + activeBounce) - this.mesh.position.y) * dt * 10;
             
             // --- PENDOLO FISICO E FLUIDO DELLA LANTERNA ---
             // Inizializziamo le variabili di fase se non esistono
@@ -10566,11 +10568,10 @@ Game.scene.add(this.telegraphMesh);
             }
             // ---------------------------------------------------
         }
-
-        // --- PIANO CORROTTO: RAPPRESAGLIA (BULLET HELL) ---
+// --- PIANO CORROTTO: RAPPRESAGLIA (BULLET HELL) ---
         // Se muore un nemico (non boss e non cristallo), spara una raggiera di proiettili
         if (Game.isCorrupted && Game.corruptedType === 'retaliation' && !this.isBoss && this.type !== 'crystal') {
-            let projCount = 4; // BILANCIAMENTO: Ridotti da 8 a 4 per non rendere i cluster di nemici impossibili da schivare
+            let projCount = 3; // BILANCIAMENTO: Ridotti a 3 (come i cristalli) per non rendere i cluster impossibili
             let speed = 250 * Game.difficultyMult;
             let dmg = this.stats.maxDmg * 0.6; // Danno mitigato al 60% per bilanciare il caos
             

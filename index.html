@@ -8712,8 +8712,8 @@ if (Game.ultimateActive) currentSpeed *= 1.5; currentSpeed = Math.min(currentSpe
             }
             // --------------------------------------------------------
 
-            // Assicuriamoci che la scala torni normale quando non scatta
-            this.mesh.scale.set(1, 1, 1); 
+           // Assicuriamoci che la scala torni normale quando non scatta
+            this.mesh.scale.setScalar(massScale); 
         } else {
             this.dashTimer -= dt;
             
@@ -8721,36 +8721,34 @@ if (Game.ultimateActive) currentSpeed *= 1.5; currentSpeed = Math.min(currentSpe
             this.mesh.position.y += (0 - this.mesh.position.y) * dt * 15;
             
             // --- INIZIO SQUASH & STRETCH ---
-            // 0.25 è la durata totale fissa dello scatto che hai impostato in dash()
             let progress = this.dashTimer / 0.25; 
             
-           let stretchCurve = Math.sin(progress * Math.PI); 
-let stretch = 1.0 + (stretchCurve * 0.8); 
-let squash = 1.0 - (stretchCurve * 0.4);  
-
-// Applica Squash & Stretch moltiplicato per la stazza enorme!
-this.mesh.scale.set(squash * massScale, squash * massScale, stretch * massScale);
-// --- FINE SQUASH & STRETCH ---
-
-if (this.essence === 'red' && Game.frameCount % 8 === 0) Game.getHazard().spawn(this.x, this.y, 25 * massScale, 3.0, this.stats.maxDmg * 0.5, ESSENCE_COLORS.red, 'fire');
-if (this.modifiers.fireTrail && Game.frameCount % 5 === 0) Game.getHazard().spawn(this.x, this.y, 20 * massScale, 1.5, this.stats.maxDmg * 0.8, 0xffaa00, 'fire');
-this.move(Math.cos(this.dashAngle), Math.sin(this.dashAngle), dt * 4.0);
-
-if (this.dashTimer <= 0) { 
-    this.isDashing = false; 
-    this.mesh.scale.setScalar(massScale); // Reset alla grandezza attuale della massa
-    if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80 * massScale, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); Game.addTrauma(0.5); }
+            // La curva sale morbida a 1 e torna a 0
+            let stretchCurve = Math.sin(progress * Math.PI); 
+            
+            // L'asse Z è la direzione in cui guarda il modello. Lo allunghiamo dell'80%
+            let stretch = 1.0 + (stretchCurve * 0.8); 
+            // Gli assi X e Y vengono schiacciati del 40% per mantenere il "volume" percepito
+            let squash = 1.0 - (stretchCurve * 0.4);  
+            
+            // Applica Squash & Stretch moltiplicato per la stazza enorme!
+            this.mesh.scale.set(squash * massScale, squash * massScale, stretch * massScale);
             // --- FINE SQUASH & STRETCH ---
 
-            if (this.essence === 'red' && Game.frameCount % 8 === 0) Game.getHazard().spawn(this.x, this.y, 25, 3.0, this.stats.maxDmg * 0.5, ESSENCE_COLORS.red, 'fire');
-            if (this.modifiers.fireTrail && Game.frameCount % 5 === 0) Game.getHazard().spawn(this.x, this.y, 20, 1.5, this.stats.maxDmg * 0.8, 0xffaa00, 'fire');
+            if (this.essence === 'red' && Game.frameCount % 8 === 0) Game.getHazard().spawn(this.x, this.y, 25 * massScale, 3.0, this.stats.maxDmg * 0.5, ESSENCE_COLORS.red, 'fire');
+            if (this.modifiers.fireTrail && Game.frameCount % 5 === 0) Game.getHazard().spawn(this.x, this.y, 20 * massScale, 1.5, this.stats.maxDmg * 0.8, 0xffaa00, 'fire');
             this.move(Math.cos(this.dashAngle), Math.sin(this.dashAngle), dt * 4.0);
             
-           if (this.dashTimer <= 0) { 
-                this.isDashing = false; 
-                this.mesh.scale.setScalar(massScale);
-                if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); Game.addTrauma(0.5); } 
-              if (this.modifiers.dashLightning) {
+            if (this.dashTimer <= 0) { 
+                this.isDashing = false; 
+                this.mesh.scale.setScalar(massScale); // Reset alla grandezza attuale della massa
+                
+                if (this.overdrive && this.essence === 'red') { 
+                    Game.getHazard().spawn(this.x, this.y, 80 * massScale, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); 
+                    Game.addTrauma(0.5); 
+                } 
+                
+                if (this.modifiers.dashLightning) {
                     Game.addTrauma(0.8);
                     AudioEngine.playShoot('chain_lightning');
                     
@@ -8771,7 +8769,7 @@ if (this.dashTimer <= 0) {
                             spark.baseSize = 80 - (j*15); // Si restringe verso l'alto
                         }
                         
-                        // Calcolo danni ad area (Raggio ridotto a 90 per colpo singolo, Danno al 30%)
+                        // Calcolo danni ad area
                         let nearby = Game.enemyGrid.findNearby(pt, 90);
                         nearby.forEach(e => {
                             if (MathUtils.distanceSq(pt, e) < 90*90) {
@@ -8781,8 +8779,9 @@ if (this.dashTimer <= 0) {
                         });
                     });
                 }
-            }
+            }
         }
+        
 
         this.attackTimer -= dt;
         if (isShooting && this.attackTimer <= 0 && !this.isDashing && !(this.overdrive && this.essence === 'red')) this.attack();
@@ -8825,6 +8824,7 @@ if (this.dashTimer <= 0) {
         // -----------------------------------------------------------------
     
    } 
+        
   flamethrower(dt) {
         if (Game.frameCount % (isTouchDevice ? 2 : 1) === 0) {
             // Aumentiamo leggermente il numero di particelle per dare volume al fuoco

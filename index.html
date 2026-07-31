@@ -9387,6 +9387,7 @@ Game.scene.add(this.telegraphMesh);
         this.fireDebuffTimer = 0;
         this.slowedTimer = 0;
         this.infected = false;
+        this.isBerserk = false;
         
        let hpMod = 1, dmgMod = 1, spdMod = 1, color = 0x666666, size = 12;
         this.isFlying = false; // Reset di base
@@ -9547,6 +9548,10 @@ Game.scene.add(this.telegraphMesh);
         if (this.modelParts && this.modelParts.armL) { 
             this.modelParts.armL.rotation.x = 0; 
             this.modelParts.armR.rotation.x = 0; 
+            // NUOVO: Ripristina la clava dell'orco dal pool
+            if (this.type === 'orc' && this.modelParts.armR.children.length > 0) {
+                this.modelParts.armR.children[0].visible = true;
+            }
         }
         
         // Applica le opacità corrette per gli Slime
@@ -9623,7 +9628,30 @@ Game.scene.add(this.telegraphMesh);
             return;
         }
         // -------------------------------------------
-        this.updateFlash(dt);
+       this.updateFlash(dt);
+
+        // --- INIZIO REWORK ORCO BERSERKER ---
+        if (this.type === 'orc' && this.stats.hp < this.stats.maxHp * 0.3 && !this.isBerserk) {
+            this.isBerserk = true;
+            this.baseSpeed *= 3.0; // Triplica la velocità
+            this.speed = this.baseSpeed;
+            this.stats.maxDmg *= 1.5; // Aumenta i danni del 50%
+            this.stats.minDmg *= 1.5;
+            
+            this.mat.emissive.setHex(0xff0000); // Diventa rosso fuoco
+            this.mat.emissiveIntensity = 1.0;
+            
+            // Nasconde la clava (Lotta a mani nude e corre verso di te!)
+            if (this.modelParts && this.modelParts.armR && this.modelParts.armR.children.length > 0) {
+                this.modelParts.armR.children[0].visible = false;
+            }
+            
+            Game.getFloatingText().spawn(this.x, this.y + 20, "FURENTE!", '#ff0000', 35, true);
+            Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spriteRed, 'nova');
+            AudioEngine.playShoot('flame');
+        }
+        // --- FINE REWORK ORCO BERSERKER ---
+
        if (this.type === 'mage' || this.type === 'pyromancer' || this.type === 'dark_prophet') { this.mesh.rotation.y += dt; this.mesh.position.y = Game.animFloat;
         if(this.modelParts.crystals) this.modelParts.crystals.rotation.y += dt*2;
         this.mesh.updateMatrix();
@@ -10218,8 +10246,20 @@ Game.scene.add(this.telegraphMesh);
             this.buffTargets = [];
         }
       if (this.type === 'crystal') {
+            // --- INIZIO REWORK CRISTALLI VIOLA ---
             Game.getHazard().spawn(this.x, this.y, 100, 0.5, 300 * Game.difficultyMult, 0xaa00ff, 'crystal_fire'); // Spawn color viola
-            Game.addTrauma(0.2); // <--- VIBRAZIONE ENORMEMENTE RIDOTTA (Era 1.5)
+            let projCount = 3;
+            let speed = 250 * Game.difficultyMult;
+            let dmg = this.stats.maxDmg * 1.5; 
+            
+            for (let i = 0; i < projCount; i++) {
+                // Li spara a 120 gradi l'uno dall'altro, aggiungendo un pizzico di randomicità
+                let a = (Math.PI * 2 / projCount) * i + (Math.random() * 0.5); 
+                // Spara proiettili 'enemy_bolt' (sfere magiche azzurre/viola)
+                Game.getProjectile().spawn(this.x, this.y, a, speed, dmg, 'enemy', 'enemy_bolt', false, false, this);
+            }
+
+            Game.addTrauma(0.2); 
             let pCount = AppSettings.isLow ? 5 : (AppSettings.isUltraPC ? 40 : 20);
             for(let i=0; i<pCount; i++) Game.getParticle().spawn(this.x, 20, this.y, SharedMat.spritePink, 'spark');
             AudioEngine.playShoot('explosive_arrow'); 
@@ -10230,6 +10270,7 @@ Game.scene.add(this.telegraphMesh);
           
             this.active = false; this.mesh.visible = false;
             return;
+            // --- FINE REWORK CRISTALLI VIOLA ---
         }
       
         this.shadowMesh.visible = false;

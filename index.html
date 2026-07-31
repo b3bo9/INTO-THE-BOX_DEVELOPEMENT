@@ -3009,7 +3009,7 @@ class Essence {
     }
     spawn(x, y, type) {
        this.active = true; this.x = x; this.y = y; this.type = type; let color = ESSENCE_COLORS[type]; 
-        this.life = (Game.isCorrupted && Game.corruptedType === 'volatile') ? 3.0 : 15.0; // Esplode in 3 secondi
+       this.life = 15.0;
         // Assegniamo il colore direttamente all'emissione luminosa
         this.coreMat.emissive.setHex(color); this.haloMat.color.setHex(color);
         this.group.position.set(x, 12, y); this.group.updateMatrix(); this.group.visible = true;
@@ -3557,7 +3557,7 @@ const UI = {
                 let typeText = "";
                 if (Game.corruptedType === 'darkness') typeText = "OSCURITÀ";
                 if (Game.corruptedType === 'unstable') typeText = "INSTABILE";
-                if (Game.corruptedType === 'volatile') typeText = "IMPLOSIONE";
+                if (Game.corruptedType === 'critical_mass') typeText = "MASSA CRITICA";
                 if (Game.corruptedType === 'combo') typeText = "COMBO";
                 if (Game.corruptedType === 'pursuer') typeText = "NEMESI";
                 if (Game.corruptedType === 'acid_pools') typeText = "CORROSIONE";
@@ -4333,8 +4333,10 @@ pushDebris(px, pz, radius, force) {
         let maxCombo = (this.isCorrupted && this.corruptedType === 'combo') ? 300 : 100;
         this.combo = Math.min(this.combo, maxCombo); 
         this.comboMaxTime = 5.0 + (this.player ? this.player.modifiers.comboDecayAdd : 0);
-        this.comboTimer = this.comboMaxTime; 
-        UI.triggerComboAnim(this.combo); 
+       // Sisma Massa Critica: più sei grosso, più ogni colpo fa tremare la telecamera
+if (this.isCorrupted && this.corruptedType === 'critical_mass') {
+    this.addTrauma(0.15 + (this.combo * 0.005));
+}
         
         // --- TRIGGER ANNUNCIATORE ARCADE ---
         let thresholds = [
@@ -5715,13 +5717,7 @@ if (a.rayIdx !== undefined && a.rayIdx >= 0 && this.map.raysMesh) {
             let e = this.essences[i];
             if(e.active) {
                 e.life -= combatDt;
-                if (e.life <= 0) { 
-                    if (Game.isCorrupted && Game.corruptedType === 'volatile') {
-                        Game.getHazard().spawn(e.x, e.y, 80, 0.5, Game.player.stats.maxHp * 0.3, 0x33ff00, 'poison'); 
-                        Game.getParticle().spawn(e.x, 20, e.y, SharedMat.spriteGreen, 'nova');
-                    }
-                    e.destroy(); continue; 
-                }
+                if (e.life <= 0) { e.destroy(); continue; }
                 if (e.life < 3.0) e.group.visible = Math.floor(e.life * 8) % 2 === 0;
                 else e.group.visible = true;
 
@@ -8500,9 +8496,22 @@ class Player extends Entity {
         }
         let greenSpdMult = 1.0 + ((this.greenSpeedStacks || 0) * 0.05);
 
-        let buffMovMult = this.shortBuffs.movSpeed > 0 ? 1.10 : 1.0; // +10% Speed
-        let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult * shockSpdMult * dashSpdMult * miserSpdBonus * (1.0 + (this.essenceSpeedBonus || 0)) * auraSpdMult * buffMovMult * greenSpdMult;
-        if (Game.ultimateActive) currentSpeed *= 1.5; currentSpeed = Math.min(currentSpeed, Game.ultimateActive ? 750 : 550);
+       // --- LOGICA MASSA CRITICA ---
+let massScale = 1.0;
+let massSpeedPenalty = 1.0;
+if (Game.isCorrupted && Game.corruptedType === 'critical_mass') {
+    // Cresce fino a 2.5x la grandezza normale a 50 combo!
+    massScale = 1.0 + Math.min(Game.combo * 0.03, 1.5);
+    // Diventi più lento man mano che diventi gigante (fino al -30% di velocità)
+    massSpeedPenalty = Math.max(0.7, 1.0 - (massScale - 1.0) * 0.2);
+}
+// Aggiorna fisicamente l'hitbox per farti prendere danni più facilmente!
+this.radius = 16 * massScale;
+
+let buffMovMult = this.shortBuffs.movSpeed > 0 ? 1.10 : 1.0; 
+let currentSpeed = this.baseSpeed * (1 + Math.min(Game.combo * 0.02, 0.80 * flowCapMult)) * this.modifiers.speedMult * shockSpdMult * dashSpdMult * miserSpdBonus * (1.0 + (this.essenceSpeedBonus || 0)) * auraSpdMult * buffMovMult * greenSpdMult;
+currentSpeed *= massSpeedPenalty; // Applica il rallentamento della massa
+if (Game.ultimateActive) currentSpeed *= 1.5; currentSpeed = Math.min(currentSpeed, Game.ultimateActive ? 750 : 550);
         
         if (Game.ultimateActive && Game.frameCount % (isTouchDevice ? 8 : 3) === 0) Game.getParticle().spawn(this.x + MathUtils.randomRange(-15, 15), 15, this.y + MathUtils.randomRange(-15, 15), SharedMat.spriteBlue, 'trail');
         let isShooting = Game.mouse.leftDown || Game.inputs.right.active;
@@ -8678,15 +8687,22 @@ class Player extends Entity {
             // 0.25 è la durata totale fissa dello scatto che hai impostato in dash()
             let progress = this.dashTimer / 0.25; 
             
-            // La curva sale morbida a 1 e torna a 0
-            let stretchCurve = Math.sin(progress * Math.PI); 
-            
-            // L'asse Z è la direzione in cui guarda il modello. Lo allunghiamo dell'80%
-            let stretch = 1.0 + (stretchCurve * 0.8); 
-            // Gli assi X e Y vengono schiacciati del 40% per mantenere il "volume" percepito
-            let squash = 1.0 - (stretchCurve * 0.4);  
-            
-            this.mesh.scale.set(squash, squash, stretch);
+           let stretchCurve = Math.sin(progress * Math.PI); 
+let stretch = 1.0 + (stretchCurve * 0.8); 
+let squash = 1.0 - (stretchCurve * 0.4);  
+
+// Applica Squash & Stretch moltiplicato per la stazza enorme!
+this.mesh.scale.set(squash * massScale, squash * massScale, stretch * massScale);
+// --- FINE SQUASH & STRETCH ---
+
+if (this.essence === 'red' && Game.frameCount % 8 === 0) Game.getHazard().spawn(this.x, this.y, 25 * massScale, 3.0, this.stats.maxDmg * 0.5, ESSENCE_COLORS.red, 'fire');
+if (this.modifiers.fireTrail && Game.frameCount % 5 === 0) Game.getHazard().spawn(this.x, this.y, 20 * massScale, 1.5, this.stats.maxDmg * 0.8, 0xffaa00, 'fire');
+this.move(Math.cos(this.dashAngle), Math.sin(this.dashAngle), dt * 4.0);
+
+if (this.dashTimer <= 0) { 
+    this.isDashing = false; 
+    this.mesh.scale.setScalar(massScale); // Reset alla grandezza attuale della massa
+    if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80 * massScale, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); Game.addTrauma(0.5); }
             // --- FINE SQUASH & STRETCH ---
 
             if (this.essence === 'red' && Game.frameCount % 8 === 0) Game.getHazard().spawn(this.x, this.y, 25, 3.0, this.stats.maxDmg * 0.5, ESSENCE_COLORS.red, 'fire');
@@ -8695,7 +8711,7 @@ class Player extends Entity {
             
            if (this.dashTimer <= 0) { 
                 this.isDashing = false; 
-                this.mesh.scale.set(1, 1, 1); // Reset immediato e di sicurezza a fine scatto
+                this.mesh.scale.setScalar(massScale);
                 if (this.overdrive && this.essence === 'red') { Game.getHazard().spawn(this.x, this.y, 80, 1.0, this.stats.maxDmg * 3 * this.modifiers.dmgMult, ESSENCE_COLORS.red, 'fire'); Game.addTrauma(0.5); } 
               if (this.modifiers.dashLightning) {
                     Game.addTrauma(0.8);
@@ -8868,8 +8884,11 @@ class Player extends Entity {
       let critChance = this.modifiers.critChance + this.modifiers.bonusCritChance + Math.min(Game.combo * 0.005, 0.5 * flowCapMult); let isCrit = Math.random() < critChance;
         if (this.modifiers.dashCritsStacks > 0) { isCrit = true; this.modifiers.dashCritsStacks--; }
         
-        let baseDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * (1 + Math.min(Game.combo * 0.04, 2.0 * flowCapMult)) * this.modifiers.dmgMult;
-        // FIX: Applica il 40% in più se sei nel raggio dell'Obelisco Rosso (DOPO aver calcolato baseDmg)
+       // MASSA CRITICA: Moltiplica i danni per quanto sei grosso!
+if (Game.isCorrupted && Game.corruptedType === 'critical_mass') {
+    let massScale = 1.0 + Math.min(Game.combo * 0.03, 1.5);
+    baseDmg *= massScale; 
+}
         if (aura === 'red') baseDmg *= 1.4;
         if (aura === 'corrupted') baseDmg *= 1.2; // +20% Danni inflitti
         
@@ -10809,10 +10828,22 @@ class Projectile {
         if (type === 'enemy_bolt') { mat = SharedMat.enemyBolt; this.radius = 16; geo = SharedGeo.icosahedron; }
         if (type === 'fire_shape') { mat = SharedMat.fireShape; this.radius = 20; geo = SharedGeo.icosahedron; }
 
-        this.mesh.geometry = geo; this.mesh.material = mat; this.group.position.set(x, 15, y);
-        // Modificato: Rimosso 'player_arrow' da questo IF per permettergli di scalare come sfera
-        if (type === 'arrow' || type === 'homing_arrow') { this.mesh.scale.set(4, 40, 4); this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; }
-        else { this.mesh.scale.setScalar(this.radius); this.mesh.rotation.set(0,0,0); }
+        // --- SCALATURA MASSA CRITICA PER PROIETTILI PLAYER ---
+let projScale = 1.0;
+if (owner === 'player' && Game.isCorrupted && Game.corruptedType === 'critical_mass') {
+    projScale = 1.0 + Math.min(Game.combo * 0.03, 1.5);
+}
+this.radius *= projScale; // Aumenta l'hitbox reale del proiettile!
+
+this.mesh.geometry = geo; this.mesh.material = mat; this.group.position.set(x, 15, y);
+
+if (type === 'arrow' || type === 'homing_arrow') { 
+    this.mesh.scale.set(4 * projScale, 40 * projScale, 4 * projScale); 
+    this.mesh.rotation.z = -Math.PI/2; this.mesh.rotation.y = -angle; this.mesh.rotation.x = 0; 
+} else { 
+    this.mesh.scale.setScalar(this.radius); 
+    this.mesh.rotation.set(0,0,0); 
+}
         
        this.mesh.updateMatrix(); this.group.updateMatrix(); 
         
@@ -11919,7 +11950,7 @@ window.prepareFloorScreen = function() {
     } else if (window.nextIsCorrupted) {
         btnNext.className = baseBtnClass + " animate-pulse";
         
-        let curses = ['darkness', 'unstable', 'retaliation', 'volatile', 'pursuer', 'acid_pools'];
+        let curses = ['darkness', 'unstable', 'retaliation', 'critical_mass', 'pursuer', 'acid_pools'];
         window.nextCorruptedType = curses[Math.floor(Math.random() * curses.length)];
         window.nextCorruptedReward = Math.random() < 0.5 ? 'coins' : 'relic';
 

@@ -8921,22 +8921,27 @@ if (Game.ultimateActive) currentSpeed *= 1.5; currentSpeed = Math.min(currentSpe
       let critChance = this.modifiers.critChance + this.modifiers.bonusCritChance + Math.min(Game.combo * 0.005, 0.5 * flowCapMult); let isCrit = Math.random() < critChance;
         if (this.modifiers.dashCritsStacks > 0) { isCrit = true; this.modifiers.dashCritsStacks--; }
         
-       // MASSA CRITICA: Moltiplica i danni per quanto sei grosso!
-if (Game.isCorrupted && Game.corruptedType === 'critical_mass') {
-    let massScale = 1.0 + Math.min(Game.combo * 0.03, 1.5);
-    baseDmg *= massScale; 
-}
+        // 1. Calcolo del Danno Base INIZIALE
+        let baseDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * (1 + Math.min(Game.combo * 0.04, 2.0 * flowCapMult)) * this.modifiers.dmgMult;
+        
+        // 2. MASSA CRITICA: Moltiplica i danni per quanto sei grosso!
+        if (Game.isCorrupted && Game.corruptedType === 'critical_mass') {
+            let massScale = 1.0 + Math.min(Game.combo * 0.03, 1.5);
+            baseDmg *= massScale; 
+        }
+
+        // 3. Bonus Obelischi e Corruzione
         if (aura === 'red') baseDmg *= 1.4;
         if (aura === 'corrupted') baseDmg *= 1.2; // +20% Danni inflitti
         
-        // Applicazione Maestria del Flow sul danno INFLITTO
+        // 4. Applicazione Maestria del Flow sul danno INFLITTO
         if (this.modifiers.flowMastery) {
             if (Game.combo > 50) baseDmg *= 1.20; // Fai +20% danni
             else baseDmg *= 0.80; // Fai -20% danni
         }
 
         if (Game.ultimateActive) baseDmg *= 2.0;
-if (isCrit) baseDmg *= this.modifiers.critDmgMult;
+        if (isCrit) baseDmg *= this.modifiers.critDmgMult;
         let projType = 'player_arrow'; if (this.essence === 'red') projType = 'explosive_arrow'; if (this.essence === 'blue') projType = 'chain_lightning'; if (this.essence === 'green') projType = 'homing_arrow';
         let piercing = (this.overdrive && this.essence === 'blue'); AudioEngine.playShoot(projType, isCrit);
         

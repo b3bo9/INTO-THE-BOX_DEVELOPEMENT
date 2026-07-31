@@ -775,7 +775,7 @@ body.colorblind-mode #opt-colorblind-text {
             </button>
         </div>
     </div>
-    <!-- MODALE SELEZIONE SACRIFICIO -->
+  <!-- MODALE SELEZIONE SACRIFICIO -->
     <div id="reforgeSelectModal" class="absolute inset-0 bg-black/95 z-[260] flex flex-col items-center justify-center backdrop-blur-md pointer-events-auto hidden p-4">
        <div class="glass-panel modal-enter border-purple-500/50 p-5 w-full max-w-[450px] shadow-[0_0_40px_rgba(168,85,247,0.3)] flex flex-col max-h-[85vh]">
             <h2 class="text-xl sm:text-2xl font-black text-purple-400 mb-4 border-b border-gray-700 pb-2 uppercase tracking-widest text-center"><i class="fa-solid fa-fire"></i> Seleziona Sacrificio</h2>
@@ -783,13 +783,17 @@ body.colorblind-mode #opt-colorblind-text {
             <div id="reforgeSelectGrid" class="flex flex-wrap gap-3 overflow-y-auto custom-scrollbar p-2 justify-center content-start flex-1 min-h-[120px]">
             </div>
 
-            <!-- NUOVO BOX DESCRIZIONE NEL MODALE -->
+            <!-- BOX DESCRIZIONE NEL MODALE -->
             <div class="mt-4 bg-black/80 border border-purple-900/50 rounded-xl p-3 min-h-[85px] flex flex-col justify-center items-center text-center shrink-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)]">
                 <h3 id="reforge-modal-name" class="text-sm font-black text-gray-400 uppercase tracking-widest mb-1">IN ATTESA...</h3>
                 <p id="reforge-modal-desc" class="text-xs text-gray-500 font-bold">Passa il cursore o tocca un'icona per leggerne il potere prima di sacrificarla.</p>
             </div>
 
-            <button onclick="UIManager.hideModal('reforgeSelectModal')" class="mt-5 btn-cyber glass-panel box-glow-gray w-full py-3.5 text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-widest shrink-0 z-10">Annulla</button>
+            <!-- NUOVI PULSANTI: ANNULLA e SELEZIONA -->
+            <div class="flex gap-3 mt-5 w-full shrink-0 z-10">
+                <button onclick="UIManager.hideModal('reforgeSelectModal')" class="btn-cyber glass-panel box-glow-gray flex-1 py-3.5 text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-widest">Annulla</button>
+                <button id="btn-confirm-sacrifice" onclick="RelicSystem.confirmSacrificeSelection()" class="btn-cyber glass-panel flex-1 py-3.5 text-xs sm:text-sm font-bold text-red-500 uppercase tracking-widest opacity-50 cursor-not-allowed grayscale" disabled>Seleziona</button>
+            </div>
         </div>
     </div>
 <!-- MODALE RELIQUIE COLLEZIONATE -->
@@ -2282,12 +2286,20 @@ const RelicSystem = {
         const grid = document.getElementById('reforgeSelectGrid');
         grid.innerHTML = '';
         
+        // Resetta lo stato di selezione temporanea
+        this.tempSelectedForReforge = null;
+        
+        // Resetta il tasto Conferma
+        const btnConfirm = document.getElementById('btn-confirm-sacrifice');
+        btnConfirm.disabled = true;
+        btnConfirm.className = "btn-cyber glass-panel flex-1 py-3.5 text-xs sm:text-sm font-bold text-red-500 uppercase tracking-widest opacity-50 cursor-not-allowed grayscale";
+        
         // Resetta il box testo nel modale
         const modalName = document.getElementById('reforge-modal-name');
         const modalDesc = document.getElementById('reforge-modal-desc');
         modalName.innerHTML = "IN ATTESA...";
         modalName.className = "text-sm font-black text-gray-400 uppercase tracking-widest mb-1";
-        modalDesc.innerText = "Passa il cursore o tocca un'icona per leggerne il potere prima di sacrificarla.";
+        modalDesc.innerText = "Tocca un'icona per leggerne il potere. Tocca 'SELEZIONA' per confermare.";
         modalDesc.className = "text-xs text-gray-500 font-bold";
         
         Game.player.relics.forEach((relic, index) => {
@@ -2300,15 +2312,16 @@ const RelicSystem = {
                             relic.rarity === 'rare' ? 'text-blue-400' : 'text-green-400';
 
             let imgBox = document.createElement('div');
+            imgBox.id = `reforge-choice-${index}`; // ID univoco per manipolare la UI in seguito
             imgBox.className = `w-14 h-14 sm:w-16 sm:h-16 border-2 bg-black ${colorClass} overflow-hidden cursor-pointer hover:-translate-x-1 hover:-translate-y-1 transition-transform relative group flex shrink-0`;
             imgBox.innerHTML = `
                 <img src="${relic.image}" class="w-full h-full object-cover">
                 <div class="absolute inset-0 bg-red-900/80 hidden group-hover:flex items-center justify-center text-white"><i class="fa-solid fa-fire text-xl"></i></div>
             `;
             
-            // LOGICA HOVER/TOUCH PER LEGGERE LA DESCRIZIONE NEL MODALE
+            // LOGICA HOVER/TOUCH PER LEGGERE LA DESCRIZIONE
             const showDetails = () => {
-                AudioEngine.playHover();
+                if (!this.tempSelectedForReforge || this.tempSelectedForReforge.index !== index) AudioEngine.playHover();
                 modalName.innerText = relic.name;
                 modalName.className = `text-sm font-black uppercase tracking-widest mb-1 ${textColor}`;
                 modalDesc.innerText = relic.desc;
@@ -2316,44 +2329,73 @@ const RelicSystem = {
             };
 
             imgBox.onmouseenter = showDetails;
-            // Su mobile supportiamo il touch per mostrare l'info
-            imgBox.ontouchstart = (e) => { showDetails(); };
             
+            // Il Click ora SELEZIONA VISIVAMENTE la reliquia, ma NON chiude il modale!
             imgBox.onclick = () => {
                 AudioEngine.playClick();
-                this.selectedForReforge = { relic, index };
+                this.tempSelectedForReforge = { relic, index };
                 
-                // Aggiorna l'icona nel menu principale
-                document.getElementById('reforge-icon-default').classList.add('hidden');
-                let imgEl = document.getElementById('reforge-icon-img');
-                imgEl.src = relic.image;
-                imgEl.classList.remove('hidden');
+                showDetails(); // Forza l'aggiornamento del testo su mobile
                 
-                let btnSel = document.getElementById('btn-select-reforge');
-                btnSel.classList.remove('border-dashed', 'border-gray-600');
-                btnSel.classList.add('border-solid', 'border-red-500'); // Diventa rosso per indicare il pericolo
-                btnSel.style.boxShadow = '6px 6px 0px #ef4444';
-                document.getElementById('reforge-overlay').classList.remove('hidden');
+                // Aggiorna l'estetica di tutte le icone per mostrare quale è selezionata
+                Game.player.relics.forEach((_, j) => {
+                    let box = document.getElementById(`reforge-choice-${j}`);
+                    if (box) {
+                        if (j === index) {
+                            // Selezionata: si ingrandisce, bordo rosso fuoco
+                            box.classList.remove('opacity-40', 'scale-95');
+                            box.classList.add('scale-105', 'border-red-500', 'shadow-[0_0_15px_rgba(239,68,68,0.8)]');
+                        } else {
+                            // Altre: si spengono
+                            box.classList.remove('scale-105', 'border-red-500', 'shadow-[0_0_15px_rgba(239,68,68,0.8)]');
+                            box.classList.add('opacity-40', 'scale-95');
+                        }
+                    }
+                });
                 
-                document.getElementById('btn-do-reforge').disabled = false;
-                
-                // POPOLA LA DESCRIZIONE DEL SACRIFICIO NEL PANNELLO BASSO
-                let descTitle = document.getElementById('reforge-desc-title');
-                let descText = document.getElementById('reforge-desc-text');
-                
-                descTitle.innerHTML = `<span class="text-red-500 animate-pulse"><i class="fa-solid fa-fire"></i> IN CENERI:</span> <span class="text-white line-through opacity-70">${relic.name.toUpperCase()}</span>`;
-                descTitle.className = "text-[9px] sm:text-[10px] font-black uppercase tracking-wider leading-none m-0";
-                
-                descText.innerText = relic.desc;
-                descText.className = "text-[8px] sm:text-[10px] text-red-300/60 mt-1.5 leading-tight font-semibold italic"; 
-                
-                UIManager.hideModal('reforgeSelectModal');
+                // Abilita il pulsante di Conferma
+                btnConfirm.disabled = false;
+                btnConfirm.className = "btn-cyber glass-panel box-glow-red flex-1 py-3.5 text-xs sm:text-sm font-bold text-red-500 uppercase tracking-widest";
             };
+            
             grid.appendChild(imgBox);
         });
         UIManager.showModal('reforgeSelectModal');
     },
-
+confirmSacrificeSelection() {
+        if (!this.tempSelectedForReforge) return;
+        AudioEngine.playClick();
+        
+        // Trasferisce la selezione temporanea in quella definitiva
+        let relic = this.tempSelectedForReforge.relic;
+        this.selectedForReforge = this.tempSelectedForReforge;
+        
+        // Aggiorna l'icona nel menu principale
+        document.getElementById('reforge-icon-default').classList.add('hidden');
+        let imgEl = document.getElementById('reforge-icon-img');
+        imgEl.src = relic.image;
+        imgEl.classList.remove('hidden');
+        
+        let btnSel = document.getElementById('btn-select-reforge');
+        btnSel.classList.remove('border-dashed', 'border-gray-600');
+        btnSel.classList.add('border-solid', 'border-red-500'); // Diventa rosso per indicare il pericolo
+        btnSel.style.boxShadow = '6px 6px 0px #ef4444';
+        document.getElementById('reforge-overlay').classList.remove('hidden');
+        
+        document.getElementById('btn-do-reforge').disabled = false;
+        
+        // POPOLA LA DESCRIZIONE DEL SACRIFICIO NEL PANNELLO BASSO
+        let descTitle = document.getElementById('reforge-desc-title');
+        let descText = document.getElementById('reforge-desc-text');
+        
+        descTitle.innerHTML = `<span class="text-red-500 animate-pulse"><i class="fa-solid fa-fire"></i> IN CENERI:</span> <span class="text-white line-through opacity-70">${relic.name.toUpperCase()}</span>`;
+        descTitle.className = "text-[9px] sm:text-[10px] font-black uppercase tracking-wider leading-none m-0";
+        
+        descText.innerText = relic.desc;
+        descText.className = "text-[8px] sm:text-[10px] text-red-300/60 mt-1.5 leading-tight font-semibold italic"; 
+        
+        UIManager.hideModal('reforgeSelectModal');
+    },
     executeReforge() {
         if (this.hasReforged || !this.selectedForReforge) return;
         this.hasReforged = true;

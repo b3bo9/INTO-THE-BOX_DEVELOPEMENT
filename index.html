@@ -6757,9 +6757,9 @@ class GameMap {
         }
         
        if (!window.GLOBAL_WALL_GEO) {
-            // Mura a scarpa: Base più larga (0.75) per non lasciare buchi, cima più stretta (0.55) per la luce
-            window.GLOBAL_WALL_GEO = new THREE.CylinderGeometry(TILE_SIZE * 0.55, TILE_SIZE * 0.75, TILE_SIZE * 1.5, 4, 1, false);
-            window.GLOBAL_WALL_GEO.rotateY(Math.PI / 4); // Ruota per allineare le 4 facce piatte alla griglia
+            // Muri più alti, ma sicuri per non impallare la telecamera
+            window.GLOBAL_WALL_GEO = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE * 2.5, TILE_SIZE);
+            window.GLOBAL_BASE_GEO = new THREE.BoxGeometry(35, 15, 35);
             
             window.GLOBAL_BASE_GEO = new THREE.BoxGeometry(35, 15, 35);
             window.GLOBAL_SHAFT_GEO = new THREE.CylinderGeometry(12, 14, TILE_SIZE * 1.5, 8);
@@ -7238,36 +7238,40 @@ class GameMap {
                             dummy.updateMatrix();
                             meshPitBorders.setMatrixAt(pBorderIdx++, dummy.matrix);
                         }
-                  } else {
-                        // Confine Interno Conficcato: DISEGNA I VERI MURI INTERNI
-                        let scaleY = MathUtils.randomRange(0.85, 1.20); // Altezze frastagliate
-                        let offX = MathUtils.randomRange(-3, 3); // Disallineamento per look "in rovina"
-                        let offZ = MathUtils.randomRange(-3, 3);
+                } else {
+                        // --- Confine Interno: PARETE ROCCIOSA FRASTAGLIATA ---
+                        let scaleY = MathUtils.randomRange(0.8, 1.2); 
+                        // Ruotiamo casualmente i blocchi! Questo distrugge totalmente l'allineamento della griglia
+                        let rotY = Math.random() * Math.PI; 
                         
-                        dummy.position.set((x * TILE_SIZE + TILE_SIZE / 2) + offX, (TILE_SIZE * 0.75) * scaleY, (y * TILE_SIZE + TILE_SIZE / 2) + offZ);
-                        dummy.scale.set(1, scaleY, 1);
-                        dummy.rotation.set(0, 0, 0);
+                        dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE * 1.25, y * TILE_SIZE + TILE_SIZE / 2);
+                        
+                        // MAGIA: Scaliamo X e Z a 1.4. I blocchi si compenetrano sfalsati diventando una roccia unica!
+                        dummy.scale.set(1.4, scaleY, 1.4);
+                        dummy.rotation.set(0, rotY, 0);
                         dummy.updateMatrix();
                         wallMesh.setMatrixAt(wIdx, dummy.matrix);
                         
-                        // Fake Ambient Occlusion: Modula l'oscurità del blocco (1.0 = normale, 0.5 = scuro)
-                        let shade = MathUtils.randomRange(0.5, 1.0);
+                        // Fake Ambient Occlusion: Moduliamo la luminosità per simulare sporco e anfratti scuri
+                        let shade = MathUtils.randomRange(0.4, 0.85);
                         tempWallColor.setRGB(shade, shade, shade);
                         wallMesh.setColorAt(wIdx, tempWallColor);
                         
                         wIdx++;
                     }
                 } else {
-                    // Confine Esterno Mappa (PADDING): DISEGNA I MURI PERIMETRALI
-                    let scaleY = MathUtils.randomRange(0.9, 1.35); // I muri perimetrali sono più alti
-                    dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, (TILE_SIZE * 0.75) * scaleY, y * TILE_SIZE + TILE_SIZE / 2);
-                    dummy.scale.set(1, scaleY, 1);
-                    dummy.rotation.set(0, 0, 0);
+                    // --- Confine Esterno Mappa (PADDING): L'ABISSO ---
+                    let scaleY = MathUtils.randomRange(0.9, 1.3);
+                    let rotY = Math.random() * Math.PI;
+                    
+                    dummy.position.set(x * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE * 1.25, y * TILE_SIZE + TILE_SIZE / 2);
+                    dummy.scale.set(1.4, scaleY, 1.4);
+                    dummy.rotation.set(0, rotY, 0);
                     dummy.updateMatrix();
                     wallMesh.setMatrixAt(wIdx, dummy.matrix);
                     
-                    // Il perimetro esterno è mediamente più scuro
-                    let shade = MathUtils.randomRange(0.4, 0.9);
+                    // Scuriamo molto i blocchi esterni per fonderli con la nebbia nera e dare profondità
+                    let shade = MathUtils.randomRange(0.1, 0.4);
                     tempWallColor.setRGB(shade, shade, shade);
                     wallMesh.setColorAt(wIdx, tempWallColor);
                     

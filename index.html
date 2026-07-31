@@ -775,16 +775,16 @@ body.colorblind-mode #opt-colorblind-text {
             </button>
         </div>
     </div>
-  <!-- MODALE SELEZIONE SACRIFICIO -->
+ <!-- MODALE SELEZIONE SACRIFICIO -->
     <div id="reforgeSelectModal" class="absolute inset-0 bg-black/95 z-[260] flex flex-col items-center justify-center backdrop-blur-md pointer-events-auto hidden p-4">
-       <div class="glass-panel modal-enter border-purple-500/50 p-5 w-full max-w-[450px] shadow-[0_0_40px_rgba(168,85,247,0.3)] flex flex-col max-h-[85vh]">
+       <div class="glass-panel modal-enter border-purple-500/50 p-5 w-full max-w-[450px] h-[550px] shadow-[0_0_40px_rgba(168,85,247,0.3)] flex flex-col max-h-[85vh]">
             <h2 class="text-xl sm:text-2xl font-black text-purple-400 mb-4 border-b border-gray-700 pb-2 uppercase tracking-widest text-center"><i class="fa-solid fa-fire"></i> Seleziona Sacrificio</h2>
             
             <div id="reforgeSelectGrid" class="flex flex-wrap gap-3 overflow-y-auto custom-scrollbar p-2 justify-center content-start flex-1 min-h-[120px]">
             </div>
 
             <!-- BOX DESCRIZIONE NEL MODALE -->
-            <div class="mt-4 bg-black/80 border border-purple-900/50 rounded-xl p-3 min-h-[85px] flex flex-col justify-center items-center text-center shrink-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)]">
+            <div class="mt-4 bg-black/80 border border-purple-900/50 rounded-xl p-3 h-[100px] overflow-y-auto custom-scrollbar flex flex-col justify-center items-center text-center shrink-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)]">
                 <h3 id="reforge-modal-name" class="text-sm font-black text-gray-400 uppercase tracking-widest mb-1">IN ATTESA...</h3>
                 <p id="reforge-modal-desc" class="text-xs text-gray-500 font-bold">Passa il cursore o tocca un'icona per leggerne il potere prima di sacrificarla.</p>
             </div>
@@ -5387,16 +5387,34 @@ if (a.rayIdx !== undefined && a.rayIdx >= 0 && this.map.raysMesh) {
                                 
                                 this.getFloatingText().spawn(a.x, a.y + 40, "OBELISCO PROSCIUGATO!", '#00DDFF', 40, true);
 
-                                // --- MODIFICA: CURA E CARICA ULTIMATE DEL 15% ---
-                                let healAmount = Game.player.stats.maxHp * 0.15;
-                                Game.player.stats.hp = Math.min(Game.player.stats.maxHp, Game.player.stats.hp + healAmount);
-                                Game.addUltimateCharge(15);
-                                
-                                // Feedback visivi sul giocatore
-                                Game.getFloatingText().spawn(Game.player.x - 15, Game.player.y + 20, `+${Math.floor(healAmount)} HP`, '#33ff00', 25, true);
-                                Game.getFloatingText().spawn(Game.player.x + 15, Game.player.y + 20, `+15% ULT`, '#00DDFF', 25, true);
-                                Game.getParticle().spawn(Game.player.x, 20, Game.player.y, SharedMat.spriteGreen, 'spark');
-                                Game.getParticle().spawn(Game.player.x, 20, Game.player.y, SharedMat.spriteBlue, 'spark');
+                                // --- MODIFICA: EFFETTI SPECIFICI PER TIPO DI OBELISCO ---
+                                if (a.type === 'corrupted') {
+                                    Game.addUltimateCharge(40);
+                                    Game.player.obeliskDmgTimer = 6.0; Game.player.obeliskDmgVal = 1.10;
+                                    Game.player.obeliskSpdTimer = 6.0; Game.player.obeliskSpdVal = 1.10;
+                                    Game.getFloatingText().spawn(Game.player.x - 15, Game.player.y + 20, `+40% ULT`, '#aa00ff', 25, true);
+                                    Game.getFloatingText().spawn(Game.player.x + 15, Game.player.y + 20, `+10% ATK/VEL 6s`, '#ff3300', 25, true);
+                                    Game.getParticle().spawn(Game.player.x, 20, Game.player.y, SharedMat.spritePink, 'spark');
+                                } else if (a.type === 'red') {
+                                    Game.addUltimateCharge(15);
+                                    Game.player.obeliskDmgTimer = 6.0; Game.player.obeliskDmgVal = 1.20;
+                                    Game.getFloatingText().spawn(Game.player.x - 15, Game.player.y + 20, `+15% ULT`, '#00DDFF', 25, true);
+                                    Game.getFloatingText().spawn(Game.player.x + 15, Game.player.y + 20, `+20% DMG 6s`, '#ff3300', 25, true);
+                                    Game.getParticle().spawn(Game.player.x, 20, Game.player.y, SharedMat.spriteRed, 'spark');
+                                } else if (a.type === 'blue') {
+                                    Game.addUltimateCharge(15);
+                                    Game.player.obeliskSpdTimer = 6.0; Game.player.obeliskSpdVal = 1.20;
+                                    Game.getFloatingText().spawn(Game.player.x - 15, Game.player.y + 20, `+15% ULT`, '#00DDFF', 25, true);
+                                    Game.getFloatingText().spawn(Game.player.x + 15, Game.player.y + 20, `+20% VEL 6s`, '#00aaff', 25, true);
+                                    Game.getParticle().spawn(Game.player.x, 20, Game.player.y, SharedMat.spriteBlue, 'spark');
+                                } else if (a.type === 'green') {
+                                    Game.addUltimateCharge(15);
+                                    Game.player.obeliskHealTimer = 6.0;
+                                    Game.getFloatingText().spawn(Game.player.x - 15, Game.player.y + 20, `+15% ULT`, '#00DDFF', 25, true);
+                                    Game.getFloatingText().spawn(Game.player.x + 15, Game.player.y + 20, `CURA 20% 6s`, '#33ff00', 25, true);
+                                    Game.getParticle().spawn(Game.player.x, 20, Game.player.y, SharedMat.spriteGreen, 'spark');
+                                }
+                                Game.getParticle().spawn(Game.player.x, 20, Game.player.y, SharedMat.spriteWhite, 'spark');
                                 // -------------------------------------------------
                             }
                         }
@@ -8513,17 +8531,28 @@ class Player extends Entity {
         if (this.dashResistTimer > 0) this.dashResistTimer -= dt;
         let dashSpdMult = this.dashSpeedTimer > 0 ? 1.15 : 1.0; // REWORK: +15% velocità
 
-        // --- GESTIONE BUFF BREVI DA CASSE E VASI ---
+      // --- GESTIONE BUFF BREVI DA CASSE E VASI ---
         if (this.shortBuffs.atkSpeed > 0) this.shortBuffs.atkSpeed -= dt;
         if (this.shortBuffs.movSpeed > 0) this.shortBuffs.movSpeed -= dt;
         if (this.shortBuffs.regen > 0) {
             this.shortBuffs.regen -= dt;
-            // Cura il 20% in 5 secondi (4% al secondo) in modo fluido
             let healAmount = this.stats.maxHp * 0.04 * dt; 
             this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
-            // Scintille verdi per indicare la guarigione in corso
             if (Game.frameCount % 20 === 0) {
                 Game.getParticle().spawn(this.x, 25, this.y, SharedMat.spriteGreen, 'spark');
+            }
+        }
+
+        // --- GESTIONE BUFF OBELISCHI (6 SECONDI) ---
+        if (this.obeliskDmgTimer > 0) this.obeliskDmgTimer -= dt;
+        if (this.obeliskSpdTimer > 0) this.obeliskSpdTimer -= dt;
+        if (this.obeliskHealTimer > 0) {
+            this.obeliskHealTimer -= dt;
+            // Cura il 20% in 6 secondi
+            let healAmount = this.stats.maxHp * (0.20 / 6.0) * dt; 
+            this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + healAmount);
+            if (Game.frameCount % 15 === 0) {
+                Game.getParticle().spawn(this.x + MathUtils.randomRange(-10, 10), 25, this.y + MathUtils.randomRange(-10, 10), SharedMat.spriteGreen, 'spark');
             }
         }
         
@@ -8978,8 +9007,9 @@ if (Game.ultimateActive) currentSpeed *= 1.5; currentSpeed = Math.min(currentSpe
         
         let aura = Game.getAuraAt(this.x, this.y); 
        // FIX OBELISCO ROSSO: +20% Velocità d'attacco se sei nell'Aura Rossa
-        let auraAtkSpd = (aura === 'blue') ? 0.6 : (aura === 'red' ? 1.2 : 1.0);
+       let auraAtkSpd = (aura === 'blue') ? 0.6 : (aura === 'red' ? 1.2 : 1.0);
         let buffAtkMult = this.shortBuffs.atkSpeed > 0 ? 1.15 : 1.0; // +15% Atk Speed
+        if (this.obeliskSpdTimer > 0) buffAtkMult *= this.obeliskSpdVal; // Buff Obelisco
         // REWORK: Aggiunto malus Follia Omicida (atkSpeedPenalty)
         let spdMult = (1 + Math.min(Game.combo * 0.01, 0.5 * flowCapMult)) * this.modifiers.atkSpeedMult * shopSpeed * adrenalineSpeed * (1 + shieldSpeed) * shockAtkSpeed * miserAtkSpeedBonus * auraAtkSpd * buffAtkMult * this.modifiers.atkSpeedPenalty;
         if (this.overdrive && this.essence === 'blue') spdMult *= 3.0; 
@@ -8992,8 +9022,9 @@ if (Game.ultimateActive) currentSpeed *= 1.5; currentSpeed = Math.min(currentSpe
       let critChance = this.modifiers.critChance + this.modifiers.bonusCritChance + Math.min(Game.combo * 0.005, 0.5 * flowCapMult); let isCrit = Math.random() < critChance;
         if (this.modifiers.dashCritsStacks > 0) { isCrit = true; this.modifiers.dashCritsStacks--; }
         
-        // 1. Calcolo del Danno Base INIZIALE
+       // 1. Calcolo del Danno Base INIZIALE
         let baseDmg = MathUtils.randomRange(this.stats.minDmg, this.stats.maxDmg) * (1 + Math.min(Game.combo * 0.04, 2.0 * flowCapMult)) * this.modifiers.dmgMult;
+        if (this.obeliskDmgTimer > 0) baseDmg *= this.obeliskDmgVal; // Buff Obelisco
         
         // 2. MASSA CRITICA: Moltiplica i danni per quanto sei grosso!
         if (Game.isCorrupted && Game.corruptedType === 'critical_mass') {
